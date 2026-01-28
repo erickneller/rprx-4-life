@@ -5,7 +5,7 @@
 /* RPRx For Life Design System
    A financial wellness brand: trustworthy, calm, professional
    Primary: Deep slate/navy for trust
-   Accent: Emerald green for growth/wellness/money
+   Accent: Cobalt blue for trust/professionalism
    All colors MUST be HSL.
 */
 
@@ -35,8 +35,8 @@
     --muted: 210 20% 96%;
     --muted-foreground: 215 16% 47%;
 
-    /* Accent: Emerald green for highlights, success, growth */
-    --accent: 160 84% 39%;
+    /* Accent: Cobalt blue for highlights and CTAs */
+    --accent: 220 90% 51%;
     --accent-foreground: 0 0% 100%;
 
     /* Destructive: Error states */
@@ -46,7 +46,7 @@
     /* Borders & inputs */
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 160 84% 39%;
+    --ring: 220 90% 51%;
 
     --radius: 0.75rem;
 
@@ -55,10 +55,10 @@
     --sidebar-foreground: 240 5% 26%;
     --sidebar-primary: 222 47% 11%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 160 84% 39%;
+    --sidebar-accent: 220 90% 51%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 160 84% 39%;
+    --sidebar-ring: 220 90% 51%;
 
     /* Extended palette for landing page */
     --hero-gradient-start: 222 47% 11%;
@@ -88,7 +88,7 @@
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 160 84% 45%;
+    --accent: 220 90% 60%;
     --accent-foreground: 222 47% 6%;
 
     --destructive: 0 63% 31%;
@@ -96,7 +96,7 @@
 
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 160 84% 45%;
+    --ring: 220 90% 60%;
 
     --sidebar-background: 222 47% 8%;
     --sidebar-foreground: 210 40% 98%;
@@ -105,7 +105,7 @@
     --sidebar-accent: 217 33% 20%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 160 84% 45%;
+    --sidebar-ring: 220 90% 60%;
 
     --hero-gradient-start: 222 47% 8%;
     --hero-gradient-end: 215 28% 12%;
@@ -136,6 +136,6 @@
   }
   
   .gradient-accent {
-    background: linear-gradient(135deg, hsl(160 84% 39%) 0%, hsl(160 60% 50%) 100%);
+    background: linear-gradient(135deg, hsl(220 90% 51%) 0%, hsl(220 70% 60%) 100%);
   }
 }
