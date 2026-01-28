@@ -1,138 +1,184 @@
 
 
-# RPRx Financial Success Assessment MVP - Implementation Plan
+# RPRx Strategy Assistant - Implementation Plan
 
 ## Overview
 
-This plan implements all five Freemium MVP features for the RPRx 4 Life platform. The assessment will guide users through a 3-5 minute diagnostic experience, calculate pressure from the Four Horsemen, and provide educational feedback.
+This plan implements a **Phase 1 AI Chat Experience** for the RPRx Strategy Assistant. The feature allows logged-in users to have AI-assisted conversations about financial strategies, with the AI grounded in the 80-strategy knowledge base covering the Four Horsemen (Interest, Taxes, Insurance, Education).
+
+---
+
+## Architecture Summary
+
+```text
++------------------+       +----------------------+       +------------------+
+|   Chat Page UI   | ----> | Supabase Edge Func   | ----> | OpenAI API       |
+| (React Frontend) |       | (/rprx-chat)         |       | (GPT-4)          |
++------------------+       +----------------------+       +------------------+
+        |                          |
+        v                          v
++------------------+       +----------------------+
+|  Supabase DB     |       | Knowledge Base       |
+|  (conversations, |       | (embedded in system  |
+|   messages)      |       |  prompt)             |
++------------------+       +----------------------+
+```
 
 ---
 
 ## Database Schema
 
-### Tables to Create
+### New Tables
 
-```text
-+------------------------+     +------------------------+     +---------------------------+
-|  assessment_questions  |     |    user_assessments    |     |   assessment_responses    |
-+------------------------+     +------------------------+     +---------------------------+
-| id (uuid, PK)          |     | id (uuid, PK)          |     | id (uuid, PK)             |
-| question_text (text)   |     | user_id (uuid, FK)     |     | assessment_id (uuid, FK)  |
-| question_type (enum)   |     | completed_at (timestz) |     | question_id (uuid, FK)    |
-| order_index (int)      |     | interest_score (int)   |     | response_value (jsonb)    |
-| options (jsonb)        |     | taxes_score (int)      |     | created_at (timestamptz)  |
-| horseman_weights (jsonb)    | insurance_score (int)  |     +---------------------------+
-| category (text)        |     | education_score (int)  |
-| created_at (timestamptz)    | primary_horseman (text)|
-+------------------------+     | cash_flow_status (enum)|
-                               | income_range (text)    |
-                               | expense_range (text)   |
-                               | created_at (timestamptz)
-                               +------------------------+
-```
+**conversations**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid (PK) | Unique conversation ID |
+| user_id | uuid (FK) | References auth.users |
+| title | text | Auto-generated from first message |
+| created_at | timestamptz | Creation timestamp |
+| updated_at | timestamptz | Last activity timestamp |
 
-### Enums
-
-```sql
--- Question types
-CREATE TYPE question_type AS ENUM ('slider', 'single_choice', 'yes_no', 'range_select');
-
--- Cash flow status
-CREATE TYPE cash_flow_status AS ENUM ('surplus', 'tight', 'deficit');
-
--- Horseman types
-CREATE TYPE horseman_type AS ENUM ('interest', 'taxes', 'insurance', 'education');
-```
+**messages**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid (PK) | Unique message ID |
+| conversation_id | uuid (FK) | References conversations |
+| role | text | 'user' or 'assistant' |
+| content | text | Message content |
+| created_at | timestamptz | Message timestamp |
 
 ### RLS Policies
 
 | Table | Policy | Rule |
 |-------|--------|------|
-| assessment_questions | Public read | Anyone can read questions |
-| user_assessments | User owns | Users can only CRUD their own assessments |
-| assessment_responses | User owns via assessment | Users can only CRUD responses for their own assessments |
+| conversations | User owns | Users can only CRUD their own conversations |
+| messages | User owns via conversation | Users can only CRUD messages in their own conversations |
 
 ---
 
-## Assessment Questions (15 Total)
+## Required Secret
 
-### Interest (Debt Pressure) - 4 Questions
+Before implementation, we need to add the **OPENAI_API_KEY** secret:
 
-| # | Question | Type | Options/Range |
-|---|----------|------|---------------|
-| 1 | How often do you think about debt payments when making everyday spending decisions? | slider | Never - Sometimes - Often - Always |
-| 2 | Do you currently have any credit card balances that carry over month to month? | yes_no | Yes / No |
-| 3 | How would you describe your comfort level with your current debt situation? | single_choice | Very comfortable / Somewhat comfortable / Somewhat uncomfortable / Very uncomfortable |
-| 4 | In the past year, have you taken on new debt to cover unexpected expenses? | yes_no | Yes / No |
-
-### Taxes (Tax Leakage) - 4 Questions
-
-| # | Question | Type | Options/Range |
-|---|----------|------|---------------|
-| 5 | How confident are you that you're keeping as much of your income as possible? | slider | Not at all - Slightly - Moderately - Very |
-| 6 | Do you have a clear understanding of how your income is taxed? | single_choice | Crystal clear / General idea / Somewhat fuzzy / No idea |
-| 7 | Have you explored ways to reduce your tax burden in the past year? | yes_no | Yes / No |
-| 8 | How often do you feel surprised by your tax bill or refund amount? | single_choice | Never / Rarely / Sometimes / Often |
-
-### Insurance (Protection Costs) - 4 Questions
-
-| # | Question | Type | Options/Range |
-|---|----------|------|---------------|
-| 9 | How confident are you that your insurance coverage matches your actual needs? | slider | Not at all - Slightly - Moderately - Very |
-| 10 | When was the last time you reviewed all your insurance policies together? | single_choice | Within 6 months / Within 1 year / 1-3 years ago / Can't remember |
-| 11 | Do you know approximately how much you pay monthly across all insurance types? | yes_no | Yes / No |
-| 12 | Have you ever felt you were paying for coverage you don't need? | single_choice | Never / Once or twice / Sometimes / Often |
-
-### Education (Future Funding) - 3 Questions
-
-| # | Question | Type | Options/Range |
-|---|----------|------|---------------|
-| 13 | How prepared do you feel for future education costs (for yourself or children or grandchildren)? | slider | Not at all - Slightly - Moderately - Very |
-| 14 | Do you have a specific savings plan for education expenses? | yes_no | Yes / No |
-| 15 | How much do education funding concerns impact your current financial decisions? | single_choice | Not at all / Slightly / Moderately / Significantly |
-
-### Cash Flow Questions (2 Additional)
-
-| # | Question | Type | Purpose |
-|---|----------|------|---------|
-| 16 | What is your approximate monthly household income range? | range_select | Cash flow calculation |
-| 17 | What is your approximate monthly household expense range? | range_select | Cash flow calculation |
-
-**Income/Expense Ranges:**
-- Under $3,000
-- $3,000 - $5,000
-- $5,000 - $7,500
-- $7,500 - $10,000
-- $10,000 - $15,000
-- Over $15,000
+- **Secret Name**: `OPENAI_API_KEY`
+- **Purpose**: Server-side OpenAI API authentication (never exposed to browser)
+- **Used By**: Edge function `/rprx-chat`
 
 ---
 
-## Scoring Logic
+## Edge Function: rprx-chat
 
-### Horseman Pressure Calculation
+### Endpoint Details
 
-Each question contributes 0-100 points to its associated Horseman:
+- **Path**: `/functions/v1/rprx-chat`
+- **Method**: POST
+- **Authentication**: Required (JWT validation)
 
-| Response Type | Score Mapping |
-|---------------|---------------|
-| Slider (4 positions) | Position 1=0, 2=33, 3=66, 4=100 |
-| Yes/No (pressure = yes) | Yes=100, No=0 |
-| Yes/No (pressure = no) | Yes=0, No=100 |
-| Single Choice (4 options) | Varies by question context |
+### Request Body
 
-**Final Score:** Average of all question scores per Horseman (0-100 scale)
+```json
+{
+  "conversation_id": "uuid | null",
+  "user_message": "string"
+}
+```
 
-**Primary Horseman:** Highest scoring category becomes the primary pressure area
+### Response
 
-### Cash Flow Calculation
+```json
+{
+  "conversation_id": "uuid",
+  "assistant_message": "string"
+}
+```
+
+### Processing Flow
+
+1. Validate JWT and extract user_id
+2. If no conversation_id, create new conversation
+3. Save user message to messages table
+4. Build conversation history from database
+5. Call OpenAI API with system prompt + knowledge base + history
+6. Save assistant response to messages table
+7. Update conversation updated_at timestamp
+8. Return assistant message
+
+---
+
+## Knowledge Base Integration
+
+The 80 strategies from the PDF will be embedded directly in the system prompt as structured data. Each strategy includes:
+
+- Strategy name
+- Horseman(s) addressed
+- Summary
+- Projected savings range
+- Complexity (1-5)
+- Implementation plan steps
+- Key requirements
+- Tax code reference (if applicable)
+- Example
+- Disclaimer
+
+### Strategy Categories
+
+| Horseman | Count | Strategy Range |
+|----------|-------|----------------|
+| Interest | 10 | Debt payoff, refinancing, HELOC, life insurance loans |
+| Taxes | 20 | C-Corp, 401k, HSA, Section 179, Roth conversions |
+| Insurance | 20 | HDHP/HSA, captive insurance, long-term care |
+| Education | 20 | 529 plans, CLEP/AP, scholarships, tax credits |
+
+---
+
+## System Prompt (Exact)
+
+The edge function will use the exact system instructions provided:
 
 ```text
-Cash Flow Status Logic:
-- Surplus: Income range midpoint > Expense range midpoint + 20%
-- Deficit: Expense range midpoint > Income range midpoint
-- Tight: Everything else
+You are an expert RPRx financial strategy assistant.
+
+1. Greet the user and explain you will help them find the best strategies to reduce 
+   the impact of the Four Horsemen (Interest, Taxes, Insurance, Education) on their finances.
+
+2. Ask the user the intake questions below, one at a time, and collect their answers.
+
+3. Analyze their responses and select the top 20 most relevant strategies from the 
+   knowledge base, prioritizing dollar impact, ease of implementation, and applicability.
+
+4. Present the strategies in a clear, organized list, with summaries and projected savings.
+
+5. Invite the user to select any strategies for which they want a detailed implementation 
+   plan, and provide step-by-step instructions for those (using the KB implementation plans).
+
+6. Remind the user that these are sample strategies, not tax or legal advice, and 
+   recommend consulting an RPRx advisor for full support. For more help and to speak 
+   with a qualified RPRx Advisor, visit: rprx4life.com
+
+7. Always include a disclaimer and offer to answer follow-up questions.
+
+8. Do not create any images while responding. Only create an image if explicitly asked 
+   by the user for their own data or strategies.
 ```
+
+### Intake Questions (Embedded)
+
+The AI will ask these one at a time:
+
+**A. User Profile**
+- Which of the following best describes you? (Business Owner, Retiree/Grandparent, Salesperson, Wage Earner, Investor, Farmer, Non-Profit)
+- What are your main financial goals? (Increase Cash Flow, Reduce Taxes, Save for Education, Improve Retirement Readiness, Reduce Insurance Costs, Other)
+
+**B. Financial Snapshot**
+- Approximate annual household income range
+- Total household debt range
+- Children/dependents (Y/N, ages)
+- Current/planned education expenses
+- Biggest financial pain points (open-ended)
+
+**C. Optional**
+- Tax return upload option (for future phases)
 
 ---
 
@@ -140,284 +186,177 @@ Cash Flow Status Logic:
 
 ```text
 src/
-  components/
-    assessment/
-      AssessmentWizard.tsx       # Main container with step management
-      ProgressIndicator.tsx      # Step progress bar
-      QuestionCard.tsx           # Renders individual questions
-      SliderQuestion.tsx         # Slider input component
-      SingleChoiceQuestion.tsx   # Radio button choices
-      YesNoQuestion.tsx          # Yes/No toggle
-      RangeSelectQuestion.tsx    # Income/expense range picker
-      CashFlowSnapshot.tsx       # Cash flow input section
-      
-    results/
-      ResultsPage.tsx            # Main results container
-      HorsemenRadarChart.tsx     # Radial/spider chart visualization
-      PrimaryHorsemanCard.tsx    # Highlighted primary pressure
-      CashFlowIndicator.tsx      # Visual cash flow status
-      DiagnosticFeedback.tsx     # Educational feedback section
-      
-    dashboard/
-      DashboardHome.tsx          # Authenticated user home
-      AssessmentHistory.tsx      # List of past assessments
-      AssessmentSummaryCard.tsx  # Individual assessment preview
-      StartAssessmentCTA.tsx     # Begin assessment button
-
-  hooks/
-    useAssessment.ts             # Assessment state management
-    useAssessmentHistory.ts      # Fetch user's past assessments
+  pages/
+    StrategyAssistant.tsx        # Main page container
     
-  lib/
-    scoringEngine.ts             # Calculate horseman scores
-    feedbackEngine.ts            # Generate diagnostic feedback
-    cashFlowCalculator.ts        # Determine cash flow status
+  components/
+    assistant/
+      ConversationSidebar.tsx    # List of past conversations
+      ConversationItem.tsx       # Single conversation preview
+      ChatThread.tsx             # Main chat message area
+      MessageBubble.tsx          # Individual message display
+      ChatInput.tsx              # Message input + send button
+      DisclaimerFooter.tsx       # Required disclaimer
+      NewConversationButton.tsx  # Start new chat
+      
+  hooks/
+    useConversations.ts          # Fetch user's conversations
+    useMessages.ts               # Fetch messages for a conversation
+    useSendMessage.ts            # Send message mutation
 ```
 
 ---
 
-## Radial Chart Visualization
-
-The Four Horsemen will be displayed using a radar/spider chart:
+## Page Layout
 
 ```text
-                    INTEREST
-                       /\
-                      /  \
-                     /    \
-                    /      \
-        EDUCATION  /--------\  TAXES
-                   \        /
-                    \      /
-                     \    /
-                      \  /
-                       \/
-                   INSURANCE
++------------------------------------------------------------------+
+| RPRx Strategy Assistant                            [User] [Logout] |
++------------------------------------------------------------------+
+|                         |                                          |
+| CONVERSATIONS          |           CHAT THREAD                    |
+|                        |                                          |
+| [+ New Conversation]   |  +----------------------------------+    |
+|                        |  | Assistant: Welcome! I'm here to  |    |
+| > Today               |  | help you find strategies...       |    |
+|   - Debt Strategies   |  +----------------------------------+    |
+|   - Tax Planning      |                                          |
+|                        |  +----------------------------------+    |
+| > Yesterday           |  | You: I'm a business owner...      |    |
+|   - Insurance Review  |  +----------------------------------+    |
+|                        |                                          |
+|                        |                                          |
+|                        |  +--------------------------------------+|
+|                        |  | Type your message...          [Send] ||
+|                        |  +--------------------------------------+|
+|                        |                                          |
++------------------------+------------------------------------------+
+| Educational information only. Not tax, legal, or financial advice.|
++------------------------------------------------------------------+
 ```
 
-**Visual Specifications:**
-- Primary Horseman: Cobalt blue fill with full opacity
-- Secondary Horsemen: Muted gray with 40% opacity
-- Grid lines: Light gray dashed
-- Labels: Dark text, primary label in Cobalt blue
-- Animation: Smooth expansion on load (0.5s)
-- No numeric values displayed - visual proportion only
+---
 
-**Implementation:** Use Recharts RadarChart component (already installed)
+## Strategy Output Format
+
+When presenting top 20 strategies, the AI will format as:
+
+| # | Strategy | Horseman(s) | Savings Range | Complexity | Summary |
+|---|----------|-------------|---------------|------------|---------|
+| 1 | Equity Recapture | Interest | $50K-$655K | 2 | Use extra payments to dramatically reduce interest... |
+| 2 | Maximize 401k | Taxes | $2K-$50K | 1 | Contribute max to reduce taxable income... |
+
+Followed by: "Which of these would you like a step-by-step implementation plan for? Reply with the strategy numbers."
 
 ---
 
-## Diagnostic Feedback Templates
+## Implementation Plan Format
 
-### Primary Horseman: Interest (Debt Pressure)
-
-> **Your Primary Pressure: Interest & Debt**
->
-> Your assessment indicates that debt-related costs are creating the most significant 
-> pressure on your financial picture. This is common when payments accumulate across 
-> multiple accounts, each quietly consuming resources through interest charges.
->
-> **What This Means:**
-> When debt payments command a large portion of income, less remains for building 
-> stability or responding to unexpected needs. The compounding nature of interest 
-> means this pressure can grow over time if not addressed systematically.
->
-> **Why It Matters:**
-> Interest costs interact with your other financial areas. Debt pressure can limit 
-> your ability to optimize taxes, maintain appropriate insurance coverage, or save 
-> for education goals.
-
-### Primary Horseman: Taxes
-
-> **Your Primary Pressure: Tax Efficiency**
->
-> Your assessment suggests that tax-related awareness is an area where attention 
-> could yield meaningful improvements. This is particularly relevant when income 
-> changes or life circumstances evolve without corresponding adjustments to tax planning.
->
-> **What This Means:**
-> Without proactive awareness, tax obligations can take more than necessary from 
-> your income. Small inefficiencies accumulate over years, representing significant 
-> unrealized resources.
->
-> **Why It Matters:**
-> Tax efficiency affects how much remains for debt management, insurance costs, and 
-> savings goals. Clarity here creates ripple effects across your entire financial picture.
-
-### Primary Horseman: Insurance
-
-> **Your Primary Pressure: Insurance Costs**
->
-> Your assessment indicates that insurance costs and coverage alignment represent 
-> your most significant pressure area. This often develops gradually as policies 
-> accumulate without regular review or coordination.
->
-> **What This Means:**
-> Insurance is essential protection, but misaligned coverage—either gaps or 
-> redundancies—creates unnecessary financial drag. Premiums paid for unneeded 
-> coverage are resources that could serve you elsewhere.
->
-> **Why It Matters:**
-> Insurance costs affect your monthly cash flow, which influences your ability to 
-> manage debt, save for education, and optimize your overall financial efficiency.
-
-### Primary Horseman: Education
-
-> **Your Primary Pressure: Education Funding**
->
-> Your assessment shows that education-related costs—current or future—are creating 
-> the most significant pressure on your financial outlook. This is common when 
-> education needs are approaching without a clear funding pathway.
->
-> **What This Means:**
-> Education costs continue to rise faster than general inflation, creating a moving 
-> target for planning. Without awareness and structured preparation, these costs 
-> often require last-minute borrowing, which compounds pressure in other areas.
->
-> **Why It Matters:**
-> Education funding pressure can influence decisions about debt, tax strategies, 
-> and how you allocate resources across all financial priorities.
-
-### Compounding Pressure Explanation
-
-> **How These Pressures Interact**
->
-> The Four Horsemen—Interest, Taxes, Insurance, and Education costs—don't exist in 
-> isolation. They compound and interact:
->
-> - Debt pressure can limit funds available for tax-efficient savings
-> - Tax inefficiency reduces resources for managing other costs
-> - Uncoordinated insurance creates cash flow drain affecting all areas
-> - Education funding gaps often lead to future debt, restarting the cycle
->
-> Understanding which area to address first creates clarity and prevents scattered 
-> efforts that rarely produce lasting change.
-
----
-
-## User Flow
+When user selects strategies:
 
 ```text
-1. LANDING PAGE
-   |
-   v
-2. SIGN UP / LOG IN
-   |
-   v
-3. DASHBOARD (First Time)
-   +-- "Welcome! Take your first assessment"
-   +-- [Start Assessment] button
-   |
-   v
-4. ASSESSMENT WIZARD
-   +-- Progress bar (17 steps)
-   +-- Question 1-15 (Four Horsemen)
-   +-- Questions 16-17 (Cash Flow)
-   +-- [Submit Assessment]
-   |
-   v
-5. RESULTS PAGE
-   +-- Radial Chart (Four Horsemen)
-   +-- Primary Horseman Highlight
-   +-- Cash Flow Status Indicator
-   +-- Diagnostic Feedback
-   +-- [Return to Dashboard] / [Retake Assessment]
-   |
-   v
-6. DASHBOARD (Returning)
-   +-- Latest Assessment Summary
-   +-- Assessment History
-   +-- [Take New Assessment] button
-   +-- Compare results over time
+## Strategy 4: Maximize Retirement Plan Contributions
+
+**Who it's best for:** Anyone with earned income seeking to reduce taxes
+
+**Key Requirements:**
+- Earned income
+- Eligible retirement plan (401k, SEP, SIMPLE, IRA)
+
+**Step-by-Step Implementation:**
+1. Review eligibility for 401(k), SEP, SIMPLE, or IRA plans
+2. Contribute up to the annual limit
+3. Adjust contributions annually for maximum benefit
+
+**What to bring to your CPA/Advisor:**
+- Current retirement account statements
+- W-2 or self-employment income documentation
+- Prior year tax return
+
+**Disclaimer:** This is not tax or legal advice. Results are not guaranteed. 
+For personalized guidance, visit rprx4life.com
 ```
 
 ---
 
 ## File Changes Summary
 
-### New Files (22)
+### New Files (12)
 
 | Category | Files |
 |----------|-------|
-| Components - Assessment | `AssessmentWizard.tsx`, `ProgressIndicator.tsx`, `QuestionCard.tsx`, `SliderQuestion.tsx`, `SingleChoiceQuestion.tsx`, `YesNoQuestion.tsx`, `RangeSelectQuestion.tsx`, `CashFlowSnapshot.tsx` |
-| Components - Results | `ResultsPage.tsx`, `HorsemenRadarChart.tsx`, `PrimaryHorsemanCard.tsx`, `CashFlowIndicator.tsx`, `DiagnosticFeedback.tsx` |
-| Components - Dashboard | `DashboardHome.tsx`, `AssessmentHistory.tsx`, `AssessmentSummaryCard.tsx`, `StartAssessmentCTA.tsx` |
-| Hooks | `useAssessment.ts`, `useAssessmentHistory.ts` |
-| Lib | `scoringEngine.ts`, `feedbackEngine.ts`, `cashFlowCalculator.ts` |
+| Edge Function | `supabase/functions/rprx-chat/index.ts` |
+| Pages | `src/pages/StrategyAssistant.tsx` |
+| Components | `src/components/assistant/ConversationSidebar.tsx`, `ChatThread.tsx`, `MessageBubble.tsx`, `ChatInput.tsx`, `ConversationItem.tsx`, `DisclaimerFooter.tsx`, `NewConversationButton.tsx` |
+| Hooks | `src/hooks/useConversations.ts`, `src/hooks/useMessages.ts`, `src/hooks/useSendMessage.ts` |
 
-### Modified Files (3)
+### Modified Files (2)
 
 | File | Change |
 |------|--------|
-| `src/App.tsx` | Add routes for `/assessment`, `/results/:id` |
-| `src/components/Dashboard.tsx` | Replace placeholder with `DashboardHome` |
-| `src/integrations/supabase/types.ts` | Auto-updated after migration |
+| `src/App.tsx` | Add route `/strategy-assistant` |
+| `supabase/config.toml` | Add edge function configuration |
 
 ### Database Migrations (1)
 
-Single migration file containing:
-- Enum type definitions
-- Three tables with proper constraints
-- RLS policies for all tables
-- Seed data for assessment questions
+Single migration containing:
+- Create `conversations` table
+- Create `messages` table
+- RLS policies for both tables
 
 ---
 
-## Technical Considerations
+## Guardrails (Built Into System Prompt)
 
-### Data Types for horseman_weights
-
-```json
-{
-  "interest": 1.0,
-  "taxes": 0,
-  "insurance": 0,
-  "education": 0
-}
-```
-Each question can weight to multiple Horsemen if needed (most will be single-Horseman).
-
-### Question Options Format
-
-```json
-{
-  "options": [
-    {"value": "never", "label": "Never", "score": 0},
-    {"value": "rarely", "label": "Rarely", "score": 33},
-    {"value": "sometimes", "label": "Sometimes", "score": 66},
-    {"value": "often", "label": "Often", "score": 100}
-  ]
-}
-```
-
-### Responsive Design
-
-- Mobile-first approach
-- Questions display one at a time on mobile
-- Swipe gestures for navigation
-- Radial chart scales proportionally
-- Touch-friendly slider and button sizes
+- Do not provide tax/legal advice
+- Do not promise results or guaranteed savings
+- Do not invent IRS references or forms not in the KB
+- Do not generate images unless explicitly asked
+- Always include disclaimer
+- Always reference rprx4life.com for professional support
 
 ---
 
 ## Implementation Phases
 
-| Phase | Description | Deliverables |
-|-------|-------------|--------------|
-| **1** | Database Foundation | Migration, tables, RLS, seed questions |
-| **2** | Assessment UI | Wizard flow, all question types, progress |
-| **3** | Scoring Engine | Calculate scores, determine primary Horseman |
-| **4** | Results Visualization | Radial chart, primary highlight, cash flow |
-| **5** | Feedback System | Generate and display diagnostic content |
-| **6** | Dashboard Integration | History, retake, comparison |
+| Phase | Description |
+|-------|-------------|
+| **1** | Add OPENAI_API_KEY secret |
+| **2** | Database migration (conversations, messages tables) |
+| **3** | Edge function with system prompt and KB |
+| **4** | UI components (sidebar, chat thread, input) |
+| **5** | Hooks for data fetching and mutations |
+| **6** | Route and navigation integration |
+| **7** | Testing and refinement |
 
 ---
 
-## Compliance Notes
+## Technical Notes
 
-- No financial advice or specific recommendations
-- Language uses "pressure" and "awareness" not "problems" or "failures"
-- Educational tone throughout
-- No action steps or strategies revealed
-- Positions as diagnostic tool complementing advisors
+### Message Rendering
+
+The chat UI will render AI responses with **Markdown support** using `react-markdown` since the AI will format strategy tables and implementation plans using Markdown.
+
+### Conversation Title Generation
+
+When a new conversation starts, the title will be auto-generated from the first user message (first 50 characters + "...").
+
+### Mobile Responsive
+
+- Sidebar collapses to drawer on mobile
+- Chat input fixed to bottom
+- Touch-friendly message bubbles
+
+### Rate Limiting
+
+OpenAI API calls are naturally rate-limited by the edge function's response time. Future phases may add explicit rate limiting.
+
+---
+
+## Security Considerations
+
+- OpenAI API key stored as Supabase secret (never in browser)
+- JWT validation on every edge function call
+- RLS policies ensure users only see their own data
+- No raw SQL execution in edge function
 
