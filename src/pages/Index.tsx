@@ -1,6 +1,6 @@
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import LandingPage from '@/components/landing/LandingPage';
-import Dashboard from '@/components/Dashboard';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -21,8 +21,8 @@ const Index = () => {
     return <LandingPage />;
   }
 
-  // Show dashboard for authenticated users
-  return <Dashboard />;
+  // Redirect authenticated users to dashboard
+  return <Navigate to="/dashboard" replace />;
 };
 
 export default Index;

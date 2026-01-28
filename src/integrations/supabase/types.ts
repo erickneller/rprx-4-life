@@ -14,7 +14,129 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assessment_questions: {
+        Row: {
+          category: string
+          created_at: string
+          horseman_weights: Json
+          id: string
+          options: Json
+          order_index: number
+          question_text: string
+          question_type: Database["public"]["Enums"]["question_type"]
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          horseman_weights?: Json
+          id?: string
+          options?: Json
+          order_index: number
+          question_text: string
+          question_type: Database["public"]["Enums"]["question_type"]
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          horseman_weights?: Json
+          id?: string
+          options?: Json
+          order_index?: number
+          question_text?: string
+          question_type?: Database["public"]["Enums"]["question_type"]
+        }
+        Relationships: []
+      }
+      assessment_responses: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          id: string
+          question_id: string
+          response_value: Json
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          id?: string
+          question_id: string
+          response_value: Json
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          id?: string
+          question_id?: string
+          response_value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_responses_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "user_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_assessments: {
+        Row: {
+          cash_flow_status:
+            | Database["public"]["Enums"]["cash_flow_status"]
+            | null
+          completed_at: string | null
+          created_at: string
+          education_score: number
+          expense_range: string | null
+          id: string
+          income_range: string | null
+          insurance_score: number
+          interest_score: number
+          primary_horseman: Database["public"]["Enums"]["horseman_type"] | null
+          taxes_score: number
+          user_id: string
+        }
+        Insert: {
+          cash_flow_status?:
+            | Database["public"]["Enums"]["cash_flow_status"]
+            | null
+          completed_at?: string | null
+          created_at?: string
+          education_score?: number
+          expense_range?: string | null
+          id?: string
+          income_range?: string | null
+          insurance_score?: number
+          interest_score?: number
+          primary_horseman?: Database["public"]["Enums"]["horseman_type"] | null
+          taxes_score?: number
+          user_id: string
+        }
+        Update: {
+          cash_flow_status?:
+            | Database["public"]["Enums"]["cash_flow_status"]
+            | null
+          completed_at?: string | null
+          created_at?: string
+          education_score?: number
+          expense_range?: string | null
+          id?: string
+          income_range?: string | null
+          insurance_score?: number
+          interest_score?: number
+          primary_horseman?: Database["public"]["Enums"]["horseman_type"] | null
+          taxes_score?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +145,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      cash_flow_status: "surplus" | "tight" | "deficit"
+      horseman_type: "interest" | "taxes" | "insurance" | "education"
+      question_type: "slider" | "single_choice" | "yes_no" | "range_select"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +274,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      cash_flow_status: ["surplus", "tight", "deficit"],
+      horseman_type: ["interest", "taxes", "insurance", "education"],
+      question_type: ["slider", "single_choice", "yes_no", "range_select"],
+    },
   },
 } as const
