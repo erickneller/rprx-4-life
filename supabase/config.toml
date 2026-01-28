@@ -1,1 +1,4 @@
 project_id = "wkzgjvnpnhyluxvclymh"
+
+[functions.rprx-chat]
+verify_jwt = false
