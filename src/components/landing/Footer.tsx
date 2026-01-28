@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Twitter, Linkedin, Facebook, Instagram } from 'lucide-react';
+import rprxLogo from '@/assets/rprx-logo.png';
 
 const Footer = () => {
   const footerLinks = {
@@ -44,9 +45,7 @@ const Footer = () => {
           {/* Logo & Description */}
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
-                <span className="text-accent-foreground font-bold text-sm">R</span>
-              </div>
+              <img src={rprxLogo} alt="RPRx Logo" className="h-10 w-10 object-contain" />
               <span className="font-bold text-xl">RPRx</span>
             </Link>
             <p className="text-primary-foreground/70 text-sm mb-6 max-w-xs">
