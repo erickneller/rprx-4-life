@@ -1,44 +1,28 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
+import LandingPage from '@/components/landing/LandingPage';
+import Dashboard from '@/components/Dashboard';
 
 const Index = () => {
-  const navigate = useNavigate();
-  const { user, loading, signOut } = useAuth();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth', { replace: true });
-    }
-  }, [user, loading, navigate]);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth', { replace: true });
-  };
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
 
+  // Show landing page for unauthenticated users
   if (!user) {
-    return null;
+    return <LandingPage />;
   }
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6">
-      <h1 className="text-4xl font-bold text-foreground">RPRx 4 Life</h1>
-      <p className="text-muted-foreground">Welcome, {user.email}</p>
-      <Button variant="outline" onClick={handleSignOut}>
-        Sign Out
-      </Button>
-    </div>
-  );
+  // Show dashboard for authenticated users
+  return <Dashboard />;
 };
 
 export default Index;
