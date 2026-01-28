@@ -14,20 +14,47 @@ const authSchema = z.object({
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
 });
 
+type AuthView = 'login' | 'forgot-password';
+
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, loading, signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, loading, signIn, signUp, signInWithGoogle, resetPasswordForEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [view, setView] = useState<AuthView>('login');
 
   const handleGoogleSignIn = async () => {
     setError(null);
     const { error } = await signInWithGoogle();
     if (error) {
       setError(error.message);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError(null);
+    setSuccess(null);
+
+    const emailResult = z.string().trim().email({ message: 'Please enter a valid email address' }).safeParse(email);
+    if (!emailResult.success) {
+      setError(emailResult.error.errors[0].message);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await resetPasswordForEmail(email);
+      if (error) {
+        setError(error.message);
+      } else {
+        setSuccess('Password reset email sent! Check your inbox.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -79,10 +106,69 @@ const Auth = () => {
     }
   };
 
+  const handleBackToLogin = () => {
+    setView('login');
+    setError(null);
+    setSuccess(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (view === 'forgot-password') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
+            <CardDescription>
+              Enter your email and we'll send you a reset link
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert>
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="reset-email">Email</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isSubmitting}
+                autoFocus
+              />
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleForgotPassword}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Sending...' : 'Send Reset Link'}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={handleBackToLogin}
+            >
+              Back to Login
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -173,6 +259,17 @@ const Auth = () => {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Signing in...' : 'Sign In'}
+              </Button>
+              <Button
+                variant="link"
+                className="w-full"
+                onClick={() => {
+                  setView('forgot-password');
+                  setError(null);
+                  setSuccess(null);
+                }}
+              >
+                Forgot password?
               </Button>
             </TabsContent>
 
