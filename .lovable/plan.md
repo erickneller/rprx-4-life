@@ -1,60 +1,79 @@
 
-# Email/Password Authentication Implementation Plan
+# Password Reset Flow Implementation
 
 ## Overview
-Add complete email/password authentication to RPRx 4 Life with dedicated auth page supporting both sign up and login flows, plus protected routes.
+Add a complete password reset flow that allows users to request a password reset email and set a new password. This integrates with Supabase's built-in password recovery system.
+
+## User Flow
+1. User clicks "Forgot password?" link on login form
+2. User enters their email address
+3. Supabase sends a password reset email with a secure link
+4. User clicks the link and is redirected to the app with a recovery token
+5. User enters and confirms their new password
+6. Password is updated and user is signed in
 
 ## What Will Be Built
 
-### 1. Authentication Page (`/auth`)
-A new page with:
-- Toggle between Login and Sign Up modes
-- Email and password input fields with validation
-- Clear error messages for common issues (invalid credentials, user already exists, etc.)
-- Automatic redirect to home page after successful authentication
-- Clean UI matching the existing minimal design
+### 1. Updated Auth Page (`/auth`)
+- Add "Forgot password?" link below the login form
+- Add a "forgot password" view state that shows email-only form
+- Success message after sending reset email
+- Back link to return to login
 
-### 2. Authentication Hook
-A reusable `useAuth` hook that:
-- Manages user session state
-- Provides `signIn`, `signUp`, and `signOut` functions
-- Uses `onAuthStateChange` for real-time session updates
-- Handles email redirect URLs properly for sign up flow
+### 2. Reset Password Page (`/reset-password`)
+A new page that:
+- Detects the recovery token from the URL (handled automatically by Supabase)
+- Shows a form to enter new password with confirmation
+- Validates password match and minimum length
+- Updates password and redirects to home on success
 
-### 3. Protected Routes
-- Unauthenticated users visiting `/` will be redirected to `/auth`
-- Authenticated users visiting `/auth` will be redirected to `/`
-- Logout functionality on the home page
-
-### 4. Updated Home Page
-- Shows the authenticated user's email
-- Includes a logout button
-- Maintains the current minimal design
+### 3. Updated Auth Hook
+Add two new functions:
+- `resetPasswordForEmail`: Sends the password reset email
+- `updatePassword`: Sets the new password after recovery
 
 ## File Changes
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `src/hooks/useAuth.tsx` | Create | Authentication state management and functions |
-| `src/pages/Auth.tsx` | Create | Login/signup page with form handling |
-| `src/pages/Index.tsx` | Modify | Add auth check, user display, and logout |
-| `src/App.tsx` | Modify | Add `/auth` route |
+| `src/hooks/useAuth.tsx` | Modify | Add `resetPasswordForEmail` and `updatePassword` functions |
+| `src/pages/Auth.tsx` | Modify | Add forgot password link and email-only reset request form |
+| `src/pages/ResetPassword.tsx` | Create | New password entry form for completing the reset |
+| `src/App.tsx` | Modify | Add `/reset-password` route |
 
 ## Technical Details
 
-### Input Validation
-- Email validation using zod schema
-- Password minimum length requirement (6 characters for Supabase)
-- Proper error handling with user-friendly messages
+### Password Reset Request
+Uses `supabase.auth.resetPasswordForEmail()` with a redirect URL pointing to `/reset-password`:
+```typescript
+const resetPasswordForEmail = async (email: string) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+  return { error };
+};
+```
 
-### Session Management
-- Uses `supabase.auth.onAuthStateChange` for reactive session updates
-- Stores both user and session objects (not just user)
-- Sets up listener before checking existing session (correct initialization order)
+### Password Update
+Uses `supabase.auth.updateUser()` to set the new password:
+```typescript
+const updatePassword = async (newPassword: string) => {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+  return { error };
+};
+```
 
-### Sign Up Configuration
-- Includes `emailRedirectTo` option pointing to the app origin
-- Handles "user already registered" error gracefully
+### Validation
+- Email validation on reset request form
+- Password minimum 6 characters on new password form
+- Password confirmation must match
+- Clear error messages for all failure cases
 
-## Post-Implementation Note
-After implementation, you may want to disable "Confirm email" in your Supabase Authentication settings (Settings > Authentication > Email) to speed up testing. This allows immediate login without email verification.
+### Auth State Handling
+When user clicks the reset link:
+1. Supabase automatically handles the token exchange
+2. The `onAuthStateChange` listener detects the `PASSWORD_RECOVERY` event
+3. User is in a special session state that allows password update
+4. After update, user is fully authenticated
