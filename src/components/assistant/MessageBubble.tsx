@@ -32,23 +32,50 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {isUser ? (
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-1">
             <ReactMarkdown
               components={{
+                h1: ({ children }) => (
+                  <h1 className="text-xl font-bold mt-4 mb-2 first:mt-0">{children}</h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="text-lg font-bold mt-4 mb-2">{children}</h2>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-base font-semibold mt-3 mb-1">{children}</h3>
+                ),
+                p: ({ children }) => (
+                  <p className="my-2 leading-relaxed">{children}</p>
+                ),
+                ul: ({ children }) => (
+                  <ul className="list-disc pl-5 my-2 space-y-1">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="list-decimal pl-5 my-2 space-y-1">{children}</ol>
+                ),
+                li: ({ children }) => (
+                  <li className="leading-relaxed">{children}</li>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-semibold text-foreground">{children}</strong>
+                ),
                 table: ({ children }) => (
-                  <div className="overflow-x-auto my-4">
+                  <div className="overflow-x-auto my-4 rounded-md border border-border">
                     <table className="min-w-full border-collapse text-sm">
                       {children}
                     </table>
                   </div>
                 ),
+                thead: ({ children }) => (
+                  <thead className="bg-muted/50">{children}</thead>
+                ),
                 th: ({ children }) => (
-                  <th className="border border-border bg-muted px-3 py-2 text-left font-medium">
+                  <th className="border-b border-border px-3 py-2 text-left font-medium">
                     {children}
                   </th>
                 ),
                 td: ({ children }) => (
-                  <td className="border border-border px-3 py-2">
+                  <td className="border-b border-border px-3 py-2">
                     {children}
                   </td>
                 ),
@@ -61,6 +88,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   >
                     {children}
                   </a>
+                ),
+                hr: () => (
+                  <hr className="my-4 border-border" />
                 ),
               }}
             >
