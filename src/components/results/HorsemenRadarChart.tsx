@@ -28,7 +28,7 @@ export function HorsemenRadarChart({
     <div className="w-full aspect-square max-w-md mx-auto">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
-          <PolarGrid stroke="hsl(var(--border))" />
+          <PolarGrid stroke="hsl(var(--muted-foreground))" />
           <PolarAngleAxis
             dataKey="subject"
             tick={({ x, y, payload }) => {
