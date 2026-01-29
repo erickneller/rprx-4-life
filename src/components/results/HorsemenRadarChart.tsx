@@ -47,11 +47,11 @@ export function HorsemenRadarChart({
               let anchor: 'start' | 'middle' | 'end' = 'middle';
               
               if (payload.value === 'Taxes') {
-                offsetX = x - 25;
-                anchor = 'end';
-              } else if (payload.value === 'Education') {
                 offsetX = x + 25;
                 anchor = 'start';
+              } else if (payload.value === 'Education') {
+                offsetX = x - 25;
+                anchor = 'end';
               } else if (payload.value === 'Interest') {
                 offsetY = y - 10;
               } else if (payload.value === 'Insurance') {
