@@ -1,69 +1,56 @@
 
-# Move Education and Taxes Labels Outside Grid Lines
+## Goal
+Move the “Taxes” and “Education” radar chart axis labels outward (away from the chart), because they’re currently being shifted inward.
 
-## Summary
+## What’s happening now (root cause)
+With 4 radar points, Recharts places the axis labels in the order of the `data` array:
+- Interest: top
+- Taxes: right
+- Insurance: bottom
+- Education: left
 
-Adjust the positioning of the "Education" and "Taxes" text labels in the radar chart to push them further outside the grid, improving visibility. Currently all labels sit at the same distance from center, but the top ("Interest") and bottom ("Insurance") labels have natural clearance, while left ("Taxes") and right ("Education") labels overlap with the grid edges.
+But the current code assumes:
+- Taxes is on the left (so it subtracts from `x`)
+- Education is on the right (so it adds to `x`)
 
----
+In reality it’s the opposite, so the offsets push both labels toward the center (inward).
 
-## Technical Approach
+## Change to make
+### File
+- `src/components/results/HorsemenRadarChart.tsx`
 
-The `PolarAngleAxis` custom tick renderer receives `x` and `y` coordinates from Recharts. We can apply an offset to push specific labels (Taxes and Education) further outward based on their position:
+### Update the tick offset directions (swap them)
+In the `PolarAngleAxis` `tick` renderer:
 
-- **Taxes** (left side): Shift the `x` position left by ~15 pixels
-- **Education** (right side): Shift the `x` position right by ~15 pixels
-- Keep **Interest** (top) and **Insurance** (bottom) at their default positions
+- For **Taxes** (right side): move it further right
+  - change `offsetX = x - 25` to `offsetX = x + 25`
+  - set `textAnchor` to `"start"` so the text grows outward from the point
 
----
+- For **Education** (left side): move it further left
+  - change `offsetX = x + 25` to `offsetX = x - 25`
+  - set `textAnchor` to `"end"` so the text grows outward from the point
 
-## File Change
+Keep the existing small vertical offsets for Interest/Insurance as-is.
 
-**File**: `src/components/results/HorsemenRadarChart.tsx`
-
-| Lines | Change |
-|-------|--------|
-| 34-56 | Update the custom tick function to calculate position offsets based on label name |
-
-### Updated tick renderer logic:
-
-```tsx
-tick={({ x, y, payload }) => {
-  const horseman = Object.entries({
-    Interest: 'interest',
-    Taxes: 'taxes',
-    Insurance: 'insurance',
-    Education: 'education',
-  }).find(([label]) => label === payload.value)?.[1] as HorsemanType;
-
-  const isPrimary = horseman === primaryHorseman;
-
-  // Offset horizontal labels outward for better visibility
-  let offsetX = x;
-  let offsetY = y;
-  if (payload.value === 'Taxes') {
-    offsetX = x - 15;
-  } else if (payload.value === 'Education') {
-    offsetX = x + 15;
-  }
-
-  return (
-    <text
-      x={offsetX}
-      y={offsetY}
-      textAnchor="middle"
-      dominantBaseline="middle"
-      className={isPrimary ? 'fill-primary font-semibold' : 'fill-muted-foreground'}
-      fontSize={14}
-    >
-      {payload.value}
-    </text>
-  );
-}}
+### Pseudocode of the exact intended logic
+```ts
+if (payload.value === "Taxes") {
+  offsetX = x + 25;
+  anchor = "start";
+} else if (payload.value === "Education") {
+  offsetX = x - 25;
+  anchor = "end";
+}
 ```
 
----
+## Verification steps (what we’ll check after)
+1. Open `/results/:id` and confirm:
+   - “Taxes” is clearly outside the right-most grid line.
+   - “Education” is clearly outside the left-most grid line.
+2. Check at 2 sizes:
+   - Desktop width
+   - Mobile width (since the chart scales and label crowding can change)
+3. If still too tight, we’ll bump the horizontal offset from `25` to `32–40` (small increments).
 
-## Visual Result
-
-The "Taxes" label on the left and "Education" label on the right will be pushed ~15 pixels outward, placing them clearly outside the grid lines and preventing overlap with the chart data area.
+## Edge cases / follow-up improvements (optional if needed)
+If the label placement ever changes (e.g., different start angle, re-ordered data), a more robust approach is to compute direction dynamically (push outward based on whether `x` is left/right of chart center). If this becomes necessary, we’ll adjust the tick renderer to use `viewBox` / `cx` if available in the tick props.
