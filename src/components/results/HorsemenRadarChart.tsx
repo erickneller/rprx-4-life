@@ -31,7 +31,7 @@ export function HorsemenRadarChart({
           <PolarGrid stroke="hsl(var(--muted-foreground))" />
           <PolarAngleAxis
             dataKey="subject"
-            tick={({ x, y, payload }) => {
+          tick={({ x, y, payload }) => {
               const horseman = Object.entries({
                 Interest: 'interest',
                 Taxes: 'taxes',
@@ -41,9 +41,17 @@ export function HorsemenRadarChart({
 
               const isPrimary = horseman === primaryHorseman;
 
+              // Offset horizontal labels outward for better visibility
+              let offsetX = x;
+              if (payload.value === 'Taxes') {
+                offsetX = x - 15;
+              } else if (payload.value === 'Education') {
+                offsetX = x + 15;
+              }
+
               return (
                 <text
-                  x={x}
+                  x={offsetX}
                   y={y}
                   textAnchor="middle"
                   dominantBaseline="middle"
