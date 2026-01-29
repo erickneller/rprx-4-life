@@ -61,8 +61,8 @@ export function ResultsPage() {
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         {/* Radar Chart */}
         <section>
-          <h2 className="text-xl font-semibold text-foreground mb-4 text-center">
-            The Four Horsemen
+        <h2 className="text-xl font-semibold text-foreground mb-4 text-center">
+            The Four Horsemen Of Financial Apocalypse
           </h2>
           <HorsemenRadarChart scores={scores} primaryHorseman={primaryHorseman} />
         </section>
