@@ -1,127 +1,183 @@
 
 
-## Speed Up Strategy Assistant - Phase 2
+## Add Delete Confirmation and Improved Conversation Management
 
-### Problem Analysis
-
-Looking at the logs and code, I found the main bottleneck:
-
-| Issue | Impact |
-|-------|--------|
-| 15 full strategies always injected | ~8,000+ extra tokens per request |
-| All strategy fields included | Implementation plans, examples, disclaimers add bulk |
-| No intake detection | Strategies injected even for "What's your income?" |
-| formatStrategiesForPrompt is verbose | Each strategy = ~300 tokens |
-
-**Current flow**: Every message sends ~10,000+ tokens to OpenAI, even for simple intake questions.
-
-### Solution: Smart Intake Phase Detection
-
-Skip strategy injection during intake phase, only include strategies when the user is ready for recommendations.
+### Overview
+Add safety and accessibility improvements to the conversation deletion feature:
+1. Confirmation dialog before deleting
+2. Always-visible delete button on mobile
+3. Bulk delete option for clearing old conversations
 
 ---
 
 ## Changes Required
 
-### File: `supabase/functions/rprx-chat/index.ts`
+### 1. Update ConversationItem.tsx - Better Mobile Visibility
 
-#### 1. Add Intake Phase Detection Function (New)
+**File:** `src/components/assistant/ConversationItem.tsx`
 
-Create a function to detect if we're still in intake phase:
-
-```typescript
-function isIntakePhase(messages: Array<{role: string, content: string}>): boolean {
-  // If less than 6 exchanges, still in intake
-  if (messages.length < 6) return true;
-  
-  // Check if user has provided key intake info
-  const conversationText = messages.map(m => m.content).join(' ').toLowerCase();
-  
-  const hasProfileType = /business owner|retiree|salesperson|wage earner|investor|farmer|non-profit/i.test(conversationText);
-  const hasIncomeInfo = /\$|income|k|100k|200k|250k|500k|1m/i.test(conversationText);
-  const hasGoals = /cash flow|reduce tax|education|retirement|insurance cost/i.test(conversationText);
-  
-  // If missing key info, still in intake
-  return !(hasProfileType && hasIncomeInfo && hasGoals);
-}
-```
-
-#### 2. Create Slim Strategy Format Function (New)
-
-For recommendations phase, use a condensed format:
+Make delete button visible on mobile (touch devices can't hover):
 
 ```typescript
-function formatStrategiesCondensed(strategies: Strategy[]): string {
-  if (strategies.length === 0) return "No strategies matched.";
-  
-  return strategies.map(s => 
-    `### ${s.id}: ${s.name}
-- Horseman: ${s.horseman.join(', ')}
-- Summary: ${s.summary}
-- Savings: ${s.savings}
-- Best For: ${s.bestFor}`
-  ).join('\n\n');
-}
-```
-
-This is ~60% smaller than the current format (removes implementation plans, examples, disclaimers from initial context).
-
-#### 3. Update Main Handler Logic (~line 1730-1745)
-
-Replace current strategy injection with conditional logic:
-
-```typescript
-// Determine if we're in intake phase
-const inIntake = isIntakePhase(messages);
-
-let dynamicSystemPrompt: string;
-
-if (inIntake) {
-  // Intake phase: No strategy context needed - fast response
-  dynamicSystemPrompt = BASE_SYSTEM_PROMPT;
-  console.log('Intake phase - skipping strategy context');
-} else {
-  // Recommendation phase: Include condensed relevant strategies
-  const relevantStrategies = findRelevantStrategies(user_message, conversationText);
-  const strategiesContext = formatStrategiesCondensed(relevantStrategies);
-  console.log(`Recommendation phase - ${relevantStrategies.length} strategies`);
-  
-  dynamicSystemPrompt = `${BASE_SYSTEM_PROMPT}
-
-## RELEVANT STRATEGIES
-${strategiesContext}
-
-When user asks for implementation details, provide full step-by-step plans.`;
-}
-```
-
-#### 4. Reduce Default Strategy Count (Line 1576)
-
-Change from 15 strategies to 10 for faster recommendations:
-
-```typescript
-.slice(0, 10)  // was 15
+<Button
+  variant="ghost"
+  size="icon"
+  className="h-6 w-6 opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 max-sm:opacity-70 transition-opacity"
+  onClick={handleDelete}
+>
 ```
 
 ---
 
-## Expected Results
+### 2. Add Delete Confirmation Dialog to ConversationSidebar.tsx
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Intake phase tokens | ~10,000+ | ~800 (prompt only) |
-| Recommendation tokens | ~10,000+ | ~3,000 (condensed) |
-| Intake response time | 3-5 sec | 1-2 sec |
-| Recommendation response time | 5-8 sec | 2-4 sec |
+**File:** `src/components/assistant/ConversationSidebar.tsx`
+
+Add state and AlertDialog for confirmation:
+
+```typescript
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
+         AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
+         AlertDialogTitle } from '@/components/ui/alert-dialog';
+
+// Add state
+const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+const [showClearAllDialog, setShowClearAllDialog] = useState(false);
+
+// Confirmation handler
+const confirmDelete = () => {
+  if (deleteTarget) {
+    deleteConversation.mutate(deleteTarget);
+    setDeleteTarget(null);
+  }
+};
+```
+
+Pass `setDeleteTarget` instead of direct delete to ConversationItem.
 
 ---
 
-## Summary
+### 3. Add "Clear All" Button to Sidebar Header
 
-1. **Add `isIntakePhase()` function** - detects if user is still answering intake questions
-2. **Add `formatStrategiesCondensed()` function** - smaller strategy format for recommendations
-3. **Conditional strategy injection** - skip strategies during intake, include condensed version for recommendations
-4. **Reduce strategy count** - 10 instead of 15 relevant strategies
+**File:** `src/components/assistant/ConversationSidebar.tsx`
 
-This will make intake questions respond in 1-2 seconds instead of 3-5+ seconds.
+Add a dropdown menu with "Clear all conversations" option:
+
+```typescript
+<div className="p-4 space-y-2">
+  <NewConversationButton onClick={onNewConversation} disabled={isCreating} />
+  
+  {conversations && conversations.length > 0 && (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground">
+          <MoreHorizontal className="h-4 w-4 mr-2" />
+          Manage conversations
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem onClick={() => setShowClearAllDialog(true)}>
+          <Trash2 className="h-4 w-4 mr-2" />
+          Clear all conversations
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )}
+</div>
+```
+
+---
+
+### 4. Add useClearAllConversations Hook
+
+**File:** `src/hooks/useConversations.ts`
+
+Add bulk delete mutation:
+
+```typescript
+export function useClearAllConversations() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+```
+
+---
+
+### 5. Add Confirmation Dialogs JSX
+
+**File:** `src/components/assistant/ConversationSidebar.tsx`
+
+Add dialogs at the end of the component:
+
+```tsx
+{/* Single delete confirmation */}
+<AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+      <AlertDialogDescription>
+        This will permanently delete this conversation and all its messages.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancel</AlertDialogCancel>
+      <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+        Delete
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+{/* Clear all confirmation */}
+<AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Clear all conversations?</AlertDialogTitle>
+      <AlertDialogDescription>
+        This will permanently delete all your conversations. This action cannot be undone.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancel</AlertDialogCancel>
+      <AlertDialogAction onClick={handleClearAll} className="bg-destructive text-destructive-foreground">
+        Clear All
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+---
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/assistant/ConversationItem.tsx` | Make delete button visible on mobile |
+| `src/components/assistant/ConversationSidebar.tsx` | Add confirmation dialogs, clear all option |
+| `src/hooks/useConversations.ts` | Add `useClearAllConversations` hook |
+
+---
+
+## User Experience
+
+1. **Single Delete**: Click trash icon -> Confirmation dialog -> Confirm or Cancel
+2. **Mobile**: Delete button always visible (no hover needed)
+3. **Clear All**: "Manage conversations" dropdown -> "Clear all" -> Confirmation dialog
 
