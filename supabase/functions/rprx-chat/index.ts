@@ -1377,7 +1377,7 @@ serve(async (req) => {
 
     console.log('Calling OpenAI with', openaiMessages.length, 'messages');
 
-    // Call OpenAI API
+    // Call OpenAI API with retry logic for rate limits
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
       console.error('OPENAI_API_KEY not configured');
@@ -1387,30 +1387,66 @@ serve(async (req) => {
       );
     }
 
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: openaiMessages,
-        temperature: 0.7,
-        max_tokens: 4000,
-      }),
-    });
+    // Retry logic with exponential backoff
+    const maxRetries = 3;
+    let lastError: string | null = null;
+    let openaiData: any = null;
 
-    if (!openaiResponse.ok) {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      if (attempt > 0) {
+        // Wait before retry with exponential backoff
+        const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000);
+        console.log(`Retry attempt ${attempt + 1}, waiting ${waitTime}ms`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini', // Use mini model to reduce token usage and avoid rate limits
+          messages: openaiMessages,
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (openaiResponse.ok) {
+        openaiData = await openaiResponse.json();
+        break;
+      }
+
       const errorText = await openaiResponse.text();
-      console.error('OpenAI API error:', openaiResponse.status, errorText);
+      console.error(`OpenAI API error (attempt ${attempt + 1}):`, openaiResponse.status, errorText);
+      
+      // Check if it's a rate limit error (429)
+      if (openaiResponse.status === 429) {
+        lastError = 'The AI is currently busy. Please wait a moment and try again.';
+        // Parse retry-after if available
+        const retryAfter = openaiResponse.headers.get('retry-after');
+        if (retryAfter) {
+          const waitMs = parseInt(retryAfter) * 1000;
+          console.log(`Rate limited, server suggests waiting ${waitMs}ms`);
+          await new Promise(resolve => setTimeout(resolve, Math.min(waitMs, 15000)));
+        }
+        continue; // Retry
+      }
+
+      // For non-retryable errors, break immediately
+      lastError = 'Failed to get AI response';
+      break;
+    }
+
+    if (!openaiData) {
       return new Response(
-        JSON.stringify({ error: 'Failed to get AI response' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: lastError || 'Failed to get AI response' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const openaiData = await openaiResponse.json();
     const assistantMessage = openaiData.choices[0]?.message?.content;
 
     if (!assistantMessage) {
