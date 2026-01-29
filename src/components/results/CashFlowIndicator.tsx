@@ -33,7 +33,7 @@ export function CashFlowIndicator({ status }: CashFlowIndicatorProps) {
       </CardHeader>
       <CardContent>
         <p className="text-xl font-semibold">{getCashFlowLabel(status)}</p>
-        <p className="text-muted-foreground mt-1 text-sm">
+        <p className="text-foreground mt-1 text-sm">
           {getCashFlowDescription(status)}
         </p>
       </CardContent>

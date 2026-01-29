@@ -22,14 +22,14 @@ export function DiagnosticFeedback({ primaryHorseman }: DiagnosticFeedbackProps)
 
           <div>
             <h4 className="font-semibold text-foreground mb-2">What This Means</h4>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-foreground leading-relaxed">
               {feedback.whatItMeans}
             </p>
           </div>
 
           <div>
             <h4 className="font-semibold text-foreground mb-2">Why It Matters</h4>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-foreground leading-relaxed">
               {feedback.whyItMatters}
             </p>
           </div>
@@ -44,7 +44,7 @@ export function DiagnosticFeedback({ primaryHorseman }: DiagnosticFeedbackProps)
           <CardTitle className="text-lg">{compoundingExplanation.title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+          <p className="text-foreground leading-relaxed whitespace-pre-line">
             {compoundingExplanation.content}
           </p>
         </CardContent>
