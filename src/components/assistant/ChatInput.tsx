@@ -37,6 +37,13 @@ export function ChatInput({ onSend, disabled, placeholder = 'Type your message..
     }
   }, [message]);
 
+  // Auto-focus on mount and when disabled changes to false (response complete)
+  useEffect(() => {
+    if (!disabled && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [disabled]);
+
   return (
     <div className="flex items-end gap-2 p-4 border-t bg-background">
       <Textarea
