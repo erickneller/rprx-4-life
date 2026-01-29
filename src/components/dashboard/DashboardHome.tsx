@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
 import { AssessmentHistory } from './AssessmentHistory';
-import { Loader2, LogOut, MessageSquare } from 'lucide-react';
+import { Loader2, LogOut, MessageSquare, FileText } from 'lucide-react';
 import rprxLogo from '@/assets/rprx-logo.png';
 
 export function DashboardHome() {
@@ -32,6 +32,10 @@ export function DashboardHome() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/plans')}>
+              <FileText className="h-4 w-4 mr-2" />
+              My Plans
+            </Button>
             <Button variant="outline" size="sm" onClick={() => navigate('/strategy-assistant')}>
               <MessageSquare className="h-4 w-4 mr-2" />
               Strategy Assistant
