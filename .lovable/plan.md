@@ -1,72 +1,86 @@
 
-
-## Add Conversation Starter Button
+## Replace Bot Icon with Custom Financial Advisor Avatar
 
 ### Goal
-Add a clickable suggestion button to the Strategy Assistant's welcome screen for initiating new conversations. When there's no active conversation, users will see a prominent button they can click to quickly send: **"Help me choose the best strategies to achieve financial wellness!"**
-
-For all subsequent messages in that conversation (and any other conversations), users will use the standard chat input to type whatever they want.
+Replace the robot head icon (`Bot` from lucide-react) with your uploaded avatar image - a friendly 3D illustrated financial advisor character with glasses, suit, and financial icons.
 
 ---
 
-## How It Works
+## Locations to Update
 
-The `ChatThread` component already has two modes:
-1. **No active conversation** (`conversationId === null`): Shows welcome screen with bot icon and description
-2. **Active conversation** (`conversationId` exists): Shows chat messages and input
+The `Bot` icon is currently used in **4 places** across 2 files:
 
-By adding the starter button only to the welcome screen (mode 1), users get a quick-start option for new conversations while retaining full freedom to type anything once a conversation is active.
+| File | Location | Description |
+|------|----------|-------------|
+| `ChatThread.tsx` | Line 33 | Large welcome screen icon (16x16) |
+| `ChatThread.tsx` | Line 75 | Empty conversation prompt icon |
+| `ChatThread.tsx` | Line 83 | Loading state avatar (while waiting for response) |
+| `MessageBubble.tsx` | Line 21 | Avatar next to each assistant message |
 
 ---
 
-## File Change
+## Implementation Steps
 
-**File**: `src/components/assistant/ChatThread.tsx`
+### Step 1: Copy the avatar image to project
+Copy `user-uploads://rprx_chatguy.jpeg` to `src/assets/rprx-chatguy.jpeg`
 
-### Changes
-
-1. **Add imports** at the top:
-   - `Sparkles` from `lucide-react`
-   - `Button` from `@/components/ui/button`
-
-2. **Add starter button** in the welcome screen section (the `if (!conversationId)` block, around line 27-43):
+### Step 2: Create a reusable AssistantAvatar component
+Create a new component `src/components/assistant/AssistantAvatar.tsx` that:
+- Imports the avatar image
+- Accepts a `size` prop ("sm" | "lg") for the two different sizes used
+- Uses the Avatar component from UI library for consistent styling
 
 ```tsx
-<Button 
-  variant="outline"
-  className="mt-4"
-  onClick={() => onSendMessage('Help me choose the best strategies to achieve financial wellness!')}
-  disabled={isSending}
->
-  <Sparkles className="h-4 w-4 mr-2" />
-  Help me choose the best strategies to achieve financial wellness!
-</Button>
+import assistantAvatar from '@/assets/rprx-chatguy.jpeg';
+
+interface AssistantAvatarProps {
+  size?: 'sm' | 'lg';
+  className?: string;
+}
+
+export function AssistantAvatar({ size = 'sm', className }: AssistantAvatarProps) {
+  const sizeClasses = size === 'lg' ? 'h-16 w-16' : 'h-8 w-8';
+  
+  return (
+    <img 
+      src={assistantAvatar} 
+      alt="RPRx Strategy Assistant"
+      className={cn(sizeClasses, 'rounded-full object-cover shrink-0', className)}
+    />
+  );
+}
 ```
 
-This button will be placed after the description paragraph, inside the centered content div.
+### Step 3: Update ChatThread.tsx
+- Import `AssistantAvatar` component
+- Remove `Bot` from lucide imports
+- Replace all 3 `Bot` icon usages with `<AssistantAvatar />`
+  - Welcome screen: Use `size="lg"` 
+  - Empty state and loading: Use `size="sm"` (default)
+
+### Step 4: Update MessageBubble.tsx
+- Import `AssistantAvatar` component
+- Remove `Bot` from lucide imports  
+- Replace `Bot` icon with `<AssistantAvatar />` for assistant messages
 
 ---
 
 ## Visual Result
 
-**Welcome Screen (no conversation):**
-- Bot icon
-- "RPRx Strategy Assistant" heading
-- Description about the Four Horsemen
-- **NEW: Starter button with sparkles icon**
-- Chat input at the bottom (users can still type their own message instead)
+| Before | After |
+|--------|-------|
+| Robot head icon | Friendly financial advisor character |
+| Generic tech feel | Professional, approachable personality |
 
-**Active Conversation:**
-- Normal chat thread with messages
-- Standard chat input - users type freely
+The avatar will appear:
+- **Large (64x64px)** on the welcome screen
+- **Small (32x32px)** next to each assistant message and in loading states
 
 ---
 
-## User Flow
+## Files Changed
 
-1. User opens Strategy Assistant → sees welcome screen with starter button
-2. User clicks button → sends "Help me choose the best strategies to achieve financial wellness!"
-3. New conversation is created and becomes active
-4. User continues chatting with any messages they want using the regular input
-5. For future new conversations, they'll see the starter button again
-
+1. **NEW**: `src/assets/rprx-chatguy.jpeg` - Avatar image
+2. **NEW**: `src/components/assistant/AssistantAvatar.tsx` - Reusable avatar component
+3. **EDIT**: `src/components/assistant/ChatThread.tsx` - Use AssistantAvatar instead of Bot
+4. **EDIT**: `src/components/assistant/MessageBubble.tsx` - Use AssistantAvatar instead of Bot
