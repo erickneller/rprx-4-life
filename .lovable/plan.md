@@ -1,61 +1,30 @@
 
-# Make Assessment Report Text Black for Better Readability
+# Make Radar Chart Grid Lines Darker
 
 ## Summary
 
-Update all grayscale text in the assessment results page to use `text-foreground` (black in light mode) instead of `text-muted-foreground` (gray) for improved readability.
+Update the PolarGrid stroke color in the Horsemen Radar Chart to use a darker, more visible color instead of the current light border color.
 
 ---
 
 ## Current State
 
-Several components use `text-muted-foreground` which renders as a gray color (`215 16% 47%` in light mode), making text harder to read:
-
-| Component | Elements Using Gray Text |
-|-----------|-------------------------|
-| ResultsPage.tsx | Header subtitle (line 54) |
-| DiagnosticFeedback.tsx | "What This Means" content (line 25), "Why It Matters" content (line 32), Compounding explanation (line 47) |
-| PrimaryHorsemanCard.tsx | Description text (line 23) |
-| CashFlowIndicator.tsx | Description text (line 36) |
+The `PolarGrid` component on line 31 uses `stroke="hsl(var(--border))"` which resolves to a light gray (`214 32% 91%` in light mode), making the grid lines barely visible.
 
 ---
 
-## Proposed Changes
+## Proposed Change
 
-Change all `text-muted-foreground` instances to `text-foreground` in the results components:
-
-### File 1: `src/components/results/ResultsPage.tsx`
+**File**: `src/components/results/HorsemenRadarChart.tsx`
 
 | Line | Current | New |
 |------|---------|-----|
-| 54 | `text-muted-foreground` | `text-foreground` |
+| 31 | `stroke="hsl(var(--border))"` | `stroke="hsl(var(--muted-foreground))"` |
 
-### File 2: `src/components/results/DiagnosticFeedback.tsx`
-
-| Line | Current | New |
-|------|---------|-----|
-| 25 | `text-muted-foreground` | `text-foreground` |
-| 32 | `text-muted-foreground` | `text-foreground` |
-| 47 | `text-muted-foreground` | `text-foreground` |
-
-### File 3: `src/components/results/PrimaryHorsemanCard.tsx`
-
-| Line | Current | New |
-|------|---------|-----|
-| 23 | `text-muted-foreground` | `text-foreground` |
-
-### File 4: `src/components/results/CashFlowIndicator.tsx`
-
-| Line | Current | New |
-|------|---------|-----|
-| 36 | `text-muted-foreground` | `text-foreground` |
+The `--muted-foreground` color (`215 16% 47%` in light mode) provides a medium gray that is visible without being overwhelming, creating clear grid lines while keeping the focus on the data.
 
 ---
 
 ## Visual Result
 
-All descriptive text in the assessment report will display as:
-- **Light mode**: Deep slate/black (`222 47% 11%`)
-- **Dark mode**: Near-white (`210 40% 98%`)
-
-This provides maximum contrast and readability while maintaining the design system's semantic color usage.
+The radar chart grid lines (concentric rings and radial lines) will display as a visible medium gray instead of a faint light gray, making it easier to read the chart values at a glance.
