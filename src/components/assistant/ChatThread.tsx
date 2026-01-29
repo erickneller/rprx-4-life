@@ -5,7 +5,8 @@ import { ChatInput } from './ChatInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Bot, Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
+import { AssistantAvatar } from './AssistantAvatar';
 
 interface ChatThreadProps {
   conversationId: string | null;
@@ -29,8 +30,8 @@ export function ChatThread({ conversationId, onSendMessage, isSending }: ChatThr
       <div className="flex flex-1 flex-col">
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center max-w-md px-4">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Bot className="h-8 w-8 text-primary" />
+            <div className="mx-auto mb-4">
+              <AssistantAvatar size="lg" />
             </div>
             <h2 className="text-xl font-semibold mb-2">RPRx Strategy Assistant</h2>
             <p className="text-muted-foreground">
@@ -72,16 +73,14 @@ export function ChatThread({ conversationId, onSendMessage, isSending }: ChatThr
             ))
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <AssistantAvatar className="mx-auto mb-2 opacity-50" />
               <p>Send a message to start the conversation.</p>
             </div>
           )}
           
           {isSending && (
             <div className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                <Bot className="h-4 w-4" />
-              </div>
+              <AssistantAvatar />
               <div className="bg-muted rounded-2xl px-4 py-3">
                 <Loader2 className="h-4 w-4 animate-spin" />
               </div>
