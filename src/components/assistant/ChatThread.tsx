@@ -30,7 +30,7 @@ export function ChatThread({ conversationId, onSendMessage, isSending }: ChatThr
       <div className="flex flex-1 flex-col">
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center max-w-md px-4">
-            <div className="mx-auto mb-4">
+            <div className="flex justify-center mb-4">
               <AssistantAvatar size="lg" />
             </div>
             <h2 className="text-xl font-semibold mb-2">RPRx Strategy Assistant</h2>
