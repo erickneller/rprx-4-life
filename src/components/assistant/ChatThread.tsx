@@ -4,7 +4,8 @@ import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Bot, Loader2, Sparkles } from 'lucide-react';
 
 interface ChatThreadProps {
   conversationId: string | null;
@@ -36,6 +37,15 @@ export function ChatThread({ conversationId, onSendMessage, isSending }: ChatThr
               Start a new conversation to discover strategies that can help reduce the impact of 
               the Four Horsemen on your finances: Interest, Taxes, Insurance, and Education.
             </p>
+            <Button 
+              variant="outline"
+              className="mt-4"
+              onClick={() => onSendMessage('Help me choose the best strategies to achieve financial wellness!')}
+              disabled={isSending}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Help me choose the best strategies to achieve financial wellness!
+            </Button>
           </div>
         </div>
         <ChatInput onSend={onSendMessage} disabled={isSending} />
