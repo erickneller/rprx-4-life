@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
 import { AssessmentHistory } from './AssessmentHistory';
-import { Loader2, LogOut } from 'lucide-react';
+import { Loader2, LogOut, MessageSquare } from 'lucide-react';
 import rprxLogo from '@/assets/rprx-logo.png';
 
 export function DashboardHome() {
@@ -31,10 +31,16 @@ export function DashboardHome() {
               <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/strategy-assistant')}>
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Strategy Assistant
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 

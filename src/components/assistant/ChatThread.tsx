@@ -38,7 +38,7 @@ export function ChatThread({ conversationId, onSendMessage, isSending }: ChatThr
             </p>
           </div>
         </div>
-        <ChatInput onSend={onSendMessage} disabled={true} />
+        <ChatInput onSend={onSendMessage} disabled={isSending} />
       </div>
     );
   }
