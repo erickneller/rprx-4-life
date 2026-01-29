@@ -1,45 +1,61 @@
 
-
-# Change Radar Chart Color to Blue
+# Make Assessment Report Text Black for Better Readability
 
 ## Summary
 
-Update the Horsemen Radar Chart to use the Cobalt blue accent color instead of the current dark gray primary color, matching the application's blue theme.
+Update all grayscale text in the assessment results page to use `text-foreground` (black in light mode) instead of `text-muted-foreground` (gray) for improved readability.
 
 ---
 
 ## Current State
 
-The radar chart uses `hsl(var(--primary))` which resolves to:
-- **Light mode**: Deep slate `222 47% 11%` (appears dark gray)
-- **Dark mode**: Teal green `160 84% 45%`
+Several components use `text-muted-foreground` which renders as a gray color (`215 16% 47%` in light mode), making text harder to read:
 
-## Proposed Change
-
-Switch to `hsl(var(--accent))` which is the Cobalt blue theme color:
-- **Light mode**: `220 90% 51%` (bright Cobalt blue)
-- **Dark mode**: `220 90% 60%` (slightly lighter Cobalt blue)
+| Component | Elements Using Gray Text |
+|-----------|-------------------------|
+| ResultsPage.tsx | Header subtitle (line 54) |
+| DiagnosticFeedback.tsx | "What This Means" content (line 25), "Why It Matters" content (line 32), Compounding explanation (line 47) |
+| PrimaryHorsemanCard.tsx | Description text (line 23) |
+| CashFlowIndicator.tsx | Description text (line 36) |
 
 ---
 
-## File Changes
+## Proposed Changes
 
-**File**: `src/components/results/HorsemenRadarChart.tsx`
+Change all `text-muted-foreground` instances to `text-foreground` in the results components:
+
+### File 1: `src/components/results/ResultsPage.tsx`
 
 | Line | Current | New |
 |------|---------|-----|
-| 61 | `stroke="hsl(var(--primary))"` | `stroke="hsl(var(--accent))"` |
-| 62 | `fill="hsl(var(--primary))"` | `fill="hsl(var(--accent))"` |
+| 54 | `text-muted-foreground` | `text-foreground` |
 
-The change affects both the stroke (outline) and fill (interior) of the radar polygon, making it a consistent Cobalt blue that matches buttons and accent elements throughout the app.
+### File 2: `src/components/results/DiagnosticFeedback.tsx`
+
+| Line | Current | New |
+|------|---------|-----|
+| 25 | `text-muted-foreground` | `text-foreground` |
+| 32 | `text-muted-foreground` | `text-foreground` |
+| 47 | `text-muted-foreground` | `text-foreground` |
+
+### File 3: `src/components/results/PrimaryHorsemanCard.tsx`
+
+| Line | Current | New |
+|------|---------|-----|
+| 23 | `text-muted-foreground` | `text-foreground` |
+
+### File 4: `src/components/results/CashFlowIndicator.tsx`
+
+| Line | Current | New |
+|------|---------|-----|
+| 36 | `text-muted-foreground` | `text-foreground` |
 
 ---
 
 ## Visual Result
 
-The radar chart will display with a bright blue fill and outline instead of dark gray, creating visual consistency with:
-- CTA buttons
-- Links and highlights
-- The accent color used in the landing page
-- The primary horseman label (which already uses accent styling)
+All descriptive text in the assessment report will display as:
+- **Light mode**: Deep slate/black (`222 47% 11%`)
+- **Dark mode**: Near-white (`210 40% 98%`)
 
+This provides maximum contrast and readability while maintaining the design system's semantic color usage.
