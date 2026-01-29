@@ -81,7 +81,7 @@ const ResetPassword = () => {
           </CardHeader>
           <CardContent>
             <Button 
-              className="w-full" 
+              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" 
               onClick={() => navigate('/auth')}
             >
               Return to Login
@@ -140,7 +140,7 @@ const ResetPassword = () => {
               </div>
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Updating...' : 'Update Password'}
