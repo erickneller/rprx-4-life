@@ -94,6 +94,7 @@ export function AssessmentWizard() {
           <Button
             onClick={handleNext}
             disabled={!canGoNext() || isSubmitting}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground"
           >
             {isSubmitting ? (
               <>

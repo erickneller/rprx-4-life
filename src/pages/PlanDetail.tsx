@@ -55,7 +55,7 @@ export default function PlanDetail() {
     return (
       <div className="flex h-screen items-center justify-center flex-col gap-4">
         <p className="text-muted-foreground">Plan not found</p>
-        <Button onClick={() => navigate('/plans')}>Back to Plans</Button>
+        <Button onClick={() => navigate('/plans')} className="bg-accent hover:bg-accent/90 text-accent-foreground">Back to Plans</Button>
       </div>
     );
   }
@@ -268,7 +268,7 @@ export default function PlanDetail() {
               </div>
               <div className="h-3 bg-muted rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-primary transition-all" 
+                  className="h-full bg-accent transition-all" 
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -390,7 +390,7 @@ export default function PlanDetail() {
               rows={4}
             />
             {notesChanged && (
-              <Button size="sm" onClick={handleSaveNotes} disabled={updatePlan.isPending}>
+              <Button size="sm" onClick={handleSaveNotes} disabled={updatePlan.isPending} className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 {updatePlan.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Save Notes
               </Button>

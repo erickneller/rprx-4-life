@@ -149,7 +149,7 @@ export default function Plans() {
             <p className="text-muted-foreground mb-6">
               Chat with the Strategy Assistant and save implementation plans to track your progress.
             </p>
-            <Button onClick={() => navigate('/strategy-assistant')}>
+            <Button onClick={() => navigate('/strategy-assistant')} className="bg-accent hover:bg-accent/90 text-accent-foreground">
               Go to Strategy Assistant
             </Button>
           </div>

@@ -96,7 +96,7 @@ export function SavePlanModal({ open, onOpenChange, initialData }: SavePlanModal
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!title.trim() || createPlan.isPending}>
+          <Button onClick={handleSave} disabled={!title.trim() || createPlan.isPending} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             {createPlan.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Save Plan
           </Button>
