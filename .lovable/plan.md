@@ -1,38 +1,30 @@
 
 
-# Fix Education Label Being Cut Off
+## Make Triangle Icon Red
 
-## Problem
+### Problem
+The `AlertTriangle` icon next to "Primary Pressure Area" currently uses `text-destructive-foreground` which isn't rendering as red. This class is typically meant for text that appears *on top of* a destructive (red) background, not for making elements red themselves.
 
-The "Education" label on the left side is being clipped by the SVG container bounds. The text shows as "cation" instead of "Education" because:
-- The label is positioned at the left edge of the chart
-- Moving it further left (`offsetX = x - 25`) with `textAnchor="end"` causes the text to extend beyond the SVG viewbox
-
-## Solution
-
-Reduce the radar chart's `outerRadius` from `70%` to `60%` to create more padding around the edges for labels. This gives an additional 10% (5% per side) of space for labels to render without being clipped.
+### Solution
+Change the icon's color class from `text-destructive-foreground` to `text-destructive`, which is the actual red/danger color in the theme.
 
 ---
 
 ## File Change
 
-**File**: `src/components/results/HorsemenRadarChart.tsx`
+**File**: `src/components/results/PrimaryHorsemanCard.tsx`
 
 | Line | Current | New |
 |------|---------|-----|
-| 30 | `outerRadius="70%"` | `outerRadius="60%"` |
+| 14 | `text-destructive-foreground` | `text-destructive` |
+
+### Code snippet:
+```tsx
+<AlertTriangle className="h-5 w-5 text-destructive" />
+```
 
 ---
 
-## Visual Result
-
-- The radar chart will be slightly smaller
-- All four labels (Interest, Taxes, Insurance, Education) will have adequate space
-- "Education" will display fully without being cut off
-
----
-
-## Alternative if needed
-
-If 60% feels too small, we can try 65% as a middle ground. Another option is to add `overflow: visible` to the SVG, but reducing the radius is cleaner and ensures consistent rendering across browsers.
+## Result
+The warning triangle icon will display in red, matching the visual intent of highlighting a "pressure area" warning.
 
