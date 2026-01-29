@@ -178,11 +178,12 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-4" style={{ perspective: '1000px' }}>
             <img 
               src={rprxLogo} 
               alt="RPRx Logo" 
-              className="h-24 w-24 object-contain" 
+              className="h-24 w-24 object-contain animate-spin-y" 
+              style={{ transformStyle: 'preserve-3d' }}
             />
           </div>
           <CardTitle className="text-2xl font-bold">RPRx 4 Life</CardTitle>
