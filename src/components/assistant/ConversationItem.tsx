@@ -27,6 +27,14 @@ export function ConversationItem({ conversation, isActive, onClick, onDelete }: 
           : 'hover:bg-muted'
       )}
     >
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 shrink-0 opacity-50 hover:opacity-100 hover:text-destructive transition-all"
+        onClick={handleDelete}
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
       <MessageSquare className="h-4 w-4 shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{conversation.title}</p>
@@ -34,14 +42,6 @@ export function ConversationItem({ conversation, isActive, onClick, onDelete }: 
           {formatDistanceToNow(new Date(conversation.updated_at), { addSuffix: true })}
         </p>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 opacity-40 hover:opacity-100 transition-opacity"
-        onClick={handleDelete}
-      >
-        <Trash2 className="h-3 w-3" />
-      </Button>
     </div>
   );
 }
