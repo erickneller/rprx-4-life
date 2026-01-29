@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import rprxLogo from '@/assets/rprx-logo.png';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
@@ -177,6 +178,13 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <img 
+              src={rprxLogo} 
+              alt="RPRx Logo" 
+              className="h-24 w-24 object-contain" 
+            />
+          </div>
           <CardTitle className="text-2xl font-bold">RPRx 4 Life</CardTitle>
           <CardDescription>Sign in to your account or create a new one</CardDescription>
         </CardHeader>
