@@ -1,46 +1,35 @@
 
 
-## Add Slow Bounce Animation to Strategy Assistant Avatar
+## Update "The Four Horsemen" Title
 
 ### Overview
-Add a gentle floating/bouncing animation to the assistant avatar on the Strategy Assistant start screen to draw attention without being annoying.
+Update the section title on the Results page from "The Four Horsemen" to "The Four Horsemen Of Financial Apocalypse".
 
 ---
 
-## Implementation
+## Change Required
 
-### File: `src/components/assistant/ChatThread.tsx`
+### File: `src/components/results/ResultsPage.tsx`
 
-**Line 34 - Add animate-float class to the avatar:**
+**Line 63 - Update the h2 text:**
 
 ```tsx
 // Before
-<AssistantAvatar size="lg" />
+<h2 className="text-xl font-semibold text-foreground mb-4 text-center">
+  The Four Horsemen
+</h2>
 
 // After
-<AssistantAvatar size="lg" className="animate-float" />
+<h2 className="text-xl font-semibold text-foreground mb-4 text-center">
+  The Four Horsemen Of Financial Apocalypse
+</h2>
 ```
 
 ---
 
-## Technical Notes
-
-The `animate-float` animation is already defined in `tailwind.config.ts`:
-
-| Property | Value |
-|----------|-------|
-| Keyframes | `translateY(0)` → `translateY(-10px)` → `translateY(0)` |
-| Duration | 3 seconds |
-| Timing | ease-in-out |
-| Repeat | infinite |
-
-This creates a slow, subtle up-and-down floating motion that draws attention without being fast or annoying.
-
----
-
-## Files to Modify
+## Summary
 
 | File | Change |
 |------|--------|
-| `src/components/assistant/ChatThread.tsx` | Add `animate-float` class to the large AssistantAvatar on start screen |
+| `src/components/results/ResultsPage.tsx` | Update title text on line 63 |
 
