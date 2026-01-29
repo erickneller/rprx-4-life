@@ -1,0 +1,95 @@
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, Clock, FileText } from 'lucide-react';
+import type { SavedPlan } from '@/hooks/usePlans';
+
+interface PlanCardProps {
+  plan: SavedPlan;
+}
+
+export function PlanCard({ plan }: PlanCardProps) {
+  const navigate = useNavigate();
+  const content = plan.content;
+  
+  const completedSteps = content.completedSteps?.length || 0;
+  const totalSteps = content.steps?.length || 0;
+  const progress = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+  const statusColors = {
+    not_started: 'bg-muted text-muted-foreground',
+    in_progress: 'bg-primary/10 text-primary',
+    completed: 'bg-green-500/10 text-green-600',
+  };
+
+  const statusLabels = {
+    not_started: 'Not Started',
+    in_progress: 'In Progress',
+    completed: 'Completed',
+  };
+
+  return (
+    <Card 
+      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+      onClick={() => navigate(`/plans/${plan.id}`)}
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <CardTitle className="text-lg truncate">{plan.title}</CardTitle>
+            <CardDescription className="truncate">{plan.strategy_name}</CardDescription>
+          </div>
+          <Badge className={statusColors[plan.status]} variant="secondary">
+            {statusLabels[plan.status]}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {/* Progress bar */}
+          {totalSteps > 0 && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Progress</span>
+                <span>{completedSteps}/{totalSteps} steps</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary transition-all" 
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+          
+          {/* Metadata */}
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            {plan.strategy_id && (
+              <div className="flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                <span>{plan.strategy_id}</span>
+              </div>
+            )}
+            {content.horseman && content.horseman.length > 0 && (
+              <Badge variant="outline" className="text-xs">
+                {content.horseman.join(', ')}
+              </Badge>
+            )}
+          </div>
+          
+          {/* Dates */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              <span>Created {new Date(plan.created_at).toLocaleDateString()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>Updated {new Date(plan.updated_at).toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

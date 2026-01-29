@@ -142,6 +142,45 @@ export type Database = {
           },
         ]
       }
+      saved_plans: {
+        Row: {
+          content: Json
+          created_at: string | null
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["plan_status"]
+          strategy_id: string | null
+          strategy_name: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["plan_status"]
+          strategy_id?: string | null
+          strategy_name: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["plan_status"]
+          strategy_id?: string | null
+          strategy_name?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_assessments: {
         Row: {
           cash_flow_status:
@@ -203,6 +242,7 @@ export type Database = {
     Enums: {
       cash_flow_status: "surplus" | "tight" | "deficit"
       horseman_type: "interest" | "taxes" | "insurance" | "education"
+      plan_status: "not_started" | "in_progress" | "completed"
       question_type: "slider" | "single_choice" | "yes_no" | "range_select"
     }
     CompositeTypes: {
@@ -333,6 +373,7 @@ export const Constants = {
     Enums: {
       cash_flow_status: ["surplus", "tight", "deficit"],
       horseman_type: ["interest", "taxes", "insurance", "education"],
+      plan_status: ["not_started", "in_progress", "completed"],
       question_type: ["slider", "single_choice", "yes_no", "range_select"],
     },
   },
