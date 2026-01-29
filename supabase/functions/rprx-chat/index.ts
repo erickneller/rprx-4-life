@@ -8,1234 +8,1477 @@ const corsHeaders = {
 };
 
 // =====================================================
-// RPRx STRATEGY KNOWLEDGE BASE (80 STRATEGIES)
+// STRATEGY DATABASE - Searchable array for fast lookup
 // =====================================================
 
-const KNOWLEDGE_BASE = `
-# RPRx Four Horsemen Strategy Knowledge Base
-
-This knowledge base contains 80 strategies across the Four Horsemen: Interest (10), Taxes (20), Insurance (20), and Education (20).
-
-## INTEREST STRATEGIES (10 Strategies)
-
-### Strategy I-1: Equity Recapture (Mortgage Acceleration)
-- **Horseman(s):** Interest
-- **Summary:** Make extra payments toward mortgage principal to reduce total interest paid over the life of the loan.
-- **Projected Savings:** $50,000 - $655,000+
-- **Complexity:** 2/5
-- **Best For:** Homeowners with stable income and extra cash flow
-- **Key Requirements:** Active mortgage, discretionary income for extra payments
-- **Implementation Plan:**
-  1. Review current mortgage terms (rate, balance, remaining term)
-  2. Calculate impact of additional principal payments
-  3. Set up automatic extra principal payments (monthly or bi-weekly)
-  4. Track progress and recalculate periodically
-- **Tax Code Reference:** N/A (interest savings, not tax deduction)
-- **Example:** $400K mortgage at 6% over 30 years = $863K total. Extra $500/month saves $200K+ in interest.
-- **Disclaimer:** Results depend on loan terms and payment consistency.
-
-### Strategy I-2: Refinance to Lower Rate
-- **Horseman(s):** Interest
-- **Summary:** Refinance existing mortgage or loans to a lower interest rate to reduce monthly payments and total interest.
-- **Projected Savings:** $20,000 - $150,000+
-- **Complexity:** 2/5
-- **Best For:** Borrowers with improved credit or when market rates drop
-- **Key Requirements:** Good credit score, sufficient equity, closing cost funds
-- **Implementation Plan:**
-  1. Check current rates vs. your existing rate
-  2. Calculate break-even point for closing costs
-  3. Shop multiple lenders for best terms
-  4. Complete application and appraisal process
-  5. Close on new loan
-- **Tax Code Reference:** N/A
-- **Example:** Refinancing from 7% to 5.5% on $300K saves $100+ monthly.
-- **Disclaimer:** Closing costs apply; ensure break-even makes sense.
-
-### Strategy I-3: HELOC for Debt Consolidation
-- **Horseman(s):** Interest
-- **Summary:** Use Home Equity Line of Credit to consolidate high-interest debt (credit cards, personal loans) at lower rates.
-- **Projected Savings:** $5,000 - $50,000+
-- **Complexity:** 2/5
-- **Best For:** Homeowners with significant equity and high-interest debt
-- **Key Requirements:** Home equity (typically 15-20%), good credit
-- **Implementation Plan:**
-  1. Calculate total high-interest debt
-  2. Determine available home equity
-  3. Apply for HELOC with competitive rate
-  4. Pay off high-interest debts
-  5. Create payment plan for HELOC
-- **Tax Code Reference:** HELOC interest may be deductible if used for home improvements (IRC §163)
-- **Example:** Consolidating $30K at 22% to HELOC at 8% saves $4,200/year in interest.
-- **Disclaimer:** Home is collateral; risk of foreclosure if payments missed.
-
-### Strategy I-4: Cash Value Life Insurance Loans
-- **Horseman(s):** Interest
-- **Summary:** Borrow against cash value of permanent life insurance policy at favorable rates, often with flexible repayment.
-- **Projected Savings:** $2,000 - $30,000+
-- **Complexity:** 3/5
-- **Best For:** Those with funded whole/universal life policies needing liquidity
-- **Key Requirements:** Permanent life insurance with accumulated cash value
-- **Implementation Plan:**
-  1. Review policy's cash value and loan provisions
-  2. Request loan from insurance company
-  3. Use funds as needed (no restrictions)
-  4. Establish repayment plan or let interest capitalize
-- **Tax Code Reference:** Policy loans are generally tax-free (IRC §72(e))
-- **Example:** Borrow $50K at 5% vs. bank loan at 10% saves $2,500/year.
-- **Disclaimer:** Unpaid loans reduce death benefit; may trigger taxes if policy lapses.
-
-### Strategy I-5: 0% Balance Transfer Cards
-- **Horseman(s):** Interest
-- **Summary:** Transfer high-interest credit card balances to cards offering 0% introductory APR.
-- **Projected Savings:** $500 - $5,000+
-- **Complexity:** 1/5
-- **Best For:** Those with good credit carrying credit card balances
-- **Key Requirements:** Good/excellent credit score, discipline to pay off during intro period
-- **Implementation Plan:**
-  1. Research 0% balance transfer offers
-  2. Apply for card with longest intro period
-  3. Transfer balances (watch for transfer fees)
-  4. Create payoff plan before intro period ends
-- **Tax Code Reference:** N/A
-- **Example:** Transfer $10K at 22% to 0% for 18 months saves $3,300 in interest.
-- **Disclaimer:** Rate jumps after intro period; transfer fees (typically 3-5%) apply.
-
-### Strategy I-6: Negotiate Lower Interest Rates
-- **Horseman(s):** Interest
-- **Summary:** Contact lenders to negotiate lower interest rates on existing credit cards and loans.
-- **Projected Savings:** $200 - $3,000+
-- **Complexity:** 1/5
-- **Best For:** Customers with good payment history
-- **Key Requirements:** Strong payment history, competitive offers from other lenders
-- **Implementation Plan:**
-  1. Review current rates on all accounts
-  2. Research competitor rates
-  3. Call each lender's retention department
-  4. Present case for rate reduction
-  5. Document new rates
-- **Tax Code Reference:** N/A
-- **Example:** Reducing card rate from 24% to 18% on $8K balance saves $480/year.
-- **Disclaimer:** Not guaranteed; depends on creditworthiness and lender policy.
-
-### Strategy I-7: Student Loan Refinancing
-- **Horseman(s):** Interest
-- **Summary:** Refinance federal or private student loans to lower rate through private lenders.
-- **Projected Savings:** $5,000 - $40,000+
-- **Complexity:** 2/5
-- **Best For:** Graduates with stable income and good credit
-- **Key Requirements:** Steady income, good credit, graduation from eligible program
-- **Implementation Plan:**
-  1. Gather current loan details and rates
-  2. Check rates from multiple refinance lenders
-  3. Compare total cost including any fees
-  4. Apply with chosen lender
-  5. Set up autopay for additional rate reduction
-- **Tax Code Reference:** Student loan interest deduction up to $2,500 (IRC §221)
-- **Example:** Refinancing $80K from 7% to 4% over 10 years saves $15K+.
-- **Disclaimer:** Refinancing federal loans loses federal benefits (PSLF, IDR plans).
-
-### Strategy I-8: Auto Loan Refinancing
-- **Horseman(s):** Interest
-- **Summary:** Refinance existing auto loan to lower rate to reduce monthly payments and total interest.
-- **Projected Savings:** $500 - $3,000+
-- **Complexity:** 1/5
-- **Best For:** Those with improved credit since original loan
-- **Key Requirements:** Vehicle with sufficient equity, improved credit
-- **Implementation Plan:**
-  1. Check current loan balance and rate
-  2. Get quotes from banks, credit unions, online lenders
-  3. Compare offers considering any fees
-  4. Complete application with new lender
-  5. New lender pays off old loan
-- **Tax Code Reference:** N/A
-- **Example:** Refinancing $25K from 8% to 4% saves $50+/month.
-- **Disclaimer:** Extending term may increase total interest despite lower rate.
-
-### Strategy I-9: Biweekly Payment Strategy
-- **Horseman(s):** Interest
-- **Summary:** Split monthly payment in half and pay every two weeks, resulting in one extra payment per year.
-- **Projected Savings:** $10,000 - $50,000+
-- **Complexity:** 1/5
-- **Best For:** Any borrower with monthly payment obligations
-- **Key Requirements:** Lender that accepts biweekly payments, consistent income
-- **Implementation Plan:**
-  1. Confirm lender accepts biweekly payments
-  2. Set up automatic biweekly withdrawals
-  3. Ensure extra payment applies to principal
-  4. Track loan payoff acceleration
-- **Tax Code Reference:** N/A
-- **Example:** On $300K mortgage, biweekly payments can pay off 4+ years early.
-- **Disclaimer:** Some lenders charge fees for biweekly programs.
-
-### Strategy I-10: Round-Up Payment Strategy
-- **Horseman(s):** Interest
-- **Summary:** Round up monthly loan payments to nearest $50 or $100 to accelerate principal paydown.
-- **Projected Savings:** $5,000 - $30,000+
-- **Complexity:** 1/5
-- **Best For:** Anyone with loan payments
-- **Key Requirements:** Discretionary income for slightly higher payments
-- **Implementation Plan:**
-  1. Calculate rounded-up payment amount
-  2. Specify extra goes to principal
-  3. Set up automatic payment at new amount
-  4. Track accelerated payoff date
-- **Tax Code Reference:** N/A
-- **Example:** Rounding $1,847 payment to $1,900 adds $636/year to principal.
-- **Disclaimer:** Minimal impact individually but compounds over time.
-
-## TAX STRATEGIES (20 Strategies)
-
-### Strategy T-1: Maximize 401(k) Contributions
-- **Horseman(s):** Taxes
-- **Summary:** Contribute maximum allowed to employer 401(k) to reduce current taxable income.
-- **Projected Savings:** $2,000 - $50,000+ (depends on tax bracket)
-- **Complexity:** 1/5
-- **Best For:** Employees with 401(k) access
-- **Key Requirements:** Employer-sponsored 401(k), earned income
-- **Implementation Plan:**
-  1. Determine contribution limit ($23,000 for 2024, +$7,500 catch-up if 50+)
-  2. Calculate percentage needed to max out
-  3. Update payroll contribution election
-  4. Maximize any employer match first
-- **Tax Code Reference:** IRC §401(k), §402(g)
-- **Example:** $23K contribution in 32% bracket saves $7,360 in taxes.
-- **Disclaimer:** Funds locked until 59½ (with exceptions); required distributions start at 73.
-
-### Strategy T-2: Health Savings Account (HSA) Triple Tax Benefit
-- **Horseman(s):** Taxes, Insurance
-- **Summary:** Contribute to HSA for tax-deductible contributions, tax-free growth, and tax-free qualified withdrawals.
-- **Projected Savings:** $1,000 - $15,000+ annually
-- **Complexity:** 2/5
-- **Best For:** Those with high-deductible health plans (HDHPs)
-- **Key Requirements:** HDHP coverage, no Medicare enrollment
-- **Implementation Plan:**
-  1. Confirm HDHP enrollment
-  2. Open HSA if not provided by employer
-  3. Contribute max ($4,150 individual/$8,300 family for 2024)
-  4. Invest HSA funds for long-term growth
-  5. Save receipts for future tax-free withdrawals
-- **Tax Code Reference:** IRC §223
-- **Example:** Family contributing $8,300 in 24% bracket saves $1,992 + payroll taxes.
-- **Disclaimer:** Non-qualified withdrawals incur taxes and 20% penalty before 65.
-
-### Strategy T-3: Section 179 Deduction
-- **Horseman(s):** Taxes
-- **Summary:** Deduct full cost of qualifying business equipment in year of purchase instead of depreciating.
-- **Projected Savings:** $5,000 - $300,000+ (depends on equipment cost)
-- **Complexity:** 3/5
-- **Best For:** Business owners purchasing equipment
-- **Key Requirements:** Business income, qualifying property, placed in service during tax year
-- **Implementation Plan:**
-  1. Identify qualifying equipment purchases
-  2. Confirm 179 limit ($1.16M for 2024) and phase-out threshold
-  3. Elect 179 on tax return (Form 4562)
-  4. Document business use percentage
-- **Tax Code Reference:** IRC §179
-- **Example:** $100K equipment purchase in 35% bracket saves $35K in taxes immediately.
-- **Disclaimer:** Cannot exceed business income; some property types excluded.
-
-### Strategy T-4: Qualified Business Income (QBI) Deduction
-- **Horseman(s):** Taxes
-- **Summary:** Deduct up to 20% of qualified business income from pass-through entities.
-- **Projected Savings:** $2,000 - $100,000+
-- **Complexity:** 3/5
-- **Best For:** Sole proprietors, S-corp/partnership owners, some trusts
-- **Key Requirements:** Pass-through income, income thresholds, non-SSTB or within limits
-- **Implementation Plan:**
-  1. Calculate qualified business income
-  2. Determine if SSTB limitations apply
-  3. Calculate W-2 wage/capital limitations if over threshold
-  4. Claim deduction on Form 8995 or 8995-A
-- **Tax Code Reference:** IRC §199A
-- **Example:** $200K QBI = $40K deduction = $12K+ tax savings.
-- **Disclaimer:** Complex limitations for high earners and specified service businesses.
-
-### Strategy T-5: Roth IRA Conversion Strategy
-- **Horseman(s):** Taxes
-- **Summary:** Convert traditional IRA to Roth in low-income years to reduce future required distributions and tax burden.
-- **Projected Savings:** $10,000 - $500,000+ (lifetime)
-- **Complexity:** 4/5
-- **Best For:** Those expecting higher future tax rates or with low-income years
-- **Key Requirements:** Traditional IRA or 401(k) funds, ability to pay conversion taxes
-- **Implementation Plan:**
-  1. Analyze current vs. expected future tax brackets
-  2. Calculate optimal conversion amount to stay in current bracket
-  3. Execute partial or full conversion
-  4. Pay estimated taxes (don't withhold from conversion)
-  5. Repeat annually as appropriate
-- **Tax Code Reference:** IRC §408A
-- **Example:** Convert $100K in 22% bracket, save 10%+ if future rate is 32%.
-- **Disclaimer:** Conversion is taxable; no 5-year holding on contributions but earnings.
-
-### Strategy T-6: Charitable Remainder Trust (CRT)
-- **Horseman(s):** Taxes
-- **Summary:** Transfer appreciated assets to CRT for income stream, avoid capital gains, and receive charitable deduction.
-- **Projected Savings:** $50,000 - $1,000,000+
-- **Complexity:** 5/5
-- **Best For:** High-net-worth individuals with appreciated assets and charitable intent
-- **Key Requirements:** Appreciated assets, irrevocable transfer, charitable remainder
-- **Implementation Plan:**
-  1. Consult with estate planning attorney
-  2. Choose CRT type (annuity or unitrust)
-  3. Transfer appreciated assets to trust
-  4. Receive income stream for term/life
-  5. Remainder goes to charity at trust termination
-- **Tax Code Reference:** IRC §664
-- **Example:** Transfer $1M stock with $100K basis; avoid $180K capital gains, receive $50K+ annual income.
-- **Disclaimer:** Irrevocable; complex setup and administration costs.
-
-### Strategy T-7: Donor-Advised Fund (DAF) Bunching
-- **Horseman(s):** Taxes
-- **Summary:** Bunch multiple years of charitable donations into one year via DAF to exceed standard deduction.
-- **Projected Savings:** $2,000 - $20,000+
-- **Complexity:** 2/5
-- **Best For:** Charitable givers whose annual donations don't exceed standard deduction
-- **Key Requirements:** Charitable intent, funds to bunch
-- **Implementation Plan:**
-  1. Calculate multiple years of intended giving
-  2. Open DAF account
-  3. Contribute bunched amount in one tax year
-  4. Itemize deductions that year
-  5. Distribute grants to charities over time
-- **Tax Code Reference:** IRC §170
-- **Example:** Bunch 3 years ($15K/year = $45K) to itemize vs. standard deduction.
-- **Disclaimer:** Contribution to DAF is irrevocable (but grants are flexible).
-
-### Strategy T-8: Qualified Opportunity Zone Investment
-- **Horseman(s):** Taxes
-- **Summary:** Defer and reduce capital gains by investing in Qualified Opportunity Zone funds.
-- **Projected Savings:** $10,000 - $500,000+
-- **Complexity:** 5/5
-- **Best For:** Those with significant capital gains seeking deferral
-- **Key Requirements:** Capital gain within 180 days, investment in QOZ fund
-- **Implementation Plan:**
-  1. Realize capital gain from sale
-  2. Invest gain in QOZ fund within 180 days
-  3. Hold for 10+ years for maximum benefit
-  4. Report on Form 8949 and 8997
-- **Tax Code Reference:** IRC §1400Z-2
-- **Example:** Invest $500K gain, hold 10 years, pay zero tax on QOZ appreciation.
-- **Disclaimer:** Complex rules; risky investments; deadline sensitive.
-
-### Strategy T-9: Cost Segregation Study
-- **Horseman(s):** Taxes
-- **Summary:** Accelerate depreciation on commercial/rental real estate by reclassifying components to shorter lives.
-- **Projected Savings:** $25,000 - $500,000+
-- **Complexity:** 4/5
-- **Best For:** Commercial/rental property owners
-- **Key Requirements:** Real estate purchase or improvement, engineering study
-- **Implementation Plan:**
-  1. Engage cost segregation specialist
-  2. Complete engineering-based study
-  3. Reclassify components (5, 7, 15-year vs. 27.5/39-year)
-  4. Claim accelerated depreciation
-  5. Consider bonus depreciation eligibility
-- **Tax Code Reference:** IRC §168
-- **Example:** $2M property may yield $200K+ first-year deductions.
-- **Disclaimer:** May increase depreciation recapture on sale; professional study costs $5K-$15K.
-
-### Strategy T-10: Augusta Rule (Section 280A)
-- **Horseman(s):** Taxes
-- **Summary:** Rent your home to your business for up to 14 days tax-free for meetings/events.
-- **Projected Savings:** $2,000 - $20,000+
-- **Complexity:** 2/5
-- **Best For:** Business owners with suitable home spaces
-- **Key Requirements:** Legitimate business purpose, fair market rent documentation
-- **Implementation Plan:**
-  1. Document fair market rental rates (comparable venues)
-  2. Hold legitimate business meetings/events at home
-  3. Business pays rent to homeowner
-  4. Business deducts rent; homeowner excludes income
-- **Tax Code Reference:** IRC §280A(g)
-- **Example:** 14 days × $1,500/day = $21,000 tax-free to homeowner.
-- **Disclaimer:** Must be legitimate business use; document extensively.
-
-### Strategy T-11: Real Estate Professional Status
-- **Horseman(s):** Taxes
-- **Summary:** Qualify as real estate professional to deduct rental losses against ordinary income without passive activity limits.
-- **Projected Savings:** $10,000 - $200,000+
-- **Complexity:** 4/5
-- **Best For:** Those heavily involved in real estate with other high income
-- **Key Requirements:** 750+ hours in real estate, more than half of personal services
-- **Implementation Plan:**
-  1. Track hours meticulously (use time log)
-  2. Meet material participation in each rental (or elect grouping)
-  3. Document all real estate activities
-  4. Claim losses against ordinary income
-- **Tax Code Reference:** IRC §469(c)(7)
-- **Example:** $100K rental losses offset $100K W-2 income = $30K+ tax savings.
-- **Disclaimer:** IRS scrutinizes closely; excellent documentation required.
-
-### Strategy T-12: S-Corporation Election
-- **Horseman(s):** Taxes
-- **Summary:** Elect S-corp status for LLC/sole prop to reduce self-employment taxes.
-- **Projected Savings:** $5,000 - $50,000+
-- **Complexity:** 3/5
-- **Best For:** Self-employed with $50K+ net income
-- **Key Requirements:** Reasonable salary, formal payroll, corporate formalities
-- **Implementation Plan:**
-  1. Evaluate SE tax savings vs. payroll costs
-  2. File Form 2553 for S-corp election
-  3. Set up payroll for reasonable salary
-  4. Take remaining profits as distributions (no SE tax)
-- **Tax Code Reference:** IRC §1361-1379
-- **Example:** $150K profit: $70K salary + $80K distribution saves $12K+ in SE tax.
-- **Disclaimer:** Must pay reasonable salary; payroll complexity and costs.
-
-### Strategy T-13: Backdoor Roth IRA
-- **Horseman(s):** Taxes
-- **Summary:** Make non-deductible traditional IRA contribution then convert to Roth for high earners.
-- **Projected Savings:** $5,000 - $100,000+ (lifetime tax-free growth)
-- **Complexity:** 3/5
-- **Best For:** High earners above Roth IRA income limits
-- **Key Requirements:** No or low pre-tax IRA balances (pro-rata rule)
-- **Implementation Plan:**
-  1. Ensure no pre-tax traditional IRA balances
-  2. Make non-deductible traditional IRA contribution
-  3. Convert to Roth shortly after (ideally before gains)
-  4. File Form 8606
-- **Tax Code Reference:** IRC §408A
-- **Example:** $7,000/year backdoor Roth × 20 years = $140K+ tax-free at retirement.
-- **Disclaimer:** Pro-rata rule applies if pre-tax IRA exists; consult advisor.
-
-### Strategy T-14: Mega Backdoor Roth
-- **Horseman(s):** Taxes
-- **Summary:** Contribute after-tax dollars to 401(k) above standard limits, then convert to Roth.
-- **Projected Savings:** $20,000 - $500,000+ (lifetime)
-- **Complexity:** 4/5
-- **Best For:** High earners with 401(k) plans allowing after-tax contributions
-- **Key Requirements:** 401(k) plan with after-tax option and in-plan/in-service conversion
-- **Implementation Plan:**
-  1. Verify plan allows after-tax contributions and conversions
-  2. Max out pre-tax/Roth 401(k) first
-  3. Contribute additional after-tax (up to $69K total limit for 2024)
-  4. Convert after-tax to Roth immediately
-- **Tax Code Reference:** IRC §401(k), §402A
-- **Example:** Extra $30K+ annually to Roth = hundreds of thousands tax-free.
-- **Disclaimer:** Not all plans allow; coordinate with plan administrator.
-
-### Strategy T-15: Installment Sale
-- **Horseman(s):** Taxes
-- **Summary:** Spread capital gain over multiple years by receiving payments over time.
-- **Projected Savings:** $10,000 - $200,000+
-- **Complexity:** 3/5
-- **Best For:** Sellers of appreciated assets (real estate, business)
-- **Key Requirements:** Buyer willing to pay over time, proper documentation
-- **Implementation Plan:**
-  1. Negotiate installment terms with buyer
-  2. Calculate interest rate (must meet AFR minimum)
-  3. Document sale with promissory note
-  4. Report gain proportionally each year (Form 6252)
-- **Tax Code Reference:** IRC §453
-- **Example:** $500K gain over 5 years stays in lower brackets each year.
-- **Disclaimer:** Interest income is ordinary; buyer default risk.
-
-### Strategy T-16: Qualified Small Business Stock (QSBS) Exclusion
-- **Horseman(s):** Taxes
-- **Summary:** Exclude up to 100% of gain (up to $10M) on qualified small business stock held 5+ years.
-- **Projected Savings:** $100,000 - $3,000,000+
-- **Complexity:** 4/5
-- **Best For:** Founders, early employees, investors in C-corp startups
-- **Key Requirements:** Original issue stock, C-corp, 5+ year holding, qualified business
-- **Implementation Plan:**
-  1. Confirm C-corp status and qualified trade/business
-  2. Document original issue acquisition
-  3. Track holding period (5 years minimum)
-  4. Claim exclusion on Form 8949
-- **Tax Code Reference:** IRC §1202
-- **Example:** Sell $5M stock with $100K basis = $4.9M tax-free gain.
-- **Disclaimer:** Complex requirements; not all businesses qualify.
-
-### Strategy T-17: Net Unrealized Appreciation (NUA)
-- **Horseman(s):** Taxes
-- **Summary:** Pay capital gains rate instead of ordinary income on employer stock appreciation in 401(k).
-- **Projected Savings:** $20,000 - $500,000+
-- **Complexity:** 4/5
-- **Best For:** Employees with highly appreciated company stock in 401(k)
-- **Key Requirements:** Employer stock in 401(k), lump-sum distribution, triggering event
-- **Implementation Plan:**
-  1. Identify cost basis of employer stock
-  2. Take lump-sum distribution after triggering event
-  3. Transfer stock in-kind to taxable brokerage
-  4. Pay ordinary tax on basis only; NUA taxed as LTCG when sold
-- **Tax Code Reference:** IRC §402(e)(4)
-- **Example:** Stock basis $50K, current value $500K. Pay ordinary on $50K, LTCG on $450K.
-- **Disclaimer:** Complex rules; must be lump-sum in calendar year.
-
-### Strategy T-18: Family Employment Tax Strategy
-- **Horseman(s):** Taxes
-- **Summary:** Hire children in family business to shift income to lower/zero tax bracket.
-- **Projected Savings:** $2,000 - $15,000+
-- **Complexity:** 2/5
-- **Best For:** Family business owners with minor children
-- **Key Requirements:** Legitimate work, reasonable pay, proper documentation
-- **Implementation Plan:**
-  1. Identify appropriate jobs for children
-  2. Set reasonable hourly rate for work
-  3. Document hours and work performed
-  4. Pay via check/direct deposit
-  5. Child can contribute to Roth IRA with earned income
-- **Tax Code Reference:** IRC §3121(b)(3) - FICA exemption for children under 18
-- **Example:** Pay child $13,850 (2024 standard deduction) = zero tax, full business deduction.
-- **Disclaimer:** Work must be legitimate; pay must be reasonable.
-
-### Strategy T-19: Solo 401(k) / SEP-IRA Maximization
-- **Horseman(s):** Taxes
-- **Summary:** Maximize retirement contributions for self-employed ($69K+ for 2024).
-- **Projected Savings:** $5,000 - $100,000+ (current tax reduction)
-- **Complexity:** 2/5
-- **Best For:** Self-employed individuals and small business owners
-- **Key Requirements:** Self-employment income, no full-time employees (for solo 401(k))
-- **Implementation Plan:**
-  1. Choose Solo 401(k) vs. SEP-IRA based on situation
-  2. Open account before year-end (Solo 401k) or tax deadline (SEP)
-  3. Contribute employee portion ($23K+$7.5K catch-up)
-  4. Add employer contribution (up to 25% of comp)
-- **Tax Code Reference:** IRC §401(k), §408
-- **Example:** Self-employed with $200K income can shelter $69K+ from taxes.
-- **Disclaimer:** Solo 401(k) requires plan documents; contribution limits complex.
-
-### Strategy T-20: State Tax Optimization
-- **Horseman(s):** Taxes
-- **Summary:** Relocate business or residence to reduce state income tax burden.
-- **Projected Savings:** $10,000 - $500,000+ annually
-- **Complexity:** 4/5
-- **Best For:** High earners with location flexibility
-- **Key Requirements:** Genuine relocation, domicile change, business nexus considerations
-- **Implementation Plan:**
-  1. Compare state tax rates and rules
-  2. Evaluate no-income-tax states (FL, TX, NV, WY, etc.)
-  3. Establish genuine domicile (driver's license, voter registration, etc.)
-  4. Update business registrations as needed
-- **Tax Code Reference:** State-specific; IRC affects federal deductions
-- **Example:** Move from CA (13.3%) to FL (0%) on $1M income saves $133K+/year.
-- **Disclaimer:** Must be genuine move; states audit aggressively.
-
-## INSURANCE STRATEGIES (20 Strategies)
-
-### Strategy INS-1: High-Deductible Health Plan with HSA
-- **Horseman(s):** Insurance, Taxes
-- **Summary:** Choose HDHP with lower premiums and tax-advantaged HSA savings.
-- **Projected Savings:** $1,000 - $10,000+ annually
-- **Complexity:** 2/5
-- **Best For:** Healthy individuals/families with emergency fund
-- **Key Requirements:** HDHP-qualified plan, ability to cover deductible
-- **Implementation Plan:**
-  1. Compare HDHP premiums vs. traditional plans
-  2. Calculate potential HSA contribution tax savings
-  3. Enroll in HDHP during open enrollment
-  4. Open and fund HSA to maximum
-  5. Invest HSA for long-term growth
-- **Tax Code Reference:** IRC §223
-- **Example:** Save $4K in premiums + $2K tax savings = $6K total savings.
-- **Disclaimer:** Must have funds for high deductible; not ideal for high utilizers.
-
-### Strategy INS-2: Umbrella Insurance
-- **Horseman(s):** Insurance
-- **Summary:** Add umbrella policy for $1M+ liability coverage at low cost.
-- **Projected Savings:** N/A (risk protection)
-- **Complexity:** 1/5
-- **Best For:** Anyone with assets to protect
-- **Key Requirements:** Underlying auto/home policies, asset review
-- **Implementation Plan:**
-  1. Review current liability coverage limits
-  2. Assess total assets needing protection
-  3. Get umbrella quotes ($1-5M coverage)
-  4. Coordinate with existing policies
-- **Tax Code Reference:** N/A
-- **Example:** $1M umbrella costs $150-300/year.
-- **Disclaimer:** Doesn't cover everything; review exclusions.
-
-### Strategy INS-3: Life Insurance Needs Analysis
-- **Horseman(s):** Insurance
-- **Summary:** Right-size life insurance coverage to avoid over/under-insuring.
-- **Projected Savings:** $500 - $5,000+ annually
-- **Complexity:** 2/5
-- **Best For:** Anyone with dependents or significant debt
-- **Key Requirements:** Income/expense analysis, debt review, goal assessment
-- **Implementation Plan:**
-  1. Calculate income replacement needs (10-15x annual income)
-  2. Add outstanding debts and future obligations (college, etc.)
-  3. Subtract existing coverage and savings
-  4. Shop term life for gap coverage
-- **Tax Code Reference:** IRC §101 (death benefits tax-free)
-- **Example:** Replace $5K/month expenses for 20 years = $1.2M coverage need.
-- **Disclaimer:** Health conditions affect premiums; shop multiple carriers.
-
-### Strategy INS-4: Term Life Ladder Strategy
-- **Horseman(s):** Insurance
-- **Summary:** Layer multiple term policies of different lengths to match declining insurance needs.
-- **Projected Savings:** $1,000 - $5,000+ (vs. single large policy)
-- **Complexity:** 2/5
-- **Best For:** Those with varying protection needs over time
-- **Key Requirements:** Insurability, clear timeline of needs
-- **Implementation Plan:**
-  1. Identify coverage needs at different life stages
-  2. Purchase layered policies (e.g., 30yr, 20yr, 10yr terms)
-  3. As policies expire, coverage naturally decreases
-  4. Premiums drop as shorter policies end
-- **Tax Code Reference:** IRC §101
-- **Example:** Instead of $2M 30-year, layer $1M/30yr + $500K/20yr + $500K/10yr.
-- **Disclaimer:** Multiple applications; possible multiple underwriting.
-
-### Strategy INS-5: Disability Insurance Review
-- **Horseman(s):** Insurance
-- **Summary:** Ensure adequate disability coverage to protect income.
-- **Projected Savings:** N/A (income protection)
-- **Complexity:** 2/5
-- **Best For:** Anyone relying on earned income
-- **Key Requirements:** Assessment of employer coverage, individual policy evaluation
-- **Implementation Plan:**
-  1. Review employer STD/LTD coverage and limitations
-  2. Calculate income gap if disabled
-  3. Shop individual disability policies
-  4. Consider own-occupation definition for professionals
-- **Tax Code Reference:** Premiums not deductible; benefits may be taxable (employer-paid)
-- **Example:** Protect $200K income; individual policy costs $2-4K/year.
-- **Disclaimer:** Pre-existing conditions may limit coverage; definition matters.
-
-### Strategy INS-6: Long-Term Care Insurance
-- **Horseman(s):** Insurance
-- **Summary:** Protect assets from nursing home/care costs with LTC insurance.
-- **Projected Savings:** N/A (asset protection from $100K+/year costs)
-- **Complexity:** 3/5
-- **Best For:** Ages 50-65 with assets to protect
-- **Key Requirements:** Good health at application, ability to pay premiums
-- **Implementation Plan:**
-  1. Evaluate LTC risk and family history
-  2. Compare traditional LTC vs. hybrid (life/LTC) policies
-  3. Determine daily benefit and coverage period
-  4. Apply while healthy for best rates
-- **Tax Code Reference:** IRC §7702B (qualified LTC premiums may be deductible)
-- **Example:** LTC policy costs $2-5K/year vs. $100K+/year nursing home.
-- **Disclaimer:** Use it or lose it (traditional); rates can increase.
-
-### Strategy INS-7: Hybrid Life/LTC Policies
-- **Horseman(s):** Insurance
-- **Summary:** Combine life insurance with long-term care benefits for guaranteed return of premium.
-- **Projected Savings:** N/A (flexible benefits)
-- **Complexity:** 3/5
-- **Best For:** Those wanting LTC coverage with death benefit backstop
-- **Key Requirements:** Lump sum or premium payments, insurability
-- **Implementation Plan:**
-  1. Compare hybrid vs. traditional LTC policies
-  2. Evaluate death benefit vs. LTC benefit trade-offs
-  3. Consider single-premium vs. payment plans
-  4. Review cash value access
-- **Tax Code Reference:** IRC §7702B, §101
-- **Example:** $200K premium provides $400K LTC pool or $250K death benefit.
-- **Disclaimer:** Higher premiums than standalone LTC; limited flexibility.
-
-### Strategy INS-8: Captive Insurance Company
-- **Horseman(s):** Insurance, Taxes
-- **Summary:** Create own insurance company to insure business risks and potentially save taxes.
-- **Projected Savings:** $50,000 - $500,000+
-- **Complexity:** 5/5
-- **Best For:** Profitable businesses with significant insurable risks
-- **Key Requirements:** Legitimate insurance needs, proper structure, ongoing compliance
-- **Implementation Plan:**
-  1. Identify insurable business risks
-  2. Engage captive insurance consultant
-  3. Form captive in appropriate jurisdiction
-  4. Pay premiums for coverage
-  5. Manage captive investment and claims
-- **Tax Code Reference:** IRC §831(b) (small insurance company election)
-- **Example:** Business pays $1M premiums; captive accumulates reserves tax-advantaged.
-- **Disclaimer:** IRS scrutinizes captives heavily; must be legitimate insurance.
-
-### Strategy INS-9: Group Benefits Optimization
-- **Horseman(s):** Insurance
-- **Summary:** Maximize employer-provided benefits (life, disability, FSA, etc.).
-- **Projected Savings:** $500 - $5,000+
-- **Complexity:** 1/5
-- **Best For:** All employees with benefit options
-- **Key Requirements:** Review all employer benefit options
-- **Implementation Plan:**
-  1. Review all available employer benefits
-  2. Maximize FSA/HSA contributions
-  3. Evaluate supplemental life/disability
-  4. Consider legal/ID theft/pet insurance if offered
-- **Tax Code Reference:** Various (IRC §125, §129, §132)
-- **Example:** Use FSA to pay $2,500 medical expenses with pre-tax dollars.
-- **Disclaimer:** Use-it-or-lose-it for FSA (limited carryover available).
-
-### Strategy INS-10: Insurance Audit
-- **Horseman(s):** Insurance
-- **Summary:** Review all policies annually to eliminate overlaps and gaps.
-- **Projected Savings:** $500 - $3,000+
-- **Complexity:** 2/5
-- **Best For:** Everyone with multiple insurance policies
-- **Key Requirements:** Gather all policy documents, systematic review
-- **Implementation Plan:**
-  1. List all insurance policies
-  2. Review coverage limits and deductibles
-  3. Identify overlaps (e.g., multiple travel insurance)
-  4. Find gaps (e.g., liability, umbrella)
-  5. Consolidate with single carrier for discounts
-- **Tax Code Reference:** N/A
-- **Example:** Eliminate duplicate coverage, bundle home/auto for 15% discount.
-- **Disclaimer:** Don't sacrifice coverage for savings.
-
-### Strategy INS-11: Multi-Policy Bundling
-- **Horseman(s):** Insurance
-- **Summary:** Bundle home, auto, umbrella with single carrier for discounts.
-- **Projected Savings:** $300 - $1,500+
-- **Complexity:** 1/5
-- **Best For:** Those with multiple insurance needs
-- **Key Requirements:** Multiple policies, comparison shopping
-- **Implementation Plan:**
-  1. Get bundled quotes from multiple carriers
-  2. Compare total cost vs. separate policies
-  3. Review coverage equivalence
-  4. Switch to bundled carrier if savings justify
-- **Tax Code Reference:** N/A
-- **Example:** Bundle home + auto = 15-25% discount.
-- **Disclaimer:** Bundling doesn't always save; compare carefully.
-
-### Strategy INS-12: Increase Deductibles
-- **Horseman(s):** Insurance
-- **Summary:** Raise deductibles on home/auto to lower premiums if you have emergency fund.
-- **Projected Savings:** $200 - $1,000+
-- **Complexity:** 1/5
-- **Best For:** Those with adequate savings
-- **Key Requirements:** Emergency fund to cover higher deductible
-- **Implementation Plan:**
-  1. Review current deductibles
-  2. Calculate premium savings at higher deductibles
-  3. Ensure emergency fund covers new deductible
-  4. Update policies
-- **Tax Code Reference:** N/A
-- **Example:** Raise auto deductible from $500 to $1,000; save $150/year.
-- **Disclaimer:** Must have cash for higher out-of-pocket in claim.
-
-### Strategy INS-13: Professional Liability Coverage Review
-- **Horseman(s):** Insurance
-- **Summary:** Ensure adequate errors & omissions or malpractice coverage.
-- **Projected Savings:** N/A (risk protection)
-- **Complexity:** 2/5
-- **Best For:** Professionals (doctors, lawyers, consultants, etc.)
-- **Key Requirements:** Professional practice, industry-standard coverage review
-- **Implementation Plan:**
-  1. Review current E&O/malpractice limits
-  2. Assess claim exposure in your field
-  3. Compare policies from multiple carriers
-  4. Ensure tail coverage if changing policies
-- **Tax Code Reference:** Premiums generally deductible as business expense
-- **Example:** Increase E&O from $1M to $2M for modest premium increase.
-- **Disclaimer:** Claims-made vs. occurrence policies differ significantly.
-
-### Strategy INS-14: Business Owner's Policy (BOP)
-- **Horseman(s):** Insurance
-- **Summary:** Bundle business property and liability coverage for savings.
-- **Projected Savings:** $500 - $2,000+
-- **Complexity:** 2/5
-- **Best For:** Small business owners
-- **Key Requirements:** Small to medium business, standard risk profile
-- **Implementation Plan:**
-  1. Assess business property and liability needs
-  2. Get BOP quotes from multiple carriers
-  3. Compare to separate policies
-  4. Add endorsements for specific risks
-- **Tax Code Reference:** Premiums deductible as business expense
-- **Example:** BOP costs $500-3,000/year vs. separate policies.
-- **Disclaimer:** May not cover all risks; review exclusions.
-
-### Strategy INS-15: Key Person Insurance
-- **Horseman(s):** Insurance
-- **Summary:** Insure key employees/owners to protect business from loss.
-- **Projected Savings:** N/A (business continuity protection)
-- **Complexity:** 2/5
-- **Best For:** Businesses dependent on specific individuals
-- **Key Requirements:** Identify key persons, determine replacement/transition cost
-- **Implementation Plan:**
-  1. Identify employees critical to business
-  2. Calculate financial impact of their loss
-  3. Purchase life/disability on key persons
-  4. Business owns and is beneficiary of policy
-- **Tax Code Reference:** Premiums not deductible; proceeds generally tax-free (IRC §101)
-- **Example:** $1M policy on key salesperson costs $1-3K/year.
-- **Disclaimer:** Insurable interest must exist; consent required.
-
-### Strategy INS-16: Buy-Sell Agreement Funding
-- **Horseman(s):** Insurance
-- **Summary:** Fund buy-sell agreement with life insurance for business succession.
-- **Projected Savings:** N/A (succession planning)
-- **Complexity:** 3/5
-- **Best For:** Multi-owner businesses
-- **Key Requirements:** Written buy-sell agreement, valuation method, insurance
-- **Implementation Plan:**
-  1. Draft buy-sell agreement with attorney
-  2. Determine valuation method
-  3. Purchase life insurance on each owner
-  4. Review and update annually
-- **Tax Code Reference:** IRC §101 (death benefits), §2703 (valuation)
-- **Example:** Two partners with 50/50 ownership each insure $2M.
-- **Disclaimer:** Keep valuations current; agreement must be properly structured.
-
-### Strategy INS-17: Workers' Compensation Audit
-- **Horseman(s):** Insurance
-- **Summary:** Review workers' comp classification and experience mod for savings.
-- **Projected Savings:** $1,000 - $20,000+
-- **Complexity:** 2/5
-- **Best For:** Employers with workers' compensation insurance
-- **Key Requirements:** Review classification codes, safety program
-- **Implementation Plan:**
-  1. Verify correct job classification codes
-  2. Review experience modification factor
-  3. Implement safety program to reduce claims
-  4. Appeal incorrect classifications
-- **Tax Code Reference:** Premiums deductible as business expense
-- **Example:** Correct classification from "roofer" to "office admin" cuts premium 80%.
-- **Disclaimer:** Misclassification can result in penalties.
-
-### Strategy INS-18: Self-Insured Retention (SIR)
-- **Horseman(s):** Insurance
-- **Summary:** Use higher retention/deductible for commercial policies to reduce premiums.
-- **Projected Savings:** $5,000 - $50,000+
-- **Complexity:** 3/5
-- **Best For:** Larger businesses with claims-paying capacity
-- **Key Requirements:** Financial strength, claims management capability
-- **Implementation Plan:**
-  1. Analyze claims history
-  2. Calculate optimal retention level
-  3. Negotiate SIR with carrier
-  4. Set aside reserves for retained claims
-- **Tax Code Reference:** Self-insured reserves may be deductible
-- **Example:** $50K SIR instead of $5K deductible saves 20% on premium.
-- **Disclaimer:** Must have funds to pay retained claims.
-
-### Strategy INS-19: Premium Financing
-- **Horseman(s):** Insurance
-- **Summary:** Finance large insurance premiums to preserve cash flow.
-- **Projected Savings:** N/A (cash flow management)
-- **Complexity:** 2/5
-- **Best For:** Businesses/individuals with large premium payments
-- **Key Requirements:** Good credit, premium size justifies financing
-- **Implementation Plan:**
-  1. Get premium financing quote
-  2. Compare financing cost vs. investment return on preserved cash
-  3. Complete financing application
-  4. Make monthly payments
-- **Tax Code Reference:** Interest may be deductible for business insurance
-- **Example:** Finance $50K premium over 10 months instead of paying upfront.
-- **Disclaimer:** Adds interest cost; policy may cancel for non-payment.
-
-### Strategy INS-20: Annual Insurance Review Meeting
-- **Horseman(s):** Insurance
-- **Summary:** Schedule annual comprehensive review with insurance advisor.
-- **Projected Savings:** Varies (optimization opportunity)
-- **Complexity:** 1/5
-- **Best For:** Everyone
-- **Key Requirements:** Relationship with qualified insurance advisor
-- **Implementation Plan:**
-  1. Schedule annual review meeting
-  2. Bring all policy documents
-  3. Review life changes (marriage, kids, home, business)
-  4. Update coverage accordingly
-  5. Shop competitive quotes
-- **Tax Code Reference:** N/A
-- **Example:** Annual review catches $2K savings opportunity.
-- **Disclaimer:** Advisor may have conflicts; get independent quotes.
-
-## EDUCATION STRATEGIES (20 Strategies)
-
-### Strategy E-1: 529 Plan Contributions
-- **Horseman(s):** Education, Taxes
-- **Summary:** Save for education with tax-free growth and withdrawals for qualified expenses.
-- **Projected Savings:** $5,000 - $100,000+ (tax-free growth)
-- **Complexity:** 1/5
-- **Best For:** Parents, grandparents saving for education
-- **Key Requirements:** Beneficiary, state plan comparison, qualified expenses
-- **Implementation Plan:**
-  1. Research 529 plans (home state for tax deduction?)
-  2. Open account and name beneficiary
-  3. Set up automatic contributions
-  4. Invest based on time horizon
-  5. Use for K-12 ($10K/year) or college
-- **Tax Code Reference:** IRC §529
-- **Example:** $10K/year for 18 years at 7% = $400K+ for education.
-- **Disclaimer:** Non-qualified withdrawals incur tax + 10% penalty; limited investment changes.
-
-### Strategy E-2: Coverdell Education Savings Account
-- **Horseman(s):** Education, Taxes
-- **Summary:** Tax-free education savings for K-12 and college with more investment options.
-- **Projected Savings:** $1,000 - $10,000+ (tax-free growth)
-- **Complexity:** 2/5
-- **Best For:** Those wanting more investment flexibility for education
-- **Key Requirements:** Income limits, $2K annual max, beneficiary under 18
-- **Implementation Plan:**
-  1. Verify income eligibility
-  2. Open Coverdell ESA
-  3. Contribute up to $2K annually
-  4. Invest in any securities (more options than 529)
-  5. Use for K-12 or higher education
-- **Tax Code Reference:** IRC §530
-- **Example:** $2K/year for 18 years at 8% = $75K+ for education.
-- **Disclaimer:** Low contribution limit; must be used by age 30.
-
-### Strategy E-3: American Opportunity Tax Credit (AOTC)
-- **Horseman(s):** Education, Taxes
-- **Summary:** Claim up to $2,500 credit per student for first 4 years of college.
-- **Projected Savings:** $2,500 per student per year (up to $10K total)
-- **Complexity:** 1/5
-- **Best For:** Families paying college tuition
-- **Key Requirements:** Half-time enrollment, first 4 years, income limits
-- **Implementation Plan:**
-  1. Verify student eligibility
-  2. Track qualified education expenses
-  3. Claim credit on Form 8863
-  4. 40% refundable even with no tax liability
-- **Tax Code Reference:** IRC §25A
-- **Example:** $4K+ in expenses = $2,500 credit ($1,000 refundable).
-- **Disclaimer:** Can't double-dip with 529 for same expenses; income phase-out.
-
-### Strategy E-4: Lifetime Learning Credit
-- **Horseman(s):** Education, Taxes
-- **Summary:** Claim up to $2,000 credit for any level of education, unlimited years.
-- **Projected Savings:** Up to $2,000 per return
-- **Complexity:** 1/5
-- **Best For:** Graduate students, professionals, part-time students
-- **Key Requirements:** Enrolled at eligible institution, income limits
-- **Implementation Plan:**
-  1. Track qualified tuition and fees
-  2. Claim credit on Form 8863
-  3. Can use for any year of education
-- **Tax Code Reference:** IRC §25A
-- **Example:** $10K+ tuition = $2,000 credit.
-- **Disclaimer:** Non-refundable; can't combine with AOTC for same student.
-
-### Strategy E-5: Student Loan Interest Deduction
-- **Horseman(s):** Education, Taxes
-- **Summary:** Deduct up to $2,500 in student loan interest paid.
-- **Projected Savings:** Up to $875 (35% bracket × $2,500)
-- **Complexity:** 1/5
-- **Best For:** Anyone paying student loan interest
-- **Key Requirements:** Legal obligation to pay, income limits
-- **Implementation Plan:**
-  1. Receive Form 1098-E from lender
-  2. Claim deduction (even if not itemizing)
-  3. Reduces adjusted gross income
-- **Tax Code Reference:** IRC §221
-- **Example:** Pay $5K interest, deduct $2,500, save $875 at 35% rate.
-- **Disclaimer:** Income phase-out; above-the-line deduction.
-
-### Strategy E-6: Employer Tuition Reimbursement
-- **Horseman(s):** Education, Taxes
-- **Summary:** Receive up to $5,250 tax-free tuition assistance from employer.
-- **Projected Savings:** $1,837 (35% × $5,250)
-- **Complexity:** 1/5
-- **Best For:** Employees with tuition assistance benefits
-- **Key Requirements:** Employer program, job-related or any education
-- **Implementation Plan:**
-  1. Review employer education benefits
-  2. Enroll in qualifying courses
-  3. Submit for reimbursement
-  4. Exclude from income up to $5,250
-- **Tax Code Reference:** IRC §127
-- **Example:** $5,250 tuition reimbursement = $5,250 tax-free.
-- **Disclaimer:** Over $5,250 may be taxable (but deductible if job-related).
-
-### Strategy E-7: CLEP/AP Testing Strategy
-- **Horseman(s):** Education
-- **Summary:** Test out of college courses to save tuition and time.
-- **Projected Savings:** $5,000 - $30,000+
-- **Complexity:** 2/5
-- **Best For:** Self-motivated students willing to study independently
-- **Key Requirements:** Research which credits transfer, test preparation
-- **Implementation Plan:**
-  1. Identify target school's CLEP/AP acceptance policy
-  2. Study for relevant exams
-  3. Take CLEP ($90/exam) or AP exams
-  4. Earn credits without paying course tuition
-- **Tax Code Reference:** N/A
-- **Example:** 6 CLEP exams = 18 credits = $10K+ saved at state school.
-- **Disclaimer:** Not all schools accept all credits; check policies first.
-
-### Strategy E-8: Community College Transfer
-- **Horseman(s):** Education
-- **Summary:** Complete general education at community college before transferring to university.
-- **Projected Savings:** $20,000 - $80,000+
-- **Complexity:** 2/5
-- **Best For:** Students willing to start at community college
-- **Key Requirements:** Transfer agreement research, academic planning
-- **Implementation Plan:**
-  1. Research articulation agreements with target universities
-  2. Enroll in community college
-  3. Complete transferable general education courses
-  4. Apply to transfer with strong GPA
-- **Tax Code Reference:** N/A
-- **Example:** 2 years CC ($3K/year) + 2 years state U ($15K/year) vs. 4 years at U ($60K+ saved).
-- **Disclaimer:** Verify credit transfer; maintain strong GPA.
-
-### Strategy E-9: In-State Tuition Strategies
-- **Horseman(s):** Education
-- **Summary:** Establish residency to qualify for lower in-state tuition rates.
-- **Projected Savings:** $20,000 - $150,000+
-- **Complexity:** 3/5
-- **Best For:** Out-of-state students willing to plan ahead
-- **Key Requirements:** Residency requirements (usually 12 months), documentation
-- **Implementation Plan:**
-  1. Research target state's residency requirements
-  2. Establish domicile (driver's license, voter registration, etc.)
-  3. Work in-state for required period if needed
-  4. Apply for residency status
-  5. Pay in-state tuition
-- **Tax Code Reference:** N/A
-- **Example:** UC Berkeley in-state: $15K vs. out-of-state: $45K = $30K/year savings.
-- **Disclaimer:** States audit residency claims; must be genuine.
-
-### Strategy E-10: Work-Study Programs
-- **Horseman(s):** Education
-- **Summary:** Participate in Federal Work-Study for part-time employment while in school.
-- **Projected Savings:** $2,000 - $5,000 per year (earned)
-- **Complexity:** 1/5
-- **Best For:** Students with financial need
-- **Key Requirements:** FAFSA, financial need, enrollment
-- **Implementation Plan:**
-  1. Complete FAFSA
-  2. Accept work-study in financial aid package
-  3. Find work-study job on/off campus
-  4. Work part-time during school
-- **Tax Code Reference:** Work-study income excluded from need calculation
-- **Example:** Work 15 hours/week × $15/hour × 30 weeks = $6,750.
-- **Disclaimer:** Limited positions; must balance work and study.
-
-### Strategy E-11: Scholarship and Grant Maximization
-- **Horseman(s):** Education
-- **Summary:** Apply for multiple scholarships and grants to reduce tuition costs.
-- **Projected Savings:** $1,000 - full tuition
-- **Complexity:** 2/5
-- **Best For:** All students
-- **Key Requirements:** Research, applications, essays, deadlines
-- **Implementation Plan:**
-  1. Create scholarship search system (Fastweb, local sources)
-  2. Apply to 20+ scholarships
-  3. Tailor essays to each
-  4. Track deadlines rigorously
-  5. Accept and properly report scholarships
-- **Tax Code Reference:** Scholarships for tuition generally tax-free (IRC §117)
-- **Example:** 10 small scholarships of $1K each = $10K.
-- **Disclaimer:** Taxable if used for room/board; may affect other aid.
-
-### Strategy E-12: Graduate Assistantships
-- **Horseman(s):** Education
-- **Summary:** Work as graduate assistant for tuition waiver and stipend.
-- **Projected Savings:** $20,000 - $60,000+ per year
-- **Complexity:** 3/5
-- **Best For:** Graduate students
-- **Key Requirements:** Admission to graduate program, available positions
-- **Implementation Plan:**
-  1. Research GA positions in target programs
-  2. Apply directly to departments
-  3. Negotiate terms (tuition waiver, stipend, health insurance)
-  4. Maintain performance requirements
-- **Tax Code Reference:** Tuition waiver may be tax-free (IRC §117)
-- **Example:** Full tuition waiver + $20K stipend vs. paying $40K.
-- **Disclaimer:** Work requirements; may extend time to degree.
-
-### Strategy E-13: Military Education Benefits
-- **Horseman(s):** Education
-- **Summary:** Use GI Bill, Tuition Assistance, or ROTC for education funding.
-- **Projected Savings:** $50,000 - $200,000+
-- **Complexity:** 2/5
-- **Best For:** Military members, veterans, dependents
-- **Key Requirements:** Military service, eligibility verification
-- **Implementation Plan:**
-  1. Verify GI Bill eligibility (Post-9/11, Montgomery, etc.)
-  2. Apply for Certificate of Eligibility
-  3. Submit to school's VA office
-  4. Use benefits for tuition, books, housing
-- **Tax Code Reference:** GI Bill benefits are tax-free
-- **Example:** Post-9/11 GI Bill covers full tuition + housing allowance.
-- **Disclaimer:** Limited months of eligibility; transfer rules complex.
-
-### Strategy E-14: Income Share Agreements (ISA)
-- **Horseman(s):** Education
-- **Summary:** Pay for education with percentage of future income instead of loans.
-- **Projected Savings:** Variable (risk-sharing)
-- **Complexity:** 3/5
-- **Best For:** Students in high-earning fields with ISA options
-- **Key Requirements:** School offering ISA, understanding of terms
-- **Implementation Plan:**
-  1. Research schools offering ISAs
-  2. Compare ISA terms to traditional loans
-  3. Understand income threshold and percentage
-  4. Sign agreement
-  5. Pay percentage of income after graduation
-- **Tax Code Reference:** Tax treatment evolving
-- **Example:** Pay 10% of income for 5 years if earning above $40K.
-- **Disclaimer:** High earners may pay more than loans; read terms carefully.
-
-### Strategy E-15: 529 to Roth IRA Rollover
-- **Horseman(s):** Education, Taxes
-- **Summary:** Roll unused 529 funds to beneficiary's Roth IRA (starting 2024).
-- **Projected Savings:** Avoids 10% penalty on unused funds
-- **Complexity:** 2/5
-- **Best For:** Families with excess 529 funds
-- **Key Requirements:** 529 account 15+ years old, annual limits apply
-- **Implementation Plan:**
-  1. Verify 529 account age (15+ years)
-  2. Roll over up to annual Roth contribution limit
-  3. Lifetime limit of $35,000 per beneficiary
-  4. Beneficiary must have earned income
-- **Tax Code Reference:** SECURE 2.0 Act
-- **Example:** Roll $35K unused 529 to child's Roth IRA over several years.
-- **Disclaimer:** New rules; consult advisor for implementation.
-
-### Strategy E-16: Education IRA to 529 Transfer
-- **Horseman(s):** Education
-- **Summary:** Consolidate Coverdell ESA funds into 529 for simpler management.
-- **Projected Savings:** Simplification, continued tax-free growth
-- **Complexity:** 1/5
-- **Best For:** Those with both Coverdell and 529 accounts
-- **Key Requirements:** Same beneficiary, age considerations
-- **Implementation Plan:**
-  1. Review Coverdell balance
-  2. Roll over to 529 before beneficiary turns 30
-  3. Consolidate accounts
-- **Tax Code Reference:** IRC §529, §530
-- **Example:** Move $20K Coverdell to 529 for continued growth.
-- **Disclaimer:** Must be used by 30 (Coverdell) unless rolled over.
-
-### Strategy E-17: Kiddie Tax Planning for Education
-- **Horseman(s):** Education, Taxes
-- **Summary:** Structure investment accounts to minimize kiddie tax on education savings.
-- **Projected Savings:** $500 - $5,000+
-- **Complexity:** 3/5
-- **Best For:** Families with significant assets in child's name
-- **Key Requirements:** Understanding of kiddie tax rules
-- **Implementation Plan:**
-  1. Understand kiddie tax thresholds
-  2. Consider shifting to 529 or UTMA
-  3. Time asset sales for child's low-income years
-  4. Consider municipal bonds (tax-exempt)
-- **Tax Code Reference:** IRC §1(g)
-- **Example:** Keep child's investment income under $2,500 to avoid parent's rate.
-- **Disclaimer:** Kiddie tax applies until age 19 (24 if student).
-
-### Strategy E-18: Tuition and Fees Deduction Alternative
-- **Horseman(s):** Education, Taxes
-- **Summary:** Evaluate deduction vs. credit for education expenses.
-- **Projected Savings:** Varies based on situation
-- **Complexity:** 2/5
-- **Best For:** Those who don't qualify for education credits
-- **Key Requirements:** Tax situation analysis
-- **Implementation Plan:**
-  1. Calculate education credits eligibility
-  2. If ineligible, explore other deductions
-  3. Maximize QBI or business education deductions if applicable
-  4. Consider timing of payments
-- **Tax Code Reference:** IRC §25A, §222 (expired but may return)
-- **Example:** If over income limit for AOTC, maximize other tax strategies.
-- **Disclaimer:** Laws change; consult current tax code.
-
-### Strategy E-19: Educational Travel Deductions (Business)
-- **Horseman(s):** Education, Taxes
-- **Summary:** Deduct education-related travel as business expense.
-- **Projected Savings:** $500 - $5,000+
-- **Complexity:** 3/5
-- **Best For:** Self-employed/business owners attending conferences/training
-- **Key Requirements:** Business purpose, maintains/improves current skills
-- **Implementation Plan:**
-  1. Attend industry conferences/training
-  2. Document business purpose
-  3. Keep receipts for travel, lodging, registration
-  4. Deduct as business expense
-- **Tax Code Reference:** IRC §162 (trade or business expenses)
-- **Example:** $3K conference + $1.5K travel = $4.5K deduction.
-- **Disclaimer:** Must maintain/improve skills in current business; not for new career.
-
-### Strategy E-20: Grandparent Direct Payment Strategy
-- **Horseman(s):** Education, Taxes
-- **Summary:** Grandparents pay tuition directly to institution to avoid gift tax.
-- **Projected Savings:** Estate tax savings + education funding
-- **Complexity:** 2/5
-- **Best For:** Grandparents with assets wanting to help with education
-- **Key Requirements:** Payment directly to institution, tuition only
-- **Implementation Plan:**
-  1. Identify tuition amount
-  2. Pay directly to school (not to parent/student)
-  3. Unlimited gift tax exclusion for direct tuition payments
-  4. Can still give $18K annual gift separately
-- **Tax Code Reference:** IRC §2503(e)
-- **Example:** Grandparent pays $50K tuition directly + $18K gift = $68K transferred tax-free.
-- **Disclaimer:** Tuition only; not room/board. May affect financial aid.
-
----
-
-## IMPORTANT NOTES
-
-- **Disclaimer**: This is educational information only. These are sample strategies and not tax, legal, or financial advice. Results are not guaranteed and depend on individual circumstances. Always consult a qualified professional before implementing any strategy.
-- **For personalized guidance**: Visit rprx4life.com to speak with a qualified RPRx Advisor.
-- **Dollar Impact**: Savings ranges are estimates based on typical scenarios. Your actual results may vary significantly.
-- **Complexity Rating**: 1 = Simple (DIY possible), 5 = Complex (professional help recommended)
-`;
-
-const SYSTEM_PROMPT = `You are an expert RPRx financial strategy assistant.
-
-1. Greet the user and explain you will help them find the best strategies to reduce the impact of the Four Horsemen (Interest, Taxes, Insurance, Education) on their finances.
-
-2. Ask the user the intake questions below, one at a time, and collect their answers.
-
-3. Analyze their responses and select the top 20 most relevant strategies from the knowledge base, prioritizing dollar impact, ease of implementation, and applicability.
-
-4. Present the strategies in a clear, organized list, with summaries and projected savings.
-
-5. Invite the user to select any strategies for which they want a detailed implementation plan, and provide step-by-step instructions for those (using the KB implementation plans).
-
-6. Remind the user that these are sample strategies, not tax or legal advice, and recommend consulting an RPRx advisor for full support. For more help and to speak with a qualified RPRx Advisor, visit: rprx4life.com
-
-7. Always include a disclaimer and offer to answer follow-up questions.
-
-8. Do not create any images while responding. Only create an image if explicitly asked by the user for their own data or strategies.
-
-## INTAKE QUESTIONS (ASK ONE AT A TIME)
-
-### A. User Profile
-- Which of the following best describes you? (Select all that apply)
-  - Business Owner
-  - Retiree/Grandparent
-  - Salesperson
-  - Wage Earner
-  - Investor
-  - Farmer
-  - Non-Profit
-
-- What are your main financial goals? (Select all that apply)
-  - Increase Cash Flow
-  - Reduce Taxes
-  - Save for Education
-  - Improve Retirement Readiness
-  - Reduce Insurance Costs
-  - Other (please specify)
-
-### B. Financial Snapshot
-- What is your approximate annual household income?
-  - <$100K
-  - $100–250K
-  - $250–500K
-  - $500K–$1M
-  - $1M+
-
-- What is your total household debt (mortgage, loans, credit cards, etc.)?
-  - <$50K
-  - $50–200K
-  - $200–500K
-  - $500K+
-
-- Do you have children or dependents? (Y/N)
-  - If yes: How many, and what are their ages?
-
-- Are you currently paying for or planning for education expenses? (K-12, college, etc.)
-
-- What are your biggest financial pain points or concerns? (Open-ended)
-
-### C. Optional
-- Would you like to upload your tax return for a more detailed analysis? (For future phases - not currently available)
-
-## STRATEGY OUTPUT FORMAT (TOP 20)
-
-When presenting the top 20 strategies, use a NUMBERED LIST format (not a table) for better readability:
+interface Strategy {
+  id: string;
+  horseman: string[];
+  name: string;
+  summary: string;
+  savings: string;
+  complexity: number;
+  bestFor: string;
+  requirements: string;
+  implementationPlan: string[];
+  taxReference: string;
+  example: string;
+  disclaimer: string;
+  keywords: string[];
+}
+
+const STRATEGIES: Strategy[] = [
+  // INTEREST STRATEGIES (10)
+  {
+    id: "I-1",
+    horseman: ["Interest"],
+    name: "Equity Recapture (Mortgage Acceleration)",
+    summary: "Make extra payments toward mortgage principal to reduce total interest paid over the life of the loan.",
+    savings: "$50,000 - $655,000+",
+    complexity: 2,
+    bestFor: "Homeowners with stable income and extra cash flow",
+    requirements: "Active mortgage, discretionary income for extra payments",
+    implementationPlan: [
+      "Review current mortgage terms (rate, balance, remaining term)",
+      "Calculate impact of additional principal payments",
+      "Set up automatic extra principal payments (monthly or bi-weekly)",
+      "Track progress and recalculate periodically"
+    ],
+    taxReference: "N/A (interest savings, not tax deduction)",
+    example: "$400K mortgage at 6% over 30 years = $863K total. Extra $500/month saves $200K+ in interest.",
+    disclaimer: "Results depend on loan terms and payment consistency.",
+    keywords: ["mortgage", "home", "house", "principal", "payment", "loan", "interest", "homeowner", "equity", "acceleration"]
+  },
+  {
+    id: "I-2",
+    horseman: ["Interest"],
+    name: "Refinance to Lower Rate",
+    summary: "Refinance existing mortgage or loans to a lower interest rate to reduce monthly payments and total interest.",
+    savings: "$20,000 - $150,000+",
+    complexity: 2,
+    bestFor: "Borrowers with improved credit or when market rates drop",
+    requirements: "Good credit score, sufficient equity, closing cost funds",
+    implementationPlan: [
+      "Check current rates vs. your existing rate",
+      "Calculate break-even point for closing costs",
+      "Shop multiple lenders for best terms",
+      "Complete application and appraisal process",
+      "Close on new loan"
+    ],
+    taxReference: "N/A",
+    example: "Refinancing from 7% to 5.5% on $300K saves $100+ monthly.",
+    disclaimer: "Closing costs apply; ensure break-even makes sense.",
+    keywords: ["refinance", "rate", "mortgage", "loan", "credit", "lender", "interest", "lower", "payment"]
+  },
+  {
+    id: "I-3",
+    horseman: ["Interest"],
+    name: "HELOC for Debt Consolidation",
+    summary: "Use Home Equity Line of Credit to consolidate high-interest debt (credit cards, personal loans) at lower rates.",
+    savings: "$5,000 - $50,000+",
+    complexity: 2,
+    bestFor: "Homeowners with significant equity and high-interest debt",
+    requirements: "Home equity (typically 15-20%), good credit",
+    implementationPlan: [
+      "Calculate total high-interest debt",
+      "Determine available home equity",
+      "Apply for HELOC with competitive rate",
+      "Pay off high-interest debts",
+      "Create payment plan for HELOC"
+    ],
+    taxReference: "HELOC interest may be deductible if used for home improvements (IRC §163)",
+    example: "Consolidating $30K at 22% to HELOC at 8% saves $4,200/year in interest.",
+    disclaimer: "Home is collateral; risk of foreclosure if payments missed.",
+    keywords: ["heloc", "equity", "debt", "consolidation", "credit card", "loan", "home", "interest", "consolidate"]
+  },
+  {
+    id: "I-4",
+    horseman: ["Interest"],
+    name: "Cash Value Life Insurance Loans",
+    summary: "Borrow against cash value of permanent life insurance policy at favorable rates, often with flexible repayment.",
+    savings: "$2,000 - $30,000+",
+    complexity: 3,
+    bestFor: "Those with funded whole/universal life policies needing liquidity",
+    requirements: "Permanent life insurance with accumulated cash value",
+    implementationPlan: [
+      "Review policy's cash value and loan provisions",
+      "Request loan from insurance company",
+      "Use funds as needed (no restrictions)",
+      "Establish repayment plan or let interest capitalize"
+    ],
+    taxReference: "Policy loans are generally tax-free (IRC §72(e))",
+    example: "Borrow $50K at 5% vs. bank loan at 10% saves $2,500/year.",
+    disclaimer: "Unpaid loans reduce death benefit; may trigger taxes if policy lapses.",
+    keywords: ["life insurance", "cash value", "whole life", "universal life", "policy loan", "borrow", "liquidity"]
+  },
+  {
+    id: "I-5",
+    horseman: ["Interest"],
+    name: "0% Balance Transfer Cards",
+    summary: "Transfer high-interest credit card balances to cards offering 0% introductory APR.",
+    savings: "$500 - $5,000+",
+    complexity: 1,
+    bestFor: "Those with good credit carrying credit card balances",
+    requirements: "Good/excellent credit score, discipline to pay off during intro period",
+    implementationPlan: [
+      "Research 0% balance transfer offers",
+      "Apply for card with longest intro period",
+      "Transfer balances (watch for transfer fees)",
+      "Create payoff plan before intro period ends"
+    ],
+    taxReference: "N/A",
+    example: "Transfer $10K at 22% to 0% for 18 months saves $3,300 in interest.",
+    disclaimer: "Rate jumps after intro period; transfer fees (typically 3-5%) apply.",
+    keywords: ["balance transfer", "credit card", "apr", "0%", "zero percent", "debt", "interest"]
+  },
+  {
+    id: "I-6",
+    horseman: ["Interest"],
+    name: "Negotiate Lower Interest Rates",
+    summary: "Contact lenders to negotiate lower interest rates on existing credit cards and loans.",
+    savings: "$200 - $3,000+",
+    complexity: 1,
+    bestFor: "Customers with good payment history",
+    requirements: "Strong payment history, competitive offers from other lenders",
+    implementationPlan: [
+      "Review current rates on all accounts",
+      "Research competitor rates",
+      "Call each lender's retention department",
+      "Present case for rate reduction",
+      "Document new rates"
+    ],
+    taxReference: "N/A",
+    example: "Reducing card rate from 24% to 18% on $8K balance saves $480/year.",
+    disclaimer: "Not guaranteed; depends on creditworthiness and lender policy.",
+    keywords: ["negotiate", "rate", "credit card", "lender", "lower", "interest", "call"]
+  },
+  {
+    id: "I-7",
+    horseman: ["Interest"],
+    name: "Student Loan Refinancing",
+    summary: "Refinance federal or private student loans to lower rate through private lenders.",
+    savings: "$5,000 - $40,000+",
+    complexity: 2,
+    bestFor: "Graduates with stable income and good credit",
+    requirements: "Steady income, good credit, graduation from eligible program",
+    implementationPlan: [
+      "Gather current loan details and rates",
+      "Check rates from multiple refinance lenders",
+      "Compare total cost including any fees",
+      "Apply with chosen lender",
+      "Set up autopay for additional rate reduction"
+    ],
+    taxReference: "Student loan interest deduction up to $2,500 (IRC §221)",
+    example: "Refinancing $80K from 7% to 4% over 10 years saves $15K+.",
+    disclaimer: "Refinancing federal loans loses federal benefits (PSLF, IDR plans).",
+    keywords: ["student loan", "college", "university", "education debt", "refinance", "graduate", "federal loan"]
+  },
+  {
+    id: "I-8",
+    horseman: ["Interest"],
+    name: "Auto Loan Refinancing",
+    summary: "Refinance existing auto loan to lower rate to reduce monthly payments and total interest.",
+    savings: "$500 - $3,000+",
+    complexity: 1,
+    bestFor: "Those with improved credit since original loan",
+    requirements: "Vehicle with sufficient equity, improved credit",
+    implementationPlan: [
+      "Check current loan balance and rate",
+      "Get quotes from banks, credit unions, online lenders",
+      "Compare offers considering any fees",
+      "Complete application with new lender",
+      "New lender pays off old loan"
+    ],
+    taxReference: "N/A",
+    example: "Refinancing $25K from 8% to 4% saves $50+/month.",
+    disclaimer: "Extending term may increase total interest despite lower rate.",
+    keywords: ["auto loan", "car loan", "vehicle", "refinance", "car payment", "auto"]
+  },
+  {
+    id: "I-9",
+    horseman: ["Interest"],
+    name: "Biweekly Payment Strategy",
+    summary: "Split monthly payment in half and pay every two weeks, resulting in one extra payment per year.",
+    savings: "$10,000 - $50,000+",
+    complexity: 1,
+    bestFor: "Any borrower with monthly payment obligations",
+    requirements: "Lender that accepts biweekly payments, consistent income",
+    implementationPlan: [
+      "Confirm lender accepts biweekly payments",
+      "Set up automatic biweekly withdrawals",
+      "Ensure extra payment applies to principal",
+      "Track loan payoff acceleration"
+    ],
+    taxReference: "N/A",
+    example: "On $300K mortgage, biweekly payments can pay off 4+ years early.",
+    disclaimer: "Some lenders charge fees for biweekly programs.",
+    keywords: ["biweekly", "payment", "mortgage", "accelerate", "payoff", "extra payment"]
+  },
+  {
+    id: "I-10",
+    horseman: ["Interest"],
+    name: "Round-Up Payment Strategy",
+    summary: "Round up monthly loan payments to nearest $50 or $100 to accelerate principal paydown.",
+    savings: "$5,000 - $30,000+",
+    complexity: 1,
+    bestFor: "Anyone with loan payments",
+    requirements: "Discretionary income for slightly higher payments",
+    implementationPlan: [
+      "Calculate rounded-up payment amount",
+      "Specify extra goes to principal",
+      "Set up automatic payment at new amount",
+      "Track accelerated payoff date"
+    ],
+    taxReference: "N/A",
+    example: "Rounding $1,847 payment to $1,900 adds $636/year to principal.",
+    disclaimer: "Minimal impact individually but compounds over time.",
+    keywords: ["round up", "payment", "principal", "extra", "loan", "payoff"]
+  },
+
+  // TAX STRATEGIES (20)
+  {
+    id: "T-1",
+    horseman: ["Taxes"],
+    name: "Maximize 401(k) Contributions",
+    summary: "Contribute maximum allowed to employer 401(k) to reduce current taxable income.",
+    savings: "$2,000 - $50,000+ (depends on tax bracket)",
+    complexity: 1,
+    bestFor: "Employees with 401(k) access",
+    requirements: "Employer-sponsored 401(k), earned income",
+    implementationPlan: [
+      "Determine contribution limit ($23,000 for 2024, +$7,500 catch-up if 50+)",
+      "Calculate percentage needed to max out",
+      "Update payroll contribution election",
+      "Maximize any employer match first"
+    ],
+    taxReference: "IRC §401(k), §402(g)",
+    example: "$23K contribution in 32% bracket saves $7,360 in taxes.",
+    disclaimer: "Funds locked until 59½ (with exceptions); required distributions start at 73.",
+    keywords: ["401k", "retirement", "contribution", "employer", "tax deduction", "pretax", "payroll"]
+  },
+  {
+    id: "T-2",
+    horseman: ["Taxes", "Insurance"],
+    name: "Health Savings Account (HSA) Triple Tax Benefit",
+    summary: "Contribute to HSA for tax-deductible contributions, tax-free growth, and tax-free qualified withdrawals.",
+    savings: "$1,000 - $15,000+ annually",
+    complexity: 2,
+    bestFor: "Those with high-deductible health plans (HDHPs)",
+    requirements: "HDHP coverage, no Medicare enrollment",
+    implementationPlan: [
+      "Confirm HDHP enrollment",
+      "Open HSA if not provided by employer",
+      "Contribute max ($4,150 individual/$8,300 family for 2024)",
+      "Invest HSA funds for long-term growth",
+      "Save receipts for future tax-free withdrawals"
+    ],
+    taxReference: "IRC §223",
+    example: "Family contributing $8,300 in 24% bracket saves $1,992 + payroll taxes.",
+    disclaimer: "Non-qualified withdrawals incur taxes and 20% penalty before 65.",
+    keywords: ["hsa", "health", "medical", "hdhp", "deductible", "healthcare", "triple tax"]
+  },
+  {
+    id: "T-3",
+    horseman: ["Taxes"],
+    name: "Section 179 Deduction",
+    summary: "Deduct full cost of qualifying business equipment in year of purchase instead of depreciating.",
+    savings: "$5,000 - $300,000+ (depends on equipment cost)",
+    complexity: 3,
+    bestFor: "Business owners purchasing equipment",
+    requirements: "Business income, qualifying property, placed in service during tax year",
+    implementationPlan: [
+      "Identify qualifying equipment purchases",
+      "Confirm 179 limit ($1.16M for 2024) and phase-out threshold",
+      "Elect 179 on tax return (Form 4562)",
+      "Document business use percentage"
+    ],
+    taxReference: "IRC §179",
+    example: "$100K equipment purchase in 35% bracket saves $35K in taxes immediately.",
+    disclaimer: "Cannot exceed business income; some property types excluded.",
+    keywords: ["section 179", "equipment", "depreciation", "business", "deduction", "purchase", "asset"]
+  },
+  {
+    id: "T-4",
+    horseman: ["Taxes"],
+    name: "Qualified Business Income (QBI) Deduction",
+    summary: "Deduct up to 20% of qualified business income from pass-through entities.",
+    savings: "$2,000 - $100,000+",
+    complexity: 3,
+    bestFor: "Sole proprietors, S-corp/partnership owners, some trusts",
+    requirements: "Pass-through income, income thresholds, non-SSTB or within limits",
+    implementationPlan: [
+      "Calculate qualified business income",
+      "Determine if SSTB limitations apply",
+      "Calculate W-2 wage/capital limitations if over threshold",
+      "Claim deduction on Form 8995 or 8995-A"
+    ],
+    taxReference: "IRC §199A",
+    example: "$200K QBI = $40K deduction = $12K+ tax savings.",
+    disclaimer: "Complex limitations for high earners and specified service businesses.",
+    keywords: ["qbi", "pass-through", "s-corp", "sole proprietor", "199a", "business income", "deduction"]
+  },
+  {
+    id: "T-5",
+    horseman: ["Taxes"],
+    name: "Roth IRA Conversion Strategy",
+    summary: "Convert traditional IRA to Roth in low-income years to reduce future required distributions and tax burden.",
+    savings: "$10,000 - $500,000+ (lifetime)",
+    complexity: 4,
+    bestFor: "Those expecting higher future tax rates or with low-income years",
+    requirements: "Traditional IRA or 401(k) funds, ability to pay conversion taxes",
+    implementationPlan: [
+      "Analyze current vs. expected future tax brackets",
+      "Calculate optimal conversion amount to stay in current bracket",
+      "Execute partial or full conversion",
+      "Pay estimated taxes (don't withhold from conversion)",
+      "Repeat annually as appropriate"
+    ],
+    taxReference: "IRC §408A",
+    example: "Convert $100K in 22% bracket, save 10%+ if future rate is 32%.",
+    disclaimer: "Conversion is taxable; no 5-year holding on contributions but earnings.",
+    keywords: ["roth", "conversion", "ira", "traditional", "retirement", "tax bracket", "rmd"]
+  },
+  {
+    id: "T-6",
+    horseman: ["Taxes"],
+    name: "Charitable Remainder Trust (CRT)",
+    summary: "Transfer appreciated assets to CRT for income stream, avoid capital gains, and receive charitable deduction.",
+    savings: "$50,000 - $1,000,000+",
+    complexity: 5,
+    bestFor: "High-net-worth individuals with appreciated assets and charitable intent",
+    requirements: "Appreciated assets, irrevocable transfer, charitable remainder",
+    implementationPlan: [
+      "Consult with estate planning attorney",
+      "Choose CRT type (annuity or unitrust)",
+      "Transfer appreciated assets to trust",
+      "Receive income stream for term/life",
+      "Remainder goes to charity at trust termination"
+    ],
+    taxReference: "IRC §664",
+    example: "Transfer $1M stock with $100K basis; avoid $180K capital gains, receive $50K+ annual income.",
+    disclaimer: "Irrevocable; complex setup and administration costs.",
+    keywords: ["charitable", "trust", "crt", "appreciated", "capital gains", "donation", "charity", "estate"]
+  },
+  {
+    id: "T-7",
+    horseman: ["Taxes"],
+    name: "Donor-Advised Fund (DAF) Bunching",
+    summary: "Bunch multiple years of charitable donations into one year via DAF to exceed standard deduction.",
+    savings: "$2,000 - $20,000+",
+    complexity: 2,
+    bestFor: "Charitable givers whose annual donations don't exceed standard deduction",
+    requirements: "Charitable intent, funds to bunch",
+    implementationPlan: [
+      "Calculate multiple years of intended giving",
+      "Open DAF account",
+      "Contribute bunched amount in one tax year",
+      "Itemize deductions that year",
+      "Distribute grants to charities over time"
+    ],
+    taxReference: "IRC §170",
+    example: "Bunch 3 years ($15K/year = $45K) to itemize vs. standard deduction.",
+    disclaimer: "Contribution to DAF is irrevocable (but grants are flexible).",
+    keywords: ["donor advised", "daf", "charitable", "donation", "bunching", "itemize", "standard deduction"]
+  },
+  {
+    id: "T-8",
+    horseman: ["Taxes"],
+    name: "Qualified Opportunity Zone Investment",
+    summary: "Defer and reduce capital gains by investing in Qualified Opportunity Zone funds.",
+    savings: "$10,000 - $500,000+",
+    complexity: 5,
+    bestFor: "Those with significant capital gains seeking deferral",
+    requirements: "Capital gain within 180 days, investment in QOZ fund",
+    implementationPlan: [
+      "Realize capital gain from sale",
+      "Invest gain in QOZ fund within 180 days",
+      "Hold for 10+ years for maximum benefit",
+      "Report on Form 8949 and 8997"
+    ],
+    taxReference: "IRC §1400Z-2",
+    example: "Invest $500K gain, hold 10 years, pay zero tax on QOZ appreciation.",
+    disclaimer: "Complex rules; risky investments; deadline sensitive.",
+    keywords: ["opportunity zone", "qoz", "capital gains", "deferral", "investment", "real estate"]
+  },
+  {
+    id: "T-9",
+    horseman: ["Taxes"],
+    name: "Cost Segregation Study",
+    summary: "Accelerate depreciation on commercial/rental real estate by reclassifying components to shorter lives.",
+    savings: "$25,000 - $500,000+",
+    complexity: 4,
+    bestFor: "Commercial/rental property owners",
+    requirements: "Real estate purchase or improvement, engineering study",
+    implementationPlan: [
+      "Engage cost segregation specialist",
+      "Complete engineering-based study",
+      "Reclassify components (5, 7, 15-year vs. 27.5/39-year)",
+      "Claim accelerated depreciation",
+      "Consider bonus depreciation eligibility"
+    ],
+    taxReference: "IRC §168",
+    example: "$2M property may yield $200K+ first-year deductions.",
+    disclaimer: "May increase depreciation recapture on sale; professional study costs $5K-$15K.",
+    keywords: ["cost segregation", "depreciation", "real estate", "rental", "commercial", "property", "accelerate"]
+  },
+  {
+    id: "T-10",
+    horseman: ["Taxes"],
+    name: "Augusta Rule (Section 280A)",
+    summary: "Rent your home to your business for up to 14 days tax-free for meetings/events.",
+    savings: "$2,000 - $20,000+",
+    complexity: 2,
+    bestFor: "Business owners with suitable home spaces",
+    requirements: "Legitimate business purpose, fair market rent documentation",
+    implementationPlan: [
+      "Document fair market rental rates (comparable venues)",
+      "Hold legitimate business meetings/events at home",
+      "Business pays rent to homeowner",
+      "Business deducts rent; homeowner excludes income"
+    ],
+    taxReference: "IRC §280A(g)",
+    example: "14 days × $1,500/day = $21,000 tax-free to homeowner.",
+    disclaimer: "Must be legitimate business use; document extensively.",
+    keywords: ["augusta rule", "280a", "home rental", "business", "meeting", "tax-free", "14 days"]
+  },
+  {
+    id: "T-11",
+    horseman: ["Taxes"],
+    name: "Real Estate Professional Status",
+    summary: "Qualify as real estate professional to deduct rental losses against ordinary income without passive activity limits.",
+    savings: "$10,000 - $200,000+",
+    complexity: 4,
+    bestFor: "Those heavily involved in real estate with other high income",
+    requirements: "750+ hours in real estate, more than half of personal services",
+    implementationPlan: [
+      "Track hours meticulously (use time log)",
+      "Meet material participation in each rental (or elect grouping)",
+      "Claim losses against ordinary income",
+      "Document all real estate activities"
+    ],
+    taxReference: "IRC §469",
+    example: "Deduct $100K rental losses against W-2 income = $32K+ tax savings.",
+    disclaimer: "High audit risk; documentation is critical.",
+    keywords: ["real estate professional", "rental", "passive", "loss", "469", "hours", "material participation"]
+  },
+  {
+    id: "T-12",
+    horseman: ["Taxes"],
+    name: "Backdoor Roth IRA",
+    summary: "High earners contribute to traditional IRA then convert to Roth to bypass income limits.",
+    savings: "$5,000 - $100,000+ (lifetime)",
+    complexity: 3,
+    bestFor: "High earners above Roth IRA income limits",
+    requirements: "No/minimal existing pre-tax IRA balances (to avoid pro-rata rule)",
+    implementationPlan: [
+      "Contribute non-deductible to traditional IRA",
+      "Convert immediately to Roth",
+      "File Form 8606",
+      "Repeat annually"
+    ],
+    taxReference: "IRC §408A",
+    example: "Convert $7,000/year for 20 years = $140K+ in Roth.",
+    disclaimer: "Pro-rata rule applies if you have other traditional IRAs.",
+    keywords: ["backdoor roth", "roth ira", "high income", "conversion", "income limit", "pro-rata"]
+  },
+  {
+    id: "T-13",
+    horseman: ["Taxes"],
+    name: "Tax Loss Harvesting",
+    summary: "Sell investments at a loss to offset gains and reduce tax liability.",
+    savings: "$1,000 - $50,000+",
+    complexity: 2,
+    bestFor: "Investors with taxable accounts and realized gains",
+    requirements: "Taxable investment account, losses available",
+    implementationPlan: [
+      "Review portfolio for positions at a loss",
+      "Sell losing positions to realize losses",
+      "Offset gains or deduct up to $3K against income",
+      "Reinvest in similar (not identical) investment",
+      "Avoid wash sale rule (30 days)"
+    ],
+    taxReference: "IRC §1211, §1091 (wash sale)",
+    example: "$20K loss offsets $20K gain = $3K-$4K tax savings.",
+    disclaimer: "Wash sale rule prohibits buying substantially identical securities within 30 days.",
+    keywords: ["tax loss", "harvesting", "capital gains", "investment", "wash sale", "offset", "portfolio"]
+  },
+  {
+    id: "T-14",
+    horseman: ["Taxes"],
+    name: "S-Corp Election for Self-Employment Tax Savings",
+    summary: "Elect S-corp status to split income between salary and distributions, reducing self-employment tax.",
+    savings: "$5,000 - $30,000+ annually",
+    complexity: 3,
+    bestFor: "Self-employed earning $50K+ annually",
+    requirements: "Single-member LLC or eligible entity, reasonable salary",
+    implementationPlan: [
+      "File Form 2553 for S-corp election",
+      "Set up payroll for reasonable salary",
+      "Take remaining profits as distributions",
+      "File S-corp return (Form 1120-S)"
+    ],
+    taxReference: "IRC §1361, §1362",
+    example: "$150K profit: $80K salary + $70K distribution saves $10K+ in FICA.",
+    disclaimer: "Must pay reasonable salary; payroll compliance required.",
+    keywords: ["s-corp", "self-employment", "llc", "payroll", "fica", "distribution", "salary"]
+  },
+  {
+    id: "T-15",
+    horseman: ["Taxes"],
+    name: "Home Office Deduction",
+    summary: "Deduct home office expenses if you use part of your home regularly and exclusively for business.",
+    savings: "$500 - $5,000+",
+    complexity: 2,
+    bestFor: "Self-employed individuals working from home",
+    requirements: "Regular and exclusive use for business, principal place of business",
+    implementationPlan: [
+      "Measure square footage of office space",
+      "Calculate percentage of home used for business",
+      "Choose simplified ($5/sq ft up to 300 sq ft) or actual method",
+      "Document home expenses (mortgage, utilities, etc.)"
+    ],
+    taxReference: "IRC §280A",
+    example: "300 sq ft × $5 = $1,500 deduction (simplified).",
+    disclaimer: "Employees cannot claim (post-2017); must meet exclusive use test.",
+    keywords: ["home office", "work from home", "self-employed", "deduction", "280a", "remote work"]
+  },
+  {
+    id: "T-16",
+    horseman: ["Taxes"],
+    name: "Depreciation of Rental Property",
+    summary: "Deduct annual depreciation on residential (27.5 years) or commercial (39 years) rental property.",
+    savings: "$3,000 - $50,000+ annually",
+    complexity: 2,
+    bestFor: "Rental property owners",
+    requirements: "Rental property in service, proper cost basis calculation",
+    implementationPlan: [
+      "Calculate property cost basis (purchase price - land value + improvements)",
+      "Divide by 27.5 (residential) or 39 (commercial)",
+      "Claim annual depreciation on Schedule E",
+      "Track accumulated depreciation"
+    ],
+    taxReference: "IRC §168",
+    example: "$300K building / 27.5 years = $10,909 annual deduction.",
+    disclaimer: "Depreciation recaptured at 25% on sale.",
+    keywords: ["depreciation", "rental", "property", "27.5", "real estate", "landlord", "schedule e"]
+  },
+  {
+    id: "T-17",
+    horseman: ["Taxes"],
+    name: "Charitable Stock Donation",
+    summary: "Donate appreciated stock to charity to avoid capital gains and receive full fair market value deduction.",
+    savings: "$2,000 - $100,000+",
+    complexity: 2,
+    bestFor: "Those with appreciated securities and charitable intent",
+    requirements: "Appreciated stock held 1+ year, qualified charity",
+    implementationPlan: [
+      "Identify appreciated securities",
+      "Confirm charity accepts stock donations",
+      "Transfer shares directly to charity (don't sell first)",
+      "Claim fair market value as deduction"
+    ],
+    taxReference: "IRC §170",
+    example: "$50K stock with $10K basis: avoid $8K capital gains + $12K+ tax deduction.",
+    disclaimer: "Must hold 1+ year for full benefit; deduction limited to 30% of AGI.",
+    keywords: ["stock donation", "charitable", "appreciated", "capital gains", "donation", "securities"]
+  },
+  {
+    id: "T-18",
+    horseman: ["Taxes"],
+    name: "1031 Like-Kind Exchange",
+    summary: "Defer capital gains on investment property by exchanging into similar property.",
+    savings: "$20,000 - $500,000+",
+    complexity: 4,
+    bestFor: "Real estate investors upgrading or diversifying",
+    requirements: "Investment/business property, qualified intermediary, strict timelines",
+    implementationPlan: [
+      "Engage qualified intermediary before sale",
+      "Sell relinquished property",
+      "Identify replacement property within 45 days",
+      "Close on replacement within 180 days"
+    ],
+    taxReference: "IRC §1031",
+    example: "$200K gain deferred = $60K+ immediate tax savings.",
+    disclaimer: "Strict rules; must use qualified intermediary; personal property excluded.",
+    keywords: ["1031", "exchange", "like-kind", "real estate", "deferral", "investment property", "swap"]
+  },
+  {
+    id: "T-19",
+    horseman: ["Taxes"],
+    name: "Installment Sale",
+    summary: "Spread capital gains over multiple years by receiving sale proceeds over time.",
+    savings: "$5,000 - $100,000+",
+    complexity: 3,
+    bestFor: "Those selling high-value assets wanting to manage tax brackets",
+    requirements: "Seller financing, installment payments over 2+ years",
+    implementationPlan: [
+      "Structure sale with installment payments",
+      "Calculate gross profit percentage",
+      "Report gain proportionally each year received",
+      "File Form 6252"
+    ],
+    taxReference: "IRC §453",
+    example: "Spread $500K gain over 5 years to stay in lower bracket.",
+    disclaimer: "Interest income is taxable; buyer credit risk.",
+    keywords: ["installment", "sale", "spread", "capital gains", "payments", "seller financing"]
+  },
+  {
+    id: "T-20",
+    horseman: ["Taxes"],
+    name: "Maximize Retirement Plan Contributions",
+    summary: "Maximize contributions across all available retirement accounts (401k, IRA, SEP, Solo 401k).",
+    savings: "$5,000 - $100,000+ annually",
+    complexity: 2,
+    bestFor: "High earners with multiple income sources",
+    requirements: "Eligible retirement plans, earned income",
+    implementationPlan: [
+      "Identify all available plans (employer + personal)",
+      "Calculate maximum contribution for each",
+      "Prioritize employer match first",
+      "Maximize HSA if eligible",
+      "Fund remaining accounts in order of tax benefit"
+    ],
+    taxReference: "IRC §401(k), §408, §408(k)",
+    example: "Max 401k + Solo 401k + HSA = $60K+ pre-tax savings.",
+    disclaimer: "Contribution limits vary by plan; coordination rules apply.",
+    keywords: ["retirement", "contribution", "401k", "ira", "sep", "solo 401k", "maximize", "pretax"]
+  },
+
+  // INSURANCE STRATEGIES (20)
+  {
+    id: "INS-1",
+    horseman: ["Insurance"],
+    name: "Shop Insurance Annually",
+    summary: "Compare insurance quotes annually to ensure competitive rates across all policies.",
+    savings: "$500 - $5,000+ annually",
+    complexity: 1,
+    bestFor: "Anyone with insurance policies",
+    requirements: "Current policy information, time to compare",
+    implementationPlan: [
+      "List all current policies and premiums",
+      "Get quotes from 3-5 competing insurers",
+      "Compare coverage levels and exclusions",
+      "Negotiate with current insurer or switch"
+    ],
+    taxReference: "N/A",
+    example: "Switching auto and home saves $800-$1,500/year average.",
+    disclaimer: "Ensure adequate coverage; cheapest isn't always best.",
+    keywords: ["shop", "compare", "quote", "insurance", "premium", "rate", "switch"]
+  },
+  {
+    id: "INS-2",
+    horseman: ["Insurance"],
+    name: "Increase Deductibles",
+    summary: "Raise deductibles on auto, home, and health insurance to lower premiums.",
+    savings: "$300 - $2,000+ annually",
+    complexity: 1,
+    bestFor: "Those with emergency savings who rarely file claims",
+    requirements: "Emergency fund to cover higher deductible",
+    implementationPlan: [
+      "Review current deductibles across policies",
+      "Calculate premium savings for higher deductibles",
+      "Ensure emergency fund covers new deductible",
+      "Update policies"
+    ],
+    taxReference: "N/A",
+    example: "Raising auto deductible from $500 to $1,000 saves 15-20% on premium.",
+    disclaimer: "Must have funds available for higher out-of-pocket costs.",
+    keywords: ["deductible", "premium", "lower", "out-of-pocket", "savings", "emergency fund"]
+  },
+  {
+    id: "INS-3",
+    horseman: ["Insurance"],
+    name: "Bundle Insurance Policies",
+    summary: "Combine auto, home, umbrella, and other policies with one carrier for discounts.",
+    savings: "$300 - $1,500+ annually",
+    complexity: 1,
+    bestFor: "Those with multiple insurance policies",
+    requirements: "Multiple policies eligible for bundling",
+    implementationPlan: [
+      "List all current policies and carriers",
+      "Get bundled quotes from 3-4 insurers",
+      "Compare total cost vs. separate policies",
+      "Switch to best bundle"
+    ],
+    taxReference: "N/A",
+    example: "Bundling auto + home typically saves 10-25%.",
+    disclaimer: "Bundle savings may not always beat separate best rates.",
+    keywords: ["bundle", "combine", "discount", "auto", "home", "umbrella", "policy"]
+  },
+  {
+    id: "INS-4",
+    horseman: ["Insurance"],
+    name: "Term Life Instead of Whole Life",
+    summary: "Choose term life insurance for pure death benefit at fraction of whole life cost.",
+    savings: "$2,000 - $10,000+ annually",
+    complexity: 2,
+    bestFor: "Those needing death benefit without investment component",
+    requirements: "Insurability, understanding of coverage needs",
+    implementationPlan: [
+      "Calculate actual death benefit need",
+      "Get term quotes for appropriate term length",
+      "Compare to whole life premiums",
+      "Invest premium difference for wealth building"
+    ],
+    taxReference: "N/A",
+    example: "$500K term: $30/month vs. whole life $400/month. Invest $370/month difference.",
+    disclaimer: "Term expires; no cash value. Whole life may suit estate planning needs.",
+    keywords: ["term life", "whole life", "life insurance", "death benefit", "premium", "cost"]
+  },
+  {
+    id: "INS-5",
+    horseman: ["Insurance"],
+    name: "Review and Reduce Unnecessary Coverage",
+    summary: "Eliminate duplicate or unnecessary coverage across policies.",
+    savings: "$200 - $2,000+ annually",
+    complexity: 1,
+    bestFor: "Those who haven't reviewed policies in years",
+    requirements: "Access to all policy details",
+    implementationPlan: [
+      "Gather all insurance policies",
+      "Identify duplicate coverage (e.g., rental car, travel)",
+      "Remove riders and add-ons you don't need",
+      "Adjust coverage limits to actual needs"
+    ],
+    taxReference: "N/A",
+    example: "Dropping rental car coverage when credit card provides it saves $100+/year.",
+    disclaimer: "Don't underinsure; focus on redundant coverage.",
+    keywords: ["review", "coverage", "duplicate", "unnecessary", "rider", "reduce"]
+  },
+  {
+    id: "INS-6",
+    horseman: ["Insurance"],
+    name: "Improve Credit Score for Lower Premiums",
+    summary: "Many insurers use credit-based insurance scores; improving credit can lower rates.",
+    savings: "$200 - $1,000+ annually",
+    complexity: 2,
+    bestFor: "Those with below-average credit scores",
+    requirements: "Time and discipline to improve credit",
+    implementationPlan: [
+      "Check credit score and report",
+      "Dispute any errors",
+      "Pay down balances, pay on time",
+      "Request re-quote after score improves"
+    ],
+    taxReference: "N/A",
+    example: "Improving credit score 50 points can lower auto premium 10%+.",
+    disclaimer: "Not used in all states; results vary by insurer.",
+    keywords: ["credit score", "premium", "insurance score", "lower", "rate"]
+  },
+  {
+    id: "INS-7",
+    horseman: ["Insurance"],
+    name: "Install Safety and Security Devices",
+    summary: "Add security systems, smoke detectors, and safety features for insurance discounts.",
+    savings: "$100 - $500+ annually",
+    complexity: 1,
+    bestFor: "Homeowners and vehicle owners",
+    requirements: "Investment in safety devices",
+    implementationPlan: [
+      "Ask insurer what devices qualify for discounts",
+      "Install qualifying devices (alarms, cameras, smoke detectors)",
+      "Provide documentation to insurer",
+      "Request updated premium"
+    ],
+    taxReference: "N/A",
+    example: "Security system + smoke detectors save 5-15% on home insurance.",
+    disclaimer: "Upfront cost of devices; verify discount before purchasing.",
+    keywords: ["safety", "security", "alarm", "smoke detector", "discount", "device"]
+  },
+  {
+    id: "INS-8",
+    horseman: ["Insurance"],
+    name: "Group Insurance Through Associations",
+    summary: "Access group rates through professional associations, alumni groups, or employers.",
+    savings: "$200 - $1,500+ annually",
+    complexity: 1,
+    bestFor: "Members of professional or alumni associations",
+    requirements: "Eligible association membership",
+    implementationPlan: [
+      "List all associations/groups you belong to",
+      "Check insurance benefits offered",
+      "Compare group rates to individual rates",
+      "Enroll in best option"
+    ],
+    taxReference: "N/A",
+    example: "AARP, professional associations often offer 5-15% discounts.",
+    disclaimer: "Group rates not always best; still compare.",
+    keywords: ["group", "association", "discount", "alumni", "professional", "member"]
+  },
+  {
+    id: "INS-9",
+    horseman: ["Insurance"],
+    name: "Pay Annual Premium Instead of Monthly",
+    summary: "Pay insurance premiums annually to avoid monthly billing fees.",
+    savings: "$50 - $300+ annually per policy",
+    complexity: 1,
+    bestFor: "Those with cash flow to pay upfront",
+    requirements: "Funds available for annual payment",
+    implementationPlan: [
+      "Calculate total cost of monthly vs. annual",
+      "Switch to annual billing on each policy",
+      "Set aside monthly amount for next year's payment"
+    ],
+    taxReference: "N/A",
+    example: "Avoiding $3/month fee saves $36/year per policy.",
+    disclaimer: "Requires upfront cash; budget accordingly.",
+    keywords: ["annual", "monthly", "billing", "fee", "payment", "premium"]
+  },
+  {
+    id: "INS-10",
+    horseman: ["Insurance"],
+    name: "Good Driver and Safe Driving Discounts",
+    summary: "Maintain clean driving record and use telematics programs for auto insurance discounts.",
+    savings: "$200 - $1,000+ annually",
+    complexity: 1,
+    bestFor: "Safe drivers willing to use monitoring devices",
+    requirements: "Clean driving record, willingness to be monitored",
+    implementationPlan: [
+      "Check eligibility for good driver discount",
+      "Enroll in telematics/usage-based program",
+      "Drive safely during monitoring period",
+      "Receive personalized rate based on driving habits"
+    ],
+    taxReference: "N/A",
+    example: "Telematics programs offer 10-30% discounts for safe driving.",
+    disclaimer: "Poor driving habits can increase rates with telematics.",
+    keywords: ["good driver", "safe", "telematics", "monitoring", "discount", "driving record"]
+  },
+  {
+    id: "INS-11",
+    horseman: ["Insurance"],
+    name: "Umbrella Policy for Liability Protection",
+    summary: "Add umbrella policy for additional liability coverage at low cost per dollar of coverage.",
+    savings: "Risk mitigation (protects assets)",
+    complexity: 2,
+    bestFor: "Those with assets to protect",
+    requirements: "Underlying auto/home policies meeting minimums",
+    implementationPlan: [
+      "Assess total liability exposure",
+      "Determine coverage amount needed (typically $1-5M)",
+      "Get quotes from current and competing insurers",
+      "Ensure underlying policies meet umbrella requirements"
+    ],
+    taxReference: "N/A",
+    example: "$1M umbrella costs $150-300/year; $2M costs $200-400/year.",
+    disclaimer: "Doesn't cover everything; review exclusions.",
+    keywords: ["umbrella", "liability", "protection", "coverage", "assets", "lawsuit"]
+  },
+  {
+    id: "INS-12",
+    horseman: ["Insurance"],
+    name: "Long-Term Care Insurance Planning",
+    summary: "Purchase LTC insurance earlier for lower premiums and guaranteed insurability.",
+    savings: "Premium savings + asset protection",
+    complexity: 3,
+    bestFor: "Those 50-60 planning for retirement",
+    requirements: "Insurability (health qualification)",
+    implementationPlan: [
+      "Research LTC costs in your area",
+      "Get quotes at current age",
+      "Consider hybrid policies (LTC + life insurance)",
+      "Purchase while healthy for best rates"
+    ],
+    taxReference: "IRC §7702B (tax-qualified LTC)",
+    example: "Buying at 55 vs. 65 can save 50%+ on premiums.",
+    disclaimer: "Premiums can increase; some never use benefits.",
+    keywords: ["long-term care", "ltc", "nursing home", "retirement", "planning", "elder care"]
+  },
+  {
+    id: "INS-13",
+    horseman: ["Insurance"],
+    name: "Disability Insurance for Income Protection",
+    summary: "Secure disability insurance to protect income if unable to work.",
+    savings: "Income protection (60-70% of salary)",
+    complexity: 2,
+    bestFor: "Wage earners and self-employed",
+    requirements: "Insurability, earned income",
+    implementationPlan: [
+      "Calculate how much income to replace",
+      "Check employer-provided coverage",
+      "Get individual policy quotes for gap coverage",
+      "Choose own-occupation vs. any-occupation definition"
+    ],
+    taxReference: "N/A (premiums paid post-tax = tax-free benefits)",
+    example: "Self-employed with no coverage loses all income if disabled.",
+    disclaimer: "Own-occupation policies cost more but provide better protection.",
+    keywords: ["disability", "income", "protection", "unable to work", "own occupation"]
+  },
+  {
+    id: "INS-14",
+    horseman: ["Insurance"],
+    name: "Review Life Insurance Needs Annually",
+    summary: "Adjust life insurance as family and financial situation changes.",
+    savings: "$500 - $3,000+ annually",
+    complexity: 1,
+    bestFor: "Anyone with life insurance",
+    requirements: "Access to current policies",
+    implementationPlan: [
+      "Recalculate actual death benefit need",
+      "Compare to current coverage",
+      "Reduce if over-insured; increase if under-insured",
+      "Consider term conversion options"
+    ],
+    taxReference: "N/A",
+    example: "Kids grown and mortgage paid = reduce coverage, save premiums.",
+    disclaimer: "Don't cancel before new policy in place.",
+    keywords: ["life insurance", "review", "coverage", "needs", "family", "adjust"]
+  },
+  {
+    id: "INS-15",
+    horseman: ["Insurance"],
+    name: "Health Insurance Optimization",
+    summary: "Choose the right health plan based on expected usage and costs.",
+    savings: "$500 - $5,000+ annually",
+    complexity: 2,
+    bestFor: "Anyone selecting health insurance",
+    requirements: "Understanding of health care needs",
+    implementationPlan: [
+      "Estimate annual health care usage",
+      "Compare plan premiums, deductibles, and out-of-pocket max",
+      "Factor in HSA eligibility for HDHP",
+      "Choose plan with lowest total expected cost"
+    ],
+    taxReference: "IRC §223 (HSA)",
+    example: "HDHP + HSA vs. traditional can save $2,000+/year for healthy families.",
+    disclaimer: "Higher deductible means more out-of-pocket for unexpected care.",
+    keywords: ["health insurance", "hdhp", "premium", "deductible", "healthcare", "plan"]
+  },
+  {
+    id: "INS-16",
+    horseman: ["Insurance"],
+    name: "Avoid Overlapping Coverage",
+    summary: "Identify and eliminate duplicate insurance coverage across policies.",
+    savings: "$100 - $500+ annually",
+    complexity: 1,
+    bestFor: "Those with multiple insurance policies",
+    requirements: "Review of all policies",
+    implementationPlan: [
+      "List all insurance policies and coverage",
+      "Identify overlaps (e.g., travel insurance vs. credit card coverage)",
+      "Eliminate redundant policies",
+      "Redirect savings to needed coverage"
+    ],
+    taxReference: "N/A",
+    example: "Credit card travel protection duplicates standalone travel insurance.",
+    disclaimer: "Verify backup coverage before canceling.",
+    keywords: ["overlap", "duplicate", "coverage", "redundant", "multiple", "policies"]
+  },
+  {
+    id: "INS-17",
+    horseman: ["Insurance"],
+    name: "Self-Insure for Minor Risks",
+    summary: "Skip insurance for small, manageable risks and self-insure by saving for potential losses.",
+    savings: "$200 - $1,000+ annually",
+    complexity: 1,
+    bestFor: "Those with emergency savings",
+    requirements: "Financial ability to cover minor losses",
+    implementationPlan: [
+      "Identify policies for minor risks",
+      "Calculate expected loss vs. premium cost",
+      "Cancel policies where self-insurance makes sense",
+      "Set aside premium savings for potential losses"
+    ],
+    taxReference: "N/A",
+    example: "Skip phone insurance ($10/month) if you can afford replacement.",
+    disclaimer: "Only for risks you can financially absorb.",
+    keywords: ["self-insure", "minor", "risk", "skip", "emergency fund", "small claims"]
+  },
+  {
+    id: "INS-18",
+    horseman: ["Insurance"],
+    name: "Professional Liability Insurance",
+    summary: "Protect against malpractice or errors and omissions claims for professionals.",
+    savings: "Risk mitigation (protects income and assets)",
+    complexity: 2,
+    bestFor: "Professionals, consultants, advisors",
+    requirements: "Professional services rendered",
+    implementationPlan: [
+      "Assess professional liability exposure",
+      "Get quotes from specialty insurers",
+      "Choose appropriate coverage limits",
+      "Review policy exclusions carefully"
+    ],
+    taxReference: "Business expense (deductible)",
+    example: "E&O insurance protects against client lawsuits claiming negligence.",
+    disclaimer: "Coverage varies widely; read policy carefully.",
+    keywords: ["professional liability", "malpractice", "errors", "omissions", "e&o", "consultant"]
+  },
+  {
+    id: "INS-19",
+    horseman: ["Insurance"],
+    name: "Business Owner's Policy (BOP)",
+    summary: "Bundle property, liability, and business interruption insurance for small businesses.",
+    savings: "$500 - $3,000+ vs. separate policies",
+    complexity: 2,
+    bestFor: "Small business owners",
+    requirements: "Small to medium-sized business",
+    implementationPlan: [
+      "Identify business insurance needs",
+      "Get BOP quotes from multiple insurers",
+      "Compare to cost of separate policies",
+      "Choose BOP with appropriate coverage"
+    ],
+    taxReference: "Business expense (deductible)",
+    example: "BOP costs $500-$3,000/year for small businesses.",
+    disclaimer: "May not cover all needs; review for gaps.",
+    keywords: ["bop", "business", "owner", "property", "liability", "bundle", "small business"]
+  },
+  {
+    id: "INS-20",
+    horseman: ["Insurance"],
+    name: "Key Person Insurance",
+    summary: "Insure key employees whose loss would significantly impact business.",
+    savings: "Risk mitigation (protects business value)",
+    complexity: 3,
+    bestFor: "Businesses dependent on key individuals",
+    requirements: "Identified key person, insurable",
+    implementationPlan: [
+      "Identify key employees critical to business",
+      "Calculate financial impact of loss",
+      "Purchase life and/or disability insurance on key persons",
+      "Business owns policy and is beneficiary"
+    ],
+    taxReference: "Premiums not deductible; proceeds generally tax-free",
+    example: "Losing key salesperson could cost $500K+; insurance covers transition.",
+    disclaimer: "Must have insurable interest; employee consent required.",
+    keywords: ["key person", "key man", "business", "employee", "life insurance", "critical"]
+  },
+
+  // EDUCATION STRATEGIES (20)
+  {
+    id: "E-1",
+    horseman: ["Education"],
+    name: "529 College Savings Plan",
+    summary: "State-sponsored tax-advantaged savings for education expenses.",
+    savings: "Tax-free growth + state tax deduction in some states",
+    complexity: 2,
+    bestFor: "Parents/grandparents saving for education",
+    requirements: "Beneficiary, funds to invest",
+    implementationPlan: [
+      "Research state 529 plans (your state may offer tax deduction)",
+      "Open account and name beneficiary",
+      "Set up automatic contributions",
+      "Invest according to time horizon"
+    ],
+    taxReference: "IRC §529",
+    example: "Save $500/month for 18 years at 7% = $200K+ tax-free for education.",
+    disclaimer: "Non-qualified withdrawals incur taxes + 10% penalty on earnings.",
+    keywords: ["529", "college", "savings", "education", "tax-free", "university", "tuition"]
+  },
+  {
+    id: "E-2",
+    horseman: ["Education"],
+    name: "Coverdell Education Savings Account (ESA)",
+    summary: "Tax-advantaged account for K-12 and higher education expenses.",
+    savings: "Tax-free growth on up to $2,000/year contribution",
+    complexity: 2,
+    bestFor: "Those with K-12 or specialized education expenses",
+    requirements: "Income limits ($220K MAGI married), beneficiary under 18",
+    implementationPlan: [
+      "Open Coverdell ESA at brokerage",
+      "Contribute up to $2,000/year",
+      "Invest funds for growth",
+      "Use for qualified K-12 or college expenses"
+    ],
+    taxReference: "IRC §530",
+    example: "Use for private school tuition, computers, tutoring.",
+    disclaimer: "Low contribution limit; income phase-out applies.",
+    keywords: ["coverdell", "esa", "education", "k-12", "private school", "savings"]
+  },
+  {
+    id: "E-3",
+    horseman: ["Education"],
+    name: "American Opportunity Tax Credit (AOTC)",
+    summary: "Up to $2,500 tax credit for first four years of college.",
+    savings: "$2,500/year ($10,000 over four years)",
+    complexity: 2,
+    bestFor: "Students in first four years of college",
+    requirements: "Enrolled at least half-time, pursuing degree, income limits",
+    implementationPlan: [
+      "Ensure student meets eligibility requirements",
+      "Pay qualified expenses (tuition, books, supplies)",
+      "Claim credit on tax return (Form 8863)",
+      "40% refundable up to $1,000"
+    ],
+    taxReference: "IRC §25A",
+    example: "Claim full $2,500 credit each year of undergrad = $10K total.",
+    disclaimer: "Income phase-out: $80K-$90K single, $160K-$180K married.",
+    keywords: ["aotc", "college", "credit", "tax credit", "tuition", "university", "undergraduate"]
+  },
+  {
+    id: "E-4",
+    horseman: ["Education"],
+    name: "Lifetime Learning Credit",
+    summary: "Up to $2,000 tax credit for any year of college or courses.",
+    savings: "$2,000/year",
+    complexity: 2,
+    bestFor: "Graduate students, part-time students, professional development",
+    requirements: "Enrolled in eligible institution, income limits",
+    implementationPlan: [
+      "Pay qualified tuition and fees",
+      "Cannot also claim AOTC for same student",
+      "Claim on Form 8863",
+      "20% of first $10,000 in expenses"
+    ],
+    taxReference: "IRC §25A",
+    example: "Graduate student claims $2,000 credit annually.",
+    disclaimer: "Not refundable; income limits apply.",
+    keywords: ["lifetime learning", "credit", "graduate", "college", "professional", "education"]
+  },
+  {
+    id: "E-5",
+    horseman: ["Education"],
+    name: "Employer Tuition Assistance",
+    summary: "Receive up to $5,250 tax-free annually from employer for education.",
+    savings: "$5,250/year tax-free",
+    complexity: 1,
+    bestFor: "Employees with tuition assistance benefits",
+    requirements: "Employer offering educational assistance program",
+    implementationPlan: [
+      "Check if employer offers tuition assistance",
+      "Understand program requirements",
+      "Enroll in qualifying courses",
+      "Submit for reimbursement"
+    ],
+    taxReference: "IRC §127",
+    example: "Employer pays $5,250/year for MBA = tax-free to employee.",
+    disclaimer: "May have service commitment; not all education qualifies.",
+    keywords: ["employer", "tuition", "assistance", "reimbursement", "127", "tax-free", "benefit"]
+  },
+  {
+    id: "E-6",
+    horseman: ["Education"],
+    name: "Student Loan Interest Deduction",
+    summary: "Deduct up to $2,500 in student loan interest paid.",
+    savings: "$500 - $900+ (depends on tax bracket)",
+    complexity: 1,
+    bestFor: "Those repaying student loans",
+    requirements: "Paying interest on qualified student loan, income limits",
+    implementationPlan: [
+      "Receive Form 1098-E from loan servicer",
+      "Claim deduction on Form 1040 (above-the-line)",
+      "No itemizing required"
+    ],
+    taxReference: "IRC §221",
+    example: "Pay $2,500 interest in 24% bracket = $600 tax savings.",
+    disclaimer: "Phase-out: $75K-$90K single, $155K-$185K married.",
+    keywords: ["student loan", "interest", "deduction", "college debt", "repayment"]
+  },
+  {
+    id: "E-7",
+    horseman: ["Education"],
+    name: "Income-Driven Repayment Plans",
+    summary: "Cap student loan payments at percentage of discretionary income.",
+    savings: "Lower monthly payments + potential forgiveness",
+    complexity: 2,
+    bestFor: "Those with high student debt relative to income",
+    requirements: "Federal student loans, income documentation",
+    implementationPlan: [
+      "Apply for IDR plan (SAVE, PAYE, IBR, ICR)",
+      "Submit income documentation annually",
+      "Payments capped at 5-20% of discretionary income",
+      "Remaining balance forgiven after 20-25 years"
+    ],
+    taxReference: "N/A (forgiveness may be taxable)",
+    example: "Reduce payments from $1,200 to $300/month based on income.",
+    disclaimer: "Interest may accrue; longer repayment = more total paid.",
+    keywords: ["idr", "income-driven", "student loan", "repayment", "forgiveness", "payment"]
+  },
+  {
+    id: "E-8",
+    horseman: ["Education"],
+    name: "Public Service Loan Forgiveness (PSLF)",
+    summary: "Forgive remaining student loan balance after 120 qualifying payments while in public service.",
+    savings: "$50,000 - $200,000+ forgiven",
+    complexity: 3,
+    bestFor: "Public service employees (government, non-profit)",
+    requirements: "Federal Direct Loans, IDR plan, qualifying employer",
+    implementationPlan: [
+      "Confirm employment at qualifying employer",
+      "Consolidate to Direct Loans if needed",
+      "Enroll in qualifying IDR plan",
+      "Submit Employment Certification Form annually",
+      "Apply for forgiveness after 120 payments"
+    ],
+    taxReference: "Forgiveness is tax-free",
+    example: "$150K balance forgiven after 10 years of payments.",
+    disclaimer: "Strict requirements; many applications previously denied.",
+    keywords: ["pslf", "public service", "forgiveness", "student loan", "nonprofit", "government"]
+  },
+  {
+    id: "E-9",
+    horseman: ["Education"],
+    name: "Maximize Financial Aid",
+    summary: "Optimize asset positioning and timing to maximize need-based financial aid.",
+    savings: "$5,000 - $50,000+ over college years",
+    complexity: 3,
+    bestFor: "Families applying for financial aid",
+    requirements: "Understanding of FAFSA/CSS Profile formulas",
+    implementationPlan: [
+      "Understand EFC (Expected Family Contribution) formula",
+      "Reduce reportable assets before filing",
+      "Maximize retirement contributions (not counted)",
+      "Consider timing of income recognition",
+      "File FAFSA immediately when available"
+    ],
+    taxReference: "N/A",
+    example: "Shifting $10K to retirement can increase aid by $560+.",
+    disclaimer: "Don't harm finances just for aid; consult financial aid advisor.",
+    keywords: ["financial aid", "fafsa", "efc", "aid", "college", "need-based", "scholarship"]
+  },
+  {
+    id: "E-10",
+    horseman: ["Education"],
+    name: "Scholarship Searching",
+    summary: "Apply for scholarships to reduce out-of-pocket education costs.",
+    savings: "$1,000 - $100,000+",
+    complexity: 2,
+    bestFor: "Students at any education level",
+    requirements: "Time to search and apply",
+    implementationPlan: [
+      "Use scholarship search tools (Fastweb, Scholarships.com, College Board)",
+      "Check local organizations, employers, and community foundations",
+      "Apply early and to multiple scholarships",
+      "Tailor applications to each scholarship"
+    ],
+    taxReference: "Generally tax-free for qualified expenses (IRC §117)",
+    example: "Several $1,000 scholarships add up to significant savings.",
+    disclaimer: "Competitive; requires effort and persistence.",
+    keywords: ["scholarship", "grant", "free money", "college", "aid", "search", "apply"]
+  },
+  {
+    id: "E-11",
+    horseman: ["Education"],
+    name: "Community College Transfer Strategy",
+    summary: "Start at community college then transfer to four-year university to save on tuition.",
+    savings: "$20,000 - $60,000+",
+    complexity: 1,
+    bestFor: "Students planning to attend four-year college",
+    requirements: "Community college access, transfer planning",
+    implementationPlan: [
+      "Research transfer agreements with target universities",
+      "Complete general education at community college",
+      "Maintain strong GPA for transfer admission",
+      "Transfer with junior standing"
+    ],
+    taxReference: "N/A",
+    example: "Two years at CC ($3,500/year) vs. university ($15K/year) = $23K savings.",
+    disclaimer: "Some credits may not transfer; plan carefully.",
+    keywords: ["community college", "transfer", "save", "tuition", "two-year", "university"]
+  },
+  {
+    id: "E-12",
+    horseman: ["Education"],
+    name: "CLEP and AP Exams for College Credit",
+    summary: "Earn college credit through exams to reduce time and cost of degree.",
+    savings: "$5,000 - $30,000+",
+    complexity: 2,
+    bestFor: "Motivated high school or early college students",
+    requirements: "Exam preparation, university acceptance of credits",
+    implementationPlan: [
+      "Identify which CLEP/AP exams university accepts",
+      "Prepare for exams (self-study or courses)",
+      "Take exams and submit scores",
+      "Skip introductory courses"
+    ],
+    taxReference: "N/A",
+    example: "5 AP exams = 15+ credits = one semester saved.",
+    disclaimer: "Not all universities accept all credits; verify first.",
+    keywords: ["clep", "ap", "exam", "credit", "test out", "advanced placement", "college credit"]
+  },
+  {
+    id: "E-13",
+    horseman: ["Education"],
+    name: "In-State Tuition Strategies",
+    summary: "Establish residency or use programs to qualify for in-state tuition rates.",
+    savings: "$10,000 - $100,000+ over degree",
+    complexity: 3,
+    bestFor: "Those considering out-of-state schools",
+    requirements: "State residency requirements, time to establish",
+    implementationPlan: [
+      "Research target state's residency requirements",
+      "Consider gap year to establish residency",
+      "Look for tuition reciprocity agreements (WICHE, NEBHE)",
+      "Check if military or other exceptions apply"
+    ],
+    taxReference: "N/A",
+    example: "Out-of-state: $30K/year vs. in-state: $12K/year = $72K savings over 4 years.",
+    disclaimer: "Residency requirements vary; plan well in advance.",
+    keywords: ["in-state", "residency", "tuition", "out-of-state", "reciprocity", "wiche"]
+  },
+  {
+    id: "E-14",
+    horseman: ["Education"],
+    name: "Work-Study Programs",
+    summary: "Participate in federal work-study for part-time jobs to help pay education costs.",
+    savings: "$2,000 - $5,000+/year",
+    complexity: 1,
+    bestFor: "Students eligible for financial aid",
+    requirements: "Demonstrated financial need, FAFSA",
+    implementationPlan: [
+      "File FAFSA and indicate interest in work-study",
+      "Accept work-study award",
+      "Apply for on-campus jobs",
+      "Work part-time while attending classes"
+    ],
+    taxReference: "Earnings are taxable but may be excluded from future FAFSA",
+    example: "Work 10 hours/week at $15/hour = $6,000/year.",
+    disclaimer: "Limited positions; compete for best jobs.",
+    keywords: ["work-study", "campus job", "part-time", "financial aid", "fafsa"]
+  },
+  {
+    id: "E-15",
+    horseman: ["Education"],
+    name: "Tuition Payment Plans",
+    summary: "Spread tuition payments over semester instead of lump sum.",
+    savings: "Cash flow management (avoid loans for some)",
+    complexity: 1,
+    bestFor: "Families who can afford tuition over time but not upfront",
+    requirements: "School offering payment plans",
+    implementationPlan: [
+      "Check if school offers tuition payment plan",
+      "Enroll in plan (typically small fee)",
+      "Make monthly payments",
+      "Avoid taking loans for portion you can cash flow"
+    ],
+    taxReference: "N/A",
+    example: "Pay $5K/month for 4 months instead of $20K upfront.",
+    disclaimer: "Small fee may apply; doesn't reduce total cost.",
+    keywords: ["payment plan", "tuition", "installment", "monthly", "cash flow"]
+  },
+  {
+    id: "E-16",
+    horseman: ["Education"],
+    name: "Employer Student Loan Repayment Assistance",
+    summary: "Receive tax-free student loan repayment assistance from employer.",
+    savings: "Up to $5,250/year tax-free",
+    complexity: 1,
+    bestFor: "Employees with student loans",
+    requirements: "Employer offering student loan repayment benefit",
+    implementationPlan: [
+      "Check if employer offers student loan repayment",
+      "Enroll in program",
+      "Employer payments go directly to loans",
+      "Tax-free up to $5,250/year through 2025"
+    ],
+    taxReference: "IRC §127",
+    example: "Employer pays $5,250/year toward loans = tax-free benefit.",
+    disclaimer: "Not all employers offer; may have vesting requirements.",
+    keywords: ["employer", "student loan", "repayment", "assistance", "127", "tax-free"]
+  },
+  {
+    id: "E-17",
+    horseman: ["Education"],
+    name: "Education Tax Deductions for Self-Employed",
+    summary: "Deduct education expenses that maintain or improve skills for current business.",
+    savings: "$500 - $10,000+ (depends on expenses)",
+    complexity: 2,
+    bestFor: "Self-employed individuals seeking education",
+    requirements: "Education related to current trade/business",
+    implementationPlan: [
+      "Ensure education maintains/improves current skills",
+      "Document business purpose",
+      "Deduct tuition, books, travel as business expense",
+      "Cannot be to qualify for new career"
+    ],
+    taxReference: "IRC §162",
+    example: "CPA taking tax update course deducts $2,000 as business expense.",
+    disclaimer: "Cannot deduct education to qualify for new career.",
+    keywords: ["self-employed", "education", "deduction", "business", "professional development", "training"]
+  },
+  {
+    id: "E-18",
+    horseman: ["Education"],
+    name: "Grandparent-Owned 529 Strategy",
+    summary: "Grandparents own 529 to minimize impact on financial aid while funding education.",
+    savings: "Maximize aid + tax-free growth",
+    complexity: 3,
+    bestFor: "Grandparents wanting to help with education",
+    requirements: "529 plan, understanding of financial aid timing",
+    implementationPlan: [
+      "Grandparent opens 529 in their name",
+      "Contribute and grow funds",
+      "Distribute after student files last FAFSA (junior year)",
+      "Or use new simplified FAFSA rules (2024+)"
+    ],
+    taxReference: "IRC §529",
+    example: "Grandparent 529 doesn't count as asset on FAFSA.",
+    disclaimer: "Rules changed in 2024; distributions no longer count as income.",
+    keywords: ["grandparent", "529", "financial aid", "fafsa", "gift", "education"]
+  },
+  {
+    id: "E-19",
+    horseman: ["Education"],
+    name: "Qualified Tuition Programs (Prepaid)",
+    summary: "Lock in current tuition rates through state prepaid tuition plans.",
+    savings: "Hedge against tuition inflation",
+    complexity: 2,
+    bestFor: "Those certain about in-state public school attendance",
+    requirements: "State offering prepaid plan, residency usually required",
+    implementationPlan: [
+      "Research state's prepaid tuition program",
+      "Purchase tuition units or credits at current prices",
+      "Use for tuition when student enrolls",
+      "Understand transferability if plans change"
+    ],
+    taxReference: "IRC §529",
+    example: "Buy 4 years of tuition now; use in 10 years at no additional cost.",
+    disclaimer: "Limited to specific schools; value uncertain if student attends elsewhere.",
+    keywords: ["prepaid tuition", "529", "lock in", "inflation", "state plan"]
+  },
+  {
+    id: "E-20",
+    horseman: ["Education"],
+    name: "Direct Tuition Payment by Grandparents",
+    summary: "Grandparents pay tuition directly to institution to avoid gift tax.",
+    savings: "Estate tax savings + education funding",
+    complexity: 2,
+    bestFor: "Grandparents with assets wanting to help with education",
+    requirements: "Payment directly to institution, tuition only",
+    implementationPlan: [
+      "Identify tuition amount",
+      "Pay directly to school (not to parent/student)",
+      "Unlimited gift tax exclusion for direct tuition payments",
+      "Can still give $18K annual gift separately"
+    ],
+    taxReference: "IRC §2503(e)",
+    example: "Grandparent pays $50K tuition directly + $18K gift = $68K transferred tax-free.",
+    disclaimer: "Tuition only; not room/board. May affect financial aid.",
+    keywords: ["grandparent", "direct payment", "tuition", "gift tax", "education", "2503"]
+  }
+];
+
+// =====================================================
+// CONDENSED SYSTEM PROMPT (No embedded knowledge base)
+// =====================================================
+
+const BASE_SYSTEM_PROMPT = `You are an expert RPRx financial strategy assistant.
+
+## YOUR WORKFLOW
+1. Greet the user and explain you help reduce the impact of the Four Horsemen (Interest, Taxes, Insurance, Education) on their finances.
+2. Ask intake questions one at a time to understand their situation.
+3. Recommend the most relevant strategies from those provided to you, prioritizing dollar impact and applicability.
+4. Present strategies in a clear numbered list format.
+5. Offer detailed implementation plans for strategies they select.
+6. Always include disclaimers and refer to rprx4life.com for professional guidance.
+
+## INTAKE QUESTIONS (Ask one at a time)
+
+### User Profile
+- Which describes you? (Business Owner, Retiree/Grandparent, Salesperson, Wage Earner, Investor, Farmer, Non-Profit)
+- Main financial goals? (Increase Cash Flow, Reduce Taxes, Save for Education, Improve Retirement, Reduce Insurance Costs)
+
+### Financial Snapshot
+- Approximate annual household income? (<$100K, $100-250K, $250-500K, $500K-$1M, $1M+)
+- Total household debt? (<$50K, $50-200K, $200-500K, $500K+)
+- Children or dependents? (If yes, how many and ages?)
+- Currently paying for or planning education expenses?
+- Biggest financial concerns?
+
+## STRATEGY OUTPUT FORMAT
+
+When presenting strategies, ALWAYS use this NUMBERED LIST format:
 
 **Strategy #1: [Strategy Name]**
 - **Horseman(s):** [Interest/Taxes/Insurance/Education]
@@ -1243,32 +1486,122 @@ When presenting the top 20 strategies, use a NUMBERED LIST format (not a table) 
 - **Complexity:** [1-5]/5
 - **Summary:** [One sentence description]
 
-**Strategy #2: [Strategy Name]**
-...and so on.
+IMPORTANT: Do NOT use markdown tables with pipe characters (|). Always use the numbered list format as it displays better on all devices.
 
-IMPORTANT: Do NOT use markdown tables with pipe characters (|). Always use the numbered list format above as it displays better on all devices.
-
-Then ask: "Which of these would you like a step-by-step implementation plan for? Reply with the strategy numbers."
+After listing strategies, ask: "Which of these would you like a step-by-step implementation plan for? Reply with the strategy numbers."
 
 ## IMPLEMENTATION PLAN FORMAT
 
-For each selected strategy:
+For selected strategies provide:
 - **Title**
-- **Who it's best for** (1 line)
-- **Key Requirements** (from KB)
-- **Step-by-Step Implementation Plan** (from KB)
-- **What to bring to your CPA/Advisor** (short bullet list)
-- **Disclaimer** + rprx4life.com referral line
+- **Who it's best for**
+- **Key Requirements**
+- **Step-by-Step Implementation Plan**
+- **What to bring to your CPA/Advisor**
+- **Disclaimer** + rprx4life.com referral
 
 ## GUARDRAILS
-- Do not provide tax/legal advice
+- Do not provide tax/legal advice - only educational information
 - Do not promise results or guaranteed savings
-- Do not invent IRS references or forms not in the knowledge base
-- Do not generate images unless explicitly asked by the user
+- Do not invent IRS references not in the provided strategies
+- Do not generate images unless explicitly asked
 
-## KNOWLEDGE BASE
-${KNOWLEDGE_BASE}
-`;
+## DISCLAIMER
+This is educational information only. Always consult a qualified professional before implementing any strategy. For personalized guidance, visit rprx4life.com.`;
+
+// =====================================================
+// KEYWORD MATCHING FOR RELEVANT STRATEGIES
+// =====================================================
+
+function findRelevantStrategies(userMessage: string, conversationHistory: string): Strategy[] {
+  const combinedText = (userMessage + ' ' + conversationHistory).toLowerCase();
+  
+  // Score each strategy based on keyword matches
+  const scoredStrategies = STRATEGIES.map(strategy => {
+    let score = 0;
+    
+    // Check keywords
+    for (const keyword of strategy.keywords) {
+      if (combinedText.includes(keyword.toLowerCase())) {
+        score += 2;
+      }
+    }
+    
+    // Check horseman mentions
+    for (const horseman of strategy.horseman) {
+      if (combinedText.includes(horseman.toLowerCase())) {
+        score += 3;
+      }
+    }
+    
+    // Check strategy name
+    if (combinedText.includes(strategy.name.toLowerCase())) {
+      score += 5;
+    }
+    
+    // Boost for explicit category mentions
+    if (combinedText.includes('interest') && strategy.horseman.includes('Interest')) score += 2;
+    if (combinedText.includes('tax') && strategy.horseman.includes('Taxes')) score += 2;
+    if (combinedText.includes('insurance') && strategy.horseman.includes('Insurance')) score += 2;
+    if (combinedText.includes('education') && strategy.horseman.includes('Education')) score += 2;
+    
+    // Common financial terms
+    if (combinedText.includes('mortgage') && strategy.keywords.includes('mortgage')) score += 3;
+    if (combinedText.includes('401k') && strategy.keywords.includes('401k')) score += 3;
+    if (combinedText.includes('college') && strategy.keywords.includes('college')) score += 3;
+    if (combinedText.includes('student loan') && strategy.keywords.includes('student loan')) score += 3;
+    if (combinedText.includes('retirement') && strategy.keywords.includes('retirement')) score += 3;
+    if (combinedText.includes('business') && strategy.keywords.includes('business')) score += 2;
+    if (combinedText.includes('self-employed') && strategy.keywords.includes('self-employed')) score += 3;
+    
+    return { strategy, score };
+  });
+  
+  // Sort by score and take top 15 most relevant
+  scoredStrategies.sort((a, b) => b.score - a.score);
+  
+  // If no strong matches, include a diverse set
+  const topStrategies = scoredStrategies
+    .filter(s => s.score > 0)
+    .slice(0, 15)
+    .map(s => s.strategy);
+  
+  // If we have less than 10 matches, add some high-impact defaults
+  if (topStrategies.length < 10) {
+    const defaults = STRATEGIES.filter(s => 
+      ['T-1', 'T-2', 'T-5', 'I-1', 'I-2', 'INS-1', 'INS-3', 'E-1', 'E-3', 'E-6'].includes(s.id) &&
+      !topStrategies.includes(s)
+    );
+    topStrategies.push(...defaults.slice(0, 10 - topStrategies.length));
+  }
+  
+  return topStrategies;
+}
+
+function formatStrategiesForPrompt(strategies: Strategy[]): string {
+  if (strategies.length === 0) {
+    return "No specific strategies selected for this context.";
+  }
+  
+  return strategies.map(s => `
+### ${s.id}: ${s.name}
+- **Horseman(s):** ${s.horseman.join(', ')}
+- **Summary:** ${s.summary}
+- **Projected Savings:** ${s.savings}
+- **Complexity:** ${s.complexity}/5
+- **Best For:** ${s.bestFor}
+- **Key Requirements:** ${s.requirements}
+- **Implementation Plan:**
+${s.implementationPlan.map((step, i) => `  ${i + 1}. ${step}`).join('\n')}
+- **Tax Code Reference:** ${s.taxReference}
+- **Example:** ${s.example}
+- **Disclaimer:** ${s.disclaimer}
+`).join('\n---\n');
+}
+
+// =====================================================
+// MAIN HANDLER
+// =====================================================
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -1343,41 +1676,67 @@ serve(async (req) => {
       console.log('Created new conversation:', conversationId);
     }
 
-    // Save user message
-    const { error: userMsgError } = await supabase
-      .from('messages')
-      .insert({
+    // OPTIMIZATION: Parallelize save user message + fetch history
+    const [saveResult, historyResult] = await Promise.all([
+      // Save user message
+      supabase.from('messages').insert({
         conversation_id: conversationId,
         role: 'user',
         content: user_message.trim(),
-      });
+      }),
+      // Fetch conversation history (last 20 messages only)
+      supabase
+        .from('messages')
+        .select('role, content')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+    ]);
 
-    if (userMsgError) {
-      console.error('Error saving user message:', userMsgError);
+    if (saveResult.error) {
+      console.error('Error saving user message:', saveResult.error);
       return new Response(
         JSON.stringify({ error: 'Failed to save message' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Fetch conversation history
-    const { data: messages, error: msgError } = await supabase
-      .from('messages')
-      .select('role, content')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-
-    if (msgError) {
-      console.error('Error fetching messages:', msgError);
+    if (historyResult.error) {
+      console.error('Error fetching messages:', historyResult.error);
       return new Response(
         JSON.stringify({ error: 'Failed to fetch conversation history' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Reverse to get chronological order and add current message
+    const messages = [...(historyResult.data || [])].reverse();
+    // Add the current message since it was just inserted
+    messages.push({ role: 'user', content: user_message.trim() });
+
+    // Build conversation history text for keyword matching
+    const conversationText = messages.map(m => m.content).join(' ');
+    
+    // Find relevant strategies based on conversation context
+    const relevantStrategies = findRelevantStrategies(user_message, conversationText);
+    const strategiesContext = formatStrategiesForPrompt(relevantStrategies);
+    
+    console.log(`Selected ${relevantStrategies.length} relevant strategies for context`);
+
+    // Build dynamic system prompt with only relevant strategies
+    const dynamicSystemPrompt = `${BASE_SYSTEM_PROMPT}
+
+## RELEVANT STRATEGIES FOR THIS CONVERSATION
+Use these strategies when making recommendations. Only reference strategies from this list:
+
+${strategiesContext}
+
+---
+Remember: Only recommend strategies from the list above. If the user asks about something not covered, acknowledge the limitation and suggest consulting rprx4life.com for additional strategies.`;
+
     // Build OpenAI messages array
     const openaiMessages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: dynamicSystemPrompt },
       ...messages.map((m: { role: string; content: string }) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
@@ -1416,10 +1775,10 @@ serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini', // Use mini model to reduce token usage and avoid rate limits
+          model: 'gpt-4o-mini',
           messages: openaiMessages,
           temperature: 0.7,
-          max_tokens: 2000,
+          max_tokens: 1500, // Reduced from 2000
         }),
       });
 
@@ -1468,19 +1827,14 @@ serve(async (req) => {
 
     console.log('Received OpenAI response, length:', assistantMessage.length);
 
-    // Save assistant message
-    const { error: assistantMsgError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        role: 'assistant',
-        content: assistantMessage,
-      });
-
-    if (assistantMsgError) {
-      console.error('Error saving assistant message:', assistantMsgError);
-      // Don't fail the request - user got the response
-    }
+    // Save assistant message (don't wait, fire and forget)
+    supabase.from('messages').insert({
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: assistantMessage,
+    }).then(({ error }) => {
+      if (error) console.error('Error saving assistant message:', error);
+    });
 
     // Return response
     return new Response(
