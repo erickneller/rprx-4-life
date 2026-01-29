@@ -1,30 +1,72 @@
 
 
-## Make Triangle Icon Red
+## Add Conversation Starter Button
 
-### Problem
-The `AlertTriangle` icon next to "Primary Pressure Area" currently uses `text-destructive-foreground` which isn't rendering as red. This class is typically meant for text that appears *on top of* a destructive (red) background, not for making elements red themselves.
+### Goal
+Add a clickable suggestion button to the Strategy Assistant's welcome screen for initiating new conversations. When there's no active conversation, users will see a prominent button they can click to quickly send: **"Help me choose the best strategies to achieve financial wellness!"**
 
-### Solution
-Change the icon's color class from `text-destructive-foreground` to `text-destructive`, which is the actual red/danger color in the theme.
+For all subsequent messages in that conversation (and any other conversations), users will use the standard chat input to type whatever they want.
+
+---
+
+## How It Works
+
+The `ChatThread` component already has two modes:
+1. **No active conversation** (`conversationId === null`): Shows welcome screen with bot icon and description
+2. **Active conversation** (`conversationId` exists): Shows chat messages and input
+
+By adding the starter button only to the welcome screen (mode 1), users get a quick-start option for new conversations while retaining full freedom to type anything once a conversation is active.
 
 ---
 
 ## File Change
 
-**File**: `src/components/results/PrimaryHorsemanCard.tsx`
+**File**: `src/components/assistant/ChatThread.tsx`
 
-| Line | Current | New |
-|------|---------|-----|
-| 14 | `text-destructive-foreground` | `text-destructive` |
+### Changes
 
-### Code snippet:
+1. **Add imports** at the top:
+   - `Sparkles` from `lucide-react`
+   - `Button` from `@/components/ui/button`
+
+2. **Add starter button** in the welcome screen section (the `if (!conversationId)` block, around line 27-43):
+
 ```tsx
-<AlertTriangle className="h-5 w-5 text-destructive" />
+<Button 
+  variant="outline"
+  className="mt-4"
+  onClick={() => onSendMessage('Help me choose the best strategies to achieve financial wellness!')}
+  disabled={isSending}
+>
+  <Sparkles className="h-4 w-4 mr-2" />
+  Help me choose the best strategies to achieve financial wellness!
+</Button>
 ```
+
+This button will be placed after the description paragraph, inside the centered content div.
 
 ---
 
-## Result
-The warning triangle icon will display in red, matching the visual intent of highlighting a "pressure area" warning.
+## Visual Result
+
+**Welcome Screen (no conversation):**
+- Bot icon
+- "RPRx Strategy Assistant" heading
+- Description about the Four Horsemen
+- **NEW: Starter button with sparkles icon**
+- Chat input at the bottom (users can still type their own message instead)
+
+**Active Conversation:**
+- Normal chat thread with messages
+- Standard chat input - users type freely
+
+---
+
+## User Flow
+
+1. User opens Strategy Assistant → sees welcome screen with starter button
+2. User clicks button → sends "Help me choose the best strategies to achieve financial wellness!"
+3. New conversation is created and becomes active
+4. User continues chatting with any messages they want using the regular input
+5. For future new conversations, they'll see the starter button again
 
