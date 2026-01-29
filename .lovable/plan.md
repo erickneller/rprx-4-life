@@ -1,31 +1,46 @@
 
 
-## Update Start Assessment Button to Cobalt Blue
+## Add Slow Bounce Animation to Strategy Assistant Avatar
 
 ### Overview
-Change the "Start Assessment" button in the dashboard CTA card to use the cobalt blue accent color for consistency with other primary action buttons.
+Add a gentle floating/bouncing animation to the assistant avatar on the Strategy Assistant start screen to draw attention without being annoying.
 
 ---
 
-## Change Required
+## Implementation
 
-### File: `src/components/dashboard/StartAssessmentCTA.tsx`
+### File: `src/components/assistant/ChatThread.tsx`
 
-**Line 32 - Update Button styling:**
+**Line 34 - Add animate-float class to the avatar:**
 
 ```tsx
 // Before
-<Button onClick={() => navigate('/assessment')} className="w-full sm:w-auto">
+<AssistantAvatar size="lg" />
 
 // After
-<Button onClick={() => navigate('/assessment')} className="w-full sm:w-auto bg-accent hover:bg-accent/90">
+<AssistantAvatar size="lg" className="animate-float" />
 ```
 
 ---
 
-## Summary
+## Technical Notes
+
+The `animate-float` animation is already defined in `tailwind.config.ts`:
+
+| Property | Value |
+|----------|-------|
+| Keyframes | `translateY(0)` → `translateY(-10px)` → `translateY(0)` |
+| Duration | 3 seconds |
+| Timing | ease-in-out |
+| Repeat | infinite |
+
+This creates a slow, subtle up-and-down floating motion that draws attention without being fast or annoying.
+
+---
+
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/StartAssessmentCTA.tsx` | Add `bg-accent hover:bg-accent/90` to Start Assessment button |
+| `src/components/assistant/ChatThread.tsx` | Add `animate-float` class to the large AssistantAvatar on start screen |
 
