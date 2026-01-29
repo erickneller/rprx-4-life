@@ -1,48 +1,27 @@
 
-
-## Match Progress & Slider Colors to Cobalt Blue
+## Match Plan Card Progress Bar to Cobalt Blue
 
 ### Problem
-The progress bar and answer slider are currently using the dark slate `primary` color, but the rest of the app uses the cobalt blue `accent` color for interactive highlights and CTAs, creating visual inconsistency.
+The progress bar in the PlanCard component uses a custom implementation with `bg-primary` (dark slate) instead of using the shared Progress UI component or the `bg-accent` color (cobalt blue).
 
 ---
 
 ## Solution
-Update the Progress and Slider UI components to use `bg-accent` instead of `bg-primary` so they match the cobalt blue used throughout the app.
+Update the custom progress bar in PlanCard.tsx to use `bg-accent` instead of `bg-primary`, matching the other progress bars and sliders we just updated.
 
 ---
 
-## Changes Required
+## Change Required
 
-### File: `src/components/ui/progress.tsx`
+### File: `src/components/plans/PlanCard.tsx`
 
-**Line 16 - Change the indicator color:**
+**Line 58 - Change the progress bar fill color:**
 ```tsx
 // Before
-className="h-full w-full flex-1 bg-primary transition-all"
+className="h-full bg-primary transition-all"
 
-// After
-className="h-full w-full flex-1 bg-accent transition-all"
-```
-
-### File: `src/components/ui/slider.tsx`
-
-**Line 16 - Change the range (filled track) color:**
-```tsx
-// Before
-className="absolute h-full bg-primary"
-
-// After
-className="absolute h-full bg-accent"
-```
-
-**Line 18 - Change the thumb border color:**
-```tsx
-// Before
-className="block h-5 w-5 rounded-full border-2 border-primary bg-background ..."
-
-// After
-className="block h-5 w-5 rounded-full border-2 border-accent bg-background ..."
+// After  
+className="h-full bg-accent transition-all"
 ```
 
 ---
@@ -51,11 +30,9 @@ className="block h-5 w-5 rounded-full border-2 border-accent bg-background ..."
 
 | Element | Before | After |
 |---------|--------|-------|
-| Progress bar fill | Dark slate | Cobalt blue |
-| Slider filled track | Dark slate | Cobalt blue |
-| Slider thumb border | Dark slate | Cobalt blue |
+| Plan card progress bar | Dark slate | Cobalt blue |
 
-This will make the assessment progress and question sliders visually consistent with the rest of the app's interactive elements like buttons and links.
+This is a single-line change that will make the plans page progress bars consistent with the rest of the app.
 
 ---
 
@@ -63,6 +40,4 @@ This will make the assessment progress and question sliders visually consistent 
 
 | File | Change |
 |------|--------|
-| `src/components/ui/progress.tsx` | Change `bg-primary` to `bg-accent` |
-| `src/components/ui/slider.tsx` | Change `bg-primary` and `border-primary` to `bg-accent` and `border-accent` |
-
+| `src/components/plans/PlanCard.tsx` | Line 58: Change `bg-primary` to `bg-accent` |
