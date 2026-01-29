@@ -1,4 +1,4 @@
-import assistantAvatar from '@/assets/rprx-chatguy.jpeg';
+import assistantAvatar from '@/assets/rprx-chatguy.png';
 import { cn } from '@/lib/utils';
 
 interface AssistantAvatarProps {
