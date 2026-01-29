@@ -1,118 +1,76 @@
 
+## Fix Intake Question Formatting
 
-## Speed Up Strategy Assistant Responses
+### Problem
+The intake questions in the system prompt list options inline in parentheses, causing the AI to output responses like:
+```
+Which describes you? (Business Owner, Retiree/Grandparent, Salesperson, Wage Earner, Investor, Farmer, Non-Profit)
+```
 
-### Problem Summary
-The chat responses are slow due to:
-1. A massive 1,200+ line system prompt containing the full knowledge base (sent with EVERY request)
-2. Full conversation history growing with each message
-3. Sequential database operations
+Instead of a properly formatted list that's easier to read and respond to.
 
-### Solution Overview
-We will implement several optimizations to reduce response time from 5-10 seconds to 1-3 seconds:
+### Solution
+Update the `BASE_SYSTEM_PROMPT` in `supabase/functions/rprx-chat/index.ts` to:
+1. Explicitly instruct the AI to format intake question options as numbered lists
+2. Show a clear example of how intake questions should be presented
 
----
-
-## Changes Required
-
-### 1. Reduce System Prompt Size (Biggest Impact)
+### Changes Required
 
 **File**: `supabase/functions/rprx-chat/index.ts`
 
-Split the knowledge base from the system prompt and only include relevant strategies when needed:
-
-- Create a condensed system prompt with instructions only (remove the full 80-strategy knowledge base)
-- Store strategy summaries in a separate searchable format
-- Only inject relevant strategies based on conversation context
-
+Update lines 1466-1477 from:
 ```text
-Before: System prompt = ~15,000+ tokens
-After: System prompt = ~500-800 tokens + relevant strategies only
+## INTAKE QUESTIONS (Ask one at a time)
+
+### User Profile
+- Which describes you? (Business Owner, Retiree/Grandparent, Salesperson, Wage Earner, Investor, Farmer, Non-Profit)
+- Main financial goals? (Increase Cash Flow, Reduce Taxes, Save for Education, Improve Retirement, Reduce Insurance Costs)
+
+### Financial Snapshot
+- Approximate annual household income? (<$100K, $100-250K, $250-500K, $500K-$1M, $1M+)
+- Total household debt? (<$50K, $50-200K, $200-500K, $500K+)
+- Children or dependents? (If yes, how many and ages?)
+- Currently paying for or planning education expenses?
+- Biggest financial concerns?
 ```
 
-### 2. Limit Conversation History
+To:
+```text
+## INTAKE QUESTIONS (Ask one at a time)
 
-**File**: `supabase/functions/rprx-chat/index.ts`
+IMPORTANT: When presenting options, ALWAYS format them as a numbered list on separate lines - NEVER as comma-separated text in parentheses.
 
-Only send the last 10-20 messages instead of the entire history:
+Example format:
+"Which best describes you?
+1. Business Owner
+2. Retiree/Grandparent
+3. Salesperson
+4. Wage Earner
+5. Investor
+6. Farmer
+7. Non-Profit"
 
-```typescript
-// Before
-.order('created_at', { ascending: true });
-
-// After - Only get recent messages
-.order('created_at', { ascending: false })
-.limit(20)
-// Then reverse the order
+Questions to ask:
+1. User Profile: Business Owner, Retiree/Grandparent, Salesperson, Wage Earner, Investor, Farmer, Non-Profit
+2. Main Goals: Increase Cash Flow, Reduce Taxes, Save for Education, Improve Retirement, Reduce Insurance Costs
+3. Annual Income: <$100K, $100-250K, $250-500K, $500K-$1M, $1M+
+4. Total Debt: <$50K, $50-200K, $200-500K, $500K+
+5. Children/Dependents: How many and ages?
+6. Education expenses: Currently paying or planning?
+7. Biggest financial concerns?
 ```
 
-### 3. Parallelize Database Operations
-
-**File**: `supabase/functions/rprx-chat/index.ts`
-
-Run independent database operations in parallel:
-
-```typescript
-// Before: Sequential
-await saveUserMessage();
-const messages = await fetchMessages();
-
-// After: Parallel where possible
-const [_, messages] = await Promise.all([
-  saveUserMessage(),
-  fetchMessages()
-]);
+### Expected Result
+The AI will output intake questions like:
+```
+Which best describes you?
+1. Business Owner
+2. Retiree/Grandparent
+3. Salesperson
+4. Wage Earner
+5. Investor
+6. Farmer
+7. Non-Profit
 ```
 
-### 4. Use a Smaller/Faster Model for Simple Responses
-
-**File**: `supabase/functions/rprx-chat/index.ts`
-
-The code already uses `gpt-4o-mini` which is good, but we can add:
-- Lower `max_tokens` for simpler questions
-- Consider using a tiered approach (fast model for simple chats, full model for strategy recommendations)
-
----
-
-## Implementation Details
-
-### Phase 1: Quick Wins (Immediate Impact)
-
-1. **Limit conversation history to last 20 messages**
-   - Edit lines 1363-1368 to add `.limit(20)` and reverse ordering
-
-2. **Reduce max_tokens from 2000 to 1500** for most responses
-   - Edit line 1422
-
-3. **Parallelize save + fetch operations**
-   - Refactor lines 1346-1377
-
-### Phase 2: Major Optimization
-
-4. **Restructure the knowledge base**
-   - Extract the 80 strategies into a structured array
-   - Create a condensed system prompt with just the persona/instructions
-   - Only inject 5-10 relevant strategies based on keywords in user message
-   - This alone can reduce token usage by 80%+
-
----
-
-## Expected Results
-
-| Metric | Before | After |
-|--------|--------|-------|
-| System prompt tokens | ~15,000 | ~800-1,500 |
-| Messages sent | All history | Last 20 |
-| DB operations | Sequential | Parallel |
-| Typical response time | 5-10 seconds | 1-3 seconds |
-
----
-
-## Files to Modify
-
-1. **EDIT**: `supabase/functions/rprx-chat/index.ts`
-   - Restructure knowledge base lookup
-   - Add conversation history limit
-   - Parallelize database operations
-   - Optimize token usage
-
+This makes it easy to read and allows users to respond with just a number.
