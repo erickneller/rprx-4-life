@@ -1573,7 +1573,7 @@ function findRelevantStrategies(userMessage: string, conversationHistory: string
   // If no strong matches, include a diverse set
   const topStrategies = scoredStrategies
     .filter(s => s.score > 0)
-    .slice(0, 15)
+    .slice(0, 10)
     .map(s => s.strategy);
   
   // If we have less than 10 matches, add some high-impact defaults
@@ -1588,6 +1588,39 @@ function findRelevantStrategies(userMessage: string, conversationHistory: string
   return topStrategies;
 }
 
+// Detect if we're still in intake phase (gathering user info)
+function isIntakePhase(messages: Array<{role: string, content: string}>): boolean {
+  // If less than 6 exchanges, still in intake
+  if (messages.length < 6) return true;
+  
+  // Check if user has provided key intake info
+  const conversationText = messages.map(m => m.content).join(' ').toLowerCase();
+  
+  const hasProfileType = /business owner|retiree|salesperson|wage earner|investor|farmer|non-profit|grandparent/i.test(conversationText);
+  const hasIncomeInfo = /\$[\d,]+|\d+k|100k|200k|250k|500k|1m|\bincome\b/i.test(conversationText);
+  const hasGoals = /cash flow|reduce tax|education|retirement|insurance cost|save money|lower taxes/i.test(conversationText);
+  
+  // If missing key info, still in intake
+  const inIntake = !(hasProfileType && hasIncomeInfo && hasGoals);
+  return inIntake;
+}
+
+// Condensed format for recommendations phase (~60% smaller than full format)
+function formatStrategiesCondensed(strategies: Strategy[]): string {
+  if (strategies.length === 0) {
+    return "No strategies matched.";
+  }
+  
+  return strategies.map(s => 
+    `### ${s.id}: ${s.name}
+- Horseman: ${s.horseman.join(', ')}
+- Summary: ${s.summary}
+- Savings: ${s.savings}
+- Best For: ${s.bestFor}`
+  ).join('\n\n');
+}
+
+// Full format for when user asks for implementation details
 function formatStrategiesForPrompt(strategies: Strategy[]): string {
   if (strategies.length === 0) {
     return "No specific strategies selected for this context.";
@@ -1727,14 +1760,22 @@ serve(async (req) => {
     // Build conversation history text for keyword matching
     const conversationText = messages.map(m => m.content).join(' ');
     
-    // Find relevant strategies based on conversation context
-    const relevantStrategies = findRelevantStrategies(user_message, conversationText);
-    const strategiesContext = formatStrategiesForPrompt(relevantStrategies);
+    // Determine if we're in intake phase (fast path - no strategy context)
+    const inIntake = isIntakePhase(messages);
     
-    console.log(`Selected ${relevantStrategies.length} relevant strategies for context`);
+    let dynamicSystemPrompt: string;
 
-    // Build dynamic system prompt with only relevant strategies
-    const dynamicSystemPrompt = `${BASE_SYSTEM_PROMPT}
+    if (inIntake) {
+      // Intake phase: No strategy context needed - fast response
+      dynamicSystemPrompt = BASE_SYSTEM_PROMPT;
+      console.log('Intake phase - skipping strategy context for faster response');
+    } else {
+      // Recommendation phase: Include condensed relevant strategies
+      const relevantStrategies = findRelevantStrategies(user_message, conversationText);
+      const strategiesContext = formatStrategiesCondensed(relevantStrategies);
+      console.log(`Recommendation phase - ${relevantStrategies.length} strategies included`);
+      
+      dynamicSystemPrompt = `${BASE_SYSTEM_PROMPT}
 
 ## RELEVANT STRATEGIES FOR THIS CONVERSATION
 Use these strategies when making recommendations. Only reference strategies from this list:
@@ -1742,7 +1783,9 @@ Use these strategies when making recommendations. Only reference strategies from
 ${strategiesContext}
 
 ---
+When user asks for implementation details on a specific strategy, provide the full step-by-step plan.
 Remember: Only recommend strategies from the list above. If the user asks about something not covered, acknowledge the limitation and suggest consulting rprx4life.com for additional strategies.`;
+    }
 
     // Build OpenAI messages array
     const openaiMessages = [
