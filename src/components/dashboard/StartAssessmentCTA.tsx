@@ -30,7 +30,7 @@ export function StartAssessmentCTA({ isFirstTime = true }: StartAssessmentCTAPro
             ? 'Discover which of the Four Horsemen—Interest, Taxes, Insurance, or Education costs—is creating the most pressure on your financial picture. This 3-5 minute assessment will provide personalized insights.'
             : 'Track how your financial pressures change over time. Taking regular assessments helps you understand your progress and identify areas that need attention.'}
         </p>
-        <Button onClick={() => navigate('/assessment')} className="w-full sm:w-auto">
+        <Button onClick={() => navigate('/assessment')} className="w-full sm:w-auto bg-accent hover:bg-accent/90">
           Start Assessment
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
