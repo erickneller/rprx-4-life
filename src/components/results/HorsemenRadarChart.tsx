@@ -41,19 +41,28 @@ export function HorsemenRadarChart({
 
               const isPrimary = horseman === primaryHorseman;
 
-              // Offset horizontal labels outward for better visibility
+              // Offset labels outward for better visibility
               let offsetX = x;
+              let offsetY = y;
+              let anchor: 'start' | 'middle' | 'end' = 'middle';
+              
               if (payload.value === 'Taxes') {
-                offsetX = x - 15;
+                offsetX = x - 25;
+                anchor = 'end';
               } else if (payload.value === 'Education') {
-                offsetX = x + 15;
+                offsetX = x + 25;
+                anchor = 'start';
+              } else if (payload.value === 'Interest') {
+                offsetY = y - 10;
+              } else if (payload.value === 'Insurance') {
+                offsetY = y + 10;
               }
 
               return (
                 <text
                   x={offsetX}
-                  y={y}
-                  textAnchor="middle"
+                  y={offsetY}
+                  textAnchor={anchor}
                   dominantBaseline="middle"
                   className={isPrimary ? 'fill-primary font-semibold' : 'fill-muted-foreground'}
                   fontSize={14}
