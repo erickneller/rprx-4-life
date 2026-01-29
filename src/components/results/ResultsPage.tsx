@@ -92,7 +92,7 @@ export function ResultsPage() {
             Return to Dashboard
           </Button>
           <Button
-            className="flex-1"
+            className="flex-1 bg-primary hover:bg-primary/90"
             onClick={() => navigate('/assessment')}
           >
             <RotateCcw className="h-4 w-4 mr-2" />
