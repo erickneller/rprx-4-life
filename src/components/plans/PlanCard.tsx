@@ -55,7 +55,7 @@ export function PlanCard({ plan }: PlanCardProps) {
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-primary transition-all" 
+                  className="h-full bg-accent transition-all" 
                   style={{ width: `${progress}%` }}
                 />
               </div>
