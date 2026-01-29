@@ -262,7 +262,7 @@ const Auth = () => {
                 />
               </div>
               <Button
-                className="w-full"
+                className="w-full bg-accent hover:bg-accent/90"
                 onClick={() => handleSubmit('login')}
                 disabled={isSubmitting}
               >
@@ -315,7 +315,7 @@ const Auth = () => {
                 />
               </div>
               <Button
-                className="w-full"
+                className="w-full bg-accent hover:bg-accent/90"
                 onClick={() => handleSubmit('signup')}
                 disabled={isSubmitting}
               >
