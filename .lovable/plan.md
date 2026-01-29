@@ -1,76 +1,127 @@
 
-## Fix Intake Question Formatting
 
-### Problem
-The intake questions in the system prompt list options inline in parentheses, causing the AI to output responses like:
-```
-Which describes you? (Business Owner, Retiree/Grandparent, Salesperson, Wage Earner, Investor, Farmer, Non-Profit)
-```
+## Speed Up Strategy Assistant - Phase 2
 
-Instead of a properly formatted list that's easier to read and respond to.
+### Problem Analysis
 
-### Solution
-Update the `BASE_SYSTEM_PROMPT` in `supabase/functions/rprx-chat/index.ts` to:
-1. Explicitly instruct the AI to format intake question options as numbered lists
-2. Show a clear example of how intake questions should be presented
+Looking at the logs and code, I found the main bottleneck:
 
-### Changes Required
+| Issue | Impact |
+|-------|--------|
+| 15 full strategies always injected | ~8,000+ extra tokens per request |
+| All strategy fields included | Implementation plans, examples, disclaimers add bulk |
+| No intake detection | Strategies injected even for "What's your income?" |
+| formatStrategiesForPrompt is verbose | Each strategy = ~300 tokens |
 
-**File**: `supabase/functions/rprx-chat/index.ts`
+**Current flow**: Every message sends ~10,000+ tokens to OpenAI, even for simple intake questions.
 
-Update lines 1466-1477 from:
-```text
-## INTAKE QUESTIONS (Ask one at a time)
+### Solution: Smart Intake Phase Detection
 
-### User Profile
-- Which describes you? (Business Owner, Retiree/Grandparent, Salesperson, Wage Earner, Investor, Farmer, Non-Profit)
-- Main financial goals? (Increase Cash Flow, Reduce Taxes, Save for Education, Improve Retirement, Reduce Insurance Costs)
+Skip strategy injection during intake phase, only include strategies when the user is ready for recommendations.
 
-### Financial Snapshot
-- Approximate annual household income? (<$100K, $100-250K, $250-500K, $500K-$1M, $1M+)
-- Total household debt? (<$50K, $50-200K, $200-500K, $500K+)
-- Children or dependents? (If yes, how many and ages?)
-- Currently paying for or planning education expenses?
-- Biggest financial concerns?
-```
+---
 
-To:
-```text
-## INTAKE QUESTIONS (Ask one at a time)
+## Changes Required
 
-IMPORTANT: When presenting options, ALWAYS format them as a numbered list on separate lines - NEVER as comma-separated text in parentheses.
+### File: `supabase/functions/rprx-chat/index.ts`
 
-Example format:
-"Which best describes you?
-1. Business Owner
-2. Retiree/Grandparent
-3. Salesperson
-4. Wage Earner
-5. Investor
-6. Farmer
-7. Non-Profit"
+#### 1. Add Intake Phase Detection Function (New)
 
-Questions to ask:
-1. User Profile: Business Owner, Retiree/Grandparent, Salesperson, Wage Earner, Investor, Farmer, Non-Profit
-2. Main Goals: Increase Cash Flow, Reduce Taxes, Save for Education, Improve Retirement, Reduce Insurance Costs
-3. Annual Income: <$100K, $100-250K, $250-500K, $500K-$1M, $1M+
-4. Total Debt: <$50K, $50-200K, $200-500K, $500K+
-5. Children/Dependents: How many and ages?
-6. Education expenses: Currently paying or planning?
-7. Biggest financial concerns?
+Create a function to detect if we're still in intake phase:
+
+```typescript
+function isIntakePhase(messages: Array<{role: string, content: string}>): boolean {
+  // If less than 6 exchanges, still in intake
+  if (messages.length < 6) return true;
+  
+  // Check if user has provided key intake info
+  const conversationText = messages.map(m => m.content).join(' ').toLowerCase();
+  
+  const hasProfileType = /business owner|retiree|salesperson|wage earner|investor|farmer|non-profit/i.test(conversationText);
+  const hasIncomeInfo = /\$|income|k|100k|200k|250k|500k|1m/i.test(conversationText);
+  const hasGoals = /cash flow|reduce tax|education|retirement|insurance cost/i.test(conversationText);
+  
+  // If missing key info, still in intake
+  return !(hasProfileType && hasIncomeInfo && hasGoals);
+}
 ```
 
-### Expected Result
-The AI will output intake questions like:
-```
-Which best describes you?
-1. Business Owner
-2. Retiree/Grandparent
-3. Salesperson
-4. Wage Earner
-5. Investor
-6. Farmer
-7. Non-Profit
+#### 2. Create Slim Strategy Format Function (New)
+
+For recommendations phase, use a condensed format:
+
+```typescript
+function formatStrategiesCondensed(strategies: Strategy[]): string {
+  if (strategies.length === 0) return "No strategies matched.";
+  
+  return strategies.map(s => 
+    `### ${s.id}: ${s.name}
+- Horseman: ${s.horseman.join(', ')}
+- Summary: ${s.summary}
+- Savings: ${s.savings}
+- Best For: ${s.bestFor}`
+  ).join('\n\n');
+}
 ```
 
-This makes it easy to read and allows users to respond with just a number.
+This is ~60% smaller than the current format (removes implementation plans, examples, disclaimers from initial context).
+
+#### 3. Update Main Handler Logic (~line 1730-1745)
+
+Replace current strategy injection with conditional logic:
+
+```typescript
+// Determine if we're in intake phase
+const inIntake = isIntakePhase(messages);
+
+let dynamicSystemPrompt: string;
+
+if (inIntake) {
+  // Intake phase: No strategy context needed - fast response
+  dynamicSystemPrompt = BASE_SYSTEM_PROMPT;
+  console.log('Intake phase - skipping strategy context');
+} else {
+  // Recommendation phase: Include condensed relevant strategies
+  const relevantStrategies = findRelevantStrategies(user_message, conversationText);
+  const strategiesContext = formatStrategiesCondensed(relevantStrategies);
+  console.log(`Recommendation phase - ${relevantStrategies.length} strategies`);
+  
+  dynamicSystemPrompt = `${BASE_SYSTEM_PROMPT}
+
+## RELEVANT STRATEGIES
+${strategiesContext}
+
+When user asks for implementation details, provide full step-by-step plans.`;
+}
+```
+
+#### 4. Reduce Default Strategy Count (Line 1576)
+
+Change from 15 strategies to 10 for faster recommendations:
+
+```typescript
+.slice(0, 10)  // was 15
+```
+
+---
+
+## Expected Results
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Intake phase tokens | ~10,000+ | ~800 (prompt only) |
+| Recommendation tokens | ~10,000+ | ~3,000 (condensed) |
+| Intake response time | 3-5 sec | 1-2 sec |
+| Recommendation response time | 5-8 sec | 2-4 sec |
+
+---
+
+## Summary
+
+1. **Add `isIntakePhase()` function** - detects if user is still answering intake questions
+2. **Add `formatStrategiesCondensed()` function** - smaller strategy format for recommendations
+3. **Conditional strategy injection** - skip strategies during intake, include condensed version for recommendations
+4. **Reduce strategy count** - 10 instead of 15 relevant strategies
+
+This will make intake questions respond in 1-2 seconds instead of 3-5+ seconds.
+
