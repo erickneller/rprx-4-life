@@ -58,8 +58,8 @@ export function HorsemenRadarChart({
           <Radar
             name="Pressure"
             dataKey="value"
-            stroke="hsl(var(--primary))"
-            fill="hsl(var(--primary))"
+            stroke="hsl(var(--accent))"
+            fill="hsl(var(--accent))"
             fillOpacity={0.4}
             strokeWidth={2}
             animationDuration={500}
