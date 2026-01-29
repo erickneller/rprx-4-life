@@ -104,6 +104,10 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
+        "spin-y": {
+          "0%": { transform: "rotateY(0deg)" },
+          "100%": { transform: "rotateY(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -113,6 +117,7 @@ export default {
         "scale-in": "scale-in 0.3s ease-out forwards",
         float: "float 3s ease-in-out infinite",
         pulse: "pulse 2s ease-in-out infinite",
+        "spin-y": "spin-y 4s linear infinite",
       },
     },
   },
