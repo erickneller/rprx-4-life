@@ -6,29 +6,21 @@ interface ParsedStrategy {
   content: PlanContent;
 }
 
+// Marker phrase that indicates a genuine implementation plan response
+const PLAN_MARKER_PHRASE = "Here are the step-by-step implementation plans";
+
 /**
  * Parses assistant messages to detect strategy recommendations with implementation steps.
  * Returns parsed strategy data if found, null otherwise.
  */
 export function parseStrategyFromMessage(messageContent: string): ParsedStrategy | null {
-  // Look for strategy IDs like T-1, I-3, IN-2, E-5
-  const strategyIdMatch = messageContent.match(/\b([TIE](?:N)?-\d+)\b/i);
-  
-  // Look for implementation steps patterns
-  const hasImplementationSteps = 
-    /implementation\s*steps?/i.test(messageContent) ||
-    /how\s+to\s+implement/i.test(messageContent) ||
-    /steps?\s+to\s+(?:implement|take|follow)/i.test(messageContent) ||
-    /action\s+(?:steps?|items?|plan)/i.test(messageContent);
-  
-  // Look for numbered list patterns (implementation steps)
-  const numberedListMatch = messageContent.match(/(?:^|\n)\s*\d+\.\s+.+/gm);
-  const hasNumberedSteps = numberedListMatch && numberedListMatch.length >= 2;
-  
-  // Must have some indication of a strategy or implementation plan
-  if (!strategyIdMatch && !hasImplementationSteps && !hasNumberedSteps) {
+  // Only show Save Plan button if marker phrase is present
+  if (!messageContent.includes(PLAN_MARKER_PHRASE)) {
     return null;
   }
+  
+  // Look for strategy IDs like T-1, I-3, IN-2, E-5
+  const strategyIdMatch = messageContent.match(/\b([TIE](?:N)?-\d+)\b/i);
   
   // Extract strategy name - look for bold text or headers after strategy ID
   let strategyName = 'Implementation Plan';

@@ -1512,7 +1512,10 @@ After listing strategies, ask: "Which of these would you like a step-by-step imp
 
 ## IMPLEMENTATION PLAN FORMAT
 
-For selected strategies provide:
+IMPORTANT: When providing implementation plans, ALWAYS begin your response with this exact phrase:
+"Here are the step-by-step implementation plans for each of the selected strategies:"
+
+Then for each selected strategy provide:
 - **Title**
 - **Who it's best for**
 - **Key Requirements**
