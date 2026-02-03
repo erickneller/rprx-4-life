@@ -6,14 +6,15 @@ import { useSendMessage } from '@/hooks/useSendMessage';
 import { ConversationSidebar } from '@/components/assistant/ConversationSidebar';
 import { ChatThread } from '@/components/assistant/ChatThread';
 import { DisclaimerFooter } from '@/components/assistant/DisclaimerFooter';
+import { ProfileAvatar } from '@/components/profile/ProfileAvatar';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LogOut, ArrowLeft } from 'lucide-react';
+import { Menu, ArrowLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function StrategyAssistant() {
   const navigate = useNavigate();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const isMobile = useIsMobile();
   
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -60,10 +61,6 @@ export default function StrategyAssistant() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
 
   if (loading) {
     return (
@@ -115,12 +112,7 @@ export default function StrategyAssistant() {
         </div>
         
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground hidden sm:inline">
-            {user.email}
-          </span>
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <ProfileAvatar />
         </div>
       </header>
 
