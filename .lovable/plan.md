@@ -1,63 +1,28 @@
 
-
-## Add User Profiles Feature
+## Add Suggested Prompt for Strategy Assistant
 
 ### Overview
-Add user profiles with avatar, name, and standard SaaS profile info. A profile avatar will appear in the top right header, opening a dropdown menu to edit profile details.
+Add a "Next Steps" section to the assessment results page that provides a personalized prompt the user can copy and paste into the Strategy Assistant. The prompt will be dynamically generated based on their primary pressure area (horseman) and cash flow status.
 
 ---
 
-## Step-by-Step Approach
+## Implementation Approach
 
-### Step 1: Database Setup
-Create a `profiles` table to store user profile data.
+### New Component: SuggestedPromptCard
+A card component that displays:
+- A heading like "Get Personalized Guidance"
+- The generated prompt text in a readable format
+- A "Copy to Clipboard" button
+- A "Go to Strategy Assistant" button that navigates to `/strategy-assistant`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key, matches auth.users id |
-| full_name | text | User's display name |
-| avatar_url | text | URL to profile picture |
-| phone | text | Optional phone number |
-| company | text | Optional company name |
-| created_at | timestamp | Auto-set |
-| updated_at | timestamp | Auto-updated |
+### Prompt Generation Logic
+Create a utility function that combines:
+- **Primary Horseman**: Interest, Taxes, Insurance, or Education
+- **Cash Flow Status**: Surplus, Tight, or Deficit (optional)
 
-Plus RLS policies so users can only read/update their own profile.
-
----
-
-### Step 2: Storage Bucket
-Create an `avatars` storage bucket for profile picture uploads with public access.
-
----
-
-### Step 3: New Components
-
-**ProfileAvatar** - Clickable avatar in header that opens dropdown
-- Shows user's avatar image or initials fallback
-- Dropdown menu with: "Edit Profile", "Sign Out"
-
-**ProfileEditModal** - Dialog for editing profile
-- Avatar upload with preview
-- Name, phone, company fields
-- Save/Cancel buttons
-
----
-
-### Step 4: New Hook
-
-**useProfile** - React Query hook for profile data
-- Fetch current user's profile
-- Update profile mutation
-- Upload avatar to storage
-
----
-
-### Step 5: Update Headers
-Replace the current email + sign out button pattern with the new ProfileAvatar component in:
-- `DashboardHome.tsx`
-- `StrategyAssistant.tsx`
-- Any other authenticated pages
+Example generated prompts:
+- Interest + Deficit: *"My biggest financial pressure is debt and interest costs, and I'm currently spending more than I earn. What are some strategies to address this?"*
+- Taxes + Surplus: *"I'd like to improve my tax efficiency. I have a healthy cash flow surplus. What approaches should I consider?"*
 
 ---
 
@@ -65,32 +30,49 @@ Replace the current email + sign out button pattern with the new ProfileAvatar c
 
 | File | Purpose |
 |------|---------|
-| `src/components/profile/ProfileAvatar.tsx` | Avatar dropdown for header |
-| `src/components/profile/ProfileEditModal.tsx` | Edit profile dialog |
-| `src/hooks/useProfile.ts` | Profile data hook |
+| `src/components/results/SuggestedPromptCard.tsx` | Card with generated prompt and copy button |
+| `src/lib/promptGenerator.ts` | Function to generate prompts based on horseman + cash flow |
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `DashboardHome.tsx` | Replace email/signout with ProfileAvatar |
-| `StrategyAssistant.tsx` | Replace email/signout with ProfileAvatar |
-
-## Database Changes
-
-| Change | Description |
-|--------|-------------|
-| Create `profiles` table | Store user profile data |
-| Create `avatars` bucket | Store profile pictures |
-| Add RLS policies | Secure profile access |
+| `src/components/results/ResultsPage.tsx` | Add SuggestedPromptCard section before action buttons |
 
 ---
 
-## User Experience Flow
+## Technical Details
 
-1. User logs in -> Profile auto-created (if needed)
-2. Click avatar in top-right -> See dropdown menu
-3. Click "Edit Profile" -> Modal opens
-4. Upload photo, enter name/details -> Save
-5. Avatar and name now appear across all pages
+### promptGenerator.ts
+```typescript
+export function generateStrategyPrompt(
+  primaryHorseman: HorsemanType,
+  cashFlowStatus: CashFlowStatus | null
+): string
+```
 
+Maps each horseman to a focus phrase and combines with cash flow context.
+
+### SuggestedPromptCard.tsx
+- Uses `navigator.clipboard.writeText()` for copy functionality
+- Shows toast notification on successful copy
+- Includes navigation button to Strategy Assistant
+
+---
+
+## User Experience
+
+1. User completes assessment and views results
+2. Below the diagnostic feedback, sees "Next Steps" section
+3. Card displays a personalized prompt based on their results
+4. User clicks "Copy Prompt" -> prompt copied, toast confirms
+5. User clicks "Start Chat" -> navigates to Strategy Assistant
+6. User pastes prompt to begin personalized conversation
+
+---
+
+## Future Expansion Points
+The prompt generator is designed to easily incorporate:
+- Profile data (name, company)
+- Additional assessment responses
+- More detailed horseman-specific questions
