@@ -5,6 +5,7 @@ import { HorsemenRadarChart } from './HorsemenRadarChart';
 import { PrimaryHorsemanCard } from './PrimaryHorsemanCard';
 import { CashFlowIndicator } from './CashFlowIndicator';
 import { DiagnosticFeedback } from './DiagnosticFeedback';
+import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
 import type { HorsemanScores, HorsemanType } from '@/lib/scoringEngine';
 import type { CashFlowStatus } from '@/lib/cashFlowCalculator';
@@ -16,20 +17,24 @@ export function ResultsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AuthenticatedLayout title="Results">
+        <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AuthenticatedLayout>
     );
   }
 
   if (error || !assessment) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-        <p className="text-muted-foreground">Assessment not found.</p>
-        <Button onClick={() => navigate('/dashboard')}>
-          Return to Dashboard
-        </Button>
-      </div>
+      <AuthenticatedLayout title="Results">
+        <div className="flex h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4">
+          <p className="text-muted-foreground">Assessment not found.</p>
+          <Button onClick={() => navigate('/dashboard')}>
+            Return to Dashboard
+          </Button>
+        </div>
+      </AuthenticatedLayout>
     );
   }
 
@@ -44,26 +49,23 @@ export function ResultsPage() {
   const cashFlowStatus = assessment.cash_flow_status as CashFlowStatus | null;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border px-4 py-4">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+    <AuthenticatedLayout title="Assessment Results">
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+        {/* Intro */}
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold text-foreground">
             Your Assessment Results
-          </h1>
-          <p className="text-foreground mt-1">
+          </h2>
+          <p className="text-muted-foreground mt-1">
             Here's what we found about your financial pressure points
           </p>
         </div>
-      </header>
 
-      {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         {/* Radar Chart */}
         <section>
-        <h2 className="text-xl font-semibold text-foreground mb-4 text-center">
+          <h3 className="text-lg font-semibold text-foreground mb-4 text-center">
             The Four Horsemen Of Financial Apocalypse
-          </h2>
+          </h3>
           <HorsemenRadarChart scores={scores} primaryHorseman={primaryHorseman} />
         </section>
 
@@ -75,9 +77,9 @@ export function ResultsPage() {
 
         {/* Diagnostic Feedback */}
         <section>
-          <h2 className="text-xl font-semibold text-foreground mb-4">
+          <h3 className="text-lg font-semibold text-foreground mb-4">
             Understanding Your Results
-          </h2>
+          </h3>
           <DiagnosticFeedback primaryHorseman={primaryHorseman} />
         </section>
 
@@ -99,7 +101,7 @@ export function ResultsPage() {
             Take New Assessment
           </Button>
         </section>
-      </main>
-    </div>
+      </div>
+    </AuthenticatedLayout>
   );
 }

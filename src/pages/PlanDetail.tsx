@@ -1,25 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 import { usePlan, useUpdatePlan, useDeletePlan } from '@/hooks/usePlans';
 import { PlanChecklist } from '@/components/plans/PlanChecklist';
 import { PlanDownload } from '@/components/plans/PlanDownload';
+import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Loader2, Trash2, Edit2, Save, X, Calendar, Clock, FileText, Star } from 'lucide-react';
+import { Loader2, Trash2, Edit2, Save, X, Calendar, Clock, FileText, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import rprxLogo from '@/assets/rprx-logo.png';
 
 export default function PlanDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
   const { data: plan, isLoading, error } = usePlan(id);
   const updatePlan = useUpdatePlan();
   const deletePlan = useDeletePlan();
@@ -31,32 +28,30 @@ export default function PlanDetail() {
   const [notesChanged, setNotesChanged] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
-  }, [user, authLoading, navigate]);
-
-  useEffect(() => {
     if (plan) {
       setEditedTitle(plan.title);
       setNotes(plan.notes || '');
     }
   }, [plan]);
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AuthenticatedLayout>
+        <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AuthenticatedLayout>
     );
   }
 
   if (error || !plan) {
     return (
-      <div className="flex h-screen items-center justify-center flex-col gap-4">
-        <p className="text-muted-foreground">Plan not found</p>
-        <Button onClick={() => navigate('/plans')} className="bg-accent hover:bg-accent/90 text-accent-foreground">Back to Plans</Button>
-      </div>
+      <AuthenticatedLayout>
+        <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center flex-col gap-4">
+          <p className="text-muted-foreground">Plan not found</p>
+          <Button onClick={() => navigate('/plans')} className="bg-accent hover:bg-accent/90 text-accent-foreground">Back to Plans</Button>
+        </div>
+      </AuthenticatedLayout>
     );
   }
 
@@ -71,7 +66,6 @@ export default function PlanDetail() {
       ? currentCompleted.filter(i => i !== stepIndex)
       : [...currentCompleted, stepIndex];
     
-    // Determine new status based on progress
     let newStatus: 'not_started' | 'in_progress' | 'completed' = plan.status;
     if (newCompleted.length === 0) {
       newStatus = 'not_started';
@@ -166,54 +160,36 @@ export default function PlanDetail() {
     }
   };
 
-  const statusColors = {
-    not_started: 'bg-muted text-muted-foreground',
-    in_progress: 'bg-primary/10 text-primary',
-    completed: 'bg-green-500/10 text-green-600',
-  };
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/plans')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <img src={rprxLogo} alt="RPRx 4 Life" className="h-8 w-auto" />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <PlanDownload plan={plan} />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
+    <AuthenticatedLayout title={plan.title}>
+      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-2">
+          <PlanDownload plan={plan} />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this plan?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. The plan will be permanently deleted.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                   Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete this plan?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. The plan will be permanently deleted.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* Title and Status */}
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-4">
@@ -404,7 +380,7 @@ export default function PlanDetail() {
             {content.disclaimer}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AuthenticatedLayout>
   );
 }

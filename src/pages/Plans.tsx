@@ -1,36 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 import { usePlans } from '@/hooks/usePlans';
 import { PlanCard } from '@/components/plans/PlanCard';
+import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Search, Loader2, FileText } from 'lucide-react';
-import rprxLogo from '@/assets/rprx-logo.png';
+import { Search, Loader2, FileText } from 'lucide-react';
 
 export default function Plans() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
   const { data: plans = [], isLoading } = usePlans();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [horsemanFilter, setHorsemanFilter] = useState<string>('all');
-
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-    }
-  }, [user, authLoading, navigate]);
-
-  if (authLoading || !user) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   // Filter plans
   const filteredPlans = plans.filter(plan => {
@@ -61,27 +45,13 @@ export default function Plans() {
   )].sort();
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border px-4 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <img src={rprxLogo} alt="RPRx 4 Life" className="h-8 w-auto" />
-            <div>
-              <h1 className="text-xl font-bold text-foreground">My Plans</h1>
-              <p className="text-sm text-muted-foreground">
-                {plans.length} saved plan{plans.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
+    <AuthenticatedLayout title="My Plans">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Subtitle */}
+        <p className="text-sm text-muted-foreground mb-6">
+          {plans.length} saved plan{plans.length !== 1 ? 's' : ''}
+        </p>
 
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
@@ -154,7 +124,7 @@ export default function Plans() {
             </Button>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </AuthenticatedLayout>
   );
 }

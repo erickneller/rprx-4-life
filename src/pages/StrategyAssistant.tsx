@@ -1,20 +1,16 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
 import { useCreateConversation, useUpdateConversationTitle } from '@/hooks/useConversations';
 import { useSendMessage } from '@/hooks/useSendMessage';
 import { ConversationSidebar } from '@/components/assistant/ConversationSidebar';
 import { ChatThread } from '@/components/assistant/ChatThread';
 import { DisclaimerFooter } from '@/components/assistant/DisclaimerFooter';
-import { ProfileAvatar } from '@/components/profile/ProfileAvatar';
-import { Button } from '@/components/ui/button';
+import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Menu } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function StrategyAssistant() {
-  const navigate = useNavigate();
-  const { user, loading } = useAuth();
   const isMobile = useIsMobile();
   
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -23,13 +19,6 @@ export default function StrategyAssistant() {
   const createConversation = useCreateConversation();
   const updateTitle = useUpdateConversationTitle();
   const { sendMessage, isLoading: isSending, error: sendError } = useSendMessage();
-
-  // Redirect to auth if not logged in
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
 
   const handleNewConversation = () => {
     setActiveConversationId(null);
@@ -48,11 +37,9 @@ export default function StrategyAssistant() {
     });
 
     if (result) {
-      // If this was a new conversation, set it as active
       if (!activeConversationId) {
         setActiveConversationId(result.conversationId);
         
-        // Generate title from first message (first 50 chars)
         const title = message.length > 50 
           ? message.substring(0, 47) + '...' 
           : message;
@@ -61,20 +48,7 @@ export default function StrategyAssistant() {
     }
   };
 
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
-  const sidebarContent = (
+  const conversationSidebarContent = (
     <ConversationSidebar
       activeConversationId={activeConversationId}
       onSelectConversation={handleSelectConversation}
@@ -84,65 +58,51 @@ export default function StrategyAssistant() {
   );
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex items-center gap-2">
+    <AuthenticatedLayout title="Strategy Assistant">
+      <div className="flex h-[calc(100vh-3.5rem)] flex-col">
+        <div className="flex flex-1 overflow-hidden">
+          {/* Mobile conversation sidebar toggle */}
           {isMobile && (
-            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
-                {sidebarContent}
-              </SheetContent>
-            </Sheet>
-          )}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate('/dashboard')}
-            className="mr-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-lg font-semibold">RPRx Strategy Assistant</h1>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <ProfileAvatar />
-        </div>
-      </header>
-
-      {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar */}
-        {!isMobile && (
-          <div className="w-72 shrink-0">
-            {sidebarContent}
-          </div>
-        )}
-
-        {/* Chat area */}
-        <div className="flex flex-1 flex-col">
-          <ChatThread
-            conversationId={activeConversationId}
-            onSendMessage={handleSendMessage}
-            isSending={isSending}
-          />
-          
-          {sendError && (
-            <div className="px-4 py-2 text-sm text-destructive bg-destructive/10 text-center">
-              {sendError}
+            <div className="border-b px-2 py-2">
+              <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <Menu className="h-4 w-4 mr-2" />
+                    Conversations
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0">
+                  {conversationSidebarContent}
+                </SheetContent>
+              </Sheet>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Disclaimer footer */}
-      <DisclaimerFooter />
-    </div>
+          {/* Desktop conversation sidebar */}
+          {!isMobile && (
+            <div className="w-72 shrink-0 border-r">
+              {conversationSidebarContent}
+            </div>
+          )}
+
+          {/* Chat area */}
+          <div className="flex flex-1 flex-col">
+            <ChatThread
+              conversationId={activeConversationId}
+              onSendMessage={handleSendMessage}
+              isSending={isSending}
+            />
+            
+            {sendError && (
+              <div className="px-4 py-2 text-sm text-destructive bg-destructive/10 text-center">
+                {sendError}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DisclaimerFooter />
+      </div>
+    </AuthenticatedLayout>
   );
 }
