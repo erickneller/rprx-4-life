@@ -86,6 +86,39 @@ export type Database = {
           },
         ]
       }
+      badges: {
+        Row: {
+          category: string
+          created_at: string
+          criteria_type: string
+          criteria_value: number
+          description: string
+          icon: string
+          id: string
+          name: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          criteria_type: string
+          criteria_value: number
+          description: string
+          icon: string
+          id?: string
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          criteria_type?: string
+          criteria_value?: number
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -109,6 +142,74 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      debt_journeys: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          dream_image_url: string | null
+          dream_text: string | null
+          id: string
+          status: Database["public"]["Enums"]["journey_status"]
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          dream_image_url?: string | null
+          dream_text?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["journey_status"]
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          dream_image_url?: string | null
+          dream_text?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["journey_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      debt_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          debt_id: string
+          id: string
+          note: string | null
+          payment_type: Database["public"]["Enums"]["payment_type"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          debt_id: string
+          id?: string
+          note?: string | null
+          payment_type?: Database["public"]["Enums"]["payment_type"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          debt_id?: string
+          id?: string
+          note?: string | null
+          payment_type?: Database["public"]["Enums"]["payment_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debt_payments_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "user_debts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -262,6 +363,85 @@ export type Database = {
         }
         Relationships: []
       }
+      user_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_debts: {
+        Row: {
+          created_at: string
+          current_balance: number
+          debt_type: Database["public"]["Enums"]["debt_type"]
+          id: string
+          interest_rate: number
+          journey_id: string
+          min_payment: number
+          name: string
+          original_balance: number
+          paid_off_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_balance: number
+          debt_type: Database["public"]["Enums"]["debt_type"]
+          id?: string
+          interest_rate?: number
+          journey_id: string
+          min_payment?: number
+          name: string
+          original_balance: number
+          paid_off_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_balance?: number
+          debt_type?: Database["public"]["Enums"]["debt_type"]
+          id?: string
+          interest_rate?: number
+          journey_id?: string
+          min_payment?: number
+          name?: string
+          original_balance?: number
+          paid_off_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_debts_journey_id_fkey"
+            columns: ["journey_id"]
+            isOneToOne: false
+            referencedRelation: "debt_journeys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -271,7 +451,17 @@ export type Database = {
     }
     Enums: {
       cash_flow_status: "surplus" | "tight" | "deficit"
+      debt_type:
+        | "credit_card"
+        | "student_loan"
+        | "auto_loan"
+        | "mortgage"
+        | "personal_loan"
+        | "medical"
+        | "other"
       horseman_type: "interest" | "taxes" | "insurance" | "education"
+      journey_status: "active" | "completed" | "paused"
+      payment_type: "payment" | "balance_update"
       plan_status: "not_started" | "in_progress" | "completed"
       question_type: "slider" | "single_choice" | "yes_no" | "range_select"
     }
@@ -402,7 +592,18 @@ export const Constants = {
   public: {
     Enums: {
       cash_flow_status: ["surplus", "tight", "deficit"],
+      debt_type: [
+        "credit_card",
+        "student_loan",
+        "auto_loan",
+        "mortgage",
+        "personal_loan",
+        "medical",
+        "other",
+      ],
       horseman_type: ["interest", "taxes", "insurance", "education"],
+      journey_status: ["active", "completed", "paused"],
+      payment_type: ["payment", "balance_update"],
       plan_status: ["not_started", "in_progress", "completed"],
       question_type: ["slider", "single_choice", "yes_no", "range_select"],
     },

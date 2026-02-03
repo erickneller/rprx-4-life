@@ -1,0 +1,98 @@
+import { useState } from "react";
+import { WelcomeStep } from "./WelcomeStep";
+import { GoalSelectionStep } from "./GoalSelectionStep";
+import { DebtEntryStep } from "./DebtEntryStep";
+import { DreamStep } from "./DreamStep";
+import { Progress } from "@/components/ui/progress";
+import {
+  type DebtType,
+  type DebtEntryFormData,
+  type SetupWizardData,
+  createEmptyDebtEntry,
+} from "@/lib/debtTypes";
+
+interface SetupWizardProps {
+  onComplete: (data: SetupWizardData) => void;
+  isLoading?: boolean;
+}
+
+type Step = "welcome" | "goals" | "debts" | "dream";
+
+const STEPS: Step[] = ["welcome", "goals", "debts", "dream"];
+
+export function SetupWizard({ onComplete, isLoading }: SetupWizardProps) {
+  const [currentStep, setCurrentStep] = useState<Step>("welcome");
+  const [selectedTypes, setSelectedTypes] = useState<DebtType[]>([]);
+  const [debts, setDebts] = useState<DebtEntryFormData[]>([]);
+  const [dreamText, setDreamText] = useState("");
+
+  const currentStepIndex = STEPS.indexOf(currentStep);
+  const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
+
+  const goToStep = (step: Step) => setCurrentStep(step);
+
+  const handleGoalsComplete = () => {
+    // Initialize one debt entry for each selected type
+    if (debts.length === 0) {
+      setDebts(selectedTypes.map((type) => createEmptyDebtEntry(type)));
+    }
+    goToStep("debts");
+  };
+
+  const handleComplete = () => {
+    onComplete({
+      selectedDebtTypes: selectedTypes,
+      debts,
+      dreamText,
+    });
+  };
+
+  return (
+    <div className="w-full max-w-2xl mx-auto">
+      {/* Progress bar - only show after welcome */}
+      {currentStep !== "welcome" && (
+        <div className="mb-8">
+          <Progress value={progress} className="h-2" />
+          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+            <span>Step {currentStepIndex + 1} of {STEPS.length}</span>
+            <span>{Math.round(progress)}% complete</span>
+          </div>
+        </div>
+      )}
+
+      {/* Step content */}
+      {currentStep === "welcome" && (
+        <WelcomeStep onNext={() => goToStep("goals")} />
+      )}
+
+      {currentStep === "goals" && (
+        <GoalSelectionStep
+          selectedTypes={selectedTypes}
+          onSelect={setSelectedTypes}
+          onNext={handleGoalsComplete}
+          onBack={() => goToStep("welcome")}
+        />
+      )}
+
+      {currentStep === "debts" && (
+        <DebtEntryStep
+          selectedTypes={selectedTypes}
+          debts={debts}
+          onDebtsChange={setDebts}
+          onNext={() => goToStep("dream")}
+          onBack={() => goToStep("goals")}
+        />
+      )}
+
+      {currentStep === "dream" && (
+        <DreamStep
+          dreamText={dreamText}
+          onDreamChange={setDreamText}
+          onComplete={handleComplete}
+          onBack={() => goToStep("debts")}
+          isLoading={isLoading}
+        />
+      )}
+    </div>
+  );
+}
