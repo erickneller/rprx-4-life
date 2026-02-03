@@ -1,21 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
 import { AssessmentHistory } from './AssessmentHistory';
-import { Loader2, LogOut, MessageSquare, FileText } from 'lucide-react';
+import { ProfileAvatar } from '@/components/profile/ProfileAvatar';
+import { Loader2, MessageSquare, FileText } from 'lucide-react';
 import rprxLogo from '@/assets/rprx-logo.png';
 
 export function DashboardHome() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
   const { data: assessments = [], isLoading } = useAssessmentHistory();
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/', { replace: true });
-  };
 
   const isFirstTime = assessments.length === 0;
 
@@ -28,7 +22,6 @@ export function DashboardHome() {
             <img src={rprxLogo} alt="RPRx 4 Life" className="h-10 w-auto" />
             <div>
               <h1 className="text-xl font-bold text-foreground">RPRx 4 Life</h1>
-              <p className="text-sm text-muted-foreground">{user?.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -40,10 +33,7 @@ export function DashboardHome() {
               <MessageSquare className="h-4 w-4 mr-2" />
               Strategy Assistant
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
+            <ProfileAvatar />
           </div>
         </div>
       </header>
