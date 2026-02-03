@@ -1,11 +1,21 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
+
+// Input validation schema
+const requestSchema = z.object({
+  conversation_id: z.string().uuid().optional().nullable(),
+  user_message: z.string()
+    .trim()
+    .min(1, 'Message cannot be empty')
+    .max(4000, 'Message must be less than 4000 characters'),
+});
 
 // =====================================================
 // STRATEGY DATABASE - Searchable array for fast lookup
@@ -1683,15 +1693,30 @@ serve(async (req) => {
     const userId = user.id;
     console.log('Authenticated user:', userId);
 
-    // Parse request body
-    const { conversation_id, user_message } = await req.json();
-
-    if (!user_message || typeof user_message !== 'string' || user_message.trim() === '') {
+    // Parse and validate request body
+    let validatedInput;
+    try {
+      const rawBody = await req.json();
+      validatedInput = requestSchema.parse(rawBody);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        console.error('Validation error:', err.errors);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Invalid input', 
+            details: err.errors[0]?.message || 'Validation failed'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.error('Parse error:', err);
       return new Response(
-        JSON.stringify({ error: 'User message is required' }),
+        JSON.stringify({ error: 'Invalid request body' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { conversation_id, user_message } = validatedInput;
 
     let conversationId = conversation_id;
 
