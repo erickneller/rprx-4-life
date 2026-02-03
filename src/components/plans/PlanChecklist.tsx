@@ -26,7 +26,10 @@ export function PlanChecklist({ steps, completedSteps, onToggleStep, disabled }:
               checked={isCompleted}
               onCheckedChange={() => onToggleStep(index)}
               disabled={disabled}
-              className="mt-0.5"
+              className={cn(
+                "mt-0.5",
+                isCompleted && "data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+              )}
             />
             <span 
               className={cn(
