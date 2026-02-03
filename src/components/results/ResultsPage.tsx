@@ -5,6 +5,7 @@ import { HorsemenRadarChart } from './HorsemenRadarChart';
 import { PrimaryHorsemanCard } from './PrimaryHorsemanCard';
 import { CashFlowIndicator } from './CashFlowIndicator';
 import { DiagnosticFeedback } from './DiagnosticFeedback';
+import { SuggestedPromptCard } from './SuggestedPromptCard';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
 import type { HorsemanScores, HorsemanType } from '@/lib/scoringEngine';
@@ -81,6 +82,17 @@ export function ResultsPage() {
             Understanding Your Results
           </h3>
           <DiagnosticFeedback primaryHorseman={primaryHorseman} />
+        </section>
+
+        {/* Next Steps */}
+        <section>
+          <h3 className="text-lg font-semibold text-foreground mb-4">
+            Next Steps
+          </h3>
+          <SuggestedPromptCard
+            primaryHorseman={primaryHorseman}
+            cashFlowStatus={cashFlowStatus}
+          />
         </section>
 
         {/* Action Buttons */}
