@@ -1,78 +1,66 @@
 
-## Add Suggested Prompt for Strategy Assistant
+## Simplify Plan Detection with Marker Phrase
 
 ### Overview
-Add a "Next Steps" section to the assessment results page that provides a personalized prompt the user can copy and paste into the Strategy Assistant. The prompt will be dynamically generated based on their primary pressure area (horseman) and cash flow status.
+Replace complex heuristic detection with a simple marker phrase approach. The AI assistant will include a specific phrase when delivering implementation plans, and the frontend will only show the "Save Plan" button when that phrase is detected.
 
 ---
 
-## Implementation Approach
+## Changes Required
 
-### New Component: SuggestedPromptCard
-A card component that displays:
-- A heading like "Get Personalized Guidance"
-- The generated prompt text in a readable format
-- A "Copy to Clipboard" button
-- A "Go to Strategy Assistant" button that navigates to `/strategy-assistant`
+### 1. Update Edge Function System Prompt
+**File:** `supabase/functions/rprx-chat/index.ts`
 
-### Prompt Generation Logic
-Create a utility function that combines:
-- **Primary Horseman**: Interest, Taxes, Insurance, or Education
-- **Cash Flow Status**: Surplus, Tight, or Deficit (optional)
+Modify the "IMPLEMENTATION PLAN FORMAT" section (around line 1513) to instruct the AI to always begin implementation plan responses with the marker phrase:
 
-Example generated prompts:
-- Interest + Deficit: *"My biggest financial pressure is debt and interest costs, and I'm currently spending more than I earn. What are some strategies to address this?"*
-- Taxes + Surplus: *"I'd like to improve my tax efficiency. I have a healthy cash flow surplus. What approaches should I consider?"*
+```
+## IMPLEMENTATION PLAN FORMAT
 
----
+IMPORTANT: When providing implementation plans, ALWAYS begin your response with this exact phrase:
+"Here are the step-by-step implementation plans for each of the selected strategies:"
 
-## Files to Create
+Then for each selected strategy provide:
+- **Title**
+- **Who it's best for**
+...
+```
 
-| File | Purpose |
-|------|---------|
-| `src/components/results/SuggestedPromptCard.tsx` | Card with generated prompt and copy button |
-| `src/lib/promptGenerator.ts` | Function to generate prompts based on horseman + cash flow |
+### 2. Simplify Strategy Parser
+**File:** `src/lib/strategyParser.ts`
 
-## Files to Modify
+Replace the complex detection logic with a simple check for the marker phrase:
 
-| File | Change |
-|------|--------|
-| `src/components/results/ResultsPage.tsx` | Add SuggestedPromptCard section before action buttons |
+```typescript
+const PLAN_MARKER_PHRASE = "Here are the step-by-step implementation plans";
+
+export function parseStrategyFromMessage(messageContent: string): ParsedStrategy | null {
+  // Only show Save Plan button if marker phrase is present
+  if (!messageContent.includes(PLAN_MARKER_PHRASE)) {
+    return null;
+  }
+  
+  // Rest of parsing logic for extracting steps, strategy IDs, etc.
+  ...
+}
+```
 
 ---
 
 ## Technical Details
 
-### promptGenerator.ts
-```typescript
-export function generateStrategyPrompt(
-  primaryHorseman: HorsemanType,
-  cashFlowStatus: CashFlowStatus | null
-): string
-```
+| Change | Purpose |
+|--------|---------|
+| Add marker phrase instruction to system prompt | Ensures AI consistently uses phrase when delivering plans |
+| Check for marker phrase in parser | Reliable detection - no false positives |
+| Keep existing step extraction logic | Still extract steps, strategy IDs, etc. for the save modal |
 
-Maps each horseman to a focus phrase and combines with cash flow context.
-
-### SuggestedPromptCard.tsx
-- Uses `navigator.clipboard.writeText()` for copy functionality
-- Shows toast notification on successful copy
-- Includes navigation button to Strategy Assistant
+### Marker Phrase Choice
+Using "Here are the step-by-step implementation plans" (partial match) allows flexibility while being specific enough to avoid false positives from casual mentions.
 
 ---
 
-## User Experience
-
-1. User completes assessment and views results
-2. Below the diagnostic feedback, sees "Next Steps" section
-3. Card displays a personalized prompt based on their results
-4. User clicks "Copy Prompt" -> prompt copied, toast confirms
-5. User clicks "Start Chat" -> navigates to Strategy Assistant
-6. User pastes prompt to begin personalized conversation
-
----
-
-## Future Expansion Points
-The prompt generator is designed to easily incorporate:
-- Profile data (name, company)
-- Additional assessment responses
-- More detailed horseman-specific questions
+## Benefits
+- **Reliable**: No false positives from simple numbered lists
+- **Simple**: One string check instead of multiple heuristics  
+- **Controllable**: Can adjust AI behavior via prompt if needed
+- **Maintainable**: Easy to understand and modify
