@@ -1762,10 +1762,10 @@ serve(async (req) => {
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
         .limit(20),
-      // Fetch user profile for cash flow context
+      // Fetch user profile for context (cash flow + optional fields)
       supabase
         .from('profiles')
-        .select('full_name, monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses')
+        .select('full_name, monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses, profile_type, num_children, children_ages, financial_goals')
         .eq('id', userId)
         .maybeSingle()
     ]);
@@ -1791,48 +1791,125 @@ serve(async (req) => {
     // Add the current message since it was just inserted
     messages.push({ role: 'user', content: user_message.trim() });
 
-    // Build profile context if cash flow data exists
+    // Build profile context from all available profile data
     const profile = profileResult.data;
     let profileContext = '';
+    const missingFields: string[] = [];
     
-    if (profile && profile.monthly_income) {
-      const income = Number(profile.monthly_income) || 0;
-      const debtPayments = Number(profile.monthly_debt_payments) || 0;
-      const housing = Number(profile.monthly_housing) || 0;
-      const insurance = Number(profile.monthly_insurance) || 0;
-      const living = Number(profile.monthly_living_expenses) || 0;
-      const totalExpenses = debtPayments + housing + insurance + living;
-      const surplus = income - totalExpenses;
-      const ratio = totalExpenses > 0 ? income / totalExpenses : 1;
-      
-      let cashFlowStatus: string;
-      if (ratio > 1.2) {
-        cashFlowStatus = 'Healthy Surplus';
-      } else if (ratio < 1) {
-        cashFlowStatus = 'Cash Flow Pressure (Deficit)';
-      } else {
-        cashFlowStatus = 'Tight Balance';
-      }
-
+    // Profile type mapping
+    const profileTypeLabels: Record<string, string> = {
+      'business_owner': 'Business Owner',
+      'retiree': 'Retiree / Grandparent',
+      'salesperson': 'Salesperson',
+      'wage_earner': 'Wage Earner',
+      'investor': 'Investor',
+      'farmer': 'Farmer',
+      'nonprofit': 'Non-Profit'
+    };
+    
+    // Financial goals mapping
+    const goalLabels: Record<string, string> = {
+      'increase_cash_flow': 'Increase Cash Flow',
+      'reduce_taxes': 'Reduce Taxes',
+      'save_for_education': 'Save for Education',
+      'improve_retirement': 'Improve Retirement',
+      'reduce_insurance_costs': 'Reduce Insurance Costs',
+      'large_purchase': 'Large Purchase or Investment'
+    };
+    
+    if (profile) {
       const formatCurrency = (n: number) => 
         new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
-
-      profileContext = `
-## USER FINANCIAL PROFILE (Pre-filled from their profile)
+      
+      let knownDataSections: string[] = [];
+      
+      // Profile type
+      if (profile.profile_type) {
+        const label = profileTypeLabels[profile.profile_type] || profile.profile_type;
+        knownDataSections.push(`- **Profile Type:** ${label}`);
+      } else {
+        missingFields.push('Profile type (what do they do for a living)');
+      }
+      
+      // Children info
+      if (profile.num_children !== null && profile.num_children > 0) {
+        const ages = profile.children_ages && profile.children_ages.length > 0
+          ? ` (ages: ${profile.children_ages.join(', ')})`
+          : '';
+        knownDataSections.push(`- **Children:** ${profile.num_children}${ages}`);
+      } else if (profile.num_children === 0) {
+        knownDataSections.push(`- **Children:** None`);
+      } else {
+        missingFields.push('Number and ages of children');
+      }
+      
+      // Financial goals
+      if (profile.financial_goals && profile.financial_goals.length > 0) {
+        const goalNames = profile.financial_goals
+          .map(g => goalLabels[g] || g)
+          .join(', ');
+        knownDataSections.push(`- **Financial Goals:** ${goalNames}`);
+      } else {
+        missingFields.push('Primary financial goals');
+      }
+      
+      // Cash flow data
+      if (profile.monthly_income) {
+        const income = Number(profile.monthly_income) || 0;
+        const debtPayments = Number(profile.monthly_debt_payments) || 0;
+        const housing = Number(profile.monthly_housing) || 0;
+        const insurance = Number(profile.monthly_insurance) || 0;
+        const living = Number(profile.monthly_living_expenses) || 0;
+        const totalExpenses = debtPayments + housing + insurance + living;
+        const surplus = income - totalExpenses;
+        const ratio = totalExpenses > 0 ? income / totalExpenses : 1;
+        
+        let cashFlowStatus: string;
+        if (ratio > 1.2) {
+          cashFlowStatus = 'Healthy Surplus';
+        } else if (ratio < 1) {
+          cashFlowStatus = 'Cash Flow Pressure (Deficit)';
+        } else {
+          cashFlowStatus = 'Tight Balance';
+        }
+        
+        knownDataSections.push(`- **Monthly Income:** ${formatCurrency(income)}`);
+        knownDataSections.push(`- **Monthly Expenses:** ${formatCurrency(totalExpenses)}`);
+        knownDataSections.push(`  - Debt Payments: ${formatCurrency(debtPayments)}`);
+        knownDataSections.push(`  - Housing: ${formatCurrency(housing)}`);
+        knownDataSections.push(`  - Insurance: ${formatCurrency(insurance)}`);
+        knownDataSections.push(`  - Living Expenses: ${formatCurrency(living)}`);
+        knownDataSections.push(`- **Monthly ${surplus >= 0 ? 'Surplus' : 'Deficit'}:** ${formatCurrency(Math.abs(surplus))}`);
+        knownDataSections.push(`- **Cash Flow Status:** ${cashFlowStatus}`);
+        
+        console.log('Cash flow injected - income:', income, 'surplus:', surplus);
+      } else {
+        missingFields.push('Income and expense information');
+      }
+      
+      // Build the context string
+      if (knownDataSections.length > 0) {
+        profileContext = `
+## USER PROFILE (Pre-filled - Do NOT ask about these topics)
 ${profile.full_name ? `- **Name:** ${profile.full_name}` : ''}
-- **Monthly Income:** ${formatCurrency(income)}
-- **Monthly Expenses:** ${formatCurrency(totalExpenses)}
-  - Debt Payments: ${formatCurrency(debtPayments)}
-  - Housing: ${formatCurrency(housing)}
-  - Insurance: ${formatCurrency(insurance)}
-  - Living Expenses: ${formatCurrency(living)}
-- **Monthly ${surplus >= 0 ? 'Surplus' : 'Deficit'}:** ${formatCurrency(Math.abs(surplus))}
-- **Cash Flow Status:** ${cashFlowStatus}
+${knownDataSections.join('\n')}
 
-**IMPORTANT:** This information is already known. Do NOT ask about income, expenses, or cash flow. Use this data to tailor recommendations immediately.
+**IMPORTANT:** This information is already known from the user's profile. Do NOT ask questions about these topics - use this data to tailor recommendations immediately.
 
 `;
-      console.log('Profile context injected - income:', income, 'surplus:', surplus);
+      }
+      
+      // Add missing fields section if any
+      if (missingFields.length > 0) {
+        profileContext += `
+## STILL NEEDED (Ask about these)
+The user has not filled the following in their profile. Please ask during intake:
+${missingFields.map(f => `- ${f}`).join('\n')}
+
+`;
+      }
+      
+      console.log('Profile context built:', knownDataSections.length, 'known fields,', missingFields.length, 'missing fields');
     }
 
     // Build conversation history text for keyword matching
