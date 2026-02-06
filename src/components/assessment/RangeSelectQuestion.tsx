@@ -22,7 +22,7 @@ export function RangeSelectQuestion({
           className={cn(
             'flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent/50 transition-colors cursor-pointer',
             value === option.value
-              ? 'border-primary bg-primary/5'
+              ? 'border-success bg-success/10'
               : 'border-border'
           )}
           onClick={() => onChange(option.value)}

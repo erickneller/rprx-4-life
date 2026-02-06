@@ -1,5 +1,6 @@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import type { QuestionOption } from '@/lib/assessmentTypes';
 
 interface SingleChoiceQuestionProps {
@@ -18,7 +19,12 @@ export function SingleChoiceQuestion({
       {options.map((option) => (
         <div
           key={option.value}
-          className="flex items-center space-x-3 rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+          className={cn(
+            'flex items-center space-x-3 rounded-lg border p-4 hover:bg-accent/50 transition-colors cursor-pointer',
+            value === option.value
+              ? 'border-success bg-success/10'
+              : 'border-border'
+          )}
           onClick={() => onChange(option.value)}
         >
           <RadioGroupItem value={option.value} id={option.value} />

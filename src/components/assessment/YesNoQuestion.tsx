@@ -17,10 +17,10 @@ export function YesNoQuestion({ options, value, onChange }: YesNoQuestionProps) 
     <div className="flex gap-4 pt-4">
       <Button
         type="button"
-        variant={value === 'yes' ? 'default' : 'outline'}
+        variant="outline"
         className={cn(
           'flex-1 h-16 text-lg gap-2',
-          value === 'yes' && 'ring-2 ring-primary ring-offset-2'
+          value === 'yes' && 'bg-success text-success-foreground border-success ring-2 ring-success ring-offset-2 hover:bg-success/90'
         )}
         onClick={() => onChange('yes')}
       >
@@ -29,10 +29,10 @@ export function YesNoQuestion({ options, value, onChange }: YesNoQuestionProps) 
       </Button>
       <Button
         type="button"
-        variant={value === 'no' ? 'default' : 'outline'}
+        variant="outline"
         className={cn(
           'flex-1 h-16 text-lg gap-2',
-          value === 'no' && 'ring-2 ring-primary ring-offset-2'
+          value === 'no' && 'bg-success text-success-foreground border-success ring-2 ring-success ring-offset-2 hover:bg-success/90'
         )}
         onClick={() => onChange('no')}
       >
