@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { ProgressIndicator } from './ProgressIndicator';
 import { QuestionCard } from './QuestionCard';
+import { ExitAssessmentDialog } from './ExitAssessmentDialog';
 import { useAssessmentQuestions } from '@/hooks/useAssessmentQuestions';
 import { useAssessment } from '@/hooks/useAssessment';
 
 export function AssessmentWizard() {
   const navigate = useNavigate();
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const { data: questions = [], isLoading: questionsLoading } = useAssessmentQuestions();
 
   const {
@@ -57,12 +60,17 @@ export function AssessmentWizard() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => setShowExitDialog(true)}
             className="mb-4"
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Exit Assessment
           </Button>
+          <ExitAssessmentDialog
+            open={showExitDialog}
+            onContinue={() => setShowExitDialog(false)}
+            onExit={() => navigate('/dashboard')}
+          />
           <ProgressIndicator
             currentStep={currentStep}
             totalSteps={totalSteps}
