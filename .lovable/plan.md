@@ -1,68 +1,123 @@
 
 
-# Fix Unsaved Changes Warning for Navigation Links
+# Implement Debt Management Functionality
 
 ## Problem
-The unsaved changes warning currently only works when clicking the Cancel button, but not when clicking sidebar navigation links. This is because:
-- The app uses `BrowserRouter` which doesn't support `useBlocker`
-- Sidebar links navigate directly without any interception
+The Debt Eliminator dashboard displays debts correctly, but users cannot:
+- Add new debts to an existing journey
+- Edit existing debt details (name, balance, interest rate, etc.)
+- Log payments against debts
+- Delete debts
+
+The buttons exist in the UI but have no functionality wired up.
 
 ## Solution
-Create a **Navigation Blocker Context** that allows the Profile page (and future forms) to register when they have unsaved changes, and modify navigation links to check this before navigating.
+Add the missing mutations, create dialog modals, and wire everything together.
 
 ## Implementation Steps
 
-### 1. Create Navigation Blocker Context
-Create a new context (`src/contexts/NavigationBlockerContext.tsx`) that:
-- Tracks if any page has unsaved changes
-- Stores a callback to show the warning dialog
-- Provides functions for pages to register/unregister their dirty state
+### 1. Extend useDebtJourney Hook
+Add new mutations to `src/hooks/useDebtJourney.ts`:
+- `addDebt` - Insert a new debt to the active journey
+- `updateDebt` - Update debt details (name, balances, rates)
+- `deleteDebt` - Remove a debt from the journey
+- `logPayment` - Record a payment, update current balance, and check if paid off
 
-### 2. Update NavLink Component
-Modify `src/components/NavLink.tsx` to:
-- Check the navigation blocker context before navigating
-- If there are unsaved changes, prevent default navigation and trigger the warning dialog
-- Pass the intended destination so navigation can continue after save/discard
+### 2. Create AddDebtDialog Component
+New file: `src/components/debt-eliminator/dashboard/AddDebtDialog.tsx`
+- Modal dialog with form fields for debt type, name, balances, interest rate, minimum payment
+- Reuse styling from existing DebtEntryForm component
+- Submit calls the new `addDebt` mutation
 
-### 3. Update Profile Page
-Modify `src/pages/Profile.tsx` to:
-- Register its dirty state with the navigation blocker context
-- Handle navigation continuation after save/discard from any source (Cancel button OR nav links)
+### 3. Create EditDebtDialog Component
+New file: `src/components/debt-eliminator/dashboard/EditDebtDialog.tsx`
+- Modal dialog pre-populated with existing debt data
+- Allow editing all fields except debt type
+- Include delete button with confirmation
+- Submit calls `updateDebt` mutation
 
-### 4. Wrap App with Context Provider
-Update `src/App.tsx` to include the `NavigationBlockerProvider`
+### 4. Create LogPaymentDialog Component
+New file: `src/components/debt-eliminator/dashboard/LogPaymentDialog.tsx`
+- Modal dialog showing current balance
+- Input for payment amount with validation (cannot exceed current balance)
+- Optional note field
+- Preview new balance after payment
+- Submit calls `logPayment` mutation which:
+  - Creates a debt_payments record
+  - Updates user_debts.current_balance
+  - Sets paid_off_at if balance reaches zero
+
+### 5. Update DebtDashboard Component
+Modify `src/components/debt-eliminator/dashboard/DebtDashboard.tsx`:
+- Add state for managing which dialog is open
+- Wire "Add Debt" button to open AddDebtDialog
+- Pass debt mutations from hook to component
+
+### 6. Update DebtCard Component
+Modify `src/components/debt-eliminator/dashboard/DebtCard.tsx`:
+- Add `onEdit` callback prop alongside existing `onLogPayment`
+- Make card clickable to open edit dialog
+- Wire "Log Payment" button to parent callback
+
+### 7. Update DebtEliminator Page
+Modify `src/pages/DebtEliminator.tsx`:
+- Destructure new mutations from useDebtJourney
+- Pass mutations to DebtDashboard
+
+## Database Interactions
+
+All tables and RLS policies already exist:
+
+```text
+user_debts table:
+  - INSERT: Users can create their own debts
+  - UPDATE: Users can update their own debts
+  - DELETE: Users can delete their own debts
+
+debt_payments table:
+  - INSERT: Users can create their own payments
+  - All required columns: debt_id, user_id, amount, payment_type, note
+```
+
+## New Files
+- `src/components/debt-eliminator/dashboard/AddDebtDialog.tsx`
+- `src/components/debt-eliminator/dashboard/EditDebtDialog.tsx`
+- `src/components/debt-eliminator/dashboard/LogPaymentDialog.tsx`
+
+## Modified Files
+- `src/hooks/useDebtJourney.ts` - Add mutations
+- `src/components/debt-eliminator/dashboard/DebtDashboard.tsx` - Wire up dialogs
+- `src/components/debt-eliminator/dashboard/DebtCard.tsx` - Add edit callback
+- `src/pages/DebtEliminator.tsx` - Pass mutations to dashboard
 
 ## Technical Details
 
+### Log Payment Flow
 ```text
-User Flow:
-+------------------+     +-------------------+     +------------------+
-|  Click Nav Link  | --> | Check Dirty State | --> | Show Dialog if   |
-|  (e.g. Dashboard)|     | from Context      |     | unsaved changes  |
-+------------------+     +-------------------+     +------------------+
-                                                          |
-                              +---------------------------+
-                              |
-              +---------------+---------------+---------------+
-              |               |               |               |
-          [Save]         [Discard]       [Cancel]        
-              |               |               |
-              v               v               v
-        Save & Navigate   Navigate      Stay on page
+User clicks "Log Payment"
+       |
+       v
+LogPaymentDialog opens
+       |
+       v
+User enters amount
+       |
+       v
+Submit triggers logPayment mutation:
+  1. INSERT into debt_payments (debt_id, user_id, amount, payment_type)
+  2. UPDATE user_debts SET current_balance = current_balance - amount
+  3. IF current_balance = 0, SET paid_off_at = now()
+       |
+       v
+Invalidate queries to refresh UI
+       |
+       v
+Show success toast + celebration if paid off!
 ```
 
-### New Files
-- `src/contexts/NavigationBlockerContext.tsx` - Context for tracking dirty state
-
-### Modified Files
-- `src/components/NavLink.tsx` - Add navigation interception
-- `src/pages/Profile.tsx` - Register with navigation blocker
-- `src/App.tsx` - Add context provider
-- `src/hooks/useUnsavedChangesWarning.ts` - Support pending navigation destination
-
-## Benefits
-- Works with existing `BrowserRouter` (no major refactor needed)
-- Reusable for any page with forms (assessments, settings, etc.)
-- Centralizes navigation blocking logic
-- Handles all navigation sources: Cancel button, sidebar links, back button
+### Form Validation
+- Payment amount: Must be > 0 and <= current balance
+- Debt name: Required, non-empty
+- Balances: Must be >= 0
+- Current balance: Cannot exceed original balance when editing
 
