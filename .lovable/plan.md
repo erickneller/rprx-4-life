@@ -1,175 +1,193 @@
 
 
-# Simple Cash Flow Profile - Implementation Plan
+# Profile Page Migration Plan
 
 ## Overview
-Replace the range-based cash flow approach with simple dollar inputs stored in the user profile. This gives accurate cash flow calculations with minimal friction - just 5 numbers.
+Convert the profile edit modal into a dedicated full-page experience with proper navigation. This improves scrollability and provides a better UX for the growing amount of profile data.
 
 ---
 
-## Input Fields
+## Changes Summary
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `monthly_income` | numeric | Net monthly income (take-home pay) |
-| `monthly_debt_payments` | numeric | Total monthly debt minimums |
-| `monthly_housing` | numeric | Rent or mortgage payment |
-| `monthly_insurance` | numeric | Combined insurance costs |
-| `monthly_living_expenses` | numeric | Food, gas, utilities, subscriptions (estimated) |
-
-**Calculated Values:**
-- **Total Expenses** = debt_payments + housing + insurance + living_expenses
-- **Monthly Surplus/Deficit** = income - total_expenses
-- **Cash Flow Status** = surplus / tight / deficit (based on ratio)
-
----
-
-## Implementation Steps
-
-### Phase 1: Database Migration
-Add 5 new nullable numeric columns to the `profiles` table.
-
-### Phase 2: Update Profile Hook & Types
-Extend the `Profile` interface and update the `useProfile` hook to include new fields.
-
-### Phase 3: Update Profile Edit Modal
-Add a "Cash Flow" section with simple number inputs:
-- Currency-formatted inputs (shows $)
-- Helper text for each field
-- Live calculation preview showing surplus/deficit
-
-### Phase 4: Update Cash Flow Calculator
-Refactor `cashFlowCalculator.ts` to work with actual numbers instead of ranges:
-- New function: `calculateCashFlowFromNumbers()`
-- Backward compatibility with existing range-based assessment data
-
-### Phase 5: Strategy Assistant Integration
-Update the edge function to include profile cash flow data in the system prompt.
-
----
-
-## Database Schema Change
-
-```sql
-ALTER TABLE profiles ADD COLUMN monthly_income numeric;
-ALTER TABLE profiles ADD COLUMN monthly_debt_payments numeric;
-ALTER TABLE profiles ADD COLUMN monthly_housing numeric;
-ALTER TABLE profiles ADD COLUMN monthly_insurance numeric;
-ALTER TABLE profiles ADD COLUMN monthly_living_expenses numeric;
-```
-
----
-
-## Profile Edit Modal UI
-
-```
-┌─────────────────────────────────────────────────────┐
-│ Edit Profile                                   [X]  │
-├─────────────────────────────────────────────────────┤
-│ [Avatar]                                            │
-│ Full Name: _______________                          │
-│ Email: user@email.com (disabled)                    │
-│ Phone: _______________                              │
-│ Company: _______________                            │
-├─────────────────────────────────────────────────────┤
-│ Cash Flow Snapshot (optional)                       │
-│ Help us personalize your experience                 │
-│                                                     │
-│ Net Monthly Income                                  │
-│ $ [__________]                                      │
-│ Your take-home pay after taxes                      │
-│                                                     │
-│ Monthly Fixed Obligations                           │
-│                                                     │
-│ Debt Payments            Housing                    │
-│ $ [________]             $ [________]               │
-│ Total minimums           Rent/mortgage              │
-│                                                     │
-│ Insurance                                           │
-│ $ [________]                                        │
-│ All insurance combined                              │
-│                                                     │
-│ Monthly Living Expenses                             │
-│ $ [________]                                        │
-│ Food, gas, utilities, subscriptions (estimate)      │
-│                                                     │
-│ ┌─────────────────────────────────────────────────┐ │
-│ │ Monthly Surplus: $1,200                         │ │
-│ │ Status: Healthy Surplus ↑                       │ │
-│ └─────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────┤
-│               [Cancel]  [Save Changes]              │
-└─────────────────────────────────────────────────────┘
-```
+| Component | Current | After |
+|-----------|---------|-------|
+| Profile UI | Modal popup (ProfileEditModal) | Full page (/profile) |
+| Navigation | Avatar dropdown → "Edit Profile" opens modal | Avatar dropdown → "Edit Profile" navigates to /profile |
+| Sidebar | No profile link | Add "Profile" link with User icon |
 
 ---
 
 ## File Changes
 
-### Database
-- **Migration**: Add 5 numeric columns to `profiles`
+### 1. Create New Profile Page
+**New file: `src/pages/Profile.tsx`**
 
-### Frontend
-| File | Changes |
-|------|---------|
-| `src/hooks/useProfile.ts` | Add 5 new fields to Profile interface |
-| `src/components/profile/ProfileEditModal.tsx` | Add Cash Flow section with inputs and live preview |
-| `src/lib/cashFlowCalculator.ts` | Add `calculateCashFlowFromNumbers()` function |
-| `src/components/ui/currency-input.tsx` (new) | Optional: Reusable currency input component |
+- Uses `AuthenticatedLayout` with title "Profile"
+- Contains the same form content from ProfileEditModal but in a full-page layout
+- Organized into card sections for better visual hierarchy:
+  - Profile Photo card
+  - Personal Information card
+  - Cash Flow Snapshot card
+- Save button at bottom (sticky on mobile for convenience)
+- Cancel navigates back to previous page
 
-### Edge Function
-| File | Changes |
-|------|---------|
-| `supabase/functions/rprx-chat/index.ts` | Fetch profile data, inject cash flow context into system prompt |
+### 2. Update App Routes
+**Edit: `src/App.tsx`**
+
+Add new protected route:
+```typescript
+<Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+```
+
+### 3. Update Sidebar Navigation
+**Edit: `src/components/layout/AppSidebar.tsx`**
+
+Add Profile to nav items:
+```typescript
+{ title: "Profile", url: "/profile", icon: User }
+```
+
+### 4. Update Profile Avatar Dropdown
+**Edit: `src/components/profile/ProfileAvatar.tsx`**
+
+- Remove modal state and modal component
+- Change "Edit Profile" menu item to navigate to `/profile`
+- Simplify component since it no longer manages modal state
+
+### 5. Keep Modal for Optional Use (or Remove)
+**Option: Keep `src/components/profile/ProfileEditModal.tsx`**
+
+Keep the modal component in case it's needed elsewhere in the future, but it won't be used by ProfileAvatar anymore. Alternatively, we can delete it if you prefer.
 
 ---
 
-## Cash Flow Calculator Updates
+## Page Layout Design
 
-```typescript
-// New function for actual numbers
-export function calculateCashFlowFromNumbers(
-  income: number,
-  debtPayments: number,
-  housing: number,
-  insurance: number,
-  livingExpenses: number
-): { status: CashFlowStatus; surplus: number; totalExpenses: number } {
-  const totalExpenses = debtPayments + housing + insurance + livingExpenses;
-  const surplus = income - totalExpenses;
-  const ratio = totalExpenses > 0 ? income / totalExpenses : 1;
-
-  let status: CashFlowStatus;
-  if (ratio > 1.2) {
-    status = 'surplus';
-  } else if (ratio < 1) {
-    status = 'deficit';
-  } else {
-    status = 'tight';
-  }
-
-  return { status, surplus, totalExpenses };
-}
+```
+┌─────────────────────────────────────────────────────────────┐
+│ [Sidebar]  │ RPRx Logo / Profile                   [Avatar] │
+├────────────┼────────────────────────────────────────────────┤
+│ Dashboard  │                                                │
+│ Debt Elim. │  ┌─────────────────────────────────────────┐  │
+│ Strategy   │  │ Profile Photo                           │  │
+│ My Plans   │  │  [Large Avatar with Camera Button]      │  │
+│ ─────────  │  │  Click to upload                        │  │
+│ Profile    │  └─────────────────────────────────────────┘  │
+│            │                                                │
+│            │  ┌─────────────────────────────────────────┐  │
+│            │  │ Personal Information                    │  │
+│            │  │                                         │  │
+│            │  │ Full Name: _______________              │  │
+│            │  │ Email: user@email.com (disabled)        │  │
+│            │  │ Phone: _______________                  │  │
+│            │  │ Company: _______________                │  │
+│            │  └─────────────────────────────────────────┘  │
+│            │                                                │
+│            │  ┌─────────────────────────────────────────┐  │
+│            │  │ Cash Flow Snapshot (optional)           │  │
+│            │  │                                         │  │
+│            │  │ Net Monthly Income                      │  │
+│            │  │ $ [__________]                          │  │
+│            │  │                                         │  │
+│            │  │ Monthly Fixed Obligations               │  │
+│            │  │ Debt Payments      Housing              │  │
+│            │  │ $ [______]         $ [______]           │  │
+│            │  │                                         │  │
+│            │  │ Insurance                               │  │
+│            │  │ $ [__________]                          │  │
+│            │  │                                         │  │
+│            │  │ Monthly Living Expenses                 │  │
+│            │  │ $ [__________]                          │  │
+│            │  │                                         │  │
+│            │  │ ┌─────────────────────────────────────┐ │  │
+│            │  │ │ Monthly Surplus: $1,200   ↑         │ │  │
+│            │  │ └─────────────────────────────────────┘ │  │
+│            │  └─────────────────────────────────────────┘  │
+│            │                                                │
+│            │           [Cancel]  [Save Changes]             │
+└────────────┴────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Strategy Assistant Integration
+## Implementation Details
 
-The edge function will include profile cash flow in the system prompt:
+### Profile Page Structure
 
-```text
-## USER FINANCIAL PROFILE
-Monthly Income: $8,500
-Monthly Expenses: $6,800
-  - Debt Payments: $1,200
-  - Housing: $2,400
-  - Insurance: $500
-  - Living Expenses: $2,700
-Monthly Surplus: $1,700
-Cash Flow Status: Healthy Surplus
+```typescript
+// src/pages/Profile.tsx
+export default function Profile() {
+  // Same state/hooks as ProfileEditModal
+  const { user } = useAuth();
+  const { profile, updateProfile, uploadAvatar } = useProfile();
+  const navigate = useNavigate();
+  
+  // Form state for all fields...
+  
+  return (
+    <AuthenticatedLayout title="Profile">
+      <div className="container max-w-2xl py-8 space-y-6">
+        {/* Profile Photo Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile Photo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Avatar upload UI */}
+          </CardContent>
+        </Card>
 
-Use this information to tailor recommendations. Do NOT ask about income or expenses.
+        {/* Personal Information Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Name, email, phone, company fields */}
+          </CardContent>
+        </Card>
+
+        {/* Cash Flow Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Cash Flow Snapshot</CardTitle>
+            <CardDescription>Help us personalize your experience</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CashFlowSection {...props} />
+          </CardContent>
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button onClick={handleSave}>Save Changes</Button>
+        </div>
+      </div>
+    </AuthenticatedLayout>
+  );
+}
+```
+
+### Updated ProfileAvatar (simplified)
+
+```typescript
+// No more modal state needed
+export function ProfileAvatar() {
+  const navigate = useNavigate();
+  // ...
+  
+  return (
+    <DropdownMenu>
+      {/* ... */}
+      <DropdownMenuItem onClick={() => navigate('/profile')}>
+        <Settings className="mr-2 h-4 w-4" />
+        Edit Profile
+      </DropdownMenuItem>
+      {/* ... */}
+    </DropdownMenu>
+  );
+}
 ```
 
 ---
@@ -178,18 +196,19 @@ Use this information to tailor recommendations. Do NOT ask about income or expen
 
 | Benefit | Description |
 |---------|-------------|
-| Accurate | Real numbers instead of range midpoint estimates |
-| Simple | Only 5 inputs, no categories or line items |
-| Fast | Takes 30 seconds to fill out |
-| Reusable | Same data used across assessment, strategy assistant, debt eliminator |
-| Personalized | Strategy Assistant skips income/expense questions |
+| Better scrolling | Full page allows natural scroll without modal constraints |
+| More space | Room for future profile fields without cramping |
+| Consistent nav | Profile accessible from sidebar like other features |
+| Cleaner code | ProfileAvatar simplified without modal management |
 
 ---
 
-## Technical Considerations
+## Files to Create/Edit
 
-1. **Currency Input Formatting**: Use `Intl.NumberFormat` for display, store raw numbers in database
-2. **Validation**: All fields optional but show warning if partially filled
-3. **Backward Compatibility**: Assessment still works with ranges; profile data takes priority when available
-4. **Privacy**: Cash flow data protected by existing profile RLS policies
+| File | Action |
+|------|--------|
+| `src/pages/Profile.tsx` | Create (new page) |
+| `src/App.tsx` | Edit (add route) |
+| `src/components/layout/AppSidebar.tsx` | Edit (add nav item) |
+| `src/components/profile/ProfileAvatar.tsx` | Edit (remove modal, add navigation) |
 
