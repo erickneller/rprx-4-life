@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import type { DebtJourney, UserDebt, SetupWizardData } from "@/lib/debtTypes";
+import type { DebtJourney, UserDebt, SetupWizardData, DebtEntryFormData } from "@/lib/debtTypes";
 import { useToast } from "@/hooks/use-toast";
 
 export function useDebtJourney() {
@@ -131,6 +131,195 @@ export function useDebtJourney() {
     },
   });
 
+  // Add a new debt to the active journey
+  const addDebt = useMutation({
+    mutationFn: async (debtData: DebtEntryFormData) => {
+      if (!user?.id) throw new Error("Not authenticated");
+      if (!journey?.id) throw new Error("No active journey");
+
+      const { data, error } = await supabase
+        .from("user_debts")
+        .insert({
+          journey_id: journey.id,
+          user_id: user.id,
+          debt_type: debtData.debt_type,
+          name: debtData.name,
+          original_balance: debtData.original_balance,
+          current_balance: debtData.current_balance,
+          interest_rate: debtData.interest_rate,
+          min_payment: debtData.min_payment,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-debts"] });
+      toast({
+        title: "Debt added!",
+        description: "Your new debt has been added to your journey.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to add debt. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Add debt error:", error);
+    },
+  });
+
+  // Update an existing debt
+  const updateDebt = useMutation({
+    mutationFn: async ({
+      debtId,
+      updates,
+    }: {
+      debtId: string;
+      updates: Partial<Omit<UserDebt, "id" | "journey_id" | "user_id" | "created_at">>;
+    }) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from("user_debts")
+        .update(updates)
+        .eq("id", debtId)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-debts"] });
+      toast({
+        title: "Debt updated!",
+        description: "Your debt has been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update debt. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Update debt error:", error);
+    },
+  });
+
+  // Delete a debt
+  const deleteDebt = useMutation({
+    mutationFn: async (debtId: string) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("user_debts")
+        .delete()
+        .eq("id", debtId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-debts"] });
+      toast({
+        title: "Debt deleted",
+        description: "The debt has been removed from your journey.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete debt. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Delete debt error:", error);
+    },
+  });
+
+  // Log a payment against a debt
+  const logPayment = useMutation({
+    mutationFn: async ({
+      debtId,
+      amount,
+      note,
+    }: {
+      debtId: string;
+      amount: number;
+      note?: string;
+    }) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      // Get current debt balance
+      const { data: debt, error: fetchError } = await supabase
+        .from("user_debts")
+        .select("current_balance")
+        .eq("id", debtId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!debt) throw new Error("Debt not found");
+
+      const newBalance = Math.max(0, debt.current_balance - amount);
+      const isPaidOff = newBalance === 0;
+
+      // Insert payment record
+      const { error: paymentError } = await supabase
+        .from("debt_payments")
+        .insert({
+          debt_id: debtId,
+          user_id: user.id,
+          amount,
+          payment_type: "payment",
+          note: note || null,
+        });
+
+      if (paymentError) throw paymentError;
+
+      // Update debt balance
+      const { error: updateError } = await supabase
+        .from("user_debts")
+        .update({
+          current_balance: newBalance,
+          paid_off_at: isPaidOff ? new Date().toISOString() : null,
+        })
+        .eq("id", debtId)
+        .eq("user_id", user.id);
+
+      if (updateError) throw updateError;
+
+      return { newBalance, isPaidOff };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["user-debts"] });
+      
+      if (data.isPaidOff) {
+        toast({
+          title: "🎉 Debt Paid Off!",
+          description: "Congratulations! You've eliminated this debt!",
+        });
+      } else {
+        toast({
+          title: "Payment logged!",
+          description: "Your payment has been recorded.",
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to log payment. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Log payment error:", error);
+    },
+  });
+
   return {
     journey,
     debts: debts ?? [],
@@ -139,5 +328,9 @@ export function useDebtJourney() {
     hasActiveJourney: !!journey,
     createJourney,
     updateJourney,
+    addDebt,
+    updateDebt,
+    deleteDebt,
+    logPayment,
   };
 }

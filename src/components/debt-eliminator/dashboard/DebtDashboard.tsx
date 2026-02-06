@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Plus, Target, TrendingUp, Clock, DollarSign } from "lucide-react";
-import type { DebtJourney, UserDebt } from "@/lib/debtTypes";
+import type { DebtJourney, UserDebt, DebtEntryFormData } from "@/lib/debtTypes";
 import {
   calculateProgressPercent,
   calculateTotalPaid,
@@ -10,17 +11,60 @@ import {
   formatCurrency,
 } from "@/lib/debtTypes";
 import { DebtCard } from "./DebtCard";
+import { AddDebtDialog } from "./AddDebtDialog";
+import { EditDebtDialog } from "./EditDebtDialog";
+import { LogPaymentDialog } from "./LogPaymentDialog";
+import type { UseMutationResult } from "@tanstack/react-query";
 
 interface DebtDashboardProps {
   journey: DebtJourney;
   debts: UserDebt[];
+  addDebt: UseMutationResult<UserDebt, Error, DebtEntryFormData>;
+  updateDebt: UseMutationResult<UserDebt, Error, { debtId: string; updates: Partial<UserDebt> }>;
+  deleteDebt: UseMutationResult<void, Error, string>;
+  logPayment: UseMutationResult<{ newBalance: number; isPaidOff: boolean }, Error, { debtId: string; amount: number; note?: string }>;
 }
 
-export function DebtDashboard({ journey, debts }: DebtDashboardProps) {
+export function DebtDashboard({
+  journey,
+  debts,
+  addDebt,
+  updateDebt,
+  deleteDebt,
+  logPayment,
+}: DebtDashboardProps) {
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingDebt, setEditingDebt] = useState<UserDebt | null>(null);
+  const [paymentDebt, setPaymentDebt] = useState<UserDebt | null>(null);
+
   const progress = calculateProgressPercent(debts);
   const totalPaid = calculateTotalPaid(debts);
   const totalRemaining = calculateTotalRemaining(debts);
   const totalOriginal = debts.reduce((sum, d) => sum + d.original_balance, 0);
+
+  const handleAddDebt = (data: DebtEntryFormData) => {
+    addDebt.mutate(data, {
+      onSuccess: () => setShowAddDialog(false),
+    });
+  };
+
+  const handleUpdateDebt = (debtId: string, updates: Partial<UserDebt>) => {
+    updateDebt.mutate({ debtId, updates }, {
+      onSuccess: () => setEditingDebt(null),
+    });
+  };
+
+  const handleDeleteDebt = (debtId: string) => {
+    deleteDebt.mutate(debtId, {
+      onSuccess: () => setEditingDebt(null),
+    });
+  };
+
+  const handleLogPayment = (debtId: string, amount: number, note?: string) => {
+    logPayment.mutate({ debtId, amount, note }, {
+      onSuccess: () => setPaymentDebt(null),
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -34,7 +78,10 @@ export function DebtDashboard({ journey, debts }: DebtDashboardProps) {
             Keep going! You're making progress.
           </p>
         </div>
-        <Button className="gap-2 bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button
+          className="gap-2 bg-accent hover:bg-accent/90 text-accent-foreground"
+          onClick={() => setShowAddDialog(true)}
+        >
           <Plus className="h-4 w-4" />
           Add Debt
         </Button>
@@ -120,7 +167,12 @@ export function DebtDashboard({ journey, debts }: DebtDashboardProps) {
         <h2 className="text-lg font-semibold text-foreground">Your Debts</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {debts.map((debt) => (
-            <DebtCard key={debt.id} debt={debt} />
+            <DebtCard
+              key={debt.id}
+              debt={debt}
+              onEdit={() => setEditingDebt(debt)}
+              onLogPayment={() => setPaymentDebt(debt)}
+            />
           ))}
         </div>
       </div>
@@ -137,6 +189,32 @@ export function DebtDashboard({ journey, debts }: DebtDashboardProps) {
           </p>
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <AddDebtDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onSubmit={handleAddDebt}
+        isLoading={addDebt.isPending}
+      />
+
+      <EditDebtDialog
+        debt={editingDebt}
+        open={!!editingDebt}
+        onOpenChange={(open) => !open && setEditingDebt(null)}
+        onSubmit={handleUpdateDebt}
+        onDelete={handleDeleteDebt}
+        isLoading={updateDebt.isPending}
+        isDeleting={deleteDebt.isPending}
+      />
+
+      <LogPaymentDialog
+        debt={paymentDebt}
+        open={!!paymentDebt}
+        onOpenChange={(open) => !open && setPaymentDebt(null)}
+        onSubmit={handleLogPayment}
+        isLoading={logPayment.isPending}
+      />
     </div>
   );
 }
