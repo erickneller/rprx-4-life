@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Camera, Loader2 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { CashFlowSection } from './CashFlowSection';
 
 interface ProfileEditModalProps {
   open: boolean;
@@ -32,14 +34,26 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Sync form state when profile loads
-  useState(() => {
-    if (profile) {
+  // Cash flow fields (stored as strings for input handling)
+  const [monthlyIncome, setMonthlyIncome] = useState('');
+  const [monthlyDebtPayments, setMonthlyDebtPayments] = useState('');
+  const [monthlyHousing, setMonthlyHousing] = useState('');
+  const [monthlyInsurance, setMonthlyInsurance] = useState('');
+  const [monthlyLivingExpenses, setMonthlyLivingExpenses] = useState('');
+
+  // Sync form state when profile loads or modal opens
+  useEffect(() => {
+    if (profile && open) {
       setFullName(profile.full_name || '');
       setPhone(profile.phone || '');
       setCompany(profile.company || '');
+      setMonthlyIncome(profile.monthly_income?.toString() || '');
+      setMonthlyDebtPayments(profile.monthly_debt_payments?.toString() || '');
+      setMonthlyHousing(profile.monthly_housing?.toString() || '');
+      setMonthlyInsurance(profile.monthly_insurance?.toString() || '');
+      setMonthlyLivingExpenses(profile.monthly_living_expenses?.toString() || '');
     }
-  });
+  }, [profile, open]);
 
   const getInitials = () => {
     if (fullName) {
@@ -113,6 +127,11 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
         full_name: fullName || null,
         phone: phone || null,
         company: company || null,
+        monthly_income: monthlyIncome ? Number(monthlyIncome) : null,
+        monthly_debt_payments: monthlyDebtPayments ? Number(monthlyDebtPayments) : null,
+        monthly_housing: monthlyHousing ? Number(monthlyHousing) : null,
+        monthly_insurance: monthlyInsurance ? Number(monthlyInsurance) : null,
+        monthly_living_expenses: monthlyLivingExpenses ? Number(monthlyLivingExpenses) : null,
       });
       toast({
         title: 'Profile updated',
@@ -135,87 +154,103 @@ export function ProfileEditModal({ open, onOpenChange }: ProfileEditModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Avatar Upload */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              <Avatar className="h-24 w-24 border-4 border-border">
-                <AvatarImage src={displayUrl || undefined} alt="Profile" />
-                <AvatarFallback className="bg-accent text-accent-foreground text-2xl font-medium">
-                  {getInitials()}
-                </AvatarFallback>
-              </Avatar>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="absolute bottom-0 right-0 rounded-full bg-accent p-2 text-accent-foreground shadow-md hover:bg-accent/90 transition-colors disabled:opacity-50"
-              >
-                {isUploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Camera className="h-4 w-4" />
-                )}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
+        <ScrollArea className="flex-1 pr-4 -mr-4">
+          <div className="space-y-6 py-4">
+            {/* Avatar Upload */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <Avatar className="h-24 w-24 border-4 border-border">
+                  <AvatarImage src={displayUrl || undefined} alt="Profile" />
+                  <AvatarFallback className="bg-accent text-accent-foreground text-2xl font-medium">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="absolute bottom-0 right-0 rounded-full bg-accent p-2 text-accent-foreground shadow-md hover:bg-accent/90 transition-colors disabled:opacity-50"
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Click the camera icon to upload a photo</p>
             </div>
-            <p className="text-xs text-muted-foreground">Click the camera icon to upload a photo</p>
+
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Enter your name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  value={user?.email || ''}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Enter your phone number"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="company">Company</Label>
+                <Input
+                  id="company"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  placeholder="Enter your company name"
+                />
+              </div>
+            </div>
+
+            {/* Cash Flow Section */}
+            <CashFlowSection
+              monthlyIncome={monthlyIncome}
+              setMonthlyIncome={setMonthlyIncome}
+              monthlyDebtPayments={monthlyDebtPayments}
+              setMonthlyDebtPayments={setMonthlyDebtPayments}
+              monthlyHousing={monthlyHousing}
+              setMonthlyHousing={setMonthlyHousing}
+              monthlyInsurance={monthlyInsurance}
+              setMonthlyInsurance={setMonthlyInsurance}
+              monthlyLivingExpenses={monthlyLivingExpenses}
+              setMonthlyLivingExpenses={setMonthlyLivingExpenses}
+            />
           </div>
-
-          {/* Form Fields */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Enter your name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                value={user?.email || ''}
-                disabled
-                className="bg-muted"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter your phone number"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="company">Company</Label>
-              <Input
-                id="company"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                placeholder="Enter your company name"
-              />
-            </div>
-          </div>
-        </div>
+        </ScrollArea>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
