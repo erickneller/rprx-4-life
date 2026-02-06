@@ -1,194 +1,334 @@
 
 
-# Profile Page Migration Plan
+# Expanded Profile for Smart Strategy Assistant Integration
 
 ## Overview
-Convert the profile edit modal into a dedicated full-page experience with proper navigation. This improves scrollability and provides a better UX for the growing amount of profile data.
+Add profile type, children info, and financial goals to the user profile. The Strategy Assistant will automatically use filled fields and only ask about unfilled ones, reducing friction while maintaining thoroughness.
 
 ---
 
-## Changes Summary
+## New Profile Fields
 
-| Component | Current | After |
-|-----------|---------|-------|
-| Profile UI | Modal popup (ProfileEditModal) | Full page (/profile) |
-| Navigation | Avatar dropdown → "Edit Profile" opens modal | Avatar dropdown → "Edit Profile" navigates to /profile |
-| Sidebar | No profile link | Add "Profile" link with User icon |
+| Field | Type | UI Component | Options/Notes |
+|-------|------|--------------|---------------|
+| `profile_type` | text | Single-select dropdown | Business Owner, Retiree/Grandparent, Salesperson, Wage Earner, Investor, Farmer, Non-Profit |
+| `num_children` | integer | Number input | 0-10 |
+| `children_ages` | integer[] | Dynamic age inputs | One field per child, driven by num_children |
+| `financial_goals` | text[] | Multi-select checkboxes | See below |
+
+### Financial Goals Options (Multi-select)
+- Increase Cash Flow
+- Reduce Taxes
+- Save for Education
+- Improve Retirement
+- Reduce Insurance Costs
+- Large Purchase or Investment
+
+---
+
+## Dynamic Children Ages UI
+
+When the user enters a number of children, that many age input fields appear dynamically:
+
+```
+Number of Children: [2]
+
+  Child 1 Age: [5]  years
+  Child 2 Age: [12] years
+```
+
+If they change to 3:
+
+```
+Number of Children: [3]
+
+  Child 1 Age: [5]  years
+  Child 2 Age: [12] years
+  Child 3 Age: [__] years
+```
+
+If they change to 0 or leave empty, no age fields appear.
+
+**Benefits:**
+- Validated input (each age is a number 1-25)
+- Clean array storage: `[5, 12, 8]`
+- No text parsing needed
+- Better UX - no formatting decisions
+
+---
+
+## Implementation Phases
+
+### Phase 1: Database Migration
+Add 4 new nullable columns to the `profiles` table:
+- `profile_type` (text)
+- `num_children` (integer)
+- `children_ages` (integer array)
+- `financial_goals` (text array)
+
+### Phase 2: Profile Types and Constants
+Create `src/lib/profileTypes.ts` with:
+- Profile type options array
+- Financial goals options array
+- Type definitions
+
+### Phase 3: Update Profile Hook
+Update `src/hooks/useProfile.ts`:
+- Add new fields to the `Profile` interface
+- Include new fields in mutation
+
+### Phase 4: Update Profile Page UI
+Update `src/pages/Profile.tsx`:
+- Add "Optional Information" section after Personal Information
+- Include helper note about better experience
+- Add Profile Type dropdown
+- Add Number of Children input
+- Add dynamic Child Age inputs (one per child)
+- Add Financial Goals multi-select checkboxes
+
+### Phase 5: Strategy Assistant Integration
+Update `supabase/functions/rprx-chat/index.ts`:
+- Fetch all new profile fields
+- Generate dynamic profile context
+- Instruct AI to skip questions for filled fields
+- List unfilled fields that still need to be asked
+
+---
+
+## Profile Page Layout
+
+```
++-------------------------------------------------------------+
+| Profile Photo                                               |
+|   [Avatar with camera button]                               |
++-------------------------------------------------------------+
+
++-------------------------------------------------------------+
+| Personal Information                                        |
+|   Full Name, Email, Phone, Company                          |
++-------------------------------------------------------------+
+
++-------------------------------------------------------------+
+| Optional Information                                        |
+| +----------------------------------------------------------+|
+| | (i) Completing these fields is optional, but will        ||
+| |     provide a better, more personalized experience.      ||
+| +----------------------------------------------------------+|
+|                                                             |
+| Profile Type                                                |
+| +---------------------------------------------------+      |
+| | Select your profile type...                   [v] |      |
+| +---------------------------------------------------+      |
+|                                                             |
+| Number of Children                                          |
+| +-------+                                                   |
+| |   2   |                                                   |
+| +-------+                                                   |
+|                                                             |
+|   Child 1 Age    Child 2 Age                                |
+|   +-------+      +-------+                                  |
+|   |   5   |      |   12  |      (dynamic based on count)    |
+|   +-------+      +-------+                                  |
+|                                                             |
+| Financial Goals (select all that apply)                     |
+| [ ] Increase Cash Flow                                      |
+| [x] Reduce Taxes                                            |
+| [x] Save for Education                                      |
+| [ ] Improve Retirement                                      |
+| [ ] Reduce Insurance Costs                                  |
+| [ ] Large Purchase or Investment                            |
++-------------------------------------------------------------+
+
++-------------------------------------------------------------+
+| Cash Flow Snapshot                                          |
+| Help us personalize your experience (optional)              |
+|   [Existing cash flow fields...]                            |
++-------------------------------------------------------------+
+
+              [Cancel]  [Save Changes]
+```
+
+---
+
+## Strategy Assistant Integration Logic
+
+### System Prompt Enhancement
+
+The edge function will generate dynamic context based on filled vs. unfilled fields:
+
+**When profile data exists:**
+```
+## USER PROFILE (Pre-filled - Do NOT ask these again)
+- Profile Type: Business Owner
+- Children: 2 (ages: 5, 12)
+- Financial Goals: Reduce Taxes, Save for Education
+
+## USER FINANCIAL PROFILE  
+- Monthly Income: $8,500
+- Monthly Surplus: $1,700
+- Cash Flow Status: Healthy Surplus
+
+IMPORTANT: Use this pre-filled information to tailor recommendations.
+Skip intake questions for these topics - the user has already provided this data.
+```
+
+**When fields are missing:**
+```
+## STILL NEEDED (Ask about these)
+The user has not filled the following in their profile. Please ask during intake:
+- Profile type (what do they do for a living)
+- Number and ages of children
+- Primary financial goals
+```
+
+### Intake Question Mapping
+
+| Profile Field | Skips This Intake Question |
+|--------------|---------------------------|
+| `profile_type` | "What do you do for work?" / "Tell me about yourself" |
+| `num_children` / `children_ages` | "Do you have children?" / "How old are your kids?" |
+| `financial_goals` | "What are your main financial priorities?" |
+| `monthly_income` | "What is your approximate monthly income?" |
+| Cash flow fields | Income/expense related questions |
 
 ---
 
 ## File Changes
 
-### 1. Create New Profile Page
-**New file: `src/pages/Profile.tsx`**
+### Database
+| File | Action |
+|------|--------|
+| Migration file | Add 4 new columns to `profiles` table |
 
-- Uses `AuthenticatedLayout` with title "Profile"
-- Contains the same form content from ProfileEditModal but in a full-page layout
-- Organized into card sections for better visual hierarchy:
-  - Profile Photo card
-  - Personal Information card
-  - Cash Flow Snapshot card
-- Save button at bottom (sticky on mobile for convenience)
-- Cancel navigates back to previous page
+### Frontend
+| File | Action |
+|------|--------|
+| `src/lib/profileTypes.ts` | NEW - Type definitions and option arrays |
+| `src/hooks/useProfile.ts` | Update Profile interface with new fields |
+| `src/pages/Profile.tsx` | Add Optional Information section with dynamic children inputs |
 
-### 2. Update App Routes
-**Edit: `src/App.tsx`**
-
-Add new protected route:
-```typescript
-<Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-```
-
-### 3. Update Sidebar Navigation
-**Edit: `src/components/layout/AppSidebar.tsx`**
-
-Add Profile to nav items:
-```typescript
-{ title: "Profile", url: "/profile", icon: User }
-```
-
-### 4. Update Profile Avatar Dropdown
-**Edit: `src/components/profile/ProfileAvatar.tsx`**
-
-- Remove modal state and modal component
-- Change "Edit Profile" menu item to navigate to `/profile`
-- Simplify component since it no longer manages modal state
-
-### 5. Keep Modal for Optional Use (or Remove)
-**Option: Keep `src/components/profile/ProfileEditModal.tsx`**
-
-Keep the modal component in case it's needed elsewhere in the future, but it won't be used by ProfileAvatar anymore. Alternatively, we can delete it if you prefer.
+### Edge Function
+| File | Action |
+|------|--------|
+| `supabase/functions/rprx-chat/index.ts` | Fetch new fields, generate dynamic context, update system prompt |
 
 ---
 
-## Page Layout Design
+## Technical Details
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ [Sidebar]  │ RPRx Logo / Profile                   [Avatar] │
-├────────────┼────────────────────────────────────────────────┤
-│ Dashboard  │                                                │
-│ Debt Elim. │  ┌─────────────────────────────────────────┐  │
-│ Strategy   │  │ Profile Photo                           │  │
-│ My Plans   │  │  [Large Avatar with Camera Button]      │  │
-│ ─────────  │  │  Click to upload                        │  │
-│ Profile    │  └─────────────────────────────────────────┘  │
-│            │                                                │
-│            │  ┌─────────────────────────────────────────┐  │
-│            │  │ Personal Information                    │  │
-│            │  │                                         │  │
-│            │  │ Full Name: _______________              │  │
-│            │  │ Email: user@email.com (disabled)        │  │
-│            │  │ Phone: _______________                  │  │
-│            │  │ Company: _______________                │  │
-│            │  └─────────────────────────────────────────┘  │
-│            │                                                │
-│            │  ┌─────────────────────────────────────────┐  │
-│            │  │ Cash Flow Snapshot (optional)           │  │
-│            │  │                                         │  │
-│            │  │ Net Monthly Income                      │  │
-│            │  │ $ [__________]                          │  │
-│            │  │                                         │  │
-│            │  │ Monthly Fixed Obligations               │  │
-│            │  │ Debt Payments      Housing              │  │
-│            │  │ $ [______]         $ [______]           │  │
-│            │  │                                         │  │
-│            │  │ Insurance                               │  │
-│            │  │ $ [__________]                          │  │
-│            │  │                                         │  │
-│            │  │ Monthly Living Expenses                 │  │
-│            │  │ $ [__________]                          │  │
-│            │  │                                         │  │
-│            │  │ ┌─────────────────────────────────────┐ │  │
-│            │  │ │ Monthly Surplus: $1,200   ↑         │ │  │
-│            │  │ └─────────────────────────────────────┘ │  │
-│            │  └─────────────────────────────────────────┘  │
-│            │                                                │
-│            │           [Cancel]  [Save Changes]             │
-└────────────┴────────────────────────────────────────────────┘
-```
-
----
-
-## Implementation Details
-
-### Profile Page Structure
-
+### Profile Types Constant
 ```typescript
-// src/pages/Profile.tsx
-export default function Profile() {
-  // Same state/hooks as ProfileEditModal
-  const { user } = useAuth();
-  const { profile, updateProfile, uploadAvatar } = useProfile();
-  const navigate = useNavigate();
-  
-  // Form state for all fields...
-  
-  return (
-    <AuthenticatedLayout title="Profile">
-      <div className="container max-w-2xl py-8 space-y-6">
-        {/* Profile Photo Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Photo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Avatar upload UI */}
-          </CardContent>
-        </Card>
+export const PROFILE_TYPES = [
+  { value: 'business_owner', label: 'Business Owner' },
+  { value: 'retiree', label: 'Retiree / Grandparent' },
+  { value: 'salesperson', label: 'Salesperson' },
+  { value: 'wage_earner', label: 'Wage Earner' },
+  { value: 'investor', label: 'Investor' },
+  { value: 'farmer', label: 'Farmer' },
+  { value: 'nonprofit', label: 'Non-Profit' },
+] as const;
+```
 
-        {/* Personal Information Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Name, email, phone, company fields */}
-          </CardContent>
-        </Card>
+### Financial Goals Constant
+```typescript
+export const FINANCIAL_GOALS = [
+  { value: 'increase_cash_flow', label: 'Increase Cash Flow' },
+  { value: 'reduce_taxes', label: 'Reduce Taxes' },
+  { value: 'save_for_education', label: 'Save for Education' },
+  { value: 'improve_retirement', label: 'Improve Retirement' },
+  { value: 'reduce_insurance_costs', label: 'Reduce Insurance Costs' },
+  { value: 'large_purchase', label: 'Large Purchase or Investment' },
+] as const;
+```
 
-        {/* Cash Flow Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Cash Flow Snapshot</CardTitle>
-            <CardDescription>Help us personalize your experience</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CashFlowSection {...props} />
-          </CardContent>
-        </Card>
+### Updated Profile Interface
+```typescript
+export interface Profile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+  company: string | null;
+  created_at: string;
+  updated_at: string;
+  // Cash flow fields
+  monthly_income: number | null;
+  monthly_debt_payments: number | null;
+  monthly_housing: number | null;
+  monthly_insurance: number | null;
+  monthly_living_expenses: number | null;
+  // New profile fields
+  profile_type: string | null;
+  num_children: number | null;
+  children_ages: number[] | null;  // Array of ages
+  financial_goals: string[] | null;
+}
+```
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button onClick={handleSave}>Save Changes</Button>
-        </div>
+### SQL Migration
+```sql
+ALTER TABLE profiles ADD COLUMN profile_type text;
+ALTER TABLE profiles ADD COLUMN num_children integer;
+ALTER TABLE profiles ADD COLUMN children_ages integer[];
+ALTER TABLE profiles ADD COLUMN financial_goals text[];
+```
+
+### Dynamic Children Ages Component Logic
+```typescript
+// In Profile.tsx
+const [numChildren, setNumChildren] = useState<number>(0);
+const [childrenAges, setChildrenAges] = useState<number[]>([]);
+
+// When numChildren changes, adjust the ages array
+useEffect(() => {
+  setChildrenAges(prev => {
+    if (numChildren > prev.length) {
+      // Add empty slots for new children
+      return [...prev, ...Array(numChildren - prev.length).fill(0)];
+    } else {
+      // Trim excess children
+      return prev.slice(0, numChildren);
+    }
+  });
+}, [numChildren]);
+
+// Render dynamic age inputs
+{numChildren > 0 && (
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+    {Array.from({ length: numChildren }).map((_, index) => (
+      <div key={index} className="space-y-2">
+        <Label>Child {index + 1} Age</Label>
+        <Input
+          type="number"
+          min={0}
+          max={25}
+          value={childrenAges[index] || ''}
+          onChange={(e) => {
+            const newAges = [...childrenAges];
+            newAges[index] = parseInt(e.target.value) || 0;
+            setChildrenAges(newAges);
+          }}
+        />
       </div>
-    </AuthenticatedLayout>
-  );
-}
+    ))}
+  </div>
+)}
 ```
 
-### Updated ProfileAvatar (simplified)
+---
 
-```typescript
-// No more modal state needed
-export function ProfileAvatar() {
-  const navigate = useNavigate();
-  // ...
-  
-  return (
-    <DropdownMenu>
-      {/* ... */}
-      <DropdownMenuItem onClick={() => navigate('/profile')}>
-        <Settings className="mr-2 h-4 w-4" />
-        Edit Profile
-      </DropdownMenuItem>
-      {/* ... */}
-    </DropdownMenu>
-  );
-}
-```
+## User Experience Flow
+
+1. User visits Profile page
+2. Sees info note: "Completing these fields is optional, but will provide a better, more personalized experience"
+3. Selects profile type from dropdown
+4. Enters number of children (e.g., 2)
+5. Two age input fields appear - enters ages 5 and 12
+6. Selects financial goals (checkboxes)
+7. Saves profile
+8. Opens Strategy Assistant
+9. AI greets user: "Hi! I see you are a Business Owner focused on reducing taxes and saving for education, with two children ages 5 and 12. Let me ask a few more questions to give you the best recommendations..."
+10. AI skips already-answered questions and focuses on missing info
 
 ---
 
@@ -196,19 +336,11 @@ export function ProfileAvatar() {
 
 | Benefit | Description |
 |---------|-------------|
-| Better scrolling | Full page allows natural scroll without modal constraints |
-| More space | Room for future profile fields without cramping |
-| Consistent nav | Profile accessible from sidebar like other features |
-| Cleaner code | ProfileAvatar simplified without modal management |
-
----
-
-## Files to Create/Edit
-
-| File | Action |
-|------|--------|
-| `src/pages/Profile.tsx` | Create (new page) |
-| `src/App.tsx` | Edit (add route) |
-| `src/components/layout/AppSidebar.tsx` | Edit (add nav item) |
-| `src/components/profile/ProfileAvatar.tsx` | Edit (remove modal, add navigation) |
+| Reduced friction | Skip 3-5 intake questions when profile is complete |
+| Better UX | Users answer questions once, not repeatedly |
+| Structured data | Clean integer arrays instead of free-text parsing |
+| Validated input | Each age field is constrained to valid numbers |
+| Dynamic UI | Fields appear/disappear based on child count |
+| Personalized greetings | Assistant acknowledges user situation |
+| Reusable data | Same profile data available across features |
 
