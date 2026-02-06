@@ -287,10 +287,10 @@ export default function Profile() {
           <CardContent className="space-y-6">
             {/* Profile Type */}
             <div className="space-y-2">
-              <Label htmlFor="profileType">Profile Type</Label>
+              <Label htmlFor="profileType">I am a:</Label>
               <Select value={profileType} onValueChange={setProfileType}>
                 <SelectTrigger id="profileType">
-                  <SelectValue placeholder="Select your profile type..." />
+                  <SelectValue placeholder="Select which one BEST applies to you..." />
                 </SelectTrigger>
                 <SelectContent>
                   {PROFILE_TYPES.map(type => (
