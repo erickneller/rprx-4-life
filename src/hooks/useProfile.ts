@@ -16,6 +16,11 @@ export interface Profile {
   monthly_housing: number | null;
   monthly_insurance: number | null;
   monthly_living_expenses: number | null;
+  // Optional profile fields
+  profile_type: string | null;
+  num_children: number | null;
+  children_ages: number[] | null;
+  financial_goals: string[] | null;
 }
 
 export function useProfile() {

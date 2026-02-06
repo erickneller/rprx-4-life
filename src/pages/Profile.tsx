@@ -6,11 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Loader2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Camera, Loader2, Info } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { CashFlowSection } from '@/components/profile/CashFlowSection';
+import { PROFILE_TYPES, FINANCIAL_GOALS } from '@/lib/profileTypes';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -32,6 +35,12 @@ export default function Profile() {
   const [monthlyInsurance, setMonthlyInsurance] = useState('');
   const [monthlyLivingExpenses, setMonthlyLivingExpenses] = useState('');
 
+  // Optional profile fields
+  const [profileType, setProfileType] = useState<string>('');
+  const [numChildren, setNumChildren] = useState<number>(0);
+  const [childrenAges, setChildrenAges] = useState<number[]>([]);
+  const [financialGoals, setFinancialGoals] = useState<string[]>([]);
+
   // Sync form state when profile loads
   useEffect(() => {
     if (profile) {
@@ -43,8 +52,26 @@ export default function Profile() {
       setMonthlyHousing(profile.monthly_housing?.toString() || '');
       setMonthlyInsurance(profile.monthly_insurance?.toString() || '');
       setMonthlyLivingExpenses(profile.monthly_living_expenses?.toString() || '');
+      // Optional fields
+      setProfileType(profile.profile_type || '');
+      setNumChildren(profile.num_children || 0);
+      setChildrenAges(profile.children_ages || []);
+      setFinancialGoals(profile.financial_goals || []);
     }
   }, [profile]);
+
+  // When numChildren changes, adjust the ages array
+  useEffect(() => {
+    setChildrenAges(prev => {
+      if (numChildren > prev.length) {
+        // Add empty slots for new children
+        return [...prev, ...Array(numChildren - prev.length).fill(0)];
+      } else {
+        // Trim excess children
+        return prev.slice(0, numChildren);
+      }
+    });
+  }, [numChildren]);
 
   const getInitials = () => {
     if (fullName) {
@@ -107,6 +134,20 @@ export default function Profile() {
     }
   };
 
+  const handleGoalToggle = (goalValue: string) => {
+    setFinancialGoals(prev => 
+      prev.includes(goalValue)
+        ? prev.filter(g => g !== goalValue)
+        : [...prev, goalValue]
+    );
+  };
+
+  const handleChildAgeChange = (index: number, value: string) => {
+    const newAges = [...childrenAges];
+    newAges[index] = parseInt(value) || 0;
+    setChildrenAges(newAges);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -119,6 +160,11 @@ export default function Profile() {
         monthly_housing: monthlyHousing ? Number(monthlyHousing) : null,
         monthly_insurance: monthlyInsurance ? Number(monthlyInsurance) : null,
         monthly_living_expenses: monthlyLivingExpenses ? Number(monthlyLivingExpenses) : null,
+        // Optional fields
+        profile_type: profileType || null,
+        num_children: numChildren || null,
+        children_ages: numChildren > 0 ? childrenAges.slice(0, numChildren) : null,
+        financial_goals: financialGoals.length > 0 ? financialGoals : null,
       });
       toast({
         title: 'Profile updated',
@@ -225,6 +271,101 @@ export default function Profile() {
                 onChange={(e) => setCompany(e.target.value)}
                 placeholder="Enter your company name"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Optional Information Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Optional Information</CardTitle>
+            <CardDescription className="flex items-start gap-2 mt-2">
+              <Info className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+              <span>Completing these fields is optional, but will provide a better, more personalized experience.</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Profile Type */}
+            <div className="space-y-2">
+              <Label htmlFor="profileType">Profile Type</Label>
+              <Select value={profileType} onValueChange={setProfileType}>
+                <SelectTrigger id="profileType">
+                  <SelectValue placeholder="Select your profile type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROFILE_TYPES.map(type => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Number of Children */}
+            <div className="space-y-2">
+              <Label htmlFor="numChildren">Number of Children</Label>
+              <Input
+                id="numChildren"
+                type="number"
+                min={0}
+                max={10}
+                value={numChildren || ''}
+                onChange={(e) => setNumChildren(parseInt(e.target.value) || 0)}
+                placeholder="0"
+                className="w-24"
+              />
+            </div>
+
+            {/* Dynamic Children Ages */}
+            {numChildren > 0 && (
+              <div className="space-y-3">
+                <Label>Children's Ages</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {Array.from({ length: numChildren }).map((_, index) => (
+                    <div key={index} className="space-y-1">
+                      <Label htmlFor={`childAge${index}`} className="text-sm text-muted-foreground">
+                        Child {index + 1}
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id={`childAge${index}`}
+                          type="number"
+                          min={0}
+                          max={25}
+                          value={childrenAges[index] || ''}
+                          onChange={(e) => handleChildAgeChange(index, e.target.value)}
+                          placeholder="Age"
+                          className="w-20"
+                        />
+                        <span className="text-sm text-muted-foreground">years</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Financial Goals */}
+            <div className="space-y-3">
+              <Label>Financial Goals (select all that apply)</Label>
+              <div className="space-y-3">
+                {FINANCIAL_GOALS.map(goal => (
+                  <div key={goal.value} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={goal.value}
+                      checked={financialGoals.includes(goal.value)}
+                      onCheckedChange={() => handleGoalToggle(goal.value)}
+                    />
+                    <Label 
+                      htmlFor={goal.value} 
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {goal.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
