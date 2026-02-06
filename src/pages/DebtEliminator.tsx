@@ -3,16 +3,18 @@ import { SetupWizard } from "@/components/debt-eliminator/setup/SetupWizard";
 import { DebtDashboard } from "@/components/debt-eliminator/dashboard/DebtDashboard";
 import { useDebtJourney } from "@/hooks/useDebtJourney";
 import { Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 export default function DebtEliminator() {
-  const navigate = useNavigate();
   const {
     journey,
     debts,
     isLoading,
     hasActiveJourney,
     createJourney,
+    addDebt,
+    updateDebt,
+    deleteDebt,
+    logPayment,
   } = useDebtJourney();
 
   const handleSetupComplete = async (data: Parameters<typeof createJourney.mutate>[0]) => {
@@ -27,7 +29,14 @@ export default function DebtEliminator() {
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
         ) : hasActiveJourney && journey ? (
-          <DebtDashboard journey={journey} debts={debts} />
+          <DebtDashboard
+            journey={journey}
+            debts={debts}
+            addDebt={addDebt}
+            updateDebt={updateDebt}
+            deleteDebt={deleteDebt}
+            logPayment={logPayment}
+          />
         ) : (
           <SetupWizard
             onComplete={handleSetupComplete}

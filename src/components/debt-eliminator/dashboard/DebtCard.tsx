@@ -12,12 +12,14 @@ import {
   CircleDot,
   Plus,
   CheckCircle2,
+  Pencil,
 } from "lucide-react";
 import type { UserDebt, DebtType } from "@/lib/debtTypes";
 import { DEBT_TYPE_LABELS, formatCurrency } from "@/lib/debtTypes";
 
 interface DebtCardProps {
   debt: UserDebt;
+  onEdit?: () => void;
   onLogPayment?: () => void;
 }
 
@@ -31,7 +33,7 @@ const DEBT_ICONS: Record<DebtType, React.ReactNode> = {
   other: <CircleDot className="h-5 w-5" />,
 };
 
-export function DebtCard({ debt, onLogPayment }: DebtCardProps) {
+export function DebtCard({ debt, onEdit, onLogPayment }: DebtCardProps) {
   const progress = Math.round(
     ((debt.original_balance - debt.current_balance) / debt.original_balance) *
       100
@@ -39,7 +41,10 @@ export function DebtCard({ debt, onLogPayment }: DebtCardProps) {
   const isPaidOff = debt.current_balance === 0 || debt.paid_off_at;
 
   return (
-    <Card className={isPaidOff ? "border-green-500/50 bg-green-500/5" : ""}>
+    <Card
+      className={`${isPaidOff ? "border-green-500/50 bg-green-500/5" : ""} ${onEdit ? "cursor-pointer hover:border-accent/50 transition-colors" : ""}`}
+      onClick={onEdit}
+    >
       <CardContent className="pt-6 space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between">
@@ -54,15 +59,29 @@ export function DebtCard({ debt, onLogPayment }: DebtCardProps) {
               </p>
             </div>
           </div>
-          {isPaidOff && (
-            <Badge
-              variant="outline"
-              className="bg-green-500/10 text-green-600 border-green-500/30"
-            >
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              Paid Off
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {isPaidOff ? (
+              <Badge
+                variant="outline"
+                className="bg-green-500/10 text-green-600 border-green-500/30"
+              >
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Paid Off
+              </Badge>
+            ) : onEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Balance */}
@@ -94,7 +113,10 @@ export function DebtCard({ debt, onLogPayment }: DebtCardProps) {
             variant="outline"
             size="sm"
             className="w-full gap-2"
-            onClick={onLogPayment}
+            onClick={(e) => {
+              e.stopPropagation();
+              onLogPayment?.();
+            }}
           >
             <Plus className="h-4 w-4" />
             Log Payment
