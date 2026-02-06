@@ -18,7 +18,6 @@ import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import { UnsavedChangesDialog } from '@/components/profile/UnsavedChangesDialog';
 
 export default function Profile() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { profile, updateProfile, uploadAvatar } = useProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -295,7 +294,6 @@ export default function Profile() {
   } = useUnsavedChangesWarning({
     isDirty,
     onSave: handleSave,
-    onNavigateAway: () => navigate(-1),
   });
 
   const displayUrl = previewUrl || profile?.avatar_url;
