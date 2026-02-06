@@ -14,6 +14,7 @@ import StrategyAssistant from "./pages/StrategyAssistant";
 import Plans from "./pages/Plans";
 import PlanDetail from "./pages/PlanDetail";
 import DebtEliminator from "./pages/DebtEliminator";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
           <Route path="/plans/:id" element={<ProtectedRoute><PlanDetail /></ProtectedRoute>} />
           <Route path="/debt-eliminator" element={<ProtectedRoute><DebtEliminator /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

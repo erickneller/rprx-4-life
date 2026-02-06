@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquare, FileText, Target } from "lucide-react";
+import { LayoutDashboard, MessageSquare, FileText, Target, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 
@@ -18,6 +18,7 @@ const navItems = [
   { title: "Debt Eliminator", url: "/debt-eliminator", icon: Target },
   { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare },
   { title: "My Plans", url: "/plans", icon: FileText },
+  { title: "Profile", url: "/profile", icon: User },
 ];
 
 export function AppSidebar() {
