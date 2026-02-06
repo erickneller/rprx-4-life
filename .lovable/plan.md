@@ -1,86 +1,131 @@
 
-# Add Assessment Exit Warning Dialog
+
+# Add Conversation Mode Selection to Strategy Assistant
 
 ## Overview
-When users click "Exit Assessment" during an in-progress assessment, show a warning dialog explaining that incomplete assessments are not saved and encouraging them to complete it.
+When starting a new conversation, give users two clear options:
+1. **Profile-Based Strategies** - Get recommendations tailored to their existing profile data (cash flow, goals, family info)
+2. **Specific Need** - Discuss a particular financial need or question that may not be captured in their profile
 
-## Current Behavior
-- The "Exit Assessment" button navigates directly to `/dashboard` without any confirmation
-- Users may accidentally lose their progress without realizing it
+This helps users understand that their profile data is being used and gives them control over the conversation direction.
 
-## New Behavior
-- Clicking "Exit Assessment" opens a warning dialog
-- Dialog explains that only completed assessments are saved
-- Encourages users to take 2-3 minutes to finish
-- Provides clear options: "Continue Assessment" (primary) or "Exit Anyway"
+## Current State
+- Single starter button: "Help me choose the best strategies to achieve financial wellness!"
+- Profile data is always injected into the AI context
+- No choice or transparency about how profile data influences recommendations
 
-## Implementation
-
-### 1. Create ExitAssessmentDialog Component
-New file: `src/components/assessment/ExitAssessmentDialog.tsx`
-
-Dialog content:
-- **Title**: "Exit Assessment?"
-- **Message**: Explains that incomplete assessments are not saved, progress will be lost, and encourages completion (2-3 minutes)
-- **Primary Action**: "Continue Assessment" (green button to match the app's success color)
-- **Secondary Action**: "Exit Anyway" (outline button)
-
-### 2. Update AssessmentWizard Component
-Modify `src/components/assessment/AssessmentWizard.tsx`:
-- Add state to track if exit dialog is open
-- Change "Exit Assessment" button to open the dialog instead of navigating directly
-- Handle dialog actions (continue or exit)
-
-## Files to Create
-- `src/components/assessment/ExitAssessmentDialog.tsx`
+## New Experience
+Two visually distinct option cards:
+- **Option A: "Use My Profile"** - Start with recommendations based on existing profile data
+- **Option B: "Ask About Something Specific"** - Free-form question or need not in profile
 
 ## Files to Modify
-- `src/components/assessment/AssessmentWizard.tsx`
 
-## Technical Details
+### 1. ChatThread.tsx
+Update the empty state (when no conversation selected) to show two option cards instead of a single button:
+- Add two clickable cards with icons, titles, and descriptions
+- Each card triggers a different initial message
+- Keep the general sparkles button as a third subtle option
+- Maintain the chat input below for users who want to type directly
 
-### Dialog Structure
+## Visual Design
+
 ```text
 +------------------------------------------+
-|  Exit Assessment?                    [X] |
+|            [Avatar Animation]            |
+|        RPRx Strategy Assistant           |
+|                                          |
+|  How would you like to get started?      |
+|                                          |
+| +------------------+ +------------------+ |
+| | [User Icon]      | | [Search Icon]    | |
+| | Use My Profile   | | Specific Need    | |
+| |                  | |                  | |
+| | Get personalized | | Ask about a      | |
+| | strategies based | | financial topic  | |
+| | on your profile  | | not in your      | |
+| | data and goals.  | | profile.         | |
+| +------------------+ +------------------+ |
+|                                          |
+|          Or type your question below     |
+|                                          |
 +------------------------------------------+
-|                                          |
-|  Your progress will not be saved.        |
-|  Only completed assessments are saved    |
-|  to your profile.                        |
-|                                          |
-|  The assessment only takes 2-3 minutes   |
-|  to complete. We encourage you to        |
-|  finish it now!                          |
-|                                          |
-+------------------------------------------+
-|  [Exit Anyway]      [Continue Assessment]|
+|        [Chat Input Field]                |
 +------------------------------------------+
 ```
 
-### Component Props
+## Initial Messages for Each Option
+
+**Option A (Profile-Based):**
+```
+Based on my current profile and financial goals, what strategies would you recommend to improve my situation?
+```
+
+**Option B (Specific Need):**
+```
+I have a specific financial question or situation I'd like to discuss.
+```
+
+## Implementation Details
+
+### Card Component Structure
 ```typescript
-interface ExitAssessmentDialogProps {
-  open: boolean;
-  onContinue: () => void;  // Close dialog, stay on assessment
-  onExit: () => void;      // Navigate to dashboard
+interface StarterOption {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  message: string;
 }
+
+const starterOptions: StarterOption[] = [
+  {
+    icon: User,
+    title: "Use My Profile",
+    description: "Get personalized strategies based on your profile data and financial goals.",
+    message: "Based on my current profile and financial goals, what strategies would you recommend?"
+  },
+  {
+    icon: Search,
+    title: "Specific Need",
+    description: "Ask about a particular financial topic that may not be in your profile.",
+    message: "I have a specific financial question or situation I'd like to discuss."
+  }
+];
 ```
 
-### Button Styling
-- "Continue Assessment": `bg-accent hover:bg-accent/90 text-accent-foreground` (blue, primary action)
-- "Exit Anyway": `variant="outline"` (secondary action)
+### Card Styling
+- Use existing Card component from shadcn/ui
+- Hover state with subtle border highlight
+- Icon in top-left, text below
+- Responsive: side-by-side on desktop, stacked on mobile
 
 ## User Flow
+
 ```text
-User clicks "Exit Assessment"
-        |
-        v
-Dialog opens with warning
-        |
-        +---> [Continue Assessment] ---> Dialog closes, user stays
-        |
-        +---> [Exit Anyway] ---> Navigate to /dashboard
-        |
-        +---> [X] or click outside ---> Dialog closes, user stays
+User opens Strategy Assistant
+         |
+         v
+Empty state with two option cards
+         |
+    +----+----+
+    |         |
+    v         v
+"Profile"   "Specific"
+    |         |
+    v         v
+AI receives AI receives
+message     message
+    |         |
+    v         v
+AI uses     AI asks
+profile     "What would
+data to     you like to
+recommend   discuss?"
 ```
+
+## Benefits
+- Transparency: Users know their profile is being used
+- Control: Users can choose their conversation direction
+- Encourages profile completion: Profile-based option is more appealing with a filled profile
+- Better UX: Clearer starting point than a single generic button
+
