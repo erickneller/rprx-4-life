@@ -42,7 +42,11 @@ export function UnsavedChangesDialog({
           <Button variant="outline" onClick={onDiscard} disabled={isSaving}>
             Discard
           </Button>
-          <AlertDialogAction onClick={onSave} disabled={isSaving}>
+          <AlertDialogAction 
+            onClick={onSave} 
+            disabled={isSaving}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          >
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
