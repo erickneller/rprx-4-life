@@ -35,7 +35,7 @@ export function SliderQuestion({ options, value, onChange }: SliderQuestionProps
             className={cn(
               'text-sm transition-colors',
               currentIndex === index
-                ? 'text-primary font-medium'
+                ? 'text-success font-medium'
                 : 'text-muted-foreground'
             )}
           >
