@@ -1747,8 +1747,8 @@ serve(async (req) => {
       console.log('Created new conversation:', conversationId);
     }
 
-    // OPTIMIZATION: Parallelize save user message + fetch history
-    const [saveResult, historyResult] = await Promise.all([
+    // OPTIMIZATION: Parallelize save user message + fetch history + fetch profile
+    const [saveResult, historyResult, profileResult] = await Promise.all([
       // Save user message
       supabase.from('messages').insert({
         conversation_id: conversationId,
@@ -1761,7 +1761,13 @@ serve(async (req) => {
         .select('role, content')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
-        .limit(20)
+        .limit(20),
+      // Fetch user profile for cash flow context
+      supabase
+        .from('profiles')
+        .select('full_name, monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses')
+        .eq('id', userId)
+        .maybeSingle()
     ]);
 
     if (saveResult.error) {
@@ -1785,6 +1791,50 @@ serve(async (req) => {
     // Add the current message since it was just inserted
     messages.push({ role: 'user', content: user_message.trim() });
 
+    // Build profile context if cash flow data exists
+    const profile = profileResult.data;
+    let profileContext = '';
+    
+    if (profile && profile.monthly_income) {
+      const income = Number(profile.monthly_income) || 0;
+      const debtPayments = Number(profile.monthly_debt_payments) || 0;
+      const housing = Number(profile.monthly_housing) || 0;
+      const insurance = Number(profile.monthly_insurance) || 0;
+      const living = Number(profile.monthly_living_expenses) || 0;
+      const totalExpenses = debtPayments + housing + insurance + living;
+      const surplus = income - totalExpenses;
+      const ratio = totalExpenses > 0 ? income / totalExpenses : 1;
+      
+      let cashFlowStatus: string;
+      if (ratio > 1.2) {
+        cashFlowStatus = 'Healthy Surplus';
+      } else if (ratio < 1) {
+        cashFlowStatus = 'Cash Flow Pressure (Deficit)';
+      } else {
+        cashFlowStatus = 'Tight Balance';
+      }
+
+      const formatCurrency = (n: number) => 
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+      profileContext = `
+## USER FINANCIAL PROFILE (Pre-filled from their profile)
+${profile.full_name ? `- **Name:** ${profile.full_name}` : ''}
+- **Monthly Income:** ${formatCurrency(income)}
+- **Monthly Expenses:** ${formatCurrency(totalExpenses)}
+  - Debt Payments: ${formatCurrency(debtPayments)}
+  - Housing: ${formatCurrency(housing)}
+  - Insurance: ${formatCurrency(insurance)}
+  - Living Expenses: ${formatCurrency(living)}
+- **Monthly ${surplus >= 0 ? 'Surplus' : 'Deficit'}:** ${formatCurrency(Math.abs(surplus))}
+- **Cash Flow Status:** ${cashFlowStatus}
+
+**IMPORTANT:** This information is already known. Do NOT ask about income, expenses, or cash flow. Use this data to tailor recommendations immediately.
+
+`;
+      console.log('Profile context injected - income:', income, 'surplus:', surplus);
+    }
+
     // Build conversation history text for keyword matching
     const conversationText = messages.map(m => m.content).join(' ');
     
@@ -1795,7 +1845,7 @@ serve(async (req) => {
 
     if (inIntake) {
       // Intake phase: No strategy context needed - fast response
-      dynamicSystemPrompt = BASE_SYSTEM_PROMPT;
+      dynamicSystemPrompt = BASE_SYSTEM_PROMPT + profileContext;
       console.log('Intake phase - skipping strategy context for faster response');
     } else {
       // Recommendation phase: Include condensed relevant strategies
@@ -1804,7 +1854,7 @@ serve(async (req) => {
       console.log(`Recommendation phase - ${relevantStrategies.length} strategies included`);
       
       dynamicSystemPrompt = `${BASE_SYSTEM_PROMPT}
-
+${profileContext}
 ## RELEVANT STRATEGIES FOR THIS CONVERSATION
 Use these strategies when making recommendations. Only reference strategies from this list:
 

@@ -64,3 +64,42 @@ export function getCashFlowDescription(status: CashFlowStatus): string {
   };
   return descriptions[status];
 }
+
+// New function for actual dollar amounts from profile
+export interface CashFlowResult {
+  status: CashFlowStatus;
+  surplus: number;
+  totalExpenses: number;
+}
+
+export function calculateCashFlowFromNumbers(
+  income: number,
+  debtPayments: number,
+  housing: number,
+  insurance: number,
+  livingExpenses: number
+): CashFlowResult {
+  const totalExpenses = debtPayments + housing + insurance + livingExpenses;
+  const surplus = income - totalExpenses;
+  const ratio = totalExpenses > 0 ? income / totalExpenses : 1;
+
+  let status: CashFlowStatus;
+  if (ratio > 1.2) {
+    status = 'surplus';
+  } else if (ratio < 1) {
+    status = 'deficit';
+  } else {
+    status = 'tight';
+  }
+
+  return { status, surplus, totalExpenses };
+}
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}

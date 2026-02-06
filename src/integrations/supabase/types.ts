@@ -250,6 +250,11 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          monthly_debt_payments: number | null
+          monthly_housing: number | null
+          monthly_income: number | null
+          monthly_insurance: number | null
+          monthly_living_expenses: number | null
           phone: string | null
           updated_at: string
         }
@@ -259,6 +264,11 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          monthly_debt_payments?: number | null
+          monthly_housing?: number | null
+          monthly_income?: number | null
+          monthly_insurance?: number | null
+          monthly_living_expenses?: number | null
           phone?: string | null
           updated_at?: string
         }
@@ -268,6 +278,11 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          monthly_debt_payments?: number | null
+          monthly_housing?: number | null
+          monthly_income?: number | null
+          monthly_insurance?: number | null
+          monthly_living_expenses?: number | null
           phone?: string | null
           updated_at?: string
         }

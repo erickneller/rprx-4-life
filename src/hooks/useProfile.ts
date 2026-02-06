@@ -10,6 +10,12 @@ export interface Profile {
   company: string | null;
   created_at: string;
   updated_at: string;
+  // Cash flow fields
+  monthly_income: number | null;
+  monthly_debt_payments: number | null;
+  monthly_housing: number | null;
+  monthly_insurance: number | null;
+  monthly_living_expenses: number | null;
 }
 
 export function useProfile() {
