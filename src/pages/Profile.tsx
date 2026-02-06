@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { CashFlowSection } from '@/components/profile/CashFlowSection';
 import { PROFILE_TYPES, FINANCIAL_GOALS } from '@/lib/profileTypes';
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
+import { UnsavedChangesDialog } from '@/components/profile/UnsavedChangesDialog';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -41,22 +43,41 @@ export default function Profile() {
   const [childrenAges, setChildrenAges] = useState<number[]>([]);
   const [financialGoals, setFinancialGoals] = useState<string[]>([]);
 
+  // Track original values for dirty detection
+  const [originalValues, setOriginalValues] = useState<Record<string, unknown> | null>(null);
+
   // Sync form state when profile loads
   useEffect(() => {
     if (profile) {
-      setFullName(profile.full_name || '');
-      setPhone(profile.phone || '');
-      setCompany(profile.company || '');
-      setMonthlyIncome(profile.monthly_income?.toString() || '');
-      setMonthlyDebtPayments(profile.monthly_debt_payments?.toString() || '');
-      setMonthlyHousing(profile.monthly_housing?.toString() || '');
-      setMonthlyInsurance(profile.monthly_insurance?.toString() || '');
-      setMonthlyLivingExpenses(profile.monthly_living_expenses?.toString() || '');
-      // Optional fields
-      setProfileType(profile.profile_type || '');
-      setNumChildren(profile.num_children || 0);
-      setChildrenAges(profile.children_ages || []);
-      setFinancialGoals(profile.financial_goals || []);
+      const loadedValues = {
+        fullName: profile.full_name || '',
+        phone: profile.phone || '',
+        company: profile.company || '',
+        monthlyIncome: profile.monthly_income?.toString() || '',
+        monthlyDebtPayments: profile.monthly_debt_payments?.toString() || '',
+        monthlyHousing: profile.monthly_housing?.toString() || '',
+        monthlyInsurance: profile.monthly_insurance?.toString() || '',
+        monthlyLivingExpenses: profile.monthly_living_expenses?.toString() || '',
+        profileType: profile.profile_type || '',
+        numChildren: profile.num_children || 0,
+        childrenAges: profile.children_ages || [],
+        financialGoals: profile.financial_goals || [],
+      };
+      
+      setFullName(loadedValues.fullName);
+      setPhone(loadedValues.phone);
+      setCompany(loadedValues.company);
+      setMonthlyIncome(loadedValues.monthlyIncome);
+      setMonthlyDebtPayments(loadedValues.monthlyDebtPayments);
+      setMonthlyHousing(loadedValues.monthlyHousing);
+      setMonthlyInsurance(loadedValues.monthlyInsurance);
+      setMonthlyLivingExpenses(loadedValues.monthlyLivingExpenses);
+      setProfileType(loadedValues.profileType);
+      setNumChildren(loadedValues.numChildren);
+      setChildrenAges(loadedValues.childrenAges);
+      setFinancialGoals(loadedValues.financialGoals);
+      
+      setOriginalValues(loadedValues);
     }
   }, [profile]);
 
@@ -72,6 +93,55 @@ export default function Profile() {
       }
     });
   }, [numChildren]);
+
+  // Compute if form is dirty
+  const isDirty = useMemo(() => {
+    if (!originalValues) return false;
+    
+    const currentValues = {
+      fullName,
+      phone,
+      company,
+      monthlyIncome,
+      monthlyDebtPayments,
+      monthlyHousing,
+      monthlyInsurance,
+      monthlyLivingExpenses,
+      profileType,
+      numChildren,
+      childrenAges,
+      financialGoals,
+    };
+
+    return (
+      currentValues.fullName !== originalValues.fullName ||
+      currentValues.phone !== originalValues.phone ||
+      currentValues.company !== originalValues.company ||
+      currentValues.monthlyIncome !== originalValues.monthlyIncome ||
+      currentValues.monthlyDebtPayments !== originalValues.monthlyDebtPayments ||
+      currentValues.monthlyHousing !== originalValues.monthlyHousing ||
+      currentValues.monthlyInsurance !== originalValues.monthlyInsurance ||
+      currentValues.monthlyLivingExpenses !== originalValues.monthlyLivingExpenses ||
+      currentValues.profileType !== originalValues.profileType ||
+      currentValues.numChildren !== originalValues.numChildren ||
+      JSON.stringify(currentValues.childrenAges) !== JSON.stringify(originalValues.childrenAges) ||
+      JSON.stringify(currentValues.financialGoals) !== JSON.stringify(originalValues.financialGoals)
+    );
+  }, [
+    originalValues,
+    fullName,
+    phone,
+    company,
+    monthlyIncome,
+    monthlyDebtPayments,
+    monthlyHousing,
+    monthlyInsurance,
+    monthlyLivingExpenses,
+    profileType,
+    numChildren,
+    childrenAges,
+    financialGoals,
+  ]);
 
   const getInitials = () => {
     if (fullName) {
@@ -148,7 +218,7 @@ export default function Profile() {
     setChildrenAges(newAges);
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       await updateProfile.mutateAsync({
@@ -166,11 +236,27 @@ export default function Profile() {
         children_ages: numChildren > 0 ? childrenAges.slice(0, numChildren) : null,
         financial_goals: financialGoals.length > 0 ? financialGoals : null,
       });
+      
+      // Update original values to reflect saved state
+      setOriginalValues({
+        fullName,
+        phone,
+        company,
+        monthlyIncome,
+        monthlyDebtPayments,
+        monthlyHousing,
+        monthlyInsurance,
+        monthlyLivingExpenses,
+        profileType,
+        numChildren,
+        childrenAges,
+        financialGoals,
+      });
+      
       toast({
         title: 'Profile updated',
         description: 'Your profile has been saved.',
       });
-      navigate(-1);
     } catch (error) {
       console.error('Save error:', error);
       toast({
@@ -178,10 +264,37 @@ export default function Profile() {
         description: 'Failed to save profile. Please try again.',
         variant: 'destructive',
       });
+      throw error; // Re-throw to let the dialog know save failed
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [
+    updateProfile,
+    fullName,
+    phone,
+    company,
+    monthlyIncome,
+    monthlyDebtPayments,
+    monthlyHousing,
+    monthlyInsurance,
+    monthlyLivingExpenses,
+    profileType,
+    numChildren,
+    childrenAges,
+    financialGoals,
+  ]);
+
+  // Unsaved changes warning
+  const {
+    showDialog,
+    isSaving: isDialogSaving,
+    handleSave: handleDialogSave,
+    handleDiscard,
+    handleCancel,
+  } = useUnsavedChangesWarning({
+    isDirty,
+    onSave: handleSave,
+  });
 
   const displayUrl = previewUrl || profile?.avatar_url;
 
@@ -399,7 +512,7 @@ export default function Profile() {
           </Button>
           <Button
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || !isDirty}
             className="bg-accent hover:bg-accent/90 text-accent-foreground"
           >
             {isSaving ? (
@@ -413,6 +526,15 @@ export default function Profile() {
           </Button>
         </div>
       </div>
+
+      {/* Unsaved Changes Dialog */}
+      <UnsavedChangesDialog
+        open={showDialog}
+        isSaving={isDialogSaving}
+        onSave={handleDialogSave}
+        onDiscard={handleDiscard}
+        onCancel={handleCancel}
+      />
     </AuthenticatedLayout>
   );
 }
