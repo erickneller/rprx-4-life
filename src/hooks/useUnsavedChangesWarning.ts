@@ -1,29 +1,16 @@
 import { useEffect, useCallback, useState } from 'react';
-import { useBlocker } from 'react-router-dom';
 
 interface UseUnsavedChangesWarningOptions {
   isDirty: boolean;
   onSave: () => Promise<void>;
+  onNavigateAway: () => void;
 }
 
-export function useUnsavedChangesWarning({ isDirty, onSave }: UseUnsavedChangesWarningOptions) {
+export function useUnsavedChangesWarning({ isDirty, onSave, onNavigateAway }: UseUnsavedChangesWarningOptions) {
   const [showDialog, setShowDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Block navigation when form is dirty
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname
-  );
-
-  // Show dialog when navigation is blocked
-  useEffect(() => {
-    if (blocker.state === 'blocked') {
-      setShowDialog(true);
-    }
-  }, [blocker.state]);
-
-  // Handle browser back/refresh
+  // Handle browser back/refresh with beforeunload
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDirty) {
@@ -36,33 +23,42 @@ export function useUnsavedChangesWarning({ isDirty, onSave }: UseUnsavedChangesW
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
+  // Called when user attempts to navigate away (e.g., Cancel button)
+  const attemptNavigation = useCallback(() => {
+    if (isDirty) {
+      setShowDialog(true);
+    } else {
+      onNavigateAway();
+    }
+  }, [isDirty, onNavigateAway]);
+
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       await onSave();
       setShowDialog(false);
-      blocker.proceed?.();
+      onNavigateAway();
     } catch (error) {
       // Keep dialog open on error, let the save function handle toast
       console.error('Save failed:', error);
     } finally {
       setIsSaving(false);
     }
-  }, [onSave, blocker]);
+  }, [onSave, onNavigateAway]);
 
   const handleDiscard = useCallback(() => {
     setShowDialog(false);
-    blocker.proceed?.();
-  }, [blocker]);
+    onNavigateAway();
+  }, [onNavigateAway]);
 
   const handleCancel = useCallback(() => {
     setShowDialog(false);
-    blocker.reset?.();
-  }, [blocker]);
+  }, []);
 
   return {
     showDialog,
     isSaving,
+    attemptNavigation,
     handleSave,
     handleDiscard,
     handleCancel,

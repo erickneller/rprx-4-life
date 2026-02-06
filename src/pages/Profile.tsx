@@ -288,12 +288,14 @@ export default function Profile() {
   const {
     showDialog,
     isSaving: isDialogSaving,
+    attemptNavigation,
     handleSave: handleDialogSave,
     handleDiscard,
     handleCancel,
   } = useUnsavedChangesWarning({
     isDirty,
     onSave: handleSave,
+    onNavigateAway: () => navigate(-1),
   });
 
   const displayUrl = previewUrl || profile?.avatar_url;
@@ -507,7 +509,7 @@ export default function Profile() {
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pb-8">
-          <Button variant="outline" onClick={() => navigate(-1)}>
+          <Button variant="outline" onClick={attemptNavigation}>
             Cancel
           </Button>
           <Button
