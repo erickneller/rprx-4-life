@@ -1,52 +1,86 @@
 
-
-# Update Assessment Selected States to Green
+# Add Assessment Exit Warning Dialog
 
 ## Overview
-Change the selected state styling on all assessment question types to use the standard green success color, matching the checkbox behavior across the application.
+When users click "Exit Assessment" during an in-progress assessment, show a warning dialog explaining that incomplete assessments are not saved and encouraging them to complete it.
 
-## Current State
-- **YesNoQuestion**: Selected buttons use `variant="default"` (dark slate) with `ring-primary`
-- **SingleChoiceQuestion**: No visual distinction when selected (only radio indicator)
-- **RangeSelectQuestion**: Selected uses `border-primary bg-primary/5` (blue tint)
-- **SliderQuestion**: Selected label uses `text-primary` (dark)
+## Current Behavior
+- The "Exit Assessment" button navigates directly to `/dashboard` without any confirmation
+- Users may accidentally lose their progress without realizing it
 
-## Target State
-All selected states should use the success color:
-- Background: `bg-success` (green)
-- Text: `text-success-foreground` (white)
-- Border: `border-success`
-- Ring: `ring-success`
+## New Behavior
+- Clicking "Exit Assessment" opens a warning dialog
+- Dialog explains that only completed assessments are saved
+- Encourages users to take 2-3 minutes to finish
+- Provides clear options: "Continue Assessment" (primary) or "Exit Anyway"
+
+## Implementation
+
+### 1. Create ExitAssessmentDialog Component
+New file: `src/components/assessment/ExitAssessmentDialog.tsx`
+
+Dialog content:
+- **Title**: "Exit Assessment?"
+- **Message**: Explains that incomplete assessments are not saved, progress will be lost, and encourages completion (2-3 minutes)
+- **Primary Action**: "Continue Assessment" (green button to match the app's success color)
+- **Secondary Action**: "Exit Anyway" (outline button)
+
+### 2. Update AssessmentWizard Component
+Modify `src/components/assessment/AssessmentWizard.tsx`:
+- Add state to track if exit dialog is open
+- Change "Exit Assessment" button to open the dialog instead of navigating directly
+- Handle dialog actions (continue or exit)
+
+## Files to Create
+- `src/components/assessment/ExitAssessmentDialog.tsx`
 
 ## Files to Modify
+- `src/components/assessment/AssessmentWizard.tsx`
 
-### 1. YesNoQuestion.tsx
-Change the selected button styling from default variant to green:
-- Replace `variant={value === 'yes' ? 'default' : 'outline'}` with custom classes
-- When selected: `bg-success text-success-foreground border-success`
-- Change ring from `ring-primary` to `ring-success`
+## Technical Details
 
-### 2. SingleChoiceQuestion.tsx
-Add selected state styling to the option containers:
-- When selected: `border-success bg-success/10`
-- Unselected: `border-border` (current behavior)
+### Dialog Structure
+```text
++------------------------------------------+
+|  Exit Assessment?                    [X] |
++------------------------------------------+
+|                                          |
+|  Your progress will not be saved.        |
+|  Only completed assessments are saved    |
+|  to your profile.                        |
+|                                          |
+|  The assessment only takes 2-3 minutes   |
+|  to complete. We encourage you to        |
+|  finish it now!                          |
+|                                          |
++------------------------------------------+
+|  [Exit Anyway]      [Continue Assessment]|
++------------------------------------------+
+```
 
-### 3. RangeSelectQuestion.tsx
-Change selected state from primary to success colors:
-- Replace `border-primary bg-primary/5` with `border-success bg-success/10`
+### Component Props
+```typescript
+interface ExitAssessmentDialogProps {
+  open: boolean;
+  onContinue: () => void;  // Close dialog, stay on assessment
+  onExit: () => void;      // Navigate to dashboard
+}
+```
 
-### 4. SliderQuestion.tsx (Optional)
-Change selected label color:
-- Replace `text-primary` with `text-success`
+### Button Styling
+- "Continue Assessment": `bg-accent hover:bg-accent/90 text-accent-foreground` (blue, primary action)
+- "Exit Anyway": `variant="outline"` (secondary action)
 
-## Visual Result
-When a user makes a selection:
-- Yes/No buttons will turn green with white text
-- Radio options will have a green border with light green background
-- Slider labels will show green for the selected value
-
-## Technical Notes
-- Uses existing CSS variables: `--success: 160 84% 39%` and `--success-foreground: 0 0% 100%`
-- Consistent with checkbox styling: `data-[state=checked]:bg-success`
-- No new dependencies required
-
+## User Flow
+```text
+User clicks "Exit Assessment"
+        |
+        v
+Dialog opens with warning
+        |
+        +---> [Continue Assessment] ---> Dialog closes, user stays
+        |
+        +---> [Exit Anyway] ---> Navigate to /dashboard
+        |
+        +---> [X] or click outside ---> Dialog closes, user stays
+```
