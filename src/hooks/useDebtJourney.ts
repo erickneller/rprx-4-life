@@ -59,7 +59,7 @@ export function useDebtJourney() {
     mutationFn: async (wizardData: SetupWizardData) => {
       if (!user?.id) throw new Error("Not authenticated");
 
-      // Create journey
+      // Create journey with monthly surplus
       const { data: journeyData, error: journeyError } = await supabase
         .from("debt_journeys")
         .insert({
@@ -67,6 +67,7 @@ export function useDebtJourney() {
           dream_text: wizardData.dreamText,
           dream_image_url: wizardData.dreamImageUrl,
           status: "active",
+          monthly_surplus: wizardData.monthlySurplus,
         })
         .select()
         .single();
@@ -85,17 +86,31 @@ export function useDebtJourney() {
         min_payment: debt.min_payment,
       }));
 
-      const { error: debtsError } = await supabase
+      const { data: insertedDebts, error: debtsError } = await supabase
         .from("user_debts")
-        .insert(debtsToInsert);
+        .insert(debtsToInsert)
+        .select();
 
       if (debtsError) throw debtsError;
 
-      return journeyData;
+      // Sync cash flow to profile if not already set
+      if (wizardData.monthlyIncome > 0) {
+        const totalExpenses = wizardData.monthlyExpenses;
+        await supabase
+          .from("profiles")
+          .upsert({
+            id: user.id,
+            monthly_income: wizardData.monthlyIncome,
+            monthly_living_expenses: totalExpenses,
+          }, { onConflict: "id" });
+      }
+
+      return { journey: journeyData, debts: insertedDebts };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["debt-journey"] });
       queryClient.invalidateQueries({ queryKey: ["user-debts"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       toast({
         title: "Journey started!",
         description: "Your debt elimination journey has begun.",
@@ -320,6 +335,35 @@ export function useDebtJourney() {
     },
   });
 
+  // Update focus debt
+  const setFocusDebt = useMutation({
+    mutationFn: async (debtId: string) => {
+      if (!journey?.id) throw new Error("No active journey");
+
+      const { error } = await supabase
+        .from("debt_journeys")
+        .update({ focus_debt_id: debtId })
+        .eq("id", journey.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["debt-journey"] });
+      toast({
+        title: "Focus updated!",
+        description: "Your focus debt has been changed.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update focus debt.",
+        variant: "destructive",
+      });
+      console.error("Set focus debt error:", error);
+    },
+  });
+
   return {
     journey,
     debts: debts ?? [],
@@ -332,5 +376,6 @@ export function useDebtJourney() {
     updateDebt,
     deleteDebt,
     logPayment,
+    setFocusDebt,
   };
 }

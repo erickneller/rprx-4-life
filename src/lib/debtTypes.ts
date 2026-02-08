@@ -49,6 +49,10 @@ export interface SetupWizardData {
   debts: DebtEntryFormData[];
   dreamText: string;
   dreamImageUrl?: string;
+  // Cash flow data for recommendation engine
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  monthlySurplus: number;
 }
 
 // Initial empty debt form
