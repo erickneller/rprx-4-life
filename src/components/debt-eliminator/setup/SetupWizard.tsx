@@ -2,6 +2,7 @@ import { useState } from "react";
 import { WelcomeStep } from "./WelcomeStep";
 import { GoalSelectionStep } from "./GoalSelectionStep";
 import { DebtEntryStep } from "./DebtEntryStep";
+import { CashFlowStep } from "./CashFlowStep";
 import { DreamStep } from "./DreamStep";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -14,20 +15,30 @@ import {
 interface SetupWizardProps {
   onComplete: (data: SetupWizardData) => void;
   isLoading?: boolean;
+  initialIncome?: number;
+  initialExpenses?: number;
 }
 
-type Step = "welcome" | "goals" | "debts" | "dream";
+type Step = "welcome" | "goals" | "debts" | "cashflow" | "dream";
 
-const STEPS: Step[] = ["welcome", "goals", "debts", "dream"];
+const STEPS: Step[] = ["welcome", "goals", "debts", "cashflow", "dream"];
 
-export function SetupWizard({ onComplete, isLoading }: SetupWizardProps) {
+export function SetupWizard({ 
+  onComplete, 
+  isLoading,
+  initialIncome = 0,
+  initialExpenses = 0,
+}: SetupWizardProps) {
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [selectedTypes, setSelectedTypes] = useState<DebtType[]>([]);
   const [debts, setDebts] = useState<DebtEntryFormData[]>([]);
+  const [monthlyIncome, setMonthlyIncome] = useState(initialIncome);
+  const [monthlyExpenses, setMonthlyExpenses] = useState(initialExpenses);
   const [dreamText, setDreamText] = useState("");
 
   const currentStepIndex = STEPS.indexOf(currentStep);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
+  const monthlySurplus = monthlyIncome - monthlyExpenses;
 
   const goToStep = (step: Step) => setCurrentStep(step);
 
@@ -44,6 +55,9 @@ export function SetupWizard({ onComplete, isLoading }: SetupWizardProps) {
       selectedDebtTypes: selectedTypes,
       debts,
       dreamText,
+      monthlyIncome,
+      monthlyExpenses,
+      monthlySurplus,
     });
   };
 
@@ -79,8 +93,19 @@ export function SetupWizard({ onComplete, isLoading }: SetupWizardProps) {
           selectedTypes={selectedTypes}
           debts={debts}
           onDebtsChange={setDebts}
-          onNext={() => goToStep("dream")}
+          onNext={() => goToStep("cashflow")}
           onBack={() => goToStep("goals")}
+        />
+      )}
+
+      {currentStep === "cashflow" && (
+        <CashFlowStep
+          monthlyIncome={monthlyIncome}
+          monthlyExpenses={monthlyExpenses}
+          onIncomeChange={setMonthlyIncome}
+          onExpensesChange={setMonthlyExpenses}
+          onNext={() => goToStep("dream")}
+          onBack={() => goToStep("debts")}
         />
       )}
 
@@ -89,7 +114,7 @@ export function SetupWizard({ onComplete, isLoading }: SetupWizardProps) {
           dreamText={dreamText}
           onDreamChange={setDreamText}
           onComplete={handleComplete}
-          onBack={() => goToStep("debts")}
+          onBack={() => goToStep("cashflow")}
           isLoading={isLoading}
         />
       )}

@@ -149,7 +149,9 @@ export type Database = {
           created_at: string
           dream_image_url: string | null
           dream_text: string | null
+          focus_debt_id: string | null
           id: string
+          monthly_surplus: number | null
           status: Database["public"]["Enums"]["journey_status"]
           user_id: string
         }
@@ -158,7 +160,9 @@ export type Database = {
           created_at?: string
           dream_image_url?: string | null
           dream_text?: string | null
+          focus_debt_id?: string | null
           id?: string
+          monthly_surplus?: number | null
           status?: Database["public"]["Enums"]["journey_status"]
           user_id: string
         }
@@ -167,11 +171,21 @@ export type Database = {
           created_at?: string
           dream_image_url?: string | null
           dream_text?: string | null
+          focus_debt_id?: string | null
           id?: string
+          monthly_surplus?: number | null
           status?: Database["public"]["Enums"]["journey_status"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "debt_journeys_focus_debt_id_fkey"
+            columns: ["focus_debt_id"]
+            isOneToOne: false
+            referencedRelation: "user_debts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       debt_payments: {
         Row: {

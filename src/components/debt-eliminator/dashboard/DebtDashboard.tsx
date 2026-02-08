@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Plus, Target, TrendingUp, Clock, DollarSign } from "lucide-react";
+import { Plus, Target, TrendingUp, DollarSign, PartyPopper } from "lucide-react";
 import type { DebtJourney, UserDebt, DebtEntryFormData } from "@/lib/debtTypes";
 import {
   calculateProgressPercent,
@@ -10,7 +10,10 @@ import {
   calculateTotalRemaining,
   formatCurrency,
 } from "@/lib/debtTypes";
-import { DebtCard } from "./DebtCard";
+import { getDebtRecommendation } from "@/lib/debtRecommendationEngine";
+import { FocusDebtCard } from "./FocusDebtCard";
+import { RankedDebtList } from "./RankedDebtList";
+import { ChangeFocusDialog } from "./ChangeFocusDialog";
 import { AddDebtDialog } from "./AddDebtDialog";
 import { EditDebtDialog } from "./EditDebtDialog";
 import { LogPaymentDialog } from "./LogPaymentDialog";
@@ -23,6 +26,7 @@ interface DebtDashboardProps {
   updateDebt: UseMutationResult<UserDebt, Error, { debtId: string; updates: Partial<UserDebt> }>;
   deleteDebt: UseMutationResult<void, Error, string>;
   logPayment: UseMutationResult<{ newBalance: number; isPaidOff: boolean }, Error, { debtId: string; amount: number; note?: string }>;
+  setFocusDebt: UseMutationResult<void, Error, string>;
 }
 
 export function DebtDashboard({
@@ -32,10 +36,22 @@ export function DebtDashboard({
   updateDebt,
   deleteDebt,
   logPayment,
+  setFocusDebt,
 }: DebtDashboardProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingDebt, setEditingDebt] = useState<UserDebt | null>(null);
   const [paymentDebt, setPaymentDebt] = useState<UserDebt | null>(null);
+  const [showChangeFocusDialog, setShowChangeFocusDialog] = useState(false);
+
+  // Calculate recommendation
+  const { recommendation, rankedDebts } = useMemo(() => {
+    return getDebtRecommendation(debts, journey.monthly_surplus);
+  }, [debts, journey.monthly_surplus]);
+
+  // Determine current focus (user override or recommendation)
+  const currentFocusId = journey.focus_debt_id || recommendation?.focusDebtId;
+  const focusDebt = debts.find((d) => d.id === currentFocusId);
+  const isOverride = journey.focus_debt_id && journey.focus_debt_id !== recommendation?.focusDebtId;
 
   const progress = calculateProgressPercent(debts);
   const totalPaid = calculateTotalPaid(debts);
@@ -66,6 +82,15 @@ export function DebtDashboard({
     });
   };
 
+  const handleChangeFocus = (debtId: string) => {
+    setFocusDebt.mutate(debtId, {
+      onSuccess: () => setShowChangeFocusDialog(false),
+    });
+  };
+
+  // All debts paid off - celebration state
+  const allPaidOff = debts.length > 0 && debts.every((d) => d.current_balance === 0);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -75,7 +100,9 @@ export function DebtDashboard({
             Your Debt Freedom Journey
           </h1>
           <p className="text-muted-foreground">
-            Keep going! You're making progress.
+            {allPaidOff
+              ? "Congratulations! You're debt free!"
+              : "Keep going! You're making progress."}
           </p>
         </div>
         <Button
@@ -126,15 +153,18 @@ export function DebtDashboard({
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
-              <Clock className="h-4 w-4" />
+              <PartyPopper className="h-4 w-4" />
               <span className="text-sm">Debts</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{debts.length}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {debts.filter((d) => d.current_balance === 0).length}/{debts.length}
+              <span className="text-sm font-normal text-muted-foreground ml-1">done</span>
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Journey progress */}
+      {/* Journey progress with dream */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Journey Progress</CardTitle>
@@ -152,7 +182,6 @@ export function DebtDashboard({
             <Progress value={progress} className="h-3" />
           </div>
 
-          {/* Dream visualization */}
           {journey.dream_text && (
             <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border">
               <p className="text-sm text-muted-foreground mb-1">Your Dream</p>
@@ -162,20 +191,41 @@ export function DebtDashboard({
         </CardContent>
       </Card>
 
-      {/* Debt list */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Your Debts</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {debts.map((debt) => (
-            <DebtCard
-              key={debt.id}
-              debt={debt}
-              onEdit={() => setEditingDebt(debt)}
-              onLogPayment={() => setPaymentDebt(debt)}
-            />
-          ))}
-        </div>
-      </div>
+      {/* Focus Debt Card */}
+      {focusDebt && recommendation && !allPaidOff && (
+        <FocusDebtCard
+          focusDebt={focusDebt}
+          recommendation={recommendation}
+          isOverride={!!isOverride}
+          onLogPayment={() => setPaymentDebt(focusDebt)}
+          onChangeFocus={() => setShowChangeFocusDialog(true)}
+        />
+      )}
+
+      {/* Celebration state */}
+      {allPaidOff && (
+        <Card className="border-2 border-green-500/50 bg-green-50/30 dark:bg-green-950/20">
+          <CardContent className="pt-6 text-center">
+            <PartyPopper className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-foreground mb-2">
+              You Did It! 🎉
+            </h3>
+            <p className="text-muted-foreground">
+              You've paid off all your debts. Time to live your dream!
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Ranked Debt List */}
+      {rankedDebts.length > 0 && !allPaidOff && (
+        <RankedDebtList
+          rankedDebts={rankedDebts}
+          focusDebtId={currentFocusId || ""}
+          onEditDebt={setEditingDebt}
+          onLogPayment={setPaymentDebt}
+        />
+      )}
 
       {/* Badges section placeholder */}
       <Card>
@@ -215,6 +265,19 @@ export function DebtDashboard({
         onSubmit={handleLogPayment}
         isLoading={logPayment.isPending}
       />
+
+      {recommendation && (
+        <ChangeFocusDialog
+          open={showChangeFocusDialog}
+          onOpenChange={setShowChangeFocusDialog}
+          rankedDebts={rankedDebts}
+          currentFocusId={currentFocusId || ""}
+          recommendedFocusId={recommendation.focusDebtId}
+          recommendation={recommendation}
+          onConfirm={handleChangeFocus}
+          isLoading={setFocusDebt.isPending}
+        />
+      )}
     </div>
   );
 }
