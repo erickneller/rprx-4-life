@@ -59,7 +59,7 @@ export function useDebtJourney() {
     mutationFn: async (wizardData: SetupWizardData) => {
       if (!user?.id) throw new Error("Not authenticated");
 
-      // Create journey with monthly surplus
+      // Create journey (surplus is now computed from profile, not stored here)
       const { data: journeyData, error: journeyError } = await supabase
         .from("debt_journeys")
         .insert({
@@ -67,7 +67,6 @@ export function useDebtJourney() {
           dream_text: wizardData.dreamText,
           dream_image_url: wizardData.dreamImageUrl,
           status: "active",
-          monthly_surplus: wizardData.monthlySurplus,
         })
         .select()
         .single();
@@ -93,15 +92,14 @@ export function useDebtJourney() {
 
       if (debtsError) throw debtsError;
 
-      // Sync cash flow to profile if not already set
+      // Save cash flow to profile (single source of truth)
       if (wizardData.monthlyIncome > 0) {
-        const totalExpenses = wizardData.monthlyExpenses;
         await supabase
           .from("profiles")
           .upsert({
             id: user.id,
             monthly_income: wizardData.monthlyIncome,
-            monthly_living_expenses: totalExpenses,
+            monthly_living_expenses: wizardData.monthlyExpenses,
           }, { onConflict: "id" });
       }
 

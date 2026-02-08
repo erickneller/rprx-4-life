@@ -151,7 +151,6 @@ export type Database = {
           dream_text: string | null
           focus_debt_id: string | null
           id: string
-          monthly_surplus: number | null
           status: Database["public"]["Enums"]["journey_status"]
           user_id: string
         }
@@ -162,7 +161,6 @@ export type Database = {
           dream_text?: string | null
           focus_debt_id?: string | null
           id?: string
-          monthly_surplus?: number | null
           status?: Database["public"]["Enums"]["journey_status"]
           user_id: string
         }
@@ -173,7 +171,6 @@ export type Database = {
           dream_text?: string | null
           focus_debt_id?: string | null
           id?: string
-          monthly_surplus?: number | null
           status?: Database["public"]["Enums"]["journey_status"]
           user_id?: string
         }
