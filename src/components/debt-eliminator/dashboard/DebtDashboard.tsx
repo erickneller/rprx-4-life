@@ -11,17 +11,21 @@ import {
   formatCurrency,
 } from "@/lib/debtTypes";
 import { getDebtRecommendation } from "@/lib/debtRecommendationEngine";
+import type { CashFlowStatus } from "@/lib/cashFlowCalculator";
 import { FocusDebtCard } from "./FocusDebtCard";
 import { RankedDebtList } from "./RankedDebtList";
 import { ChangeFocusDialog } from "./ChangeFocusDialog";
 import { AddDebtDialog } from "./AddDebtDialog";
 import { EditDebtDialog } from "./EditDebtDialog";
 import { LogPaymentDialog } from "./LogPaymentDialog";
+import { CashFlowStatusCard } from "./CashFlowStatusCard";
 import type { UseMutationResult } from "@tanstack/react-query";
 
 interface DebtDashboardProps {
   journey: DebtJourney;
   debts: UserDebt[];
+  monthlySurplus: number | null;
+  cashFlowStatus: CashFlowStatus | null;
   addDebt: UseMutationResult<UserDebt, Error, DebtEntryFormData>;
   updateDebt: UseMutationResult<UserDebt, Error, { debtId: string; updates: Partial<UserDebt> }>;
   deleteDebt: UseMutationResult<void, Error, string>;
@@ -32,6 +36,8 @@ interface DebtDashboardProps {
 export function DebtDashboard({
   journey,
   debts,
+  monthlySurplus,
+  cashFlowStatus,
   addDebt,
   updateDebt,
   deleteDebt,
@@ -43,10 +49,10 @@ export function DebtDashboard({
   const [paymentDebt, setPaymentDebt] = useState<UserDebt | null>(null);
   const [showChangeFocusDialog, setShowChangeFocusDialog] = useState(false);
 
-  // Calculate recommendation
+  // Calculate recommendation using computed surplus from profile
   const { recommendation, rankedDebts } = useMemo(() => {
-    return getDebtRecommendation(debts, journey.monthly_surplus);
-  }, [debts, journey.monthly_surplus]);
+    return getDebtRecommendation(debts, monthlySurplus);
+  }, [debts, monthlySurplus]);
 
   // Determine current focus (user override or recommendation)
   const currentFocusId = journey.focus_debt_id || recommendation?.focusDebtId;
@@ -113,6 +119,9 @@ export function DebtDashboard({
           Add Debt
         </Button>
       </div>
+
+      {/* Cash Flow Status Card */}
+      <CashFlowStatusCard surplus={monthlySurplus} status={cashFlowStatus} />
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

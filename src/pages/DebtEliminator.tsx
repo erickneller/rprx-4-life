@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { AuthenticatedLayout } from "@/components/layout/AuthenticatedLayout";
 import { SetupWizard } from "@/components/debt-eliminator/setup/SetupWizard";
 import { DebtDashboard } from "@/components/debt-eliminator/dashboard/DebtDashboard";
 import { useDebtJourney } from "@/hooks/useDebtJourney";
 import { useProfile } from "@/hooks/useProfile";
+import { calculateCashFlowFromNumbers } from "@/lib/cashFlowCalculator";
 import { Loader2 } from "lucide-react";
 
 export default function DebtEliminator() {
@@ -20,6 +22,22 @@ export default function DebtEliminator() {
   } = useDebtJourney();
 
   const { profile, isLoading: profileLoading } = useProfile();
+
+  // Compute cash flow from profile data (single source of truth)
+  const { monthlySurplus, cashFlowStatus } = useMemo(() => {
+    if (!profile?.monthly_income) {
+      return { monthlySurplus: null, cashFlowStatus: null };
+    }
+
+    const income = Number(profile.monthly_income) || 0;
+    const debtPayments = Number(profile.monthly_debt_payments) || 0;
+    const housing = Number(profile.monthly_housing) || 0;
+    const insurance = Number(profile.monthly_insurance) || 0;
+    const living = Number(profile.monthly_living_expenses) || 0;
+
+    const result = calculateCashFlowFromNumbers(income, debtPayments, housing, insurance, living);
+    return { monthlySurplus: result.surplus, cashFlowStatus: result.status };
+  }, [profile]);
 
   const handleSetupComplete = async (data: Parameters<typeof createJourney.mutate>[0]) => {
     createJourney.mutate(data);
@@ -40,6 +58,8 @@ export default function DebtEliminator() {
           <DebtDashboard
             journey={journey}
             debts={debts}
+            monthlySurplus={monthlySurplus}
+            cashFlowStatus={cashFlowStatus}
             addDebt={addDebt}
             updateDebt={updateDebt}
             deleteDebt={deleteDebt}
