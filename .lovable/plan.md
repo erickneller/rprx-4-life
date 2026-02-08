@@ -1,252 +1,172 @@
 
 
-# Focus Debt Recommendation System
+# Sync Profile Cash Flow with Debt Eliminator
 
 ## Overview
-Implement a "Focus Debt" recommendation engine that helps users prioritize which debt to attack first, while allowing them to list and track multiple debts. The system will use cash flow data to make intelligent recommendations and explain the reasoning transparently.
+Connect the Debt Eliminator to use live profile cash flow data, so when users update their profile, the debt recommendations automatically recalculate. Add a visible cash flow status indicator on the dashboard with a link to update it in the profile.
 
-## Core Principles
-1. **One focus debt at a time** - Preserves the "hope loop" for adherence
-2. **Smart recommendations** - Based on quick-win logic with high-APR guardrails
-3. **Transparent reasoning** - Always explain why a debt is recommended
-4. **User control** - Allow override with a different focus if they prefer
-5. **Profile sync** - Cash flow data captured in wizard syncs to user profile
+## Current State
+- `debt_journeys.monthly_surplus` is set once during wizard setup
+- Profile has separate fields: `monthly_income`, `monthly_debt_payments`, `monthly_housing`, `monthly_insurance`, `monthly_living_expenses`
+- These two data sources are not connected after initial setup
+- Updating profile does NOT recalculate debt recommendations
+
+## Proposed Solution
+Use profile cash flow as the **single source of truth**. The Debt Eliminator will compute `monthly_surplus` on-the-fly from profile data, ensuring both features stay in sync.
 
 ---
 
-## Implementation Components
+## Implementation Details
 
-### Phase 1: Cash Flow Capture in Setup Wizard
+### 1. Remove Redundant Storage
+Remove the `monthly_surplus` column from `debt_journeys` table since we'll compute it from profile data in real-time. This prevents data from getting out of sync.
 
-#### New Step: CashFlowStep
-Insert between "Debts" and "Dream" steps:
-- **Title**: "What's your monthly cash flow?"
-- **Fields**: Net Monthly Income (required) + optional expense breakdown
-- **Live calculation**: Shows estimated monthly surplus
-- **Pre-fill**: If profile already has cash flow data, pre-populate fields
-- **Sync**: On wizard completion, save to `profiles` table as well
+### 2. Update DebtEliminator Page
+Fetch profile data alongside journey data and compute surplus from profile fields:
 
-**Wizard Flow Update**:
+```typescript
+// In DebtEliminator.tsx
+const { profile } = useProfile();
+
+// Compute surplus from profile (same logic as CashFlowSection)
+const computedSurplus = useMemo(() => {
+  if (!profile?.monthly_income) return null;
+  
+  const income = Number(profile.monthly_income) || 0;
+  const debt = Number(profile.monthly_debt_payments) || 0;
+  const housing = Number(profile.monthly_housing) || 0;
+  const insurance = Number(profile.monthly_insurance) || 0;
+  const living = Number(profile.monthly_living_expenses) || 0;
+  
+  return income - (debt + housing + insurance + living);
+}, [profile]);
 ```
-welcome → goals → debts → cashflow → dream
-```
 
-### Phase 2: Recommendation Engine
+Pass this computed surplus to the Dashboard instead of `journey.monthly_surplus`.
 
-#### New File: `src/lib/debtRecommendationEngine.ts`
+### 3. Update DebtDashboard Component
+- Accept `profile` or `cashFlowData` as a prop instead of relying on journey data
+- Use the computed surplus for recommendation calculations
+- Display the cash flow status indicator at the top
 
-**Algorithm Logic**:
+### 4. New Component: CashFlowStatusCard
+Create a compact card showing the current cash flow status with a link to the profile:
 
 ```text
-INPUT: debts[], monthlySurplus
-
-STEP 1: Filter out paid-off debts
-
-STEP 2: Check cash flow status
-  IF surplus <= 0:
-    → Mode: "stabilize"
-    → Recommend: Highest APR as "watch debt"
-    → Action: "Pay minimums only, stabilize cash flow first"
-    
-STEP 3: If surplus > 0
-  → Mode: "attack"
-  
-  3a. Check for very high APR (≥18%)
-    IF any debt has APR ≥ 18%:
-      → Recommend highest APR debt
-      → Reason: "This debt is costing you the most each month"
-  
-  3b. Find quick wins (payoff within 6 months using surplus + min_payment)
-    Calculate: months_to_payoff = current_balance / (min_payment + surplus)
-    IF any debt can be paid off in ≤ 6 months (excluding mortgage):
-      → Recommend smallest of those (fastest win)
-      → Reason: "You can eliminate this in ~X months and free up $Y/month"
-  
-  3c. Fallback: Highest APR
-    → Recommend highest APR debt
-    → Reason: "Focus here to minimize interest costs"
-
-OUTPUT: {
-  focusDebt: UserDebt,
-  mode: 'stabilize' | 'attack',
-  reason: string,
-  estimatedPayoffMonths?: number,
-  freedPayment?: number,
-  rankedDebts: { debt: UserDebt, rank: number, reason: string }[]
-}
++--------------------------------------------------+
+| 💰 Monthly Surplus: $850                         |
+|    Status: Healthy Surplus                       |
+|                           [ Update in Profile → ]|
++--------------------------------------------------+
 ```
 
-**Mortgage Guardrail**: Exclude mortgages from "quick win" consideration unless it's the only debt.
+**Features:**
+- Shows computed surplus amount (positive/negative)
+- Shows status label (Surplus/Tight/Deficit)
+- Color-coded based on status (green/yellow/red)
+- Link/button navigates to `/profile` (with anchor to cash flow section if possible)
 
-### Phase 3: Database Changes
+### 5. Update Setup Wizard
+The wizard's `CashFlowStep` should still capture cash flow, but save directly to the `profiles` table instead of `debt_journeys`. This ensures consistency from day one.
 
-#### Add to `debt_journeys` table:
-- `focus_debt_id` (uuid, nullable, FK to user_debts) - User's chosen focus debt
-- `monthly_surplus` (numeric, nullable) - Cached for quick calculations
-
-#### Update `SetupWizardData` type:
-Add cash flow fields to sync with profile on completion.
-
-### Phase 4: Dashboard UI Updates
-
-#### New Component: FocusDebtCard
-Prominent card at top of debt list showing:
-- **Recommended focus debt** with explanation
-- **Mode indicator**: "Attack Mode" (green) or "Stabilize Mode" (yellow)
-- **Progress ring** for the focus debt specifically
-- **"Log Payment" button** - primary action
-- **"Change Focus" button** - opens override dialog
-
-#### Ranked Debt List
-Below the focus card, show remaining debts with rank badges:
-- **#1, #2, #3...** indicating the recommended order
-- Each shows a one-line reason
-- User can click to set as focus (override)
-
-#### Override Dialog
-When user picks a different focus:
-- Show: "We recommended [X] because [reason]. Are you sure you want to focus on [Y] instead?"
-- Options: "Keep [X]" or "Switch to [Y]"
-- No judgment - just confirmation
-
-### Phase 5: Profile Sync
-
-On wizard completion:
-1. Create journey with debts
-2. Run recommendation engine to set initial `focus_debt_id`
-3. Sync cash flow data to `profiles` table (if user doesn't already have it)
-
-If user later updates profile cash flow, recalculate recommendation.
+### 6. Handle Missing Cash Flow Data
+If user has no cash flow in profile:
+- Show a prompt in place of the status card: "Add your cash flow snapshot to get personalized recommendations"
+- Include a CTA button to go to profile
+- Default recommendation engine to highest APR fallback
 
 ---
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/lib/debtRecommendationEngine.ts` | Core algorithm for focus debt selection |
-| `src/components/debt-eliminator/setup/CashFlowStep.tsx` | Wizard step for cash flow capture |
-| `src/components/debt-eliminator/dashboard/FocusDebtCard.tsx` | Prominent focus debt display |
-| `src/components/debt-eliminator/dashboard/ChangeFocusDialog.tsx` | Override confirmation dialog |
-| `src/components/debt-eliminator/dashboard/RankedDebtList.tsx` | Ordered debt list with explanations |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/debt-eliminator/setup/SetupWizard.tsx` | Add cash flow step, update flow |
-| `src/lib/debtTypes.ts` | Add `SetupWizardData` cash flow fields, recommendation types |
-| `src/hooks/useDebtJourney.ts` | Add profile sync, focus debt mutations |
-| `src/components/debt-eliminator/dashboard/DebtDashboard.tsx` | Integrate FocusDebtCard, RankedDebtList |
-| `src/components/debt-eliminator/dashboard/DebtCard.tsx` | Add rank badge, focus indicator |
+| `src/pages/DebtEliminator.tsx` | Compute surplus from profile, pass to dashboard |
+| `src/components/debt-eliminator/dashboard/DebtDashboard.tsx` | Accept computed surplus, add CashFlowStatusCard |
+| `src/hooks/useDebtJourney.ts` | Remove `monthly_surplus` from journey creation |
+| `src/components/debt-eliminator/setup/SetupWizard.tsx` | Save cash flow to profile only |
+
+## File to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/debt-eliminator/dashboard/CashFlowStatusCard.tsx` | Status display with profile link |
 
 ## Database Migration
 
 ```sql
--- Add focus debt tracking to journeys
-ALTER TABLE debt_journeys 
-  ADD COLUMN focus_debt_id uuid REFERENCES user_debts(id) ON DELETE SET NULL,
-  ADD COLUMN monthly_surplus numeric;
+-- Remove the cached surplus column since we compute from profile
+ALTER TABLE debt_journeys DROP COLUMN IF EXISTS monthly_surplus;
 ```
 
 ---
 
-## User Experience Flow
+## User Experience
 
-### During Setup
-```text
-1. User enters debts with balances, APRs, min payments
-2. User enters cash flow (income, expenses)
-   → Live shows: "Your monthly surplus is $X"
-3. User enters dream
-4. Wizard completes → System auto-selects focus debt
-```
-
-### On Dashboard
+### On Dashboard (with cash flow data)
 ```text
 +--------------------------------------------------+
+| 💰 Cash Flow Snapshot                            |
+| Surplus: $850/mo        Status: Healthy Surplus  |
+|                           [ Update in Profile → ]|
++--------------------------------------------------+
+|                                                  |
 | 🎯 YOUR FOCUS: Chase Visa                        |
-| $2,340 remaining at 24.99% APR                   |
-|                                                  |
-| "Focus here because it has the highest interest  |
-|  and costs you the most each month."             |
-|                                                  |
-| [==========-------] 58% paid                     |
-|                                                  |
-| [ Log Payment ]           [ Change Focus ]       |
-+--------------------------------------------------+
-
-| Recommended Order                                |
-| #2 Car Loan - Quick win (~4 months with surplus) |
-| #3 Student Loan - Lower rate, tackle after       |
-| #4 Mortgage - Long-term, lowest priority         |
+| (uses the $850 surplus for payoff calculations)  |
 +--------------------------------------------------+
 ```
 
-### Stabilize Mode (Deficit)
+### On Dashboard (missing cash flow data)
 ```text
 +--------------------------------------------------+
-| ⚠️ STABILIZE MODE                                |
-| Your expenses currently exceed your income.      |
+| 📊 Complete Your Cash Flow                       |
+| Add your income and expenses to get personalized |
+| debt recommendations.                            |
+|                           [ Go to Profile →     ]|
++--------------------------------------------------+
 |                                                  |
-| 👁️ Watch: Chase Visa (24.99% APR)                |
-| This is your highest-interest debt.              |
-|                                                  |
-| Action: Pay minimums only while you stabilize.   |
-| [ Review Cash Flow Tips ]                        |
+| 🎯 YOUR FOCUS: Chase Visa                        |
+| (defaults to highest APR since no surplus data)  |
 +--------------------------------------------------+
 ```
 
----
-
-## Technical Details
-
-### Recommendation Types
-```typescript
-interface DebtRecommendation {
-  focusDebtId: string;
-  mode: 'attack' | 'stabilize';
-  reason: string;
-  estimatedPayoffMonths?: number;
-  freedPayment?: number;
-}
-
-interface RankedDebt {
-  debt: UserDebt;
-  rank: number;
-  reason: string;
-  isRecommendedFocus: boolean;
-  isFocusOverride: boolean;
-}
-
-interface RecommendationResult {
-  recommendation: DebtRecommendation;
-  rankedDebts: RankedDebt[];
-}
-```
-
-### Algorithm Constants
-```typescript
-const HIGH_APR_THRESHOLD = 18; // % - credit card territory
-const QUICK_WIN_MAX_MONTHS = 6;
-const DEPRIORITIZE_TYPES: DebtType[] = ['mortgage'];
-```
-
-### Cash Flow Step Integration
-- Reuse `CurrencyInput` component from profile
-- Pre-fill from profile if data exists
-- On submit, update wizard data AND profile in single transaction
+### When Profile is Updated
+1. User goes to `/profile`
+2. Updates cash flow fields
+3. Saves profile
+4. Returns to Debt Eliminator
+5. Recommendations automatically reflect new surplus
+   - (React Query invalidates profile, triggers re-render, useMemo recalculates)
 
 ---
 
-## Edge Cases Handled
+## Technical Flow
 
-| Scenario | Behavior |
-|----------|----------|
-| No surplus data | Prompt to enter, but allow skip (defaults to highest APR) |
-| All debts paid off | Show celebration, no focus card |
-| Only one debt | That debt is automatically the focus |
-| User deletes focus debt | Auto-select next recommendation |
-| Mortgage is only debt | It becomes focus despite type |
-| Tied APRs | Use smaller balance as tiebreaker |
+```text
+Profile Updated
+      |
+      v
+useProfile() returns new data
+      |
+      v
+DebtEliminator useMemo() recalculates surplus
+      |
+      v
+DebtDashboard receives new surplus
+      |
+      v
+getDebtRecommendation() runs with new surplus
+      |
+      v
+UI updates with new recommendation
+```
+
+---
+
+## Benefits
+- Single source of truth for cash flow data
+- Automatic sync - no manual refresh needed
+- Transparent to user - they can see the surplus being used
+- Easy to update - direct link to profile
+- Consistent - same calculation used in profile preview and debt recommendations
 
