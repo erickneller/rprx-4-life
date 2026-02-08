@@ -14,6 +14,7 @@ export default function DebtEliminator() {
     isLoading,
     hasActiveJourney,
     createJourney,
+    updateJourney,
     addDebt,
     updateDebt,
     deleteDebt,
@@ -65,6 +66,7 @@ export default function DebtEliminator() {
             deleteDebt={deleteDebt}
             logPayment={logPayment}
             setFocusDebt={setFocusDebt}
+            updateJourney={updateJourney}
           />
         ) : (
           <SetupWizard
