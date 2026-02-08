@@ -1,172 +1,159 @@
 
 
-# Sync Profile Cash Flow with Debt Eliminator
+# Edit "Your Motivation" Feature
 
 ## Overview
-Connect the Debt Eliminator to use live profile cash flow data, so when users update their profile, the debt recommendations automatically recalculate. Add a visible cash flow status indicator on the dashboard with a link to update it in the profile.
+Add the ability to edit the dream text directly from the Debt Eliminator dashboard, and rename it from "Your Dream" to "Your Motivation" for clearer messaging.
 
 ## Current State
-- `debt_journeys.monthly_surplus` is set once during wizard setup
-- Profile has separate fields: `monthly_income`, `monthly_debt_payments`, `monthly_housing`, `monthly_insurance`, `monthly_living_expenses`
-- These two data sources are not connected after initial setup
-- Updating profile does NOT recalculate debt recommendations
+- Dream text is captured during setup in `DreamStep.tsx`
+- Displayed in `DebtDashboard.tsx` within the "Journey Progress" card as static text
+- `updateJourney` mutation already exists in `useDebtJourney.ts` and supports updating `dream_text`
+- No edit functionality on the dashboard
 
 ## Proposed Solution
-Use profile cash flow as the **single source of truth**. The Debt Eliminator will compute `monthly_surplus` on-the-fly from profile data, ensuring both features stay in sync.
+Create an "Edit Motivation" dialog that allows users to update their motivation text. The display will be styled as its own prominent card to emphasize its importance.
 
 ---
 
 ## Implementation Details
 
-### 1. Remove Redundant Storage
-Remove the `monthly_surplus` column from `debt_journeys` table since we'll compute it from profile data in real-time. This prevents data from getting out of sync.
+### 1. Rename "Your Dream" to "Your Motivation"
+Update labels in:
+- `DreamStep.tsx` - wizard step title and labels
+- `DebtDashboard.tsx` - display section
 
-### 2. Update DebtEliminator Page
-Fetch profile data alongside journey data and compute surplus from profile fields:
-
-```typescript
-// In DebtEliminator.tsx
-const { profile } = useProfile();
-
-// Compute surplus from profile (same logic as CashFlowSection)
-const computedSurplus = useMemo(() => {
-  if (!profile?.monthly_income) return null;
-  
-  const income = Number(profile.monthly_income) || 0;
-  const debt = Number(profile.monthly_debt_payments) || 0;
-  const housing = Number(profile.monthly_housing) || 0;
-  const insurance = Number(profile.monthly_insurance) || 0;
-  const living = Number(profile.monthly_living_expenses) || 0;
-  
-  return income - (debt + housing + insurance + living);
-}, [profile]);
-```
-
-Pass this computed surplus to the Dashboard instead of `journey.monthly_surplus`.
-
-### 3. Update DebtDashboard Component
-- Accept `profile` or `cashFlowData` as a prop instead of relying on journey data
-- Use the computed surplus for recommendation calculations
-- Display the cash flow status indicator at the top
-
-### 4. New Component: CashFlowStatusCard
-Create a compact card showing the current cash flow status with a link to the profile:
-
-```text
-+--------------------------------------------------+
-| 💰 Monthly Surplus: $850                         |
-|    Status: Healthy Surplus                       |
-|                           [ Update in Profile → ]|
-+--------------------------------------------------+
-```
+### 2. New Component: EditMotivationDialog
+A dialog similar to `EditDebtDialog` that allows updating the motivation text:
 
 **Features:**
-- Shows computed surplus amount (positive/negative)
-- Shows status label (Surplus/Tight/Deficit)
-- Color-coded based on status (green/yellow/red)
-- Link/button navigates to `/profile` (with anchor to cash flow section if possible)
+- Opens from an edit button on the motivation display
+- Textarea pre-filled with current motivation
+- Same inspiration prompts as the setup step
+- Save and Cancel buttons
+- Uses existing `updateJourney` mutation
 
-### 5. Update Setup Wizard
-The wizard's `CashFlowStep` should still capture cash flow, but save directly to the `profiles` table instead of `debt_journeys`. This ensures consistency from day one.
+### 3. New Component: MotivationCard
+Extract the motivation display from the Journey Progress card into its own component:
 
-### 6. Handle Missing Cash Flow Data
-If user has no cash flow in profile:
-- Show a prompt in place of the status card: "Add your cash flow snapshot to get personalized recommendations"
-- Include a CTA button to go to profile
-- Default recommendation engine to highest APR fallback
+**Features:**
+- Prominent display with sparkle/star icon
+- "Your Motivation" header
+- Quoted text display
+- Edit button (pencil icon)
+- If no motivation set, show a prompt to add one
+
+### 4. Dashboard Integration
+- Replace inline dream display in Journey Progress with the new `MotivationCard`
+- Pass `updateJourney` mutation to dashboard for the edit dialog
+- Add state management for showing/hiding the edit dialog
 
 ---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/debt-eliminator/dashboard/MotivationCard.tsx` | Motivation display with edit button |
+| `src/components/debt-eliminator/dashboard/EditMotivationDialog.tsx` | Dialog for editing motivation |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/DebtEliminator.tsx` | Compute surplus from profile, pass to dashboard |
-| `src/components/debt-eliminator/dashboard/DebtDashboard.tsx` | Accept computed surplus, add CashFlowStatusCard |
-| `src/hooks/useDebtJourney.ts` | Remove `monthly_surplus` from journey creation |
-| `src/components/debt-eliminator/setup/SetupWizard.tsx` | Save cash flow to profile only |
-
-## File to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/debt-eliminator/dashboard/CashFlowStatusCard.tsx` | Status display with profile link |
-
-## Database Migration
-
-```sql
--- Remove the cached surplus column since we compute from profile
-ALTER TABLE debt_journeys DROP COLUMN IF EXISTS monthly_surplus;
-```
+| `src/components/debt-eliminator/setup/DreamStep.tsx` | Rename labels to "Your Motivation" |
+| `src/components/debt-eliminator/dashboard/DebtDashboard.tsx` | Add MotivationCard, remove inline dream display, wire up edit dialog |
+| `src/pages/DebtEliminator.tsx` | Pass `updateJourney` to dashboard |
 
 ---
 
 ## User Experience
 
-### On Dashboard (with cash flow data)
+### Motivation Card Display
 ```text
 +--------------------------------------------------+
-| 💰 Cash Flow Snapshot                            |
-| Surplus: $850/mo        Status: Healthy Surplus  |
-|                           [ Update in Profile → ]|
-+--------------------------------------------------+
+| ✨ Your Motivation                      [Edit ✏️] |
 |                                                  |
-| 🎯 YOUR FOCUS: Chase Visa                        |
-| (uses the $850 surplus for payoff calculations)  |
+| "Take a dream vacation without worrying about    |
+|  money"                                          |
 +--------------------------------------------------+
 ```
 
-### On Dashboard (missing cash flow data)
+### Edit Dialog
 ```text
 +--------------------------------------------------+
-| 📊 Complete Your Cash Flow                       |
-| Add your income and expenses to get personalized |
-| debt recommendations.                            |
-|                           [ Go to Profile →     ]|
+| Edit Your Motivation                         [X] |
 +--------------------------------------------------+
 |                                                  |
-| 🎯 YOUR FOCUS: Chase Visa                        |
-| (defaults to highest APR since no surplus data)  |
+| Why do you want to be debt-free?                 |
+| +----------------------------------------------+ |
+| | Take a dream vacation without worrying about | |
+| | money                                        | |
+| +----------------------------------------------+ |
+|                                                  |
+| Need inspiration?                                |
+| [Take a dream vacation...] [Buy a home...]       |
+| [Start my own business] [Retire early...]        |
+|                                                  |
+|                      [Cancel]  [Save Motivation] |
 +--------------------------------------------------+
 ```
 
-### When Profile is Updated
-1. User goes to `/profile`
-2. Updates cash flow fields
-3. Saves profile
-4. Returns to Debt Eliminator
-5. Recommendations automatically reflect new surplus
-   - (React Query invalidates profile, triggers re-render, useMemo recalculates)
-
----
-
-## Technical Flow
-
+### No Motivation Set
 ```text
-Profile Updated
-      |
-      v
-useProfile() returns new data
-      |
-      v
-DebtEliminator useMemo() recalculates surplus
-      |
-      v
-DebtDashboard receives new surplus
-      |
-      v
-getDebtRecommendation() runs with new surplus
-      |
-      v
-UI updates with new recommendation
++--------------------------------------------------+
+| ✨ Your Motivation                               |
+|                                                  |
+| What's driving you to become debt-free?          |
+|                           [Add Motivation →]     |
++--------------------------------------------------+
 ```
 
 ---
 
-## Benefits
-- Single source of truth for cash flow data
-- Automatic sync - no manual refresh needed
-- Transparent to user - they can see the surplus being used
-- Easy to update - direct link to profile
-- Consistent - same calculation used in profile preview and debt recommendations
+## Technical Details
+
+### EditMotivationDialog Props
+```typescript
+interface EditMotivationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  currentMotivation: string;
+  onSave: (newMotivation: string) => void;
+  isLoading: boolean;
+}
+```
+
+### MotivationCard Props
+```typescript
+interface MotivationCardProps {
+  motivation: string | null;
+  onEdit: () => void;
+}
+```
+
+### Dashboard Changes
+```typescript
+// Add state
+const [showEditMotivation, setShowEditMotivation] = useState(false);
+
+// Add handler using updateJourney from props
+const handleSaveMotivation = (text: string) => {
+  updateJourney.mutate({ dream_text: text }, {
+    onSuccess: () => setShowEditMotivation(false)
+  });
+};
+```
+
+---
+
+## Label Updates
+
+| Location | Old Text | New Text |
+|----------|----------|----------|
+| DreamStep title | "What's Your Dream?" | "What's Your Motivation?" |
+| DreamStep subtitle | "...your motivation throughout the journey" | "...keep you focused on your goal" |
+| DreamStep label | Your "Why" | Your Motivation |
+| Dashboard display | "Your Dream" | "Your Motivation" |
+| Celebration text | "Time to live your dream!" | "Time to live your motivation!" |
 
