@@ -32,17 +32,17 @@ export function DreamStep({
       <div className="text-center space-y-2">
         <div className="text-4xl">✨</div>
         <h2 className="text-2xl font-bold text-foreground">
-          What's Your Dream?
+          What's Your Motivation?
         </h2>
         <p className="text-muted-foreground">
-          Describe what becoming debt-free means to you. This will be your
-          motivation throughout the journey.
+          Describe what becoming debt-free means to you. This will keep you
+          focused on your goal.
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="dream">Your "Why"</Label>
+          <Label htmlFor="dream">Your Motivation</Label>
           <Textarea
             id="dream"
             placeholder="When I'm debt-free, I will..."

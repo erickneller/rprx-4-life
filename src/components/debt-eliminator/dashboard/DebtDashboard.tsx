@@ -19,6 +19,8 @@ import { AddDebtDialog } from "./AddDebtDialog";
 import { EditDebtDialog } from "./EditDebtDialog";
 import { LogPaymentDialog } from "./LogPaymentDialog";
 import { CashFlowStatusCard } from "./CashFlowStatusCard";
+import { MotivationCard } from "./MotivationCard";
+import { EditMotivationDialog } from "./EditMotivationDialog";
 import type { UseMutationResult } from "@tanstack/react-query";
 
 interface DebtDashboardProps {
@@ -31,6 +33,7 @@ interface DebtDashboardProps {
   deleteDebt: UseMutationResult<void, Error, string>;
   logPayment: UseMutationResult<{ newBalance: number; isPaidOff: boolean }, Error, { debtId: string; amount: number; note?: string }>;
   setFocusDebt: UseMutationResult<void, Error, string>;
+  updateJourney: UseMutationResult<DebtJourney, Error, Partial<DebtJourney>>;
 }
 
 export function DebtDashboard({
@@ -43,11 +46,13 @@ export function DebtDashboard({
   deleteDebt,
   logPayment,
   setFocusDebt,
+  updateJourney,
 }: DebtDashboardProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingDebt, setEditingDebt] = useState<UserDebt | null>(null);
   const [paymentDebt, setPaymentDebt] = useState<UserDebt | null>(null);
   const [showChangeFocusDialog, setShowChangeFocusDialog] = useState(false);
+  const [showEditMotivation, setShowEditMotivation] = useState(false);
 
   // Calculate recommendation using computed surplus from profile
   const { recommendation, rankedDebts } = useMemo(() => {
@@ -91,6 +96,12 @@ export function DebtDashboard({
   const handleChangeFocus = (debtId: string) => {
     setFocusDebt.mutate(debtId, {
       onSuccess: () => setShowChangeFocusDialog(false),
+    });
+  };
+
+  const handleSaveMotivation = (text: string) => {
+    updateJourney.mutate({ dream_text: text }, {
+      onSuccess: () => setShowEditMotivation(false),
     });
   };
 
@@ -173,7 +184,13 @@ export function DebtDashboard({
         </Card>
       </div>
 
-      {/* Journey progress with dream */}
+      {/* Motivation Card */}
+      <MotivationCard
+        motivation={journey.dream_text}
+        onEdit={() => setShowEditMotivation(true)}
+      />
+
+      {/* Journey progress */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Journey Progress</CardTitle>
@@ -190,13 +207,6 @@ export function DebtDashboard({
             </div>
             <Progress value={progress} className="h-3" />
           </div>
-
-          {journey.dream_text && (
-            <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border">
-              <p className="text-sm text-muted-foreground mb-1">Your Dream</p>
-              <p className="text-foreground italic">"{journey.dream_text}"</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -220,7 +230,7 @@ export function DebtDashboard({
               You Did It! 🎉
             </h3>
             <p className="text-muted-foreground">
-              You've paid off all your debts. Time to live your dream!
+              You've paid off all your debts. Time to live your motivation!
             </p>
           </CardContent>
         </Card>
@@ -287,6 +297,14 @@ export function DebtDashboard({
           isLoading={setFocusDebt.isPending}
         />
       )}
+
+      <EditMotivationDialog
+        open={showEditMotivation}
+        onOpenChange={setShowEditMotivation}
+        currentMotivation={journey.dream_text || ""}
+        onSave={handleSaveMotivation}
+        isLoading={updateJourney.isPending}
+      />
     </div>
   );
 }
