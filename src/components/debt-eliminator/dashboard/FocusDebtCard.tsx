@@ -11,6 +11,7 @@ interface FocusDebtCardProps {
   focusDebt: UserDebt;
   recommendation: DebtRecommendation;
   isOverride: boolean;
+  recommendedDebt?: UserDebt;
   onLogPayment: () => void;
   onChangeFocus: () => void;
 }
@@ -19,6 +20,7 @@ export function FocusDebtCard({
   focusDebt,
   recommendation,
   isOverride,
+  recommendedDebt,
   onLogPayment,
   onChangeFocus,
 }: FocusDebtCardProps) {
@@ -91,11 +93,12 @@ export function FocusDebtCard({
               : "bg-accent/10"
           }`}
         >
-          <p className="text-sm text-foreground">{recommendation.reason}</p>
-          {isOverride && (
-            <p className="text-xs text-muted-foreground mt-1 italic">
-              You chose to focus on this debt instead of our recommendation.
+          {isOverride && recommendedDebt ? (
+            <p className="text-sm font-semibold text-foreground">
+              Recommendation: Focus on {recommendedDebt.name} because {recommendation.reason.charAt(0).toLowerCase() + recommendation.reason.slice(1)}
             </p>
+          ) : (
+            <p className="text-sm text-foreground">{recommendation.reason}</p>
           )}
         </div>
 
