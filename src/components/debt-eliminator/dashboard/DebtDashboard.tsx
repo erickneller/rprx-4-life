@@ -217,6 +217,7 @@ export function DebtDashboard({
           recommendation={recommendation}
           isOverride={!!isOverride}
           recommendedDebt={debts.find((d) => d.id === recommendation.focusDebtId)}
+          monthlySurplus={monthlySurplus}
           onLogPayment={() => setPaymentDebt(focusDebt)}
           onChangeFocus={() => setShowChangeFocusDialog(true)}
         />

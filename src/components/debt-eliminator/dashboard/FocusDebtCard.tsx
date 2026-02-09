@@ -1,3 +1,4 @@
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -6,12 +7,14 @@ import { Target, AlertTriangle, DollarSign, Clock, Settings2 } from "lucide-reac
 import type { UserDebt } from "@/lib/debtTypes";
 import type { DebtRecommendation } from "@/lib/debtRecommendationEngine";
 import { formatCurrency, DEBT_TYPE_LABELS } from "@/lib/debtTypes";
+import { TargetPayoffSection } from "./TargetPayoffSection";
 
 interface FocusDebtCardProps {
   focusDebt: UserDebt;
   recommendation: DebtRecommendation;
   isOverride: boolean;
   recommendedDebt?: UserDebt;
+  monthlySurplus: number | null;
   onLogPayment: () => void;
   onChangeFocus: () => void;
 }
@@ -21,6 +24,7 @@ export function FocusDebtCard({
   recommendation,
   isOverride,
   recommendedDebt,
+  monthlySurplus,
   onLogPayment,
   onChangeFocus,
 }: FocusDebtCardProps) {
@@ -31,6 +35,20 @@ export function FocusDebtCard({
   );
 
   const isStabilizeMode = recommendation.mode === "stabilize";
+
+  const defaultMonths = useMemo(() => {
+    const surplus = monthlySurplus ?? 0;
+    if (surplus > 0 && focusDebt.min_payment + surplus > 0) {
+      return Math.ceil(focusDebt.current_balance / (focusDebt.min_payment + surplus));
+    }
+    return 12;
+  }, [focusDebt.current_balance, focusDebt.min_payment, monthlySurplus]);
+
+  const [targetMonths, setTargetMonths] = useState(defaultMonths);
+
+  useEffect(() => {
+    setTargetMonths(defaultMonths);
+  }, [focusDebt.id, defaultMonths]);
 
   return (
     <Card
@@ -106,6 +124,20 @@ export function FocusDebtCard({
             <p className="text-sm text-foreground">{recommendation.reason}</p>
           )}
         </div>
+
+        {/* Target Payoff Goal */}
+        {!isStabilizeMode ? (
+          <TargetPayoffSection
+            focusDebt={focusDebt}
+            monthlySurplus={monthlySurplus}
+            targetMonths={targetMonths}
+            onTargetMonthsChange={setTargetMonths}
+          />
+        ) : (
+          <p className="text-xs text-amber-700 dark:text-amber-400 italic">
+            Stabilize your cash flow first before setting a payoff target.
+          </p>
+        )}
 
         {/* Progress */}
         <div className="space-y-2">
