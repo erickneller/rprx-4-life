@@ -143,11 +143,6 @@ export function FocusDebtCard({
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{progress}% paid off</span>
-            {recommendation.estimatedPayoffMonths && (
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Clock className="h-3 w-3" />~{recommendation.estimatedPayoffMonths} months
-              </span>
-            )}
           </div>
           <Progress
             value={progress}

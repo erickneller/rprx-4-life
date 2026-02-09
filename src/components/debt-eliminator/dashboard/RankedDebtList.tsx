@@ -85,11 +85,6 @@ export function RankedDebtList({
                     <span className="text-muted-foreground">
                       ${debt.min_payment}/mo min
                     </span>
-                    {estimatedPayoffMonths && (
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="h-3 w-3" />~{estimatedPayoffMonths} mo
-                      </span>
-                    )}
                   </div>
 
                   {/* Progress */}
