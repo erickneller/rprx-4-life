@@ -94,9 +94,14 @@ export function FocusDebtCard({
           }`}
         >
           {isOverride && recommendedDebt ? (
-            <p className="text-sm font-semibold text-foreground">
-              Recommendation: Focus on {recommendedDebt.name} because {recommendation.reason.charAt(0).toLowerCase() + recommendation.reason.slice(1)}
-            </p>
+            <>
+              <p className="text-sm font-semibold text-foreground">
+                Recommendation: Focus on {recommendedDebt.name} — {recommendation.reason.charAt(0).toLowerCase() + recommendation.reason.slice(1)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1.5 italic">
+                You've chosen to focus on {focusDebt.name} instead of our recommendation.
+              </p>
+            </>
           ) : (
             <p className="text-sm text-foreground">{recommendation.reason}</p>
           )}

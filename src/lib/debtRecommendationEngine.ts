@@ -92,14 +92,14 @@ function generateReason(
   }
 
   if (debt.interest_rate >= HIGH_APR_THRESHOLD) {
-    return `Focus here because it has the highest interest (${debt.interest_rate}% APR) and costs you the most each month.`;
+    return `It has the highest interest (${debt.interest_rate}% APR) and costs you the most each month.`;
   }
 
   if (payoffMonths && payoffMonths <= QUICK_WIN_MAX_MONTHS) {
     return `You can eliminate this in ~${payoffMonths} months and free up $${debt.min_payment}/month.`;
   }
 
-  return `Focus here to minimize interest costs (${debt.interest_rate}% APR).`;
+  return `It has the highest interest rate (${debt.interest_rate}% APR), so tackling it first minimizes your total interest costs.`;
 }
 
 /**
