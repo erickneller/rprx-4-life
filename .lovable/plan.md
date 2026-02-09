@@ -1,68 +1,111 @@
 
 
-# Improve Focus Debt Card Override Messaging
+# Target Payoff Goal, Cash Flow Gap, and Strategy Prompt
 
-## Problem
-When the user overrides the recommended focus debt, the card currently shows the **engine's recommendation reason** which references the recommended debt's APR — not the user's chosen debt. This creates confusing mismatches (e.g., showing "28% APR" when the chosen debt is 15% APR). The override note is also too subtle.
+## Overview
+Add an inline "Target Payoff Goal" section to the Focus Debt Card that lets users set a payoff timeline (in months), then shows the required monthly payment, extra needed beyond minimum, and whether their cash flow supports it. Includes a status badge and actionable copy.
 
-## Solution
-Split the recommendation box into two distinct messages when overridden:
+## What the User Will See
 
-1. **"Our Recommendation"** line — bold, showing the recommended debt name and why (using the engine's reason)
-2. The user's chosen debt info is already shown in the card header, so no duplication needed
-
-When there's **no override**, keep the current behavior showing the recommendation reason normally.
-
-## Changes
-
-### 1. Pass the recommended debt to FocusDebtCard
-In `DebtDashboard.tsx`, find the recommended debt object and pass it as a new prop so the card can reference its name.
-
-### 2. Update FocusDebtCard messaging
-When `isOverride` is true, replace the current recommendation box content with:
-
-```
-Recommendation: Focus on [RECOMMENDED DEBT NAME] because it has the
-highest interest (XX% APR) and costs you the most each month.
-```
-
-This line will be **bold** to draw attention. The user's chosen debt name/details are already displayed above in the card header, making the contrast clear.
-
-When `isOverride` is false, show the recommendation reason as-is (current behavior, no changes).
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/debt-eliminator/dashboard/DebtDashboard.tsx` | Find recommended debt object, pass as `recommendedDebt` prop to `FocusDebtCard` |
-| `src/components/debt-eliminator/dashboard/FocusDebtCard.tsx` | Add `recommendedDebt` prop; when `isOverride`, show bold recommendation line with recommended debt name and reason; when not overridden, show reason as-is |
-
-## Updated UI (Override State)
+The Focus Debt Card gets a new section between the recommendation box and the progress bar:
 
 ```text
 +--------------------------------------------------+
 | (target) Your Focus                 [Attack Mode] |
 |                                                   |
 | Amex                              Credit Card     |
-| $ $500 remaining    15% APR                       |
+| $ $2,400 remaining    28% APR                     |
 |                                                   |
-| +-----------------------------------------------+ |
-| | Recommendation: Focus on Chase Visa because   | |
-| | it has the highest interest (28% APR) and      | |
-| | costs you the most each month.                 | |
-| +-----------------------------------------------+ |
+| [Recommendation reason box]                       |
 |                                                   |
-| 0% paid off                       ~12 months      |
-| [==============================]                  |
+| --- Target Payoff Goal ---                        |
+| Pay off in: [6] months              [On Track] *  |
 |                                                   |
-| [ $ Log Payment ]           [ Change Focus ]      |
-+---------------------------------------------------+
+| Required:     $400/mo                             |
+| Minimum:      $75/mo                              |
+| Extra needed: $325/mo                             |
+| Your surplus: $850/mo                             |
+|                                                   |
+| "Your current cash flow supports this goal."      |
+|                                                   |
+| --- Progress ---                                  |
+| 0% paid off                       ~6 months       |
++--------------------------------------------------+
 ```
+
+*Badge is color-coded: green (On Track), yellow (Tight), red (Gap).
+
+### Status Variants
+
+**On Track** (surplus >= extra needed):
+> "Your current cash flow supports this goal."
+
+**Tight** (surplus > 0 but < extra needed):
+> "You're close. A small adjustment can get you there."
+
+**Gap** (surplus <= 0 or gap > 0):
+> "You'll need to free up $X/mo to hit this goal."
 
 ## Technical Details
 
-- Add optional `recommendedDebt?: UserDebt` prop to `FocusDebtCardProps`
-- When `isOverride && recommendedDebt`: show "Recommendation: Focus on {recommendedDebt.name} {recommendation.reason}" in bold/semi-bold styling
-- When not overridden: show `recommendation.reason` as current (no change)
-- Remove the old italic "You chose to focus on this debt instead of our recommendation" text since the bold recommendation line already makes this clear
+### 1. New Component: `TargetPayoffSection.tsx`
+
+Location: `src/components/debt-eliminator/dashboard/TargetPayoffSection.tsx`
+
+**Props:**
+```typescript
+interface TargetPayoffSectionProps {
+  focusDebt: UserDebt;
+  monthlySurplus: number | null;
+  targetMonths: number;
+  onTargetMonthsChange: (months: number) => void;
+}
+```
+
+**Calculations (all inline, no interest amortization):**
+- `requiredPayment = currentBalance / targetMonths`
+- `extraNeeded = max(0, requiredPayment - minPayment)`
+- `cashFlowGap = max(0, extraNeeded - surplus)`
+- Status: On Track / Tight / Gap based on surplus vs extra needed
+
+**Default target months** (system-suggested):
+- If surplus > 0: `ceil(balance / (minPayment + surplus))`
+- Else: 12 months
+
+**Input:** Number input (1-36 range), with the default pre-filled.
+
+### 2. State Management
+
+Target months will be stored as local component state in `FocusDebtCard` (not persisted to DB for MVP). When the focus debt changes, the default recalculates.
+
+### 3. Modify `FocusDebtCard.tsx`
+
+- Add `monthlySurplus: number | null` prop
+- Add local `targetMonths` state with computed default via `useMemo`
+- Render `<TargetPayoffSection>` between the recommendation box and the progress section
+- Reset `targetMonths` when `focusDebt.id` changes (via `useEffect`)
+
+### 4. Update `DebtDashboard.tsx`
+
+- Pass `monthlySurplus` to `FocusDebtCard`
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/components/debt-eliminator/dashboard/TargetPayoffSection.tsx` | Inline section showing target timeline, required payment, gap analysis, and status badge |
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/debt-eliminator/dashboard/FocusDebtCard.tsx` | Add `monthlySurplus` prop, local `targetMonths` state with smart default, render `TargetPayoffSection` |
+| `src/components/debt-eliminator/dashboard/DebtDashboard.tsx` | Pass `monthlySurplus` to `FocusDebtCard` |
+
+## Scope Boundaries
+
+- No interest amortization -- simple `balance / months`
+- No database persistence for target months (local state only, MVP)
+- No strategy prompt integration yet (can be added as follow-up)
+- Stabilize mode: section hidden or shows read-only message ("Stabilize your cash flow first")
 
