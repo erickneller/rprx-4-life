@@ -1,11 +1,13 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import LandingPage from '@/components/landing/LandingPage';
 
 const Index = () => {
   const { user, loading } = useAuth();
+  const { isLoading: profileLoading, isProfileComplete } = useProfile();
 
-  if (loading) {
+  if (loading || (user && profileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -21,7 +23,11 @@ const Index = () => {
     return <LandingPage />;
   }
 
-  // Redirect authenticated users to dashboard
+  // Redirect to profile if incomplete, otherwise dashboard
+  if (!isProfileComplete) {
+    return <Navigate to="/profile" replace />;
+  }
+
   return <Navigate to="/dashboard" replace />;
 };
 
