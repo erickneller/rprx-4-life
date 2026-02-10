@@ -101,9 +101,26 @@ export function useProfile() {
     return urlWithCacheBust;
   };
 
+  const isProfileComplete = (() => {
+    const p = profileQuery.data;
+    if (!p) return false;
+    return !!(
+      p.full_name?.trim() &&
+      p.phone?.trim() &&
+      p.monthly_income &&
+      p.monthly_debt_payments !== null &&
+      p.monthly_housing !== null &&
+      p.monthly_insurance !== null &&
+      p.monthly_living_expenses !== null &&
+      p.profile_type?.trim() &&
+      p.financial_goals && p.financial_goals.length > 0
+    );
+  })();
+
   return {
     profile: profileQuery.data,
     isLoading: profileQuery.isLoading,
+    isProfileComplete,
     error: profileQuery.error,
     updateProfile,
     uploadAvatar,
