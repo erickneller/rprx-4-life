@@ -115,10 +115,9 @@ export function CashFlowSection({
       <div>
         <h3 className="text-sm font-semibold text-foreground">
           Cash Flow Snapshot
-          <span className="ml-2 text-xs font-normal text-muted-foreground">(optional)</span>
         </h3>
         <p className="text-xs text-muted-foreground mt-1">
-          Help us personalize your Strategy Assistant experience
+          Used for personalized debt and strategy recommendations
         </p>
       </div>
 

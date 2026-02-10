@@ -283,6 +283,24 @@ export default function Profile() {
     financialGoals,
   ]);
 
+  // Validation: all fields required
+  const validationErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+    if (!fullName.trim()) errors.fullName = 'Full name is required';
+    if (!phone.trim()) errors.phone = 'Phone number is required';
+    if (!company.trim()) errors.company = 'Company is required';
+    if (!monthlyIncome) errors.monthlyIncome = 'Monthly income is required';
+    if (!monthlyDebtPayments) errors.monthlyDebtPayments = 'Debt payments is required';
+    if (!monthlyHousing) errors.monthlyHousing = 'Housing cost is required';
+    if (!monthlyInsurance) errors.monthlyInsurance = 'Insurance cost is required';
+    if (!monthlyLivingExpenses) errors.monthlyLivingExpenses = 'Living expenses is required';
+    if (!profileType) errors.profileType = 'Profile type is required';
+    if (financialGoals.length === 0) errors.financialGoals = 'Select at least one financial goal';
+    return errors;
+  }, [fullName, phone, company, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileType, financialGoals]);
+
+  const isValid = Object.keys(validationErrors).length === 0;
+
   // Unsaved changes warning
   const {
     showDialog,
@@ -347,13 +365,15 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName">Full Name <span className="text-destructive">*</span></Label>
               <Input
                 id="fullName"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Enter your name"
+                className={validationErrors.fullName ? 'border-destructive' : ''}
               />
+              {validationErrors.fullName && <p className="text-xs text-destructive">{validationErrors.fullName}</p>}
             </div>
 
             <div className="space-y-2">
@@ -367,23 +387,27 @@ export default function Profile() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">Phone <span className="text-destructive">*</span></Label>
               <Input
                 id="phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter your phone number"
+                className={validationErrors.phone ? 'border-destructive' : ''}
               />
+              {validationErrors.phone && <p className="text-xs text-destructive">{validationErrors.phone}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="company">Company</Label>
+              <Label htmlFor="company">Company <span className="text-destructive">*</span></Label>
               <Input
                 id="company"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 placeholder="Enter your company name"
+                className={validationErrors.company ? 'border-destructive' : ''}
               />
+              {validationErrors.company && <p className="text-xs text-destructive">{validationErrors.company}</p>}
             </div>
           </CardContent>
         </Card>
@@ -391,18 +415,18 @@ export default function Profile() {
         {/* Optional Information Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Optional Information</CardTitle>
+            <CardTitle>About You</CardTitle>
             <CardDescription className="flex items-start gap-2 mt-2">
               <Info className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-              <span>Completing these fields is optional, but will provide a better, more personalized experience.</span>
+              <span>Help us personalize your experience with more detail.</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Profile Type */}
             <div className="space-y-2">
-              <Label htmlFor="profileType">I am a:</Label>
+              <Label htmlFor="profileType">I am a: <span className="text-destructive">*</span></Label>
               <Select value={profileType} onValueChange={setProfileType}>
-                <SelectTrigger id="profileType">
+                <SelectTrigger id="profileType" className={validationErrors.profileType ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select which one BEST applies to you..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -413,6 +437,7 @@ export default function Profile() {
                   ))}
                 </SelectContent>
               </Select>
+              {validationErrors.profileType && <p className="text-xs text-destructive">{validationErrors.profileType}</p>}
             </div>
 
             {/* Number of Children */}
@@ -461,7 +486,7 @@ export default function Profile() {
 
             {/* Financial Goals */}
             <div className="space-y-3">
-              <Label>Financial Goals (select all that apply)</Label>
+              <Label>Financial Goals <span className="text-destructive">*</span> <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
               <div className="space-y-3">
                 {FINANCIAL_GOALS.map(goal => (
                   <div key={goal.value} className="flex items-center space-x-3">
@@ -479,6 +504,7 @@ export default function Profile() {
                   </div>
                 ))}
               </div>
+              {validationErrors.financialGoals && <p className="text-xs text-destructive">{validationErrors.financialGoals}</p>}
             </div>
           </CardContent>
         </Card>
@@ -486,8 +512,8 @@ export default function Profile() {
         {/* Cash Flow Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Cash Flow Snapshot</CardTitle>
-            <CardDescription>Help us personalize your experience (optional)</CardDescription>
+            <CardTitle>Cash Flow Snapshot <span className="text-destructive">*</span></CardTitle>
+            <CardDescription>Required for personalized debt and strategy recommendations</CardDescription>
           </CardHeader>
           <CardContent>
             <CashFlowSection
@@ -512,7 +538,7 @@ export default function Profile() {
           </Button>
           <Button
             onClick={handleSave}
-            disabled={isSaving || !isDirty}
+            disabled={isSaving || !isDirty || !isValid}
             className="bg-accent hover:bg-accent/90 text-accent-foreground"
           >
             {isSaving ? (
