@@ -1,111 +1,54 @@
 
-
-# Target Payoff Goal, Cash Flow Gap, and Strategy Prompt
+# Redirect New Users to Profile and Fix Company Field
 
 ## Overview
-Add an inline "Target Payoff Goal" section to the Focus Debt Card that lets users set a payoff timeline (in months), then shows the required monthly payment, extra needed beyond minimum, and whether their cash flow supports it. Includes a status badge and actionable copy.
+Two changes: (1) after a new user signs up and confirms their email, redirect them to the Profile page instead of the Dashboard, and (2) ensure the Company field is hidden from the profile page consistently (it was already hidden in the last edit but we need to verify the full flow).
 
-## What the User Will See
+## What Changes
 
-The Focus Debt Card gets a new section between the recommendation box and the progress bar:
+### 1. New User Redirect to Profile
+Currently, when a user signs up and logs in, `Auth.tsx` redirects to `/` which then bounces to `/dashboard`. Instead, new users (those with an incomplete profile) should be sent to `/profile` to complete their information first.
 
-```text
-+--------------------------------------------------+
-| (target) Your Focus                 [Attack Mode] |
-|                                                   |
-| Amex                              Credit Card     |
-| $ $2,400 remaining    28% APR                     |
-|                                                   |
-| [Recommendation reason box]                       |
-|                                                   |
-| --- Target Payoff Goal ---                        |
-| Pay off in: [6] months              [On Track] *  |
-|                                                   |
-| Required:     $400/mo                             |
-| Minimum:      $75/mo                              |
-| Extra needed: $325/mo                             |
-| Your surplus: $850/mo                             |
-|                                                   |
-| "Your current cash flow supports this goal."      |
-|                                                   |
-| --- Progress ---                                  |
-| 0% paid off                       ~6 months       |
-+--------------------------------------------------+
-```
+The approach:
+- In `Auth.tsx`, after login/signup, redirect to `/` as before (this is fine for returning users)
+- In `Index.tsx` (the `/` route), check if the logged-in user has a complete profile. If not, redirect to `/profile` instead of `/dashboard`
+- "Complete" means the required fields are filled: `full_name`, `phone`, `monthly_income`, `monthly_debt_payments`, `monthly_housing`, `monthly_insurance`, `monthly_living_expenses`, `profile_type`, and `financial_goals`
 
-*Badge is color-coded: green (On Track), yellow (Tight), red (Gap).
+### 2. Profile Completeness Check
+Add a helper function (or inline check) in `useProfile` to expose an `isProfileComplete` flag. This checks whether all required fields have values.
 
-### Status Variants
-
-**On Track** (surplus >= extra needed):
-> "Your current cash flow supports this goal."
-
-**Tight** (surplus > 0 but < extra needed):
-> "You're close. A small adjustment can get you there."
-
-**Gap** (surplus <= 0 or gap > 0):
-> "You'll need to free up $X/mo to hit this goal."
+### 3. Company Field
+The Company field was already removed from the Profile page UI in the last edit. The screenshot appears to show a cached or stale version. No additional code change needed for the company field on the full profile page -- it is already hidden.
 
 ## Technical Details
 
-### 1. New Component: `TargetPayoffSection.tsx`
+### File: `src/hooks/useProfile.ts`
+- Add a computed `isProfileComplete` boolean to the hook return value
+- Checks: `full_name`, `phone`, `monthly_income`, `monthly_debt_payments`, `monthly_housing`, `monthly_insurance`, `monthly_living_expenses`, `profile_type`, and `financial_goals` (length > 0)
 
-Location: `src/components/debt-eliminator/dashboard/TargetPayoffSection.tsx`
+### File: `src/pages/Index.tsx`
+- Import and use `useProfile`
+- If user is authenticated but profile is incomplete, redirect to `/profile` instead of `/dashboard`
+- Show loading spinner while profile is loading
 
-**Props:**
-```typescript
-interface TargetPayoffSectionProps {
-  focusDebt: UserDebt;
-  monthlySurplus: number | null;
-  targetMonths: number;
-  onTargetMonthsChange: (months: number) => void;
-}
+### File: `src/pages/Profile.tsx`
+- No changes needed -- Company field is already hidden
+
+## Flow After Changes
+
+```text
+New User Signs Up
+  -> Confirms email -> Logs in
+  -> Auth.tsx redirects to /
+  -> Index.tsx checks profile completeness
+  -> Profile incomplete -> Redirect to /profile
+  -> User completes profile -> Saves
+  -> Next visit: Index.tsx sees complete profile -> Redirect to /dashboard
 ```
-
-**Calculations (all inline, no interest amortization):**
-- `requiredPayment = currentBalance / targetMonths`
-- `extraNeeded = max(0, requiredPayment - minPayment)`
-- `cashFlowGap = max(0, extraNeeded - surplus)`
-- Status: On Track / Tight / Gap based on surplus vs extra needed
-
-**Default target months** (system-suggested):
-- If surplus > 0: `ceil(balance / (minPayment + surplus))`
-- Else: 12 months
-
-**Input:** Number input (1-36 range), with the default pre-filled.
-
-### 2. State Management
-
-Target months will be stored as local component state in `FocusDebtCard` (not persisted to DB for MVP). When the focus debt changes, the default recalculates.
-
-### 3. Modify `FocusDebtCard.tsx`
-
-- Add `monthlySurplus: number | null` prop
-- Add local `targetMonths` state with computed default via `useMemo`
-- Render `<TargetPayoffSection>` between the recommendation box and the progress section
-- Reset `targetMonths` when `focusDebt.id` changes (via `useEffect`)
-
-### 4. Update `DebtDashboard.tsx`
-
-- Pass `monthlySurplus` to `FocusDebtCard`
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/debt-eliminator/dashboard/TargetPayoffSection.tsx` | Inline section showing target timeline, required payment, gap analysis, and status badge |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/debt-eliminator/dashboard/FocusDebtCard.tsx` | Add `monthlySurplus` prop, local `targetMonths` state with smart default, render `TargetPayoffSection` |
-| `src/components/debt-eliminator/dashboard/DebtDashboard.tsx` | Pass `monthlySurplus` to `FocusDebtCard` |
-
-## Scope Boundaries
-
-- No interest amortization -- simple `balance / months`
-- No database persistence for target months (local state only, MVP)
-- No strategy prompt integration yet (can be added as follow-up)
-- Stabilize mode: section hidden or shows read-only message ("Stabilize your cash flow first")
-
+| `src/hooks/useProfile.ts` | Add `isProfileComplete` computed property |
+| `src/pages/Index.tsx` | Check profile completeness before redirecting authenticated users |
