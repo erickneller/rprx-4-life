@@ -288,7 +288,7 @@ export default function Profile() {
     const errors: Record<string, string> = {};
     if (!fullName.trim()) errors.fullName = 'Full name is required';
     if (!phone.trim()) errors.phone = 'Phone number is required';
-    if (!company.trim()) errors.company = 'Company is required';
+    // company validation hidden for now
     if (!monthlyIncome) errors.monthlyIncome = 'Monthly income is required';
     if (!monthlyDebtPayments) errors.monthlyDebtPayments = 'Debt payments is required';
     if (!monthlyHousing) errors.monthlyHousing = 'Housing cost is required';
@@ -406,17 +406,7 @@ export default function Profile() {
               {validationErrors.phone && <p className="text-xs text-destructive">{validationErrors.phone}</p>}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="company">Company <span className="text-destructive">*</span></Label>
-              <Input
-                id="company"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                placeholder="Enter your company name"
-                className={validationErrors.company ? 'border-destructive' : ''}
-              />
-              {validationErrors.company && <p className="text-xs text-destructive">{validationErrors.company}</p>}
-            </div>
+            {/* Company field hidden for now - keep state/save logic intact */}
           </CardContent>
         </Card>
 
