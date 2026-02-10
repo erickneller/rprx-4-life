@@ -359,10 +359,10 @@ export default function Profile() {
         </Card>
 
         {/* Required fields note */}
-        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/50 p-3">
-          <Info className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            All fields marked with <span className="text-destructive font-medium">*</span> are required. Your profile must be complete before saving.
+        <div className="flex items-start gap-2 rounded-lg border-2 border-destructive/40 bg-destructive/5 p-4">
+          <Info className="h-5 w-5 mt-0.5 shrink-0 text-destructive" />
+          <p className="text-sm font-semibold text-foreground">
+            All fields marked with <span className="text-destructive">*</span> are required. Your profile must be complete before saving.
           </p>
         </div>
 
