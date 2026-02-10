@@ -358,6 +358,14 @@ export default function Profile() {
           </CardContent>
         </Card>
 
+        {/* Required fields note */}
+        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/50 p-3">
+          <Info className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            All fields marked with <span className="text-destructive font-medium">*</span> are required. Your profile must be complete before saving.
+          </p>
+        </div>
+
         {/* Personal Information Card */}
         <Card>
           <CardHeader>
@@ -530,6 +538,16 @@ export default function Profile() {
             />
           </CardContent>
         </Card>
+
+        {/* Required fields reminder */}
+        {!isValid && isDirty && (
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            <Info className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
+            <p className="text-sm text-destructive">
+              Please complete all required fields before saving your profile.
+            </p>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pb-8">
