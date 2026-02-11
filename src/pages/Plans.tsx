@@ -1,24 +1,62 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePlans } from '@/hooks/usePlans';
+import { usePlans, useDeletePlan } from '@/hooks/usePlans';
 import { PlanCard } from '@/components/plans/PlanCard';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Loader2, FileText } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Search, Loader2, FileText, Trash2, CheckSquare } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+
+function useDeletePlans() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('saved_plans')
+        .delete()
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+      toast.success('Plans deleted');
+    },
+    onError: () => {
+      toast.error('Failed to delete plans');
+    },
+  });
+}
 
 export default function Plans() {
   const navigate = useNavigate();
   const { data: plans = [], isLoading } = usePlans();
-  
+  const deletePlans = useDeletePlans();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [horsemanFilter, setHorsemanFilter] = useState<string>('all');
 
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
   // Filter plans
   const filteredPlans = plans.filter(plan => {
-    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchesTitle = plan.title.toLowerCase().includes(query);
@@ -26,31 +64,97 @@ export default function Plans() {
       const matchesId = plan.strategy_id?.toLowerCase().includes(query);
       if (!matchesTitle && !matchesStrategy && !matchesId) return false;
     }
-    
-    // Status filter
     if (statusFilter !== 'all' && plan.status !== statusFilter) return false;
-    
-    // Horseman filter
     if (horsemanFilter !== 'all') {
       const horsemen = plan.content.horseman || [];
       if (!horsemen.some(h => h.toLowerCase() === horsemanFilter.toLowerCase())) return false;
     }
-    
     return true;
   });
 
-  // Get unique horsemen from all plans for filter
   const allHorsemen = [...new Set(
     plans.flatMap(p => p.content.horseman || [])
   )].sort();
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredPlans.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredPlans.map(p => p.id)));
+    }
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const confirmDelete = () => {
+    const ids = Array.from(selectedIds);
+    deletePlans.mutate(ids, {
+      onSuccess: () => {
+        setSelectedIds(new Set());
+        setSelectionMode(false);
+        setDeleteDialogOpen(false);
+      },
+      onSettled: () => {
+        setDeleteDialogOpen(false);
+      },
+    });
+  };
+
   return (
     <AuthenticatedLayout title="My Plans">
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Subtitle */}
-        <p className="text-sm text-muted-foreground mb-6">
-          {plans.length} saved plan{plans.length !== 1 ? 's' : ''}
-        </p>
+        {/* Subtitle + selection controls */}
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-sm text-muted-foreground">
+            {plans.length} saved plan{plans.length !== 1 ? 's' : ''}
+          </p>
+          {plans.length > 0 && (
+            <div className="flex items-center gap-2">
+              {selectionMode && (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      checked={selectedIds.size === filteredPlans.length && filteredPlans.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                    <span className="text-sm text-muted-foreground">All</span>
+                  </div>
+                  {selectedIds.size > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteDialogOpen(true)}
+                      disabled={deletePlans.isPending}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      Delete ({selectedIds.size})
+                    </Button>
+                  )}
+                </>
+              )}
+              <Button
+                variant={selectionMode ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={selectionMode ? exitSelectionMode : () => setSelectionMode(true)}
+              >
+                <CheckSquare className="h-3.5 w-3.5 mr-1" />
+                {selectionMode ? 'Cancel' : 'Select'}
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -101,7 +205,22 @@ export default function Plans() {
         ) : filteredPlans.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredPlans.map(plan => (
-              <PlanCard key={plan.id} plan={plan} />
+              <div key={plan.id} className="relative">
+                {selectionMode && (
+                  <div
+                    className="absolute top-3 left-3 z-10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={selectedIds.has(plan.id)}
+                      onCheckedChange={() => toggleSelect(plan.id)}
+                    />
+                  </div>
+                )}
+                <div className={selectionMode ? 'pl-4' : ''}>
+                  <PlanCard plan={plan} />
+                </div>
+              </div>
             ))}
           </div>
         ) : plans.length > 0 ? (
@@ -125,6 +244,28 @@ export default function Plans() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedIds.size === 1 ? 'Plan' : `${selectedIds.size} Plans`}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {selectedIds.size === 1 ? 'this plan' : `these ${selectedIds.size} plans`}. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletePlans.isPending ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AuthenticatedLayout>
   );
 }
