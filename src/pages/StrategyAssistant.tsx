@@ -17,14 +17,22 @@ export default function StrategyAssistant() {
   
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [autoMode, setAutoMode] = useState(false);
+  const [autoHorseman, setAutoHorseman] = useState<string | null>(null);
 
   // Open conversation from URL query param (e.g., ?c=uuid)
   useEffect(() => {
     const cId = searchParams.get('c');
     if (cId) {
       setActiveConversationId(cId);
+      if (searchParams.get('auto') === '1') {
+        setAutoMode(true);
+        setAutoHorseman(searchParams.get('horseman'));
+      }
       // Clean up the URL
       searchParams.delete('c');
+      searchParams.delete('auto');
+      searchParams.delete('horseman');
       setSearchParams(searchParams, { replace: true });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -104,6 +112,8 @@ export default function StrategyAssistant() {
               conversationId={activeConversationId}
               onSendMessage={handleSendMessage}
               isSending={isSending}
+              autoMode={autoMode}
+              autoHorseman={autoHorseman}
             />
             
             {sendError && (

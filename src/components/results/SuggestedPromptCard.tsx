@@ -76,7 +76,8 @@ export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
       });
 
       if (result) {
-        navigate(`/strategy-assistant?c=${result.conversationId}`);
+        const horseman = assessment.primary_horseman || 'interest';
+        navigate(`/strategy-assistant?c=${result.conversationId}&auto=1&horseman=${horseman}`);
       } else {
         toast({
           title: 'Generation failed',
