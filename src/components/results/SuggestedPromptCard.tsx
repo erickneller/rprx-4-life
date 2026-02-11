@@ -15,14 +15,15 @@ interface SuggestedPromptCardProps {
   assessment: UserAssessment;
 }
 
-function useAssessmentResponses(assessmentId: string) {
+function useAssessmentResponses(assessmentId: string | undefined) {
   return useQuery({
     queryKey: ['assessmentResponses', assessmentId],
+    enabled: !!assessmentId,
     queryFn: async (): Promise<AssessmentResponseDetail[]> => {
       const { data, error } = await supabase
         .from('assessment_responses')
         .select('response_value, question_id')
-        .eq('assessment_id', assessmentId);
+        .eq('assessment_id', assessmentId!);
 
       if (error) throw error;
       if (!data || data.length === 0) return [];
@@ -55,7 +56,7 @@ export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { sendMessage, isLoading: isSending } = useSendMessage();
-  const { data: responses } = useAssessmentResponses(assessment.id);
+  const { data: responses } = useAssessmentResponses(assessment?.id);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const loading = isGenerating || isSending;
