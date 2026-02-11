@@ -159,19 +159,41 @@ export function ChatThread({ conversationId, onSendMessage, isSending, autoMode,
             const lastAssistant = assistantMessages[assistantMessages.length - 1];
             if (!lastAssistant) return;
 
-            const parsed = parseStrategyFromMessage(lastAssistant.content);
-            if (!parsed) {
-              toast.error('Could not parse strategy from response. Please try again.');
-              return;
+            const parsed = parseStrategyFromMessage(lastAssistant.content, true);
+            
+            // Fallback: if parsing still fails, save the raw response as a single-step plan
+            const planContent = parsed
+              ? { title: getAutoPlanTitle(autoHorseman), strategy_name: parsed.strategyName, strategy_id: parsed.strategyId, content: parsed.content }
+              : {
+                  title: getAutoPlanTitle(autoHorseman),
+                  strategy_name: 'Implementation Plan',
+                  strategy_id: undefined,
+                  content: {
+                    steps: lastAssistant.content
+                      .split('\n')
+                      .filter((line: string) => /^\s*(\d+\.|[-•*])\s+/.test(line))
+                      .map((line: string) => line.replace(/^\s*(\d+\.|[-•*])\s+/, '').trim())
+                      .filter((s: string) => s.length > 5)
+                      .slice(0, 20),
+                    summary: lastAssistant.content.substring(0, 500),
+                    disclaimer: 'This information is for educational purposes only and does not constitute tax, legal, or financial advice.',
+                    completedSteps: [] as number[],
+                  },
+                };
+
+            if (planContent.content.steps.length === 0) {
+              // Last resort: just use the whole message as one step
+              planContent.content.steps = ['Review the strategy details above and take action.'];
+              planContent.content.summary = lastAssistant.content.substring(0, 1000);
             }
 
             setIsCreatingPlan(true);
             try {
               const plan = await createPlan.mutateAsync({
-                title: getAutoPlanTitle(autoHorseman),
-                strategy_name: parsed.strategyName,
-                strategy_id: parsed.strategyId,
-                content: parsed.content,
+                title: planContent.title,
+                strategy_name: planContent.strategy_name,
+                strategy_id: planContent.strategy_id,
+                content: planContent.content,
               });
               toast.success('Plan created!');
               navigate(`/plans/${plan.id}`);
