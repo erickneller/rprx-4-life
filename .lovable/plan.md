@@ -1,54 +1,61 @@
 
-# Redirect New Users to Profile and Fix Company Field
+
+# Use Profile Data for Assessment Cash Flow (Remove Cash Flow Questions)
 
 ## Overview
-Two changes: (1) after a new user signs up and confirms their email, redirect them to the Profile page instead of the Dashboard, and (2) ensure the Company field is hidden from the profile page consistently (it was already hidden in the last edit but we need to verify the full flow).
+The assessment currently asks two cash flow questions (income range and expense range) at the end of the wizard. Since the profile now requires all financial fields (monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses), these questions are redundant. The assessment should pull cash flow data directly from the profile instead.
 
 ## What Changes
 
-### 1. New User Redirect to Profile
-Currently, when a user signs up and logs in, `Auth.tsx` redirects to `/` which then bounces to `/dashboard`. Instead, new users (those with an incomplete profile) should be sent to `/profile` to complete their information first.
+### 1. Update `useAssessment.ts` -- Use profile data for cash flow
+- Import `useProfile` hook
+- Remove the logic that looks up cash flow questions by `order_index` (16 and 17)
+- Instead, use `calculateCashFlowFromNumbers()` with the profile's actual dollar values to derive `cash_flow_status`
+- Store `income_range` and `expense_range` as `null` (or remove them) since we no longer collect ranges
+- The scoring engine already skips `cash_flow` category questions, so horseman scores are unaffected
 
-The approach:
-- In `Auth.tsx`, after login/signup, redirect to `/` as before (this is fine for returning users)
-- In `Index.tsx` (the `/` route), check if the logged-in user has a complete profile. If not, redirect to `/profile` instead of `/dashboard`
-- "Complete" means the required fields are filled: `full_name`, `phone`, `monthly_income`, `monthly_debt_payments`, `monthly_housing`, `monthly_insurance`, `monthly_living_expenses`, `profile_type`, and `financial_goals`
+### 2. Delete the two cash flow questions from the database
+- Run a migration to delete the two rows from `assessment_questions` where `category = 'cash_flow'` (order_index 16 and 17)
+- This reduces the assessment from 17 questions to 15
 
-### 2. Profile Completeness Check
-Add a helper function (or inline check) in `useProfile` to expose an `isProfileComplete` flag. This checks whether all required fields have values.
-
-### 3. Company Field
-The Company field was already removed from the Profile page UI in the last edit. The screenshot appears to show a cached or stale version. No additional code change needed for the company field on the full profile page -- it is already hidden.
+### 3. Update `cashFlowCalculator.ts` -- No changes needed
+- The `calculateCashFlowFromNumbers()` function already exists and accepts exact dollar amounts from the profile. It will be reused in the assessment submission.
 
 ## Technical Details
 
-### File: `src/hooks/useProfile.ts`
-- Add a computed `isProfileComplete` boolean to the hook return value
-- Checks: `full_name`, `phone`, `monthly_income`, `monthly_debt_payments`, `monthly_housing`, `monthly_insurance`, `monthly_living_expenses`, `profile_type`, and `financial_goals` (length > 0)
-
-### File: `src/pages/Index.tsx`
-- Import and use `useProfile`
-- If user is authenticated but profile is incomplete, redirect to `/profile` instead of `/dashboard`
-- Show loading spinner while profile is loading
-
-### File: `src/pages/Profile.tsx`
-- No changes needed -- Company field is already hidden
-
-## Flow After Changes
-
-```text
-New User Signs Up
-  -> Confirms email -> Logs in
-  -> Auth.tsx redirects to /
-  -> Index.tsx checks profile completeness
-  -> Profile incomplete -> Redirect to /profile
-  -> User completes profile -> Saves
-  -> Next visit: Index.tsx sees complete profile -> Redirect to /dashboard
+### Database Migration
+```sql
+DELETE FROM assessment_questions WHERE category = 'cash_flow';
 ```
+
+### File: `src/hooks/useAssessment.ts`
+- Add `import { useProfile } from '@/hooks/useProfile';`
+- Add `import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';`
+- Inside the hook, call `const { profile } = useProfile();`
+- In `submitAssessment`, replace the income/expense question lookup block (lines 82-91) with:
+  ```typescript
+  const cashFlowResult = profile
+    ? calculateCashFlowFromNumbers(
+        profile.monthly_income || 0,
+        profile.monthly_debt_payments || 0,
+        profile.monthly_housing || 0,
+        profile.monthly_insurance || 0,
+        profile.monthly_living_expenses || 0
+      )
+    : null;
+  ```
+- Use `cashFlowResult?.status` for the `cash_flow_status` field in the insert
+- Set `income_range: null` and `expense_range: null` (these fields become unused)
+
+### No other file changes needed
+- The scoring engine already ignores `cash_flow` category questions
+- The results page reads `cash_flow_status` from the assessment record, so it continues to work
+- The assessment wizard auto-adjusts to the number of questions returned from the database
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/hooks/useProfile.ts` | Add `isProfileComplete` computed property |
-| `src/pages/Index.tsx` | Check profile completeness before redirecting authenticated users |
+| File | Change |
+|------|--------|
+| `src/hooks/useAssessment.ts` | Use profile data instead of question responses for cash flow |
+| Database migration | Delete 2 cash flow questions from `assessment_questions` |
+
