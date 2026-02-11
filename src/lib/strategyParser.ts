@@ -13,9 +13,9 @@ const PLAN_MARKER_PHRASE = "Here are the step-by-step implementation plans";
  * Parses assistant messages to detect strategy recommendations with implementation steps.
  * Returns parsed strategy data if found, null otherwise.
  */
-export function parseStrategyFromMessage(messageContent: string): ParsedStrategy | null {
-  // Only show Save Plan button if marker phrase is present
-  if (!messageContent.includes(PLAN_MARKER_PHRASE)) {
+export function parseStrategyFromMessage(messageContent: string, lenient = false): ParsedStrategy | null {
+  // Only show Save Plan button if marker phrase is present (skip check in lenient/auto mode)
+  if (!lenient && !messageContent.includes(PLAN_MARKER_PHRASE)) {
     return null;
   }
   
