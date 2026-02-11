@@ -1,0 +1,1 @@
+DELETE FROM assessment_questions WHERE category = 'cash_flow';
