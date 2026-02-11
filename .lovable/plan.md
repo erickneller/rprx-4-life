@@ -1,61 +1,60 @@
 
 
-# Use Profile Data for Assessment Cash Flow (Remove Cash Flow Questions)
+# Add Delete Capability to Assessment History
 
 ## Overview
-The assessment currently asks two cash flow questions (income range and expense range) at the end of the wizard. Since the profile now requires all financial fields (monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses), these questions are redundant. The assessment should pull cash flow data directly from the profile instead.
+Add the ability to delete assessments individually or in bulk from the Assessment History section on the dashboard. This includes a selection mode with checkboxes, a delete button, and a confirmation dialog.
 
-## What Changes
+## User Experience
 
-### 1. Update `useAssessment.ts` -- Use profile data for cash flow
-- Import `useProfile` hook
-- Remove the logic that looks up cash flow questions by `order_index` (16 and 17)
-- Instead, use `calculateCashFlowFromNumbers()` with the profile's actual dollar values to derive `cash_flow_status`
-- Store `income_range` and `expense_range` as `null` (or remove them) since we no longer collect ranges
-- The scoring engine already skips `cash_flow` category questions, so horseman scores are unaffected
-
-### 2. Delete the two cash flow questions from the database
-- Run a migration to delete the two rows from `assessment_questions` where `category = 'cash_flow'` (order_index 16 and 17)
-- This reduces the assessment from 17 questions to 15
-
-### 3. Update `cashFlowCalculator.ts` -- No changes needed
-- The `calculateCashFlowFromNumbers()` function already exists and accepts exact dollar amounts from the profile. It will be reused in the assessment submission.
+- A header toolbar appears above the assessment cards with a "Select" toggle button
+- When in selection mode, each card shows a checkbox in its top-left corner
+- A "Select All" checkbox and a "Delete Selected" button appear in the toolbar
+- Clicking "Delete Selected" shows a confirmation dialog before permanently removing the assessments
+- Single-delete is also available: each card gets a small trash icon (visible even outside selection mode) for quick one-off deletion with confirmation
+- Deleting also removes the associated `assessment_responses` rows (cascade via SQL)
 
 ## Technical Details
 
-### Database Migration
+### Database: Add CASCADE delete for assessment_responses
+Currently `assessment_responses` references `assessment_id` but there's no ON DELETE CASCADE. We need a migration to ensure deleting an assessment automatically cleans up its responses.
+
 ```sql
-DELETE FROM assessment_questions WHERE category = 'cash_flow';
+-- Drop existing FK and re-add with CASCADE
+ALTER TABLE assessment_responses
+  DROP CONSTRAINT IF EXISTS assessment_responses_assessment_id_fkey,
+  ADD CONSTRAINT assessment_responses_assessment_id_fkey
+    FOREIGN KEY (assessment_id) REFERENCES user_assessments(id) ON DELETE CASCADE;
 ```
 
-### File: `src/hooks/useAssessment.ts`
-- Add `import { useProfile } from '@/hooks/useProfile';`
-- Add `import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';`
-- Inside the hook, call `const { profile } = useProfile();`
-- In `submitAssessment`, replace the income/expense question lookup block (lines 82-91) with:
-  ```typescript
-  const cashFlowResult = profile
-    ? calculateCashFlowFromNumbers(
-        profile.monthly_income || 0,
-        profile.monthly_debt_payments || 0,
-        profile.monthly_housing || 0,
-        profile.monthly_insurance || 0,
-        profile.monthly_living_expenses || 0
-      )
-    : null;
-  ```
-- Use `cashFlowResult?.status` for the `cash_flow_status` field in the insert
-- Set `income_range: null` and `expense_range: null` (these fields become unused)
+### File: `src/hooks/useAssessmentHistory.ts`
+- Add a `useDeleteAssessments` mutation hook
+- Accepts an array of assessment IDs
+- Deletes from `user_assessments` (responses cascade automatically)
+- Invalidates the `assessmentHistory` query cache on success
+- Shows a success/error toast
 
-### No other file changes needed
-- The scoring engine already ignores `cash_flow` category questions
-- The results page reads `cash_flow_status` from the assessment record, so it continues to work
-- The assessment wizard auto-adjusts to the number of questions returned from the database
+### File: `src/components/dashboard/AssessmentHistory.tsx`
+- Add state: `selectionMode` (boolean), `selectedIds` (Set of strings)
+- Render a toolbar row with:
+  - "Select" toggle button (enters/exits selection mode)
+  - "Select All" checkbox (when in selection mode)
+  - "Delete Selected (N)" button (when items are selected)
+- Pass `selectionMode`, `isSelected`, and `onToggleSelect` props to each card
+- Include an AlertDialog for delete confirmation
+
+### File: `src/components/dashboard/AssessmentSummaryCard.tsx`
+- Accept new optional props: `selectionMode`, `isSelected`, `onToggleSelect`, `onDelete`
+- When `selectionMode` is true, show a Checkbox overlay on the card
+- Always show a small trash icon button in the card header for single-delete
+- Clicking the card in selection mode toggles selection instead of navigating
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/hooks/useAssessment.ts` | Use profile data instead of question responses for cash flow |
-| Database migration | Delete 2 cash flow questions from `assessment_questions` |
+| Database migration | Add ON DELETE CASCADE to assessment_responses FK |
+| `src/hooks/useAssessmentHistory.ts` | Add `useDeleteAssessments` mutation |
+| `src/components/dashboard/AssessmentHistory.tsx` | Add selection mode, toolbar, confirmation dialog |
+| `src/components/dashboard/AssessmentSummaryCard.tsx` | Add checkbox, trash icon, selection props |
 
