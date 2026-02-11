@@ -1,5 +1,8 @@
 import type { HorsemanType } from './scoringEngine';
 import type { CashFlowStatus } from './cashFlowCalculator';
+import type { Profile } from '@/hooks/useProfile';
+import type { UserAssessment } from './assessmentTypes';
+import { getProfileTypeLabel, getFinancialGoalLabels } from './profileTypes';
 
 const HORSEMAN_PHRASES: Record<HorsemanType, string> = {
   interest: 'debt and interest costs',
@@ -22,4 +25,81 @@ export function generateStrategyPrompt(
   const cashFlowPhrase = cashFlowStatus ? ` ${CASH_FLOW_PHRASES[cashFlowStatus]}` : '';
 
   return `My biggest financial pressure is ${horsemanPhrase}.${cashFlowPhrase} What are some strategies to address this?`;
+}
+
+export interface AssessmentResponseDetail {
+  question_text: string;
+  category: string;
+  value: string;
+}
+
+export function generateAutoStrategyPrompt(
+  profile: Profile | null,
+  assessment: UserAssessment,
+  responses: AssessmentResponseDetail[]
+): string {
+  const lines: string[] = [];
+
+  lines.push('I need my top 3 financial strategies ranked by ease of implementation and speed of results.');
+  lines.push('');
+
+  // Profile summary
+  lines.push('## My Profile');
+  if (profile) {
+    const profileType = getProfileTypeLabel(profile.profile_type);
+    if (profileType) lines.push(`- Profile type: ${profileType}`);
+    if (profile.monthly_income) lines.push(`- Monthly income: $${profile.monthly_income.toLocaleString()}`);
+    const totalExpenses = [
+      profile.monthly_debt_payments,
+      profile.monthly_housing,
+      profile.monthly_insurance,
+      profile.monthly_living_expenses,
+    ].reduce((sum, v) => sum + (v || 0), 0);
+    if (totalExpenses > 0) lines.push(`- Monthly expenses: ~$${totalExpenses.toLocaleString()}`);
+    if (profile.num_children != null && profile.num_children > 0) {
+      const agesStr = profile.children_ages?.length ? ` (ages: ${profile.children_ages.join(', ')})` : '';
+      lines.push(`- Children: ${profile.num_children}${agesStr}`);
+    }
+    const goalLabels = getFinancialGoalLabels(profile.financial_goals);
+    if (goalLabels.length > 0) lines.push(`- Financial goals: ${goalLabels.join(', ')}`);
+  } else {
+    lines.push('- Profile data not available');
+  }
+  lines.push('');
+
+  // Assessment summary
+  lines.push('## My Assessment Results');
+  lines.push(`- Primary financial pressure: ${HORSEMAN_PHRASES[assessment.primary_horseman as HorsemanType] || assessment.primary_horseman}`);
+  lines.push(`- Interest score: ${assessment.interest_score}/100`);
+  lines.push(`- Taxes score: ${assessment.taxes_score}/100`);
+  lines.push(`- Insurance score: ${assessment.insurance_score}/100`);
+  lines.push(`- Education score: ${assessment.education_score}/100`);
+  if (assessment.cash_flow_status) {
+    lines.push(`- Cash flow: ${CASH_FLOW_PHRASES[assessment.cash_flow_status as CashFlowStatus]}`);
+  }
+  lines.push('');
+
+  // Assessment answers by category
+  if (responses.length > 0) {
+    lines.push('## My Assessment Answers');
+    const byCategory: Record<string, string[]> = {};
+    for (const r of responses) {
+      if (!byCategory[r.category]) byCategory[r.category] = [];
+      byCategory[r.category].push(`${r.question_text}: ${r.value}`);
+    }
+    for (const [cat, items] of Object.entries(byCategory)) {
+      lines.push(`### ${cat}`);
+      for (const item of items) {
+        lines.push(`- ${item}`);
+      }
+    }
+    lines.push('');
+  }
+
+  lines.push('## Instructions');
+  lines.push('Based on all of the above, recommend exactly 3 strategies that are easiest to implement and will produce the fastest results for my situation.');
+  lines.push('Rank them by ease of implementation (easiest first).');
+  lines.push('For each strategy, use the standard strategy output format with name, summary, estimated savings, implementation steps, and any disclaimers.');
+
+  return lines.join('\n');
 }

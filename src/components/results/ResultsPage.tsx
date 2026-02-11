@@ -10,6 +10,7 @@ import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
 import type { HorsemanScores, HorsemanType } from '@/lib/scoringEngine';
 import type { CashFlowStatus } from '@/lib/cashFlowCalculator';
+import type { UserAssessment } from '@/lib/assessmentTypes';
 
 export function ResultsPage() {
   const { id } = useParams<{ id: string }>();
@@ -90,8 +91,7 @@ export function ResultsPage() {
             Next Steps
           </h3>
           <SuggestedPromptCard
-            primaryHorseman={primaryHorseman}
-            cashFlowStatus={cashFlowStatus}
+            assessment={assessment as unknown as UserAssessment}
           />
         </section>
 
