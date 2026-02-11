@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, Trash2, CheckSquare } from 'lucide-react';
+import { Loader2, Trash2, CheckSquare, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -19,6 +19,7 @@ export function AssessmentHistory() {
   const { data: assessments = [], isLoading } = useAssessmentHistory();
   const deleteAssessments = useDeleteAssessments();
 
+  const [expanded, setExpanded] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -32,6 +33,9 @@ export function AssessmentHistory() {
       return next;
     });
   };
+
+  const visibleAssessments = expanded ? assessments : assessments.slice(0, 1);
+  const hasOlder = assessments.length > 1;
 
   const toggleSelectAll = () => {
     if (selectedIds.size === assessments.length) {
@@ -74,8 +78,8 @@ export function AssessmentHistory() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex justify-center py-4">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -85,9 +89,9 @@ export function AssessmentHistory() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Assessment History</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">Assessment History</h2>
         <div className="flex items-center gap-2">
           {selectionMode && (
             <>
@@ -96,7 +100,7 @@ export function AssessmentHistory() {
                   checked={selectedIds.size === assessments.length}
                   onCheckedChange={toggleSelectAll}
                 />
-                <span className="text-sm text-muted-foreground">All</span>
+                <span className="text-xs text-muted-foreground">All</span>
               </div>
               {selectedIds.size > 0 && (
                 <Button
@@ -122,8 +126,8 @@ export function AssessmentHistory() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {assessments.map((assessment, index) => (
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {visibleAssessments.map((assessment, index) => (
           <AssessmentSummaryCard
             key={assessment.id}
             assessment={assessment}
@@ -135,6 +139,19 @@ export function AssessmentHistory() {
           />
         ))}
       </div>
+
+      {hasOlder && (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          />
+          {expanded ? 'Hide older assessments' : 'View Assessment History'}
+        </button>
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
