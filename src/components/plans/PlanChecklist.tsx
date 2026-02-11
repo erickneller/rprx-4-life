@@ -13,15 +13,15 @@ export function PlanChecklist({ steps, completedSteps, onToggleStep, disabled }:
     <div className="space-y-3">
       {steps.map((step, index) => {
         const isCompleted = completedSteps.includes(index);
-        
+
         return (
-          <div 
+          <div
             key={index}
-            className={cn(
-              "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-              isCompleted ? "bg-muted/50 border-muted" : "bg-background border-border hover:border-primary/50"
-            )}
-          >
+            className={cn("flex items-start gap-3 p-3 rounded-lg border transition-colors opacity-50",
+
+            isCompleted ? "bg-muted/50 border-muted" : "bg-background border-border hover:border-primary/50"
+            )}>
+
             <Checkbox
               checked={isCompleted}
               onCheckedChange={() => onToggleStep(index)}
@@ -29,19 +29,19 @@ export function PlanChecklist({ steps, completedSteps, onToggleStep, disabled }:
               className={cn(
                 "mt-0.5",
                 isCompleted && "data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-              )}
-            />
-            <span 
+              )} />
+
+            <span
               className={cn(
                 "text-sm leading-relaxed",
                 isCompleted && "text-muted-foreground line-through"
-              )}
-            >
+              )}>
+
               {step}
             </span>
-          </div>
-        );
+          </div>);
+
       })}
-    </div>
-  );
+    </div>);
+
 }
