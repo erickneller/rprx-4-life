@@ -1,12 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMessages, Message } from '@/hooks/useMessages';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, User, Search, LucideIcon } from 'lucide-react';
+import { Loader2, User, Search, LucideIcon, ClipboardList } from 'lucide-react';
 import { AssistantAvatar } from './AssistantAvatar';
+import { Button } from '@/components/ui/button';
+import { useCreatePlan } from '@/hooks/usePlans';
+import { parseStrategyFromMessage } from '@/lib/strategyParser';
+import { toast } from 'sonner';
 
 interface StarterOption {
   icon: LucideIcon;
@@ -34,11 +39,31 @@ interface ChatThreadProps {
   conversationId: string | null;
   onSendMessage: (message: string) => void;
   isSending: boolean;
+  autoMode?: boolean;
+  autoHorseman?: string | null;
 }
 
-export function ChatThread({ conversationId, onSendMessage, isSending }: ChatThreadProps) {
+const HORSEMAN_LABELS: Record<string, string> = {
+  interest: 'Interest & Debt',
+  taxes: 'Tax Efficiency',
+  insurance: 'Insurance & Protection',
+  education: 'Education Funding',
+};
+
+function getAutoPlanTitle(horseman: string | null | undefined): string {
+  const label = HORSEMAN_LABELS[horseman || 'interest'] || 'Financial Strategy';
+  const now = new Date();
+  const month = now.toLocaleString('en-US', { month: 'short' });
+  const year = now.getFullYear();
+  return `${label} - ${month} ${year}`;
+}
+
+export function ChatThread({ conversationId, onSendMessage, isSending, autoMode, autoHorseman }: ChatThreadProps) {
   const { data: messages, isLoading } = useMessages(conversationId);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const createPlan = useCreatePlan();
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -123,11 +148,82 @@ export function ChatThread({ conversationId, onSendMessage, isSending }: ChatThr
         </div>
       </ScrollArea>
       
-      <ChatInput 
-        onSend={onSendMessage} 
-        disabled={isSending}
-        placeholder={isSending ? 'Waiting for response...' : 'Type your message...'}
-      />
+      {autoMode && !isSending ? (
+        <AutoCreatePlanFooter
+          messages={messages || []}
+          horseman={autoHorseman}
+          isCreating={isCreatingPlan}
+          onCreate={async () => {
+            // Find the last assistant message with strategy content
+            const assistantMessages = (messages || []).filter(m => m.role === 'assistant');
+            const lastAssistant = assistantMessages[assistantMessages.length - 1];
+            if (!lastAssistant) return;
+
+            const parsed = parseStrategyFromMessage(lastAssistant.content);
+            if (!parsed) {
+              toast.error('Could not parse strategy from response. Please try again.');
+              return;
+            }
+
+            setIsCreatingPlan(true);
+            try {
+              const plan = await createPlan.mutateAsync({
+                title: getAutoPlanTitle(autoHorseman),
+                strategy_name: parsed.strategyName,
+                strategy_id: parsed.strategyId,
+                content: parsed.content,
+              });
+              toast.success('Plan created!');
+              navigate(`/plans/${plan.id}`);
+            } catch {
+              toast.error('Failed to create plan. Please try again.');
+            } finally {
+              setIsCreatingPlan(false);
+            }
+          }}
+        />
+      ) : (
+        <ChatInput 
+          onSend={onSendMessage} 
+          disabled={isSending}
+          placeholder={isSending ? 'Waiting for response...' : 'Type your message...'}
+        />
+      )}
+    </div>
+  );
+}
+
+function AutoCreatePlanFooter({ 
+  messages, horseman, isCreating, onCreate 
+}: { 
+  messages: Message[]; horseman: string | null | undefined; isCreating: boolean; onCreate: () => void 
+}) {
+  const hasResponse = messages.some(m => m.role === 'assistant');
+  
+  if (!hasResponse) return null;
+
+  return (
+    <div className="border-t p-4">
+      <div className="max-w-3xl mx-auto">
+        <Button
+          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+          size="lg"
+          onClick={onCreate}
+          disabled={isCreating}
+        >
+          {isCreating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating Plan…
+            </>
+          ) : (
+            <>
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Create My Plan
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
