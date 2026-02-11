@@ -38,7 +38,7 @@ export function DashboardContent() {
   }, [profile]);
 
   // Mocked flag – flip to false to test the no-focus state
-  const activeFocus = true;
+  const activeFocus = false;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
