@@ -37,6 +37,9 @@ export function DashboardContent() {
     return { surplus: result.surplus, status: result.status };
   }, [profile]);
 
+  // Mocked flag – flip to false to test the no-focus state
+  const activeFocus = true;
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       {isLoading ? (
@@ -45,9 +48,9 @@ export function DashboardContent() {
         </div>
       ) : (
         <>
-          <CurrentFocusCard />
+          {activeFocus && <CurrentFocusCard />}
           <CashFlowStatusCard surplus={surplus} status={status} />
-          <StartAssessmentCTA isFirstTime={isFirstTime} />
+          {!activeFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
           <AssessmentHistory />
         </>
       )}
