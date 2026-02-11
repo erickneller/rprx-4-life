@@ -4,6 +4,7 @@ import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
 import { AssessmentHistory } from './AssessmentHistory';
+import { CurrentFocusCard } from './CurrentFocusCard';
 import { CashFlowStatusCard } from '@/components/debt-eliminator/dashboard/CashFlowStatusCard';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import { Loader2 } from 'lucide-react';
@@ -44,6 +45,7 @@ export function DashboardContent() {
         </div>
       ) : (
         <>
+          <CurrentFocusCard />
           <CashFlowStatusCard surplus={surplus} status={status} />
           <StartAssessmentCTA isFirstTime={isFirstTime} />
           <AssessmentHistory />
