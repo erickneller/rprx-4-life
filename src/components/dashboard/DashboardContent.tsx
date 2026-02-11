@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
 import { useDebtJourney } from '@/hooks/useDebtJourney';
+import { usePlans } from '@/hooks/usePlans';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
 import { AssessmentHistory } from './AssessmentHistory';
 import { CurrentFocusCard } from './CurrentFocusCard';
@@ -15,8 +16,10 @@ export function DashboardContent() {
   const { data: assessments = [], isLoading } = useAssessmentHistory();
   const { profile } = useProfile();
   const { journey, debts, hasActiveJourney } = useDebtJourney();
+  const { data: plans = [] } = usePlans();
 
   const isFirstTime = assessments.length === 0;
+  const hasNoHistory = assessments.length === 0 && plans.length === 0;
 
   const { surplus, status } = useMemo(() => {
     if (
@@ -52,7 +55,7 @@ export function DashboardContent() {
     return Math.round((paid / focusDebt.original_balance) * 100);
   }, [focusDebt]);
 
-  const activeFocus = hasActiveJourney && !!focusDebt;
+  const activeFocus = !hasNoHistory && hasActiveJourney && !!focusDebt;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
@@ -62,17 +65,23 @@ export function DashboardContent() {
         </div>
       ) : (
         <>
-          {activeFocus && focusDebt && (
-            <CurrentFocusCard
-              focusName={focusDebt.name}
-              description={`Pay down your ${focusDebt.debt_type.replace('_', ' ')} to free up monthly cash flow.`}
-              progressPercent={focusProgress}
-              onContinue={() => navigate('/debt-eliminator')}
-            />
+          {hasNoHistory ? (
+            <StartAssessmentCTA isFirstTime />
+          ) : (
+            <>
+              {activeFocus && focusDebt && (
+                <CurrentFocusCard
+                  focusName={focusDebt.name}
+                  description={`Pay down your ${focusDebt.debt_type.replace('_', ' ')} to free up monthly cash flow.`}
+                  progressPercent={focusProgress}
+                  onContinue={() => navigate('/debt-eliminator')}
+                />
+              )}
+              <CashFlowStatusCard surplus={surplus} status={status} />
+              {!activeFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
+              <AssessmentHistory />
+            </>
           )}
-          <CashFlowStatusCard surplus={surplus} status={status} />
-          {!activeFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
-          <AssessmentHistory />
         </>
       )}
     </div>
