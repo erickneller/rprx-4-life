@@ -3,13 +3,19 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ArrowRight } from 'lucide-react';
 
-export function CurrentFocusCard() {
-  // Placeholder values — no logic yet
-  const focusName = 'Eliminate Credit Card Debt';
-  const description =
-    'Pay down your highest-interest credit card to free up monthly cash flow.';
-  const progressPercent = 42;
+interface CurrentFocusCardProps {
+  focusName: string;
+  description: string;
+  progressPercent: number;
+  onContinue?: () => void;
+}
 
+export function CurrentFocusCard({
+  focusName,
+  description,
+  progressPercent,
+  onContinue,
+}: CurrentFocusCardProps) {
   return (
     <Card className="border-2 border-primary/30 bg-card shadow-md">
       <CardHeader className="pb-2 px-8 pt-8">
@@ -31,7 +37,7 @@ export function CurrentFocusCard() {
           <Progress value={progressPercent} className="h-2" />
         </div>
 
-        <Button className="mt-2">
+        <Button className="mt-2" onClick={onContinue}>
           Continue Focus
           <ArrowRight className="h-4 w-4 ml-1" />
         </Button>
