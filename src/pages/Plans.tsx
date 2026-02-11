@@ -205,22 +205,13 @@ export default function Plans() {
         ) : filteredPlans.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredPlans.map(plan => (
-              <div key={plan.id} className="relative">
-                {selectionMode && (
-                  <div
-                    className="absolute top-3 left-3 z-10"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Checkbox
-                      checked={selectedIds.has(plan.id)}
-                      onCheckedChange={() => toggleSelect(plan.id)}
-                    />
-                  </div>
-                )}
-                <div className={selectionMode ? 'pl-4' : ''}>
-                  <PlanCard plan={plan} />
-                </div>
-              </div>
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(plan.id)}
+                onToggleSelect={toggleSelect}
+              />
             ))}
           </div>
         ) : plans.length > 0 ? (
