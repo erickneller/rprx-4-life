@@ -1,14 +1,18 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar, Clock, FileText } from 'lucide-react';
 import type { SavedPlan } from '@/hooks/usePlans';
 
 interface PlanCardProps {
   plan: SavedPlan;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function PlanCard({ plan }: PlanCardProps) {
+export function PlanCard({ plan, selectionMode, isSelected, onToggleSelect }: PlanCardProps) {
   const navigate = useNavigate();
   const content = plan.content;
   
@@ -30,11 +34,19 @@ export function PlanCard({ plan }: PlanCardProps) {
 
   return (
     <Card 
-      className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
-      onClick={() => navigate(`/plans/${plan.id}`)}
+      className={`cursor-pointer transition-all hover:shadow-md hover:border-primary/50 ${isSelected ? 'border-success ring-1 ring-success' : ''}`}
+      onClick={() => selectionMode && onToggleSelect ? onToggleSelect(plan.id) : navigate(`/plans/${plan.id}`)}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
+          {selectionMode && (
+            <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => onToggleSelect?.(plan.id)}
+              />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <CardTitle className="text-lg truncate">{plan.title}</CardTitle>
             <CardDescription className="truncate">{plan.strategy_name}</CardDescription>
