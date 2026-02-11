@@ -115,6 +115,23 @@ export function ChatThread({ conversationId, onSendMessage, isSending, autoMode,
   const navigate = useNavigate();
   const createPlan = useCreatePlan();
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+  const [autoFollowUpSent, setAutoFollowUpSent] = useState(false);
+
+  // In auto-mode, after the first assistant response (strategy overview), automatically
+  // send a follow-up requesting full implementation plans so we get detailed steps
+  useEffect(() => {
+    if (!autoMode || autoFollowUpSent || isSending || !messages) return;
+    const assistantMessages = messages.filter(m => m.role === 'assistant');
+    // After exactly 1 assistant response (the overview), send the follow-up
+    if (assistantMessages.length === 1) {
+      const content = assistantMessages[0].content;
+      // Only send follow-up if the response doesn't already have the detailed plan marker
+      if (!content.includes('step-by-step implementation plans')) {
+        setAutoFollowUpSent(true);
+        onSendMessage('Please provide the step-by-step implementation plans for all 3 strategies listed above. Include detailed numbered steps for each strategy.');
+      }
+    }
+  }, [autoMode, messages, isSending, autoFollowUpSent, onSendMessage]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -250,9 +267,14 @@ function AutoCreatePlanFooter({
 }: { 
   messages: Message[]; horseman: string | null | undefined; isCreating: boolean; onCreate: () => void 
 }) {
-  const hasResponse = messages.some(m => m.role === 'assistant');
+  // Show button only after the detailed implementation response (2nd assistant message) 
+  // or if the first response already has the detailed marker
+  const assistantMsgs = messages.filter(m => m.role === 'assistant');
+  if (assistantMsgs.length === 0) return null;
+  const lastMsg = assistantMsgs[assistantMsgs.length - 1].content;
+  const hasDetailedPlan = assistantMsgs.length >= 2 || lastMsg.includes('step-by-step implementation plans');
   
-  if (!hasResponse) return null;
+  if (!hasDetailedPlan) return null;
 
   return (
     <div className="border-t p-4">
