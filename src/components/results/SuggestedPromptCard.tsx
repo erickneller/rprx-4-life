@@ -2,78 +2,126 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Copy, Check, MessageSquare } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { generateStrategyPrompt } from '@/lib/promptGenerator';
-import type { HorsemanType } from '@/lib/scoringEngine';
-import type { CashFlowStatus } from '@/lib/cashFlowCalculator';
+import { generateAutoStrategyPrompt, type AssessmentResponseDetail } from '@/lib/promptGenerator';
+import { useSendMessage } from '@/hooks/useSendMessage';
+import { useProfile } from '@/hooks/useProfile';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import type { UserAssessment } from '@/lib/assessmentTypes';
 
 interface SuggestedPromptCardProps {
-  primaryHorseman: HorsemanType;
-  cashFlowStatus: CashFlowStatus | null;
+  assessment: UserAssessment;
 }
 
-export function SuggestedPromptCard({
-  primaryHorseman,
-  cashFlowStatus,
-}: SuggestedPromptCardProps) {
-  const navigate = useNavigate();
-  const [copied, setCopied] = useState(false);
+function useAssessmentResponses(assessmentId: string) {
+  return useQuery({
+    queryKey: ['assessmentResponses', assessmentId],
+    queryFn: async (): Promise<AssessmentResponseDetail[]> => {
+      const { data, error } = await supabase
+        .from('assessment_responses')
+        .select('response_value, question_id')
+        .eq('assessment_id', assessmentId);
 
-  const prompt = generateStrategyPrompt(primaryHorseman, cashFlowStatus);
+      if (error) throw error;
+      if (!data || data.length === 0) return [];
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(prompt);
-      setCopied(true);
-      toast({
-        title: 'Copied!',
-        description: 'Prompt copied to clipboard.',
+      // Fetch questions to get text and category
+      const questionIds = data.map((r) => r.question_id);
+      const { data: questions, error: qErr } = await supabase
+        .from('assessment_questions')
+        .select('id, question_text, category')
+        .in('id', questionIds);
+
+      if (qErr) throw qErr;
+
+      const qMap = new Map(questions?.map((q) => [q.id, q]) || []);
+
+      return data.map((r) => {
+        const q = qMap.get(r.question_id);
+        const val = (r.response_value as { value?: string })?.value ?? JSON.stringify(r.response_value);
+        return {
+          question_text: q?.question_text ?? 'Unknown question',
+          category: q?.category ?? 'General',
+          value: val,
+        };
       });
-      setTimeout(() => setCopied(false), 2000);
+    },
+  });
+}
+
+export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
+  const navigate = useNavigate();
+  const { profile } = useProfile();
+  const { sendMessage, isLoading: isSending } = useSendMessage();
+  const { data: responses } = useAssessmentResponses(assessment.id);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const loading = isGenerating || isSending;
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const prompt = generateAutoStrategyPrompt(
+        profile ?? null,
+        assessment,
+        responses ?? []
+      );
+
+      const result = await sendMessage({
+        conversationId: null,
+        userMessage: prompt,
+      });
+
+      if (result) {
+        navigate(`/strategy-assistant?c=${result.conversationId}`);
+      } else {
+        toast({
+          title: 'Generation failed',
+          description: 'Could not generate strategies. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } catch {
       toast({
-        title: 'Copy failed',
-        description: 'Please select and copy the text manually.',
+        title: 'Error',
+        description: 'Something went wrong. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   return (
     <Card className="border-primary/20 bg-primary/5">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Get Personalized Guidance</CardTitle>
+        <CardTitle className="text-lg">Get Personalized Strategies</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Copy this prompt and paste it into the Strategy Assistant to get
-          personalized recommendations:
+          Based on your profile and assessment results, we'll generate your top 3
+          strategies ranked by ease of implementation and speed of results.
         </p>
-        <div className="rounded-md border bg-background p-3">
-          <p className="text-sm italic text-foreground">"{prompt}"</p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={handleCopy}
-          >
-            {copied ? (
-              <Check className="mr-2 h-4 w-4" />
-            ) : (
-              <Copy className="mr-2 h-4 w-4" />
-            )}
-            {copied ? 'Copied!' : 'Copy Prompt'}
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={() => navigate('/strategy-assistant')}
-          >
-            <MessageSquare className="mr-2 h-4 w-4" />
-            Start Chat
-          </Button>
-        </div>
+        <Button
+          className="w-full"
+          size="lg"
+          onClick={handleGenerate}
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Generating Strategies…
+            </>
+          ) : (
+            <>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Generate My Strategies
+            </>
+          )}
+        </Button>
       </CardContent>
     </Card>
   );

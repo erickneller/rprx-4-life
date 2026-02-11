@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useCreateConversation, useUpdateConversationTitle } from '@/hooks/useConversations';
 import { useSendMessage } from '@/hooks/useSendMessage';
 import { ConversationSidebar } from '@/components/assistant/ConversationSidebar';
@@ -12,9 +13,21 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function StrategyAssistant() {
   const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Open conversation from URL query param (e.g., ?c=uuid)
+  useEffect(() => {
+    const cId = searchParams.get('c');
+    if (cId) {
+      setActiveConversationId(cId);
+      // Clean up the URL
+      searchParams.delete('c');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   
   const createConversation = useCreateConversation();
   const updateTitle = useUpdateConversationTitle();
