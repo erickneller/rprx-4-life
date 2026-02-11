@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Home, RotateCcw } from 'lucide-react';
 import { HorsemenRadarChart } from './HorsemenRadarChart';
@@ -8,6 +9,8 @@ import { DiagnosticFeedback } from './DiagnosticFeedback';
 import { SuggestedPromptCard } from './SuggestedPromptCard';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
+import { useProfile } from '@/hooks/useProfile';
+import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import type { HorsemanScores, HorsemanType } from '@/lib/scoringEngine';
 import type { CashFlowStatus } from '@/lib/cashFlowCalculator';
 import type { UserAssessment } from '@/lib/assessmentTypes';
@@ -16,6 +19,28 @@ export function ResultsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: assessment, isLoading, error } = useAssessmentById(id);
+  const { profile } = useProfile();
+
+  // Derive live cash flow status from profile, falling back to stored assessment value
+  const cashFlowStatus = useMemo<CashFlowStatus | null>(() => {
+    if (
+      profile &&
+      profile.monthly_income != null &&
+      profile.monthly_debt_payments != null &&
+      profile.monthly_housing != null &&
+      profile.monthly_insurance != null &&
+      profile.monthly_living_expenses != null
+    ) {
+      return calculateCashFlowFromNumbers(
+        profile.monthly_income,
+        profile.monthly_debt_payments,
+        profile.monthly_housing,
+        profile.monthly_insurance,
+        profile.monthly_living_expenses
+      ).status;
+    }
+    return assessment?.cash_flow_status as CashFlowStatus | null;
+  }, [profile, assessment]);
 
   if (isLoading) {
     return (
@@ -48,7 +73,6 @@ export function ResultsPage() {
   };
 
   const primaryHorseman = assessment.primary_horseman as HorsemanType;
-  const cashFlowStatus = assessment.cash_flow_status as CashFlowStatus | null;
 
   return (
     <AuthenticatedLayout title="Assessment Results">
