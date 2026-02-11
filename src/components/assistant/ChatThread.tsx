@@ -58,6 +58,57 @@ function getAutoPlanTitle(horseman: string | null | undefined): string {
   return `${label} - ${month} ${year}`;
 }
 
+function buildFallbackPlan(content: string, horseman: string | null | undefined) {
+  // Extract only numbered steps (not metadata like **Horseman(s):** or **Savings Range:**)
+  const metadataPattern = /^\*\*[^*]+\*\*[:]/;
+  const steps = content
+    .split('\n')
+    .filter((line: string) => /^\s*\d+\.\s+/.test(line)) // only numbered items
+    .map((line: string) => line.replace(/^\s*\d+\.\s+/, '').trim())
+    .filter((s: string) => s.length > 10 && !metadataPattern.test(s))
+    .slice(0, 20);
+
+  // If no numbered steps, try bullet points (but exclude metadata lines)
+  if (steps.length < 2) {
+    const bulletSteps = content
+      .split('\n')
+      .filter((line: string) => /^\s*[-•]\s+/.test(line) && !metadataPattern.test(line.replace(/^\s*[-•]\s+/, '')))
+      .map((line: string) => line.replace(/^\s*[-•]\s+/, '').trim())
+      .filter((s: string) => s.length > 10);
+    if (bulletSteps.length > steps.length) {
+      steps.length = 0;
+      steps.push(...bulletSteps.slice(0, 20));
+    }
+  }
+
+  // If still no steps, extract **Summary:** values as actionable steps
+  if (steps.length === 0) {
+    const summaryMatches = content.matchAll(/\*\*Summary:\*\*\s*([^\n]+)/g);
+    for (const m of summaryMatches) {
+      if (m[1].trim().length > 10) steps.push(m[1].trim());
+    }
+  }
+
+  if (steps.length === 0) {
+    steps.push('Review the strategy details and take action.');
+  }
+
+  // Extract first paragraph as summary
+  const firstPara = content.match(/^([^*#\n-].{30,500}?)(?:\n\n|\n\d\.|\n[-•*])/s);
+
+  return {
+    title: getAutoPlanTitle(horseman),
+    strategy_name: 'Implementation Plan',
+    strategy_id: undefined,
+    content: {
+      steps,
+      summary: firstPara ? firstPara[1].trim() : content.substring(0, 500),
+      disclaimer: 'This information is for educational purposes only and does not constitute tax, legal, or financial advice.',
+      completedSteps: [] as number[],
+    },
+  };
+}
+
 export function ChatThread({ conversationId, onSendMessage, isSending, autoMode, autoHorseman }: ChatThreadProps) {
   const { data: messages, isLoading } = useMessages(conversationId);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -161,31 +212,10 @@ export function ChatThread({ conversationId, onSendMessage, isSending, autoMode,
 
             const parsed = parseStrategyFromMessage(lastAssistant.content, true);
             
-            // Fallback: if parsing still fails, save the raw response as a single-step plan
+            // Build plan content from parsed result or fallback
             const planContent = parsed
               ? { title: getAutoPlanTitle(autoHorseman), strategy_name: parsed.strategyName, strategy_id: parsed.strategyId, content: parsed.content }
-              : {
-                  title: getAutoPlanTitle(autoHorseman),
-                  strategy_name: 'Implementation Plan',
-                  strategy_id: undefined,
-                  content: {
-                    steps: lastAssistant.content
-                      .split('\n')
-                      .filter((line: string) => /^\s*(\d+\.|[-•*])\s+/.test(line))
-                      .map((line: string) => line.replace(/^\s*(\d+\.|[-•*])\s+/, '').trim())
-                      .filter((s: string) => s.length > 5)
-                      .slice(0, 20),
-                    summary: lastAssistant.content.substring(0, 500),
-                    disclaimer: 'This information is for educational purposes only and does not constitute tax, legal, or financial advice.',
-                    completedSteps: [] as number[],
-                  },
-                };
-
-            if (planContent.content.steps.length === 0) {
-              // Last resort: just use the whole message as one step
-              planContent.content.steps = ['Review the strategy details above and take action.'];
-              planContent.content.summary = lastAssistant.content.substring(0, 1000);
-            }
+              : buildFallbackPlan(lastAssistant.content, autoHorseman);
 
             setIsCreatingPlan(true);
             try {
