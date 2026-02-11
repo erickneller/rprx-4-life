@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateHorsemanScores, determinePrimaryHorseman } from '@/lib/scoringEngine';
-import { calculateCashFlowStatus } from '@/lib/cashFlowCalculator';
+import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
+import { useProfile } from '@/hooks/useProfile';
 import type { AssessmentQuestion, AssessmentState } from '@/lib/assessmentTypes';
 import type { HorsemanType } from '@/lib/scoringEngine';
 import type { CashFlowStatus } from '@/lib/cashFlowCalculator';
 
 export function useAssessment(questions: AssessmentQuestion[]) {
+  const { profile } = useProfile();
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -79,16 +81,16 @@ export function useAssessment(questions: AssessmentQuestion[]) {
       const scores = calculateHorsemanScores(responseObjects);
       const primaryHorseman = determinePrimaryHorseman(scores);
 
-      // Get cash flow data
-      const incomeQuestion = questions.find((q) => q.order_index === 16);
-      const expenseQuestion = questions.find((q) => q.order_index === 17);
-      const incomeRange = incomeQuestion ? state.responses[incomeQuestion.id] : null;
-      const expenseRange = expenseQuestion ? state.responses[expenseQuestion.id] : null;
-
-      const cashFlowStatus =
-        incomeRange && expenseRange
-          ? calculateCashFlowStatus(incomeRange, expenseRange)
-          : null;
+      // Get cash flow data from profile
+      const cashFlowResult = profile
+        ? calculateCashFlowFromNumbers(
+            profile.monthly_income || 0,
+            profile.monthly_debt_payments || 0,
+            profile.monthly_housing || 0,
+            profile.monthly_insurance || 0,
+            profile.monthly_living_expenses || 0
+          )
+        : null;
 
       // Create assessment record
       const { data: assessment, error: assessmentError } = await supabase
@@ -101,9 +103,9 @@ export function useAssessment(questions: AssessmentQuestion[]) {
           insurance_score: scores.insurance,
           education_score: scores.education,
           primary_horseman: primaryHorseman as HorsemanType,
-          cash_flow_status: cashFlowStatus as CashFlowStatus,
-          income_range: incomeRange,
-          expense_range: expenseRange,
+          cash_flow_status: (cashFlowResult?.status ?? null) as CashFlowStatus,
+          income_range: null,
+          expense_range: null,
         })
         .select()
         .single();
