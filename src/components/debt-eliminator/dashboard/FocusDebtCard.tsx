@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Target, AlertTriangle, DollarSign, Clock, Settings2 } from "lucide-react";
+import { Target, AlertTriangle, DollarSign, Clock, Settings2, Pencil, Trash2 } from "lucide-react";
 import type { UserDebt } from "@/lib/debtTypes";
 import type { DebtRecommendation } from "@/lib/debtRecommendationEngine";
 import { formatCurrency, DEBT_TYPE_LABELS } from "@/lib/debtTypes";
@@ -17,6 +17,8 @@ interface FocusDebtCardProps {
   monthlySurplus: number | null;
   onLogPayment: () => void;
   onChangeFocus: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
 export function FocusDebtCard({
@@ -27,6 +29,8 @@ export function FocusDebtCard({
   monthlySurplus,
   onLogPayment,
   onChangeFocus,
+  onEdit,
+  onDelete,
 }: FocusDebtCardProps) {
   const progress = Math.round(
     ((focusDebt.original_balance - focusDebt.current_balance) /
@@ -90,9 +94,17 @@ export function FocusDebtCard({
             <h3 className="text-xl font-bold text-foreground">
               {focusDebt.name}
             </h3>
-            <span className="text-sm text-muted-foreground">
-              {DEBT_TYPE_LABELS[focusDebt.debt_type]}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {DEBT_TYPE_LABELS[focusDebt.debt_type]}
+              </span>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
