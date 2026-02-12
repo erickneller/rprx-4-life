@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { SliderQuestion } from './SliderQuestion';
 import { SingleChoiceQuestion } from './SingleChoiceQuestion';
@@ -12,6 +13,13 @@ interface QuestionCardProps {
 }
 
 export function QuestionCard({ question, value, onChange }: QuestionCardProps) {
+  // Auto-select first option for slider questions so Next is enabled immediately
+  useEffect(() => {
+    if (question.question_type === 'slider' && !value && question.options.length > 0) {
+      onChange(question.options[0].value);
+    }
+  }, [question.id]);
+
   const renderQuestionInput = () => {
     switch (question.question_type) {
       case 'slider':
