@@ -107,7 +107,7 @@ export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
           strategies ranked by ease of implementation and speed of results.
         </p>
         <Button
-          className="w-full"
+          className="w-full bg-success hover:bg-success/90 text-white"
           size="lg"
           onClick={handleGenerate}
           disabled={loading}
