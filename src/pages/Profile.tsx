@@ -361,8 +361,8 @@ export default function Profile() {
         {/* Required fields note */}
         <div className="flex items-start gap-2 rounded-lg border-2 border-destructive/40 bg-destructive/5 p-4">
           <Info className="h-5 w-5 mt-0.5 shrink-0 text-destructive" />
-          <p className="text-sm font-semibold text-foreground">All fields marked with * are required. Your profile must be complete before saving.
-Keep your profile up to date for the best results.<span className="text-destructive">*</span> are required. Your profile must be complete before saving.
+          <p className="text-sm font-semibold text-foreground">All fields marked with * are required. Your profile must be complete before saving. Keep your profile up to date for the best results.
+            <span className="text-destructive">*</span> are required. Your profile must be complete before saving.
           </p>
         </div>
 
