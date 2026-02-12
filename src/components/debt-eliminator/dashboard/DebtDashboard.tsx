@@ -220,6 +220,8 @@ export function DebtDashboard({
           monthlySurplus={monthlySurplus}
           onLogPayment={() => setPaymentDebt(focusDebt)}
           onChangeFocus={() => setShowChangeFocusDialog(true)}
+          onEdit={() => setEditingDebt(focusDebt)}
+          onDelete={() => handleDeleteDebt(focusDebt.id)}
         />
       )}
 
