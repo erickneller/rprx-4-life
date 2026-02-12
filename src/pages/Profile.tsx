@@ -60,9 +60,9 @@ export default function Profile() {
         profileType: profile.profile_type || '',
         numChildren: profile.num_children || 0,
         childrenAges: profile.children_ages || [],
-        financialGoals: profile.financial_goals || [],
+        financialGoals: profile.financial_goals || []
       };
-      
+
       setFullName(loadedValues.fullName);
       setPhone(loadedValues.phone);
       setCompany(loadedValues.company);
@@ -75,14 +75,14 @@ export default function Profile() {
       setNumChildren(loadedValues.numChildren);
       setChildrenAges(loadedValues.childrenAges);
       setFinancialGoals(loadedValues.financialGoals);
-      
+
       setOriginalValues(loadedValues);
     }
   }, [profile]);
 
   // When numChildren changes, adjust the ages array
   useEffect(() => {
-    setChildrenAges(prev => {
+    setChildrenAges((prev) => {
       if (numChildren > prev.length) {
         // Add empty slots for new children
         return [...prev, ...Array(numChildren - prev.length).fill(0)];
@@ -96,7 +96,7 @@ export default function Profile() {
   // Compute if form is dirty
   const isDirty = useMemo(() => {
     if (!originalValues) return false;
-    
+
     const currentValues = {
       fullName,
       phone,
@@ -109,7 +109,7 @@ export default function Profile() {
       profileType,
       numChildren,
       childrenAges,
-      financialGoals,
+      financialGoals
     };
 
     return (
@@ -124,32 +124,32 @@ export default function Profile() {
       currentValues.profileType !== originalValues.profileType ||
       currentValues.numChildren !== originalValues.numChildren ||
       JSON.stringify(currentValues.childrenAges) !== JSON.stringify(originalValues.childrenAges) ||
-      JSON.stringify(currentValues.financialGoals) !== JSON.stringify(originalValues.financialGoals)
-    );
+      JSON.stringify(currentValues.financialGoals) !== JSON.stringify(originalValues.financialGoals));
+
   }, [
-    originalValues,
-    fullName,
-    phone,
-    company,
-    monthlyIncome,
-    monthlyDebtPayments,
-    monthlyHousing,
-    monthlyInsurance,
-    monthlyLivingExpenses,
-    profileType,
-    numChildren,
-    childrenAges,
-    financialGoals,
-  ]);
+  originalValues,
+  fullName,
+  phone,
+  company,
+  monthlyIncome,
+  monthlyDebtPayments,
+  monthlyHousing,
+  monthlyInsurance,
+  monthlyLivingExpenses,
+  profileType,
+  numChildren,
+  childrenAges,
+  financialGoals]
+  );
 
   const getInitials = () => {
     if (fullName) {
-      return fullName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
+      return fullName.
+      split(' ').
+      map((n) => n[0]).
+      join('').
+      toUpperCase().
+      slice(0, 2);
     }
     if (user?.email) {
       return user.email[0].toUpperCase();
@@ -165,7 +165,7 @@ export default function Profile() {
       toast({
         title: 'Invalid file type',
         description: 'Please select an image file.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       return;
     }
@@ -174,7 +174,7 @@ export default function Profile() {
       toast({
         title: 'File too large',
         description: 'Please select an image under 5MB.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       return;
     }
@@ -188,14 +188,14 @@ export default function Profile() {
       await uploadAvatar(file);
       toast({
         title: 'Avatar updated',
-        description: 'Your profile picture has been updated.',
+        description: 'Your profile picture has been updated.'
       });
     } catch (error) {
       console.error('Upload error:', error);
       toast({
         title: 'Upload failed',
         description: 'Failed to upload avatar. Please try again.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       setPreviewUrl(null);
     } finally {
@@ -204,10 +204,10 @@ export default function Profile() {
   };
 
   const handleGoalToggle = (goalValue: string) => {
-    setFinancialGoals(prev => 
-      prev.includes(goalValue)
-        ? prev.filter(g => g !== goalValue)
-        : [...prev, goalValue]
+    setFinancialGoals((prev) =>
+    prev.includes(goalValue) ?
+    prev.filter((g) => g !== goalValue) :
+    [...prev, goalValue]
     );
   };
 
@@ -233,9 +233,9 @@ export default function Profile() {
         profile_type: profileType || null,
         num_children: numChildren || null,
         children_ages: numChildren > 0 ? childrenAges.slice(0, numChildren) : null,
-        financial_goals: financialGoals.length > 0 ? financialGoals : null,
+        financial_goals: financialGoals.length > 0 ? financialGoals : null
       });
-      
+
       // Update original values to reflect saved state
       setOriginalValues({
         fullName,
@@ -249,39 +249,39 @@ export default function Profile() {
         profileType,
         numChildren,
         childrenAges,
-        financialGoals,
+        financialGoals
       });
-      
+
       toast({
         title: 'Profile updated',
-        description: 'Your profile has been saved.',
+        description: 'Your profile has been saved.'
       });
     } catch (error) {
       console.error('Save error:', error);
       toast({
         title: 'Save failed',
         description: 'Failed to save profile. Please try again.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
       throw error; // Re-throw to let the dialog know save failed
     } finally {
       setIsSaving(false);
     }
   }, [
-    updateProfile,
-    fullName,
-    phone,
-    company,
-    monthlyIncome,
-    monthlyDebtPayments,
-    monthlyHousing,
-    monthlyInsurance,
-    monthlyLivingExpenses,
-    profileType,
-    numChildren,
-    childrenAges,
-    financialGoals,
-  ]);
+  updateProfile,
+  fullName,
+  phone,
+  company,
+  monthlyIncome,
+  monthlyDebtPayments,
+  monthlyHousing,
+  monthlyInsurance,
+  monthlyLivingExpenses,
+  profileType,
+  numChildren,
+  childrenAges,
+  financialGoals]
+  );
 
   // Validation: all fields required
   const validationErrors = useMemo(() => {
@@ -308,10 +308,10 @@ export default function Profile() {
     attemptNavigation,
     handleSave: handleDialogSave,
     handleDiscard,
-    handleCancel,
+    handleCancel
   } = useUnsavedChangesWarning({
     isDirty,
-    onSave: handleSave,
+    onSave: handleSave
   });
 
   const displayUrl = previewUrl || profile?.avatar_url;
@@ -337,21 +337,21 @@ export default function Profile() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="absolute bottom-0 right-0 rounded-full bg-accent p-2 text-accent-foreground shadow-md hover:bg-accent/90 transition-colors disabled:opacity-50"
-                >
-                  {isUploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Camera className="h-4 w-4" />
-                  )}
+                  className="absolute bottom-0 right-0 rounded-full bg-accent p-2 text-accent-foreground shadow-md hover:bg-accent/90 transition-colors disabled:opacity-50">
+
+                  {isUploading ?
+                  <Loader2 className="h-4 w-4 animate-spin" /> :
+
+                  <Camera className="h-4 w-4" />
+                  }
                 </button>
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={handleFileSelect}
-                  className="hidden"
-                />
+                  className="hidden" />
+
               </div>
               <p className="text-sm text-muted-foreground">Click the camera icon to upload a photo</p>
             </div>
@@ -361,8 +361,8 @@ export default function Profile() {
         {/* Required fields note */}
         <div className="flex items-start gap-2 rounded-lg border-2 border-destructive/40 bg-destructive/5 p-4">
           <Info className="h-5 w-5 mt-0.5 shrink-0 text-destructive" />
-          <p className="text-sm font-semibold text-foreground">
-            All fields marked with <span className="text-destructive">*</span> are required. Your profile must be complete before saving.
+          <p className="text-sm font-semibold text-foreground">All fields marked with * are required. Your profile must be complete before saving.
+Keep your profile up to date for the best results.<span className="text-destructive">*</span> are required. Your profile must be complete before saving.
           </p>
         </div>
 
@@ -379,8 +379,8 @@ export default function Profile() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Enter your name"
-                className={validationErrors.fullName ? 'border-destructive' : ''}
-              />
+                className={validationErrors.fullName ? 'border-destructive' : ''} />
+
               {validationErrors.fullName && <p className="text-xs text-destructive">{validationErrors.fullName}</p>}
             </div>
 
@@ -390,8 +390,8 @@ export default function Profile() {
                 id="email"
                 value={user?.email || ''}
                 disabled
-                className="bg-muted"
-              />
+                className="bg-muted" />
+
             </div>
 
             <div className="space-y-2">
@@ -401,8 +401,8 @@ export default function Profile() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter your phone number"
-                className={validationErrors.phone ? 'border-destructive' : ''}
-              />
+                className={validationErrors.phone ? 'border-destructive' : ''} />
+
               {validationErrors.phone && <p className="text-xs text-destructive">{validationErrors.phone}</p>}
             </div>
 
@@ -428,11 +428,11 @@ export default function Profile() {
                   <SelectValue placeholder="Select which one BEST applies to you..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {PROFILE_TYPES.map(type => (
-                    <SelectItem key={type.value} value={type.value}>
+                  {PROFILE_TYPES.map((type) =>
+                  <SelectItem key={type.value} value={type.value}>
                       {type.label}
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
               {validationErrors.profileType && <p className="text-xs text-destructive">{validationErrors.profileType}</p>}
@@ -449,58 +449,58 @@ export default function Profile() {
                 value={numChildren || ''}
                 onChange={(e) => setNumChildren(parseInt(e.target.value) || 0)}
                 placeholder="0"
-                className="w-24"
-              />
+                className="w-24" />
+
             </div>
 
             {/* Dynamic Children Ages */}
-            {numChildren > 0 && (
-              <div className="space-y-3">
+            {numChildren > 0 &&
+            <div className="space-y-3">
                 <Label>Children's Ages</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {Array.from({ length: numChildren }).map((_, index) => (
-                    <div key={index} className="space-y-1">
+                  {Array.from({ length: numChildren }).map((_, index) =>
+                <div key={index} className="space-y-1">
                       <Label htmlFor={`childAge${index}`} className="text-sm text-muted-foreground">
                         Child {index + 1}
                       </Label>
                       <div className="flex items-center gap-2">
                         <Input
-                          id={`childAge${index}`}
-                          type="number"
-                          min={0}
-                          max={25}
-                          value={childrenAges[index] || ''}
-                          onChange={(e) => handleChildAgeChange(index, e.target.value)}
-                          placeholder="Age"
-                          className="w-20"
-                        />
+                      id={`childAge${index}`}
+                      type="number"
+                      min={0}
+                      max={25}
+                      value={childrenAges[index] || ''}
+                      onChange={(e) => handleChildAgeChange(index, e.target.value)}
+                      placeholder="Age"
+                      className="w-20" />
+
                         <span className="text-sm text-muted-foreground">years</span>
                       </div>
                     </div>
-                  ))}
+                )}
                 </div>
               </div>
-            )}
+            }
 
             {/* Financial Goals */}
             <div className="space-y-3">
               <Label>Financial Goals <span className="text-destructive">*</span> <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
               <div className="space-y-3">
-                {FINANCIAL_GOALS.map(goal => (
-                  <div key={goal.value} className="flex items-center space-x-3">
+                {FINANCIAL_GOALS.map((goal) =>
+                <div key={goal.value} className="flex items-center space-x-3">
                     <Checkbox
-                      id={goal.value}
-                      checked={financialGoals.includes(goal.value)}
-                      onCheckedChange={() => handleGoalToggle(goal.value)}
-                    />
-                    <Label 
-                      htmlFor={goal.value} 
-                      className="text-sm font-normal cursor-pointer"
-                    >
+                    id={goal.value}
+                    checked={financialGoals.includes(goal.value)}
+                    onCheckedChange={() => handleGoalToggle(goal.value)} />
+
+                    <Label
+                    htmlFor={goal.value}
+                    className="text-sm font-normal cursor-pointer">
+
                       {goal.label}
                     </Label>
                   </div>
-                ))}
+                )}
               </div>
               {validationErrors.financialGoals && <p className="text-xs text-destructive">{validationErrors.financialGoals}</p>}
             </div>
@@ -524,20 +524,20 @@ export default function Profile() {
               monthlyInsurance={monthlyInsurance}
               setMonthlyInsurance={setMonthlyInsurance}
               monthlyLivingExpenses={monthlyLivingExpenses}
-              setMonthlyLivingExpenses={setMonthlyLivingExpenses}
-            />
+              setMonthlyLivingExpenses={setMonthlyLivingExpenses} />
+
           </CardContent>
         </Card>
 
         {/* Required fields reminder */}
-        {!isValid && isDirty && (
-          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+        {!isValid && isDirty &&
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
             <Info className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
             <p className="text-sm text-destructive">
               Please complete all required fields before saving your profile.
             </p>
           </div>
-        )}
+        }
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 pb-8">
@@ -547,16 +547,16 @@ export default function Profile() {
           <Button
             onClick={handleSave}
             disabled={isSaving || !isDirty || !isValid}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground"
-          >
-            {isSaving ? (
-              <>
+            className="bg-accent hover:bg-accent/90 text-accent-foreground">
+
+            {isSaving ?
+            <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
-              </>
-            ) : (
-              'Save Changes'
-            )}
+              </> :
+
+            'Save Changes'
+            }
           </Button>
         </div>
       </div>
@@ -567,8 +567,8 @@ export default function Profile() {
         isSaving={isDialogSaving}
         onSave={handleDialogSave}
         onDiscard={handleDiscard}
-        onCancel={handleCancel}
-      />
-    </AuthenticatedLayout>
-  );
+        onCancel={handleCancel} />
+
+    </AuthenticatedLayout>);
+
 }
