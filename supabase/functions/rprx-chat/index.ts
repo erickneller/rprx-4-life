@@ -1603,6 +1603,21 @@ function findRelevantStrategies(userMessage: string, conversationHistory: string
 
 // Detect if we're still in intake phase (gathering user info)
 function isIntakePhase(messages: Array<{role: string, content: string}>): boolean {
+  // Check if first user message is an auto-generated prompt (from assessment results)
+  // These already contain full profile + assessment data and need strategy context immediately
+  const firstUserMsg = messages.find(m => m.role === 'user');
+  if (firstUserMsg) {
+    const content = firstUserMsg.content;
+    if (
+      content.includes('## My Assessment Results') ||
+      content.includes('## My Profile') ||
+      content.includes('top 3 financial strategies') ||
+      content.includes('step-by-step implementation plans')
+    ) {
+      return false; // Skip intake — auto-mode or detailed plan request
+    }
+  }
+
   // If less than 6 exchanges, still in intake
   if (messages.length < 6) return true;
   
@@ -1986,7 +2001,7 @@ Remember: Only recommend strategies from the list above. If the user asks about 
           model: 'gpt-4o-mini',
           messages: openaiMessages,
           temperature: 0.7,
-          max_tokens: 1500, // Reduced from 2000
+          max_tokens: 2500,
         }),
       });
 
