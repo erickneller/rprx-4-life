@@ -316,6 +316,7 @@ export type Database = {
           content: Json
           created_at: string | null
           id: string
+          is_focus: boolean
           notes: string | null
           status: Database["public"]["Enums"]["plan_status"]
           strategy_id: string | null
@@ -328,6 +329,7 @@ export type Database = {
           content?: Json
           created_at?: string | null
           id?: string
+          is_focus?: boolean
           notes?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
           strategy_id?: string | null
@@ -340,6 +342,7 @@ export type Database = {
           content?: Json
           created_at?: string | null
           id?: string
+          is_focus?: boolean
           notes?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
           strategy_id?: string | null

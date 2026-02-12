@@ -24,6 +24,7 @@ export interface SavedPlan {
   content: PlanContent;
   status: 'not_started' | 'in_progress' | 'completed';
   notes: string | null;
+  is_focus: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +43,7 @@ export interface UpdatePlanInput {
   status?: 'not_started' | 'in_progress' | 'completed';
   notes?: string | null;
   content?: PlanContent;
+  is_focus?: boolean;
 }
 
 function parsePlanContent(json: Json): PlanContent {
@@ -71,6 +73,7 @@ function toSavedPlan(row: {
   content: Json;
   status: 'not_started' | 'in_progress' | 'completed';
   notes: string | null;
+  is_focus: boolean;
   created_at: string;
   updated_at: string;
 }): SavedPlan {
@@ -179,6 +182,26 @@ export function useUpdatePlan() {
       queryClient.invalidateQueries({ queryKey: ['plans'] });
       queryClient.invalidateQueries({ queryKey: ['plan', data.id] });
     },
+  });
+}
+
+export function useFocusPlan() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['plans', user?.id, 'focus'],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('saved_plans')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_focus', true)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? toSavedPlan(data) : null;
+    },
+    enabled: !!user,
   });
 }
 
