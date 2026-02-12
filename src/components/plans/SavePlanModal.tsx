@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useCreatePlan, type CreatePlanInput, type PlanContent } from '@/hooks/usePlans';
-import { Loader2 } from 'lucide-react';
+import { useCreatePlan, usePlans, type CreatePlanInput, type PlanContent } from '@/hooks/usePlans';
+import { Loader2, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface SavePlanModalProps {
@@ -22,10 +22,15 @@ export function SavePlanModal({ open, onOpenChange, initialData }: SavePlanModal
   const [title, setTitle] = useState(initialData.strategyName);
   const [notes, setNotes] = useState('');
   const createPlan = useCreatePlan();
+  const { data: existingPlans = [] } = usePlans();
   const { toast } = useToast();
 
+  // Free tier: max 1 plan
+  const isFree = true; // swap to subscription check later
+  const atLimit = isFree && existingPlans.length >= 1;
+
   const handleSave = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || atLimit) return;
 
     try {
       await createPlan.mutateAsync({
@@ -63,44 +68,58 @@ export function SavePlanModal({ open, onOpenChange, initialData }: SavePlanModal
           </DialogDescription>
         </DialogHeader>
         
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Plan Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter a title for your plan"
-            />
+        {atLimit ? (
+          <div className="py-6 text-center space-y-3">
+            <Lock className="h-10 w-10 mx-auto text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Free accounts are limited to 1 active plan. Delete your current plan or upgrade to save more.
+            </p>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Got it
+            </Button>
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="notes">Personal Notes (optional)</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any personal notes or reminders..."
-              rows={3}
-            />
-          </div>
-          
-          {initialData.strategyId && (
-            <div className="text-sm text-muted-foreground">
-              Strategy ID: {initialData.strategyId}
+        ) : (
+          <>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Plan Title</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter a title for your plan"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="notes">Personal Notes (optional)</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add any personal notes or reminders..."
+                  rows={3}
+                />
+              </div>
+              
+              {initialData.strategyId && (
+                <div className="text-sm text-muted-foreground">
+                  Strategy ID: {initialData.strategyId}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={!title.trim() || createPlan.isPending} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            {createPlan.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save Plan
-          </Button>
-        </DialogFooter>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={!title.trim() || createPlan.isPending} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                {createPlan.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Plan
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

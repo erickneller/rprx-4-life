@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
 import { useDebtJourney } from '@/hooks/useDebtJourney';
-import { usePlans } from '@/hooks/usePlans';
+import { usePlans, useFocusPlan } from '@/hooks/usePlans';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
 import { AssessmentHistory } from './AssessmentHistory';
 import { CurrentFocusCard } from './CurrentFocusCard';
@@ -17,6 +17,7 @@ export function DashboardContent() {
   const { profile } = useProfile();
   const { journey, debts, hasActiveJourney } = useDebtJourney();
   const { data: plans = [] } = usePlans();
+  const { data: focusPlan } = useFocusPlan();
 
   const isFirstTime = assessments.length === 0;
   const hasNoHistory = assessments.length === 0 && plans.length === 0;
@@ -55,7 +56,15 @@ export function DashboardContent() {
     return Math.round((paid / focusDebt.original_balance) * 100);
   }, [focusDebt]);
 
-  const activeFocus = !hasNoHistory && hasActiveJourney && !!focusDebt;
+  const activeDebtFocus = !hasNoHistory && hasActiveJourney && !!focusDebt;
+
+  // Focus plan progress
+  const focusPlanProgress = useMemo(() => {
+    if (!focusPlan) return 0;
+    const total = focusPlan.content.steps?.length || 0;
+    const completed = focusPlan.content.completedSteps?.length || 0;
+    return total > 0 ? Math.round((completed / total) * 100) : 0;
+  }, [focusPlan]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
@@ -69,7 +78,17 @@ export function DashboardContent() {
             <StartAssessmentCTA isFirstTime />
           ) : (
             <>
-              {activeFocus && focusDebt && (
+              {/* Plan focus takes priority */}
+              {focusPlan && (
+                <CurrentFocusCard
+                  focusName={focusPlan.title}
+                  description={`Strategy: ${focusPlan.strategy_name}`}
+                  progressPercent={focusPlanProgress}
+                  onContinue={() => navigate(`/plans/${focusPlan.id}`)}
+                />
+              )}
+              {/* Debt focus as secondary */}
+              {!focusPlan && activeDebtFocus && focusDebt && (
                 <CurrentFocusCard
                   focusName={focusDebt.name}
                   description={`Pay down your ${focusDebt.debt_type.replace('_', ' ')} to free up monthly cash flow.`}
@@ -78,7 +97,7 @@ export function DashboardContent() {
                 />
               )}
               <CashFlowStatusCard surplus={surplus} status={status} />
-              {!activeFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
+              {!focusPlan && !activeDebtFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
               <AssessmentHistory />
             </>
           )}

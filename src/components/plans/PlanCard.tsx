@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Clock, FileText } from 'lucide-react';
-import type { SavedPlan } from '@/hooks/usePlans';
+import { Calendar, Clock, FileText, Star } from 'lucide-react';
+import { useUpdatePlan, type SavedPlan } from '@/hooks/usePlans';
+import { toast } from 'sonner';
 
 interface PlanCardProps {
   plan: SavedPlan;
@@ -14,6 +16,7 @@ interface PlanCardProps {
 
 export function PlanCard({ plan, selectionMode, isSelected, onToggleSelect }: PlanCardProps) {
   const navigate = useNavigate();
+  const updatePlan = useUpdatePlan();
   const content = plan.content;
   
   const completedSteps = content.completedSteps?.length || 0;
@@ -32,9 +35,21 @@ export function PlanCard({ plan, selectionMode, isSelected, onToggleSelect }: Pl
     completed: 'Completed',
   };
 
+  const handleSetFocus = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    updatePlan.mutate(
+      { id: plan.id, is_focus: !plan.is_focus },
+      {
+        onSuccess: () => {
+          toast.success(plan.is_focus ? 'Focus removed' : 'Set as current focus');
+        },
+      }
+    );
+  };
+
   return (
     <Card 
-      className={`cursor-pointer transition-all hover:shadow-md hover:border-primary/50 ${isSelected ? 'border-success ring-1 ring-success' : ''}`}
+      className={`cursor-pointer transition-all hover:shadow-md hover:border-primary/50 ${isSelected ? 'border-success ring-1 ring-success' : ''} ${plan.is_focus ? 'border-primary ring-1 ring-primary' : ''}`}
       onClick={() => selectionMode && onToggleSelect ? onToggleSelect(plan.id) : navigate(`/plans/${plan.id}`)}
     >
       <CardHeader className="pb-3">
@@ -51,14 +66,26 @@ export function PlanCard({ plan, selectionMode, isSelected, onToggleSelect }: Pl
             <CardTitle className="text-lg truncate">{plan.title}</CardTitle>
             <CardDescription className="truncate">{plan.strategy_name}</CardDescription>
           </div>
-          <Badge className={statusColors[plan.status]} variant="secondary">
-            {statusLabels[plan.status]}
-          </Badge>
+          <div className="flex items-center gap-1.5">
+            {!selectionMode && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 ${plan.is_focus ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                onClick={handleSetFocus}
+                title={plan.is_focus ? 'Remove focus' : 'Set as focus'}
+              >
+                <Star className={`h-4 w-4 ${plan.is_focus ? 'fill-primary' : ''}`} />
+              </Button>
+            )}
+            <Badge className={statusColors[plan.status]} variant="secondary">
+              {statusLabels[plan.status]}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {/* Progress bar */}
           {totalSteps > 0 && (
             <div className="space-y-1">
               <div className="flex justify-between text-xs text-muted-foreground">
@@ -74,7 +101,6 @@ export function PlanCard({ plan, selectionMode, isSelected, onToggleSelect }: Pl
             </div>
           )}
           
-          {/* Metadata */}
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             {plan.strategy_id && (
               <div className="flex items-center gap-1">
@@ -89,7 +115,6 @@ export function PlanCard({ plan, selectionMode, isSelected, onToggleSelect }: Pl
             )}
           </div>
           
-          {/* Dates */}
           <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
             <div className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />

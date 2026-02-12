@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, User, Search, LucideIcon, ClipboardList } from 'lucide-react';
 import { AssistantAvatar } from './AssistantAvatar';
 import { Button } from '@/components/ui/button';
-import { useCreatePlan } from '@/hooks/usePlans';
+import { useCreatePlan, usePlans } from '@/hooks/usePlans';
 import { parseStrategyFromMessage } from '@/lib/strategyParser';
 import { toast } from 'sonner';
 
@@ -114,6 +114,7 @@ export function ChatThread({ conversationId, onSendMessage, isSending, autoMode,
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const createPlan = useCreatePlan();
+  const { data: existingPlans = [] } = usePlans();
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [autoFollowUpSent, setAutoFollowUpSent] = useState(false);
 
@@ -233,6 +234,13 @@ export function ChatThread({ conversationId, onSendMessage, isSending, autoMode,
             const planContent = parsed
               ? { title: getAutoPlanTitle(autoHorseman), strategy_name: parsed.strategyName, strategy_id: parsed.strategyId, content: parsed.content }
               : buildFallbackPlan(lastAssistant.content, autoHorseman);
+
+            // Free tier guard
+            const isFree = true;
+            if (isFree && existingPlans.length >= 1) {
+              toast.error('Free accounts are limited to 1 plan. Delete your current plan or upgrade.');
+              return;
+            }
 
             setIsCreatingPlan(true);
             try {
