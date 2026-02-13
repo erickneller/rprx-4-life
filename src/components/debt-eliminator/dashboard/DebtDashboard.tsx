@@ -111,7 +111,7 @@ export function DebtDashboard({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
             Your Debt Freedom Journey
@@ -123,7 +123,7 @@ export function DebtDashboard({
           </p>
         </div>
         <Button
-          className="gap-2 bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="gap-2 bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto"
           onClick={() => setShowAddDialog(true)}
         >
           <Plus className="h-4 w-4" />

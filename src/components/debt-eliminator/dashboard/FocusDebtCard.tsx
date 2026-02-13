@@ -90,7 +90,7 @@ export function FocusDebtCard({
       <CardContent className="space-y-4">
         {/* Debt Info */}
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
             <h3 className="text-xl font-bold text-foreground">
               {focusDebt.name}
             </h3>

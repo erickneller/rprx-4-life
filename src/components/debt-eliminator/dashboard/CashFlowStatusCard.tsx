@@ -17,7 +17,7 @@ export function CashFlowStatusCard({ surplus, status }: CashFlowStatusCardProps)
     return (
       <Card className="border-dashed border-2 border-muted-foreground/30 bg-muted/30">
         <CardContent className="pt-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
@@ -27,7 +27,7 @@ export function CashFlowStatusCard({ surplus, status }: CashFlowStatusCardProps)
                 </p>
               </div>
             </div>
-            <Button asChild variant="outline" size="sm" className="shrink-0">
+            <Button asChild variant="outline" size="sm" className="shrink-0 w-full sm:w-auto">
               <Link to="/profile">
                 Go to Profile
                 <ArrowRight className="h-4 w-4 ml-1" />
@@ -72,7 +72,7 @@ export function CashFlowStatusCard({ surplus, status }: CashFlowStatusCardProps)
   return (
     <Card className={cn("border", colors.border, colors.bg)}>
       <CardContent className="pt-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={cn("p-2 rounded-full", colors.bg)}>
               <Icon className={cn("h-5 w-5", colors.icon)} />
@@ -89,7 +89,7 @@ export function CashFlowStatusCard({ surplus, status }: CashFlowStatusCardProps)
               </p>
             </div>
           </div>
-          <Button asChild variant="ghost" size="sm" className="shrink-0">
+          <Button asChild variant="ghost" size="sm" className="shrink-0 w-full sm:w-auto">
             <Link to="/profile">
               Update in Profile
               <ArrowRight className="h-4 w-4 ml-1" />
