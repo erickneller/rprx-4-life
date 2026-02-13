@@ -37,7 +37,7 @@ export function CurrentFocusCard({
           <Progress value={progressPercent} className="h-2" />
         </div>
 
-        <Button className="mt-2" onClick={onContinue}>
+        <Button className="mt-2 bg-green-600 hover:bg-green-700 text-white" onClick={onContinue}>
           Continue Focus
           <ArrowRight className="h-4 w-4 ml-1" />
         </Button>
