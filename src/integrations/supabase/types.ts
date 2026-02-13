@@ -268,6 +268,7 @@ export type Database = {
           monthly_income: number | null
           monthly_insurance: number | null
           monthly_living_expenses: number | null
+          motivation_text: string | null
           num_children: number | null
           phone: string | null
           profile_type: string | null
@@ -286,6 +287,7 @@ export type Database = {
           monthly_income?: number | null
           monthly_insurance?: number | null
           monthly_living_expenses?: number | null
+          motivation_text?: string | null
           num_children?: number | null
           phone?: string | null
           profile_type?: string | null
@@ -304,6 +306,7 @@ export type Database = {
           monthly_income?: number | null
           monthly_insurance?: number | null
           monthly_living_expenses?: number | null
+          motivation_text?: string | null
           num_children?: number | null
           phone?: string | null
           profile_type?: string | null

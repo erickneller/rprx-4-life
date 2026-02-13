@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN motivation_text text;

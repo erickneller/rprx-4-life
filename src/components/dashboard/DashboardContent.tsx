@@ -15,8 +15,8 @@ import { Loader2 } from 'lucide-react';
 export function DashboardContent() {
   const navigate = useNavigate();
   const { data: assessments = [], isLoading } = useAssessmentHistory();
-  const { profile } = useProfile();
-  const { journey, debts, hasActiveJourney, updateJourney } = useDebtJourney();
+  const { profile, updateProfile } = useProfile();
+  const { journey, debts, hasActiveJourney } = useDebtJourney();
   const { data: plans = [] } = usePlans();
   const { data: focusPlan } = useFocusPlan();
 
@@ -70,7 +70,7 @@ export function DashboardContent() {
   }, [focusPlan]);
 
   const handleSaveMotivation = (text: string) => {
-    updateJourney.mutate({ dream_text: text }, {
+    updateProfile.mutate({ motivation_text: text }, {
       onSuccess: () => setShowEditMotivation(false),
     });
   };
@@ -88,12 +88,10 @@ export function DashboardContent() {
           ) : (
             <>
               {/* Motivation at the very top — drives everything */}
-              {hasActiveJourney && journey && (
-                <MotivationCard
-                  motivation={journey.dream_text}
-                  onEdit={() => setShowEditMotivation(true)}
-                />
-              )}
+              <MotivationCard
+                motivation={profile?.motivation_text ?? null}
+                onEdit={() => setShowEditMotivation(true)}
+              />
 
               {/* Plan focus takes priority */}
               {focusPlan && (
@@ -118,16 +116,14 @@ export function DashboardContent() {
             </>
           )}
 
-          {/* Edit motivation dialog */}
-          {hasActiveJourney && journey && (
-            <EditMotivationDialog
-              open={showEditMotivation}
-              onOpenChange={setShowEditMotivation}
-              currentMotivation={journey.dream_text || ''}
-              onSave={handleSaveMotivation}
-              isLoading={updateJourney.isPending}
-            />
-          )}
+          {/* Edit motivation dialog — always available */}
+          <EditMotivationDialog
+            open={showEditMotivation}
+            onOpenChange={setShowEditMotivation}
+            currentMotivation={profile?.motivation_text || ''}
+            onSave={handleSaveMotivation}
+            isLoading={updateProfile.isPending}
+          />
         </>
       )}
     </div>
