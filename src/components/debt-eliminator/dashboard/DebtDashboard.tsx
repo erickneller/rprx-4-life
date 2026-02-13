@@ -189,6 +189,7 @@ export function DebtDashboard({
         motivation={journey.dream_text}
         images={[]}
         onEdit={() => setShowEditMotivation(true)}
+        onDelete={() => updateJourney.mutate({ dream_text: null })}
       />
 
       {/* Journey progress */}
