@@ -69,8 +69,8 @@ export function DashboardContent() {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   }, [focusPlan]);
 
-  const handleSaveMotivation = (text: string) => {
-    updateProfile.mutate({ motivation_text: text }, {
+  const handleSaveMotivation = (text: string, images: string[]) => {
+    updateProfile.mutate({ motivation_text: text, motivation_images: images }, {
       onSuccess: () => setShowEditMotivation(false),
     });
   };
@@ -90,6 +90,7 @@ export function DashboardContent() {
               {/* Motivation at the very top — drives everything */}
               <MotivationCard
                 motivation={profile?.motivation_text ?? null}
+                images={profile?.motivation_images ?? []}
                 onEdit={() => setShowEditMotivation(true)}
               />
 
@@ -121,6 +122,7 @@ export function DashboardContent() {
             open={showEditMotivation}
             onOpenChange={setShowEditMotivation}
             currentMotivation={profile?.motivation_text || ''}
+            currentImages={profile?.motivation_images ?? []}
             onSave={handleSaveMotivation}
             isLoading={updateProfile.isPending}
           />
