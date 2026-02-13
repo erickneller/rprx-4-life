@@ -66,7 +66,7 @@ export function AppSidebar() {
         {sections.map((section, idx) => (
           <SidebarGroup key={idx}>
             {section.label && (
-              <SidebarGroupLabel className={isCollapsed ? "sr-only" : ""}>
+              <SidebarGroupLabel className={isCollapsed ? "sr-only" : "text-sm font-bold text-foreground"}>
                 {section.label}
               </SidebarGroupLabel>
             )}
