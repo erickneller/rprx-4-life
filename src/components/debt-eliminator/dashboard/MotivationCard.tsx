@@ -20,7 +20,7 @@ export function MotivationCard({ motivation, images, onEdit }: MotivationCardPro
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2 text-muted-foreground mb-2">
               <Sparkles className="h-5 w-5" />
-              <span className="font-medium text-foreground">Your Motivation</span>
+              <span className="font-medium text-foreground">My Motivation</span>
             </div>
           </div>
           <p className="text-muted-foreground mb-4">
@@ -46,7 +46,7 @@ export function MotivationCard({ motivation, images, onEdit }: MotivationCardPro
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2 text-accent mb-3">
               <Sparkles className="h-5 w-5" />
-              <span className="font-medium text-foreground">Your Motivation</span>
+              <span className="font-medium text-foreground">My Motivation</span>
             </div>
             <Button
               variant="ghost"
