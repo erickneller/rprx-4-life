@@ -20,7 +20,7 @@ export function CurrentFocusCard({
     <Card className="border-2 border-primary/30 bg-card shadow-md">
       <CardHeader className="pb-2 px-8 pt-8">
         <CardTitle className="text-lg text-muted-foreground font-medium tracking-wide uppercase">
-          Your Current Focus
+          My Current Focus
         </CardTitle>
       </CardHeader>
       <CardContent className="px-8 pb-8 space-y-4">
