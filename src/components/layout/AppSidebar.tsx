@@ -51,7 +51,6 @@ const sections: { label: string | null; items: NavItem[] }[] = [
 
 const navItems = [
   { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare },
-  { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare },
   { title: "My Plans", url: "/plans", icon: FileText },
   { title: "Profile", url: "/profile", icon: User },
 ];
