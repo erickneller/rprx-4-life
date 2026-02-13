@@ -19,7 +19,7 @@ export function MotivationCard({ motivation, onEdit }: MotivationCardProps) {
             </div>
           </div>
           <p className="text-muted-foreground mb-4">
-            What's driving you to become debt-free?
+            What's driving you? How will completing this plan help you and those closest to you?
           </p>
           <Button
             variant="outline"
