@@ -53,7 +53,7 @@ const navItems = [
   { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare },
   { title: "My Assessments", url: "/assessments", icon: ClipboardList },
   { title: "My Plans", url: "/plans", icon: FileText },
-  { title: "Profile", url: "/profile", icon: User },
+  { title: "My Profile", url: "/profile", icon: User },
 ];
 
 export function AppSidebar() {
