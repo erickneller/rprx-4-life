@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, LucideIcon } from "lucide-react";
+import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, LucideIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 
@@ -51,6 +51,7 @@ const sections: { label: string | null; items: NavItem[] }[] = [
 
 const navItems = [
   { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare },
+  { title: "My Assessments", url: "/assessments", icon: ClipboardList },
   { title: "My Plans", url: "/plans", icon: FileText },
   { title: "Profile", url: "/profile", icon: User },
 ];
