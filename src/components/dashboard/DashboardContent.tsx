@@ -1,13 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
 import { useDebtJourney } from '@/hooks/useDebtJourney';
 import { usePlans, useFocusPlan } from '@/hooks/usePlans';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
-
 import { CurrentFocusCard } from './CurrentFocusCard';
 import { CashFlowStatusCard } from '@/components/debt-eliminator/dashboard/CashFlowStatusCard';
+import { MotivationCard } from '@/components/debt-eliminator/dashboard/MotivationCard';
+import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/EditMotivationDialog';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import { Loader2 } from 'lucide-react';
 
@@ -15,9 +16,11 @@ export function DashboardContent() {
   const navigate = useNavigate();
   const { data: assessments = [], isLoading } = useAssessmentHistory();
   const { profile } = useProfile();
-  const { journey, debts, hasActiveJourney } = useDebtJourney();
+  const { journey, debts, hasActiveJourney, updateJourney } = useDebtJourney();
   const { data: plans = [] } = usePlans();
   const { data: focusPlan } = useFocusPlan();
+
+  const [showEditMotivation, setShowEditMotivation] = useState(false);
 
   const isFirstTime = assessments.length === 0;
   const hasNoHistory = assessments.length === 0 && plans.length === 0;
@@ -66,6 +69,12 @@ export function DashboardContent() {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   }, [focusPlan]);
 
+  const handleSaveMotivation = (text: string) => {
+    updateJourney.mutate({ dream_text: text }, {
+      onSuccess: () => setShowEditMotivation(false),
+    });
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       {isLoading ? (
@@ -78,6 +87,14 @@ export function DashboardContent() {
             <StartAssessmentCTA isFirstTime />
           ) : (
             <>
+              {/* Motivation at the very top — drives everything */}
+              {hasActiveJourney && journey && (
+                <MotivationCard
+                  motivation={journey.dream_text}
+                  onEdit={() => setShowEditMotivation(true)}
+                />
+              )}
+
               {/* Plan focus takes priority */}
               {focusPlan && (
                 <CurrentFocusCard
@@ -99,6 +116,17 @@ export function DashboardContent() {
               <CashFlowStatusCard surplus={surplus} status={status} />
               {!focusPlan && !activeDebtFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
             </>
+          )}
+
+          {/* Edit motivation dialog */}
+          {hasActiveJourney && journey && (
+            <EditMotivationDialog
+              open={showEditMotivation}
+              onOpenChange={setShowEditMotivation}
+              currentMotivation={journey.dream_text || ''}
+              onSave={handleSaveMotivation}
+              isLoading={updateJourney.isPending}
+            />
           )}
         </>
       )}
