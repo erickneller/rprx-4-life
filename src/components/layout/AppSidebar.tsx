@@ -20,7 +20,7 @@ const sections = [
   },
   {
     label: "Financial Stability",
-    items: [],
+    items: [{ title: "Debt Elimination System", url: "/debt-eliminator", icon: Target }],
   },
   {
     label: "Financial Growth",
@@ -33,7 +33,7 @@ const sections = [
 ];
 
 const navItems = [
-  { title: "Debt Eliminator", url: "/debt-eliminator", icon: Target },
+  { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare },
   { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare },
   { title: "My Plans", url: "/plans", icon: FileText },
   { title: "Profile", url: "/profile", icon: User },
