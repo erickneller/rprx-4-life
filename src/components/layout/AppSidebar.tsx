@@ -75,7 +75,7 @@ export function AppSidebar() {
                 {section.items.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     {item.comingSoon ? (
-                      <SidebarMenuButton tooltip={item.title} className="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground cursor-default hover:bg-transparent">
+                      <SidebarMenuButton tooltip={item.title} className="flex items-center gap-3 rounded-md px-3 py-2 text-foreground cursor-default hover:bg-foreground hover:text-background transition-colors">
                         <item.icon className="h-5 w-5 shrink-0" />
                         <span className={isCollapsed ? "sr-only" : "text-sm"}>
                           {item.title} <span className="text-xs opacity-60">(Coming Soon)</span>
