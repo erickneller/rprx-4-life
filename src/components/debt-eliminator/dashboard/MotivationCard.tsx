@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Pencil, Plus } from "lucide-react";
+import { Sparkles, Pencil, Plus, Trash2 } from "lucide-react";
 import { ImageLightbox } from "./ImageLightbox";
 
 interface MotivationCardProps {
   motivation: string | null;
   images: string[];
   onEdit: () => void;
+  onDelete?: () => void;
 }
 
-export function MotivationCard({ motivation, images, onEdit }: MotivationCardProps) {
+export function MotivationCard({ motivation, images, onEdit, onDelete }: MotivationCardProps) {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   if (!motivation && images.length === 0) {
@@ -48,15 +49,28 @@ export function MotivationCard({ motivation, images, onEdit }: MotivationCardPro
               <Sparkles className="h-5 w-5" />
               <span className="font-medium text-foreground">My Motivation</span>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onEdit}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            >
-              <Pencil className="h-4 w-4" />
-              <span className="sr-only">Edit motivation</span>
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onEdit}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              >
+                <Pencil className="h-4 w-4" />
+                <span className="sr-only">Edit motivation</span>
+              </Button>
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onDelete}
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="sr-only">Delete motivation</span>
+                </Button>
+              )}
+            </div>
           </div>
           {motivation && (
             <p className="text-foreground italic text-lg leading-relaxed">
