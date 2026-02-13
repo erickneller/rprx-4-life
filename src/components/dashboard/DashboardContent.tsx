@@ -92,6 +92,7 @@ export function DashboardContent() {
                 motivation={profile?.motivation_text ?? null}
                 images={profile?.motivation_images ?? []}
                 onEdit={() => setShowEditMotivation(true)}
+                onDelete={() => updateProfile.mutate({ motivation_text: null, motivation_images: [] })}
               />
 
               {/* Plan focus takes priority */}
