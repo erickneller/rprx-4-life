@@ -99,7 +99,7 @@ export function DebtDashboard({
     });
   };
 
-  const handleSaveMotivation = (text: string) => {
+  const handleSaveMotivation = (text: string, _images: string[]) => {
     updateJourney.mutate({ dream_text: text }, {
       onSuccess: () => setShowEditMotivation(false),
     });
@@ -187,6 +187,7 @@ export function DebtDashboard({
       {/* Motivation Card */}
       <MotivationCard
         motivation={journey.dream_text}
+        images={[]}
         onEdit={() => setShowEditMotivation(true)}
       />
 
@@ -306,6 +307,7 @@ export function DebtDashboard({
         open={showEditMotivation}
         onOpenChange={setShowEditMotivation}
         currentMotivation={journey.dream_text || ""}
+        currentImages={[]}
         onSave={handleSaveMotivation}
         isLoading={updateJourney.isPending}
       />

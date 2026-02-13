@@ -22,6 +22,7 @@ export interface Profile {
   children_ages: number[] | null;
   financial_goals: string[] | null;
   motivation_text: string | null;
+  motivation_images: string[] | null;
 }
 
 export function useProfile() {
