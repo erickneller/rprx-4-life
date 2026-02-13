@@ -5,7 +5,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useDebtJourney } from '@/hooks/useDebtJourney';
 import { usePlans, useFocusPlan } from '@/hooks/usePlans';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
-import { AssessmentHistory } from './AssessmentHistory';
+
 import { CurrentFocusCard } from './CurrentFocusCard';
 import { CashFlowStatusCard } from '@/components/debt-eliminator/dashboard/CashFlowStatusCard';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
@@ -98,7 +98,6 @@ export function DashboardContent() {
               )}
               <CashFlowStatusCard surplus={surplus} status={status} />
               {!focusPlan && !activeDebtFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
-              <AssessmentHistory />
             </>
           )}
         </>
