@@ -19,7 +19,6 @@ import { AddDebtDialog } from "./AddDebtDialog";
 import { EditDebtDialog } from "./EditDebtDialog";
 import { LogPaymentDialog } from "./LogPaymentDialog";
 import { CashFlowStatusCard } from "./CashFlowStatusCard";
-import { MotivationCard } from "./MotivationCard";
 import { EditMotivationDialog } from "./EditMotivationDialog";
 import type { UseMutationResult } from "@tanstack/react-query";
 
@@ -52,7 +51,7 @@ export function DebtDashboard({
   const [editingDebt, setEditingDebt] = useState<UserDebt | null>(null);
   const [paymentDebt, setPaymentDebt] = useState<UserDebt | null>(null);
   const [showChangeFocusDialog, setShowChangeFocusDialog] = useState(false);
-  const [showEditMotivation, setShowEditMotivation] = useState(false);
+  
 
   // Calculate recommendation using computed surplus from profile
   const { recommendation, rankedDebts } = useMemo(() => {
@@ -99,11 +98,6 @@ export function DebtDashboard({
     });
   };
 
-  const handleSaveMotivation = (text: string, _images: string[]) => {
-    updateJourney.mutate({ dream_text: text }, {
-      onSuccess: () => setShowEditMotivation(false),
-    });
-  };
 
   // All debts paid off - celebration state
   const allPaidOff = debts.length > 0 && debts.every((d) => d.current_balance === 0);
@@ -184,13 +178,6 @@ export function DebtDashboard({
         </Card>
       </div>
 
-      {/* Motivation Card */}
-      <MotivationCard
-        motivation={journey.dream_text}
-        images={[]}
-        onEdit={() => setShowEditMotivation(true)}
-        onDelete={() => updateJourney.mutate({ dream_text: null })}
-      />
 
       {/* Journey progress */}
       <Card>
@@ -304,14 +291,6 @@ export function DebtDashboard({
         />
       )}
 
-      <EditMotivationDialog
-        open={showEditMotivation}
-        onOpenChange={setShowEditMotivation}
-        currentMotivation={journey.dream_text || ""}
-        currentImages={[]}
-        onSave={handleSaveMotivation}
-        isLoading={updateJourney.isPending}
-      />
     </div>
   );
 }
