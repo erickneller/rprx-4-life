@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, LucideIcon } from "lucide-react";
+import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, LucideIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 
@@ -22,7 +22,12 @@ const sections: { label: string | null; items: NavItem[] }[] = [
   },
   {
     label: "Financial Stability",
-    items: [{ title: "Debt Elimination System", url: "/debt-eliminator", icon: Target }],
+    items: [
+      { title: "Debt Elimination System", url: "/debt-eliminator", icon: Target },
+      { title: "Cash Flow Control System", url: "#", icon: Wallet, comingSoon: true },
+      { title: "Tax Efficiency System", url: "#", icon: Receipt, comingSoon: true },
+      { title: "Income Optimization Strategy", url: "#", icon: BadgeDollarSign, comingSoon: true },
+    ],
   },
   {
     label: "Financial Growth",
