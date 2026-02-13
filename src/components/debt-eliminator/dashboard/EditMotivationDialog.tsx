@@ -63,11 +63,11 @@ export function EditMotivationDialog({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="motivation">
-              Why do you want to be debt-free?
+              What's driving you? How will completing this plan help you and those closest to you?
             </Label>
             <Textarea
               id="motivation"
-              placeholder="When I'm debt-free, I will..."
+              placeholder="When I complete this, I will..."
               value={motivation}
               onChange={(e) => setMotivation(e.target.value)}
               rows={4}
