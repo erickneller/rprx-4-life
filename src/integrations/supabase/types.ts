@@ -222,6 +222,36 @@ export type Database = {
           },
         ]
       }
+      deep_dive_questions: {
+        Row: {
+          created_at: string
+          horseman_type: string
+          id: string
+          options: Json
+          order_index: number
+          question_text: string
+          question_type: string
+        }
+        Insert: {
+          created_at?: string
+          horseman_type: string
+          id?: string
+          options?: Json
+          order_index: number
+          question_text: string
+          question_type: string
+        }
+        Update: {
+          created_at?: string
+          horseman_type?: string
+          id?: string
+          options?: Json
+          order_index?: number
+          question_text?: string
+          question_type?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -491,6 +521,41 @@ export type Database = {
             columns: ["journey_id"]
             isOneToOne: false
             referencedRelation: "debt_journeys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_deep_dives: {
+        Row: {
+          answers: Json
+          assessment_id: string
+          completed_at: string
+          horseman_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          assessment_id: string
+          completed_at?: string
+          horseman_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          assessment_id?: string
+          completed_at?: string
+          horseman_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_deep_dives_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "user_assessments"
             referencedColumns: ["id"]
           },
         ]
