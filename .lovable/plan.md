@@ -1,52 +1,76 @@
 
 
-## Make the App Mobile-Friendly (No Horizontal Scrolling)
+## Enhance Assessment Results Page
 
-### Problem
-Several areas of the app cause horizontal scrolling on small screens:
+### Overview
+Add two new sections to the Results page: an RPRx Score card at the top and a Quick Win Teaser card between the radar chart and the strategy generation button. Also add a new `rprx_score` column to the profiles table and a scoring utility.
 
-1. **`App.css` boilerplate**: The `#root` rule adds `padding: 2rem` and `max-width: 1280px` globally -- a leftover from the Vite starter template that conflicts with the full-width sidebar layout.
+---
 
-2. **Debt Dashboard stats grid**: Uses `grid-cols-2 md:grid-cols-4`, which is fine, but the header row uses `flex items-center justify-between` which can overflow when the "Add Debt" button text plus the title are too wide on small screens.
+### 1. Database Migration
+Add an `rprx_score` integer column (nullable, default null) to the `profiles` table.
 
-3. **Debt Dashboard header ("Your Debt Freedom Journey")**: The title + button row doesn't wrap on narrow screens.
+```sql
+ALTER TABLE public.profiles ADD COLUMN rprx_score integer NULL;
+```
 
-4. **FocusDebtCard header row**: The debt name, type label, and edit/delete buttons sit in a single row that can overflow.
+### 2. New Utility: `src/lib/rprxScore.ts`
+- Export a `calculateRPRxScore(profile)` function that returns a number:
+  - Base: 100 points for assessment completion (always true on the results page)
+  - Profile completeness bonus (up to 50 points): check fields like `full_name`, `phone`, `monthly_income`, `monthly_debt_payments`, `monthly_housing`, `monthly_insurance`, `monthly_living_expenses`, `profile_type`, `financial_goals`, `filing_status` -- each filled field adds ~5 points (10 fields x 5 = 50)
+- Export a `getRPRxTier(score)` function returning `{ emoji, label }`:
+  - 0-199: "Awakening" (red circle emoji)
+  - 200-399: "Reducing" (orange circle emoji)
+  - 400-599: "Paying" (yellow circle emoji)
+  - 600-799: "Recovering" (green circle emoji)
+  - 800-1000: "Thriving" (diamond emoji)
 
-5. **CashFlowStatusCard**: The horizontal layout (`flex items-center justify-between`) doesn't stack on mobile, so the "Update in Profile" / "Go to Profile" button can push content off-screen.
+### 3. New Component: `src/components/results/RPRxScoreCard.tsx`
+- Circular progress indicator (SVG circle) showing score out of 1000
+- Displays the tier label with emoji
+- Below the score: "Complete your Deep Dive to earn +75 points"
+- Uses the profile data from `useProfile` and calls `calculateRPRxScore`
+- On mount/render, persists the computed score to the profile via `updateProfile({ rprx_score })` if it changed
 
-6. **Global overflow**: No `overflow-x: hidden` on `html` or `body` as a safety net.
+### 4. New Component: `src/components/results/QuickWinCard.tsx`
+- Accepts `primaryHorseman: HorsemanType` as a prop
+- Maps each horseman to its specific quick-win message
+- Styled with a gradient border (blue-to-purple) using a wrapper div with `bg-gradient-to-r from-blue-500 to-purple-500 p-[2px] rounded-lg`
+- Lightning bolt icon (Zap from lucide-react) next to the title
+- Subtle CTA text at the bottom linking down to the strategy generation section
 
-### Changes
+### 5. Update `ResultsPage.tsx`
+Insert the two new sections into the page layout:
+- RPRx Score card at the top (after the intro heading, before the radar chart)
+- Quick Win card between the radar chart section and the Primary Horseman / Cash Flow section
 
-**1. Remove `App.css` boilerplate (or gut the `#root` rule)**
-- The `#root { max-width: 1280px; padding: 2rem; }` rule adds unnecessary padding and constrains the layout. Remove the entire file or clear the `#root` rule so the sidebar + main layout can use the full viewport width.
+### 6. Update `useProfile.ts`
+- Add `rprx_score: number | null` to the `Profile` interface
 
-**2. Add global overflow-x safety in `index.css`**
-- Add `overflow-x: hidden` to the `body` rule to prevent any accidental horizontal scroll.
-
-**3. Make DebtDashboard header responsive**
-- Stack the title and "Add Debt" button vertically on small screens using `flex-col sm:flex-row`.
-
-**4. Make FocusDebtCard header responsive**
-- Allow the debt name + type label + action buttons row to wrap on small screens.
-
-**5. Make CashFlowStatusCard responsive**
-- Stack the icon/text and button vertically on mobile using `flex-col sm:flex-row`.
-- Same treatment for the "missing cash flow" variant.
-
-**6. Make DebtDashboard stats grid mobile-friendly**
-- The current `grid-cols-2` is fine, but ensure the text inside each stat card doesn't overflow by allowing text truncation.
+### 7. Update Supabase Types
+The types file will auto-update after migration, but we need to ensure `rprx_score` is included in the Profile interface manually.
 
 ---
 
 ### Technical Details
 
-| File | Change |
-|------|--------|
-| `src/App.css` | Remove or empty the `#root` rule (remove padding/max-width) |
-| `src/index.css` | Add `overflow-x: hidden` to `body` base styles |
-| `src/components/debt-eliminator/dashboard/DebtDashboard.tsx` | Change header `div` from `flex items-center justify-between` to `flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4` |
-| `src/components/debt-eliminator/dashboard/FocusDebtCard.tsx` | Wrap the debt name/type/buttons row to allow stacking: `flex flex-wrap items-center justify-between gap-2` |
-| `src/components/debt-eliminator/dashboard/CashFlowStatusCard.tsx` | Change both layout variants from horizontal-only flex to `flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4` |
+| File | Action | Description |
+|------|--------|-------------|
+| Migration SQL | Create | Add `rprx_score` integer column to profiles |
+| `src/integrations/supabase/types.ts` | Auto-updated | Will reflect new column after migration |
+| `src/lib/rprxScore.ts` | Create | Score calculation + tier logic |
+| `src/components/results/RPRxScoreCard.tsx` | Create | Circular score display with tier |
+| `src/components/results/QuickWinCard.tsx` | Create | Gradient-bordered quick win teaser |
+| `src/components/results/ResultsPage.tsx` | Modify | Add both new cards to layout |
+| `src/hooks/useProfile.ts` | Modify | Add `rprx_score` to Profile interface |
+
+### Page Layout Order (after changes)
+1. Intro heading
+2. **RPRx Score card (NEW)**
+3. Radar chart
+4. **Quick Win Teaser card (NEW)**
+5. Primary Horseman + Cash Flow cards
+6. Diagnostic Feedback
+7. Next Steps (Generate Strategies)
+8. Action Buttons
 
