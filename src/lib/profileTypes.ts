@@ -19,8 +19,18 @@ export const FINANCIAL_GOALS = [
   { value: 'large_purchase', label: 'Large Purchase or Investment' },
 ] as const;
 
+// Filing status options
+export const FILING_STATUSES = [
+  { value: 'single', label: 'Single' },
+  { value: 'married_jointly', label: 'Married Filing Jointly' },
+  { value: 'married_separately', label: 'Married Filing Separately' },
+  { value: 'head_of_household', label: 'Head of Household' },
+  { value: 'qualifying_surviving_spouse', label: 'Qualifying Surviving Spouse' },
+] as const;
+
 // Type exports
 export type ProfileType = typeof PROFILE_TYPES[number]['value'];
+export type FilingStatus = typeof FILING_STATUSES[number]['value'];
 export type FinancialGoal = typeof FINANCIAL_GOALS[number]['value'];
 
 // Helper to get label from value

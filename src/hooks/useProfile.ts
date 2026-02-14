@@ -23,6 +23,7 @@ export interface Profile {
   financial_goals: string[] | null;
   motivation_text: string | null;
   motivation_images: string[] | null;
+  filing_status: string | null;
 }
 
 export function useProfile() {

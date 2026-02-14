@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN filing_status text NULL;

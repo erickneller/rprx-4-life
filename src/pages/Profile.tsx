@@ -13,7 +13,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { CashFlowSection } from '@/components/profile/CashFlowSection';
-import { PROFILE_TYPES, FINANCIAL_GOALS } from '@/lib/profileTypes';
+import { PROFILE_TYPES, FINANCIAL_GOALS, FILING_STATUSES } from '@/lib/profileTypes';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import { UnsavedChangesDialog } from '@/components/profile/UnsavedChangesDialog';
 
@@ -41,6 +42,7 @@ export default function Profile() {
   const [numChildren, setNumChildren] = useState<number>(0);
   const [childrenAges, setChildrenAges] = useState<number[]>([]);
   const [financialGoals, setFinancialGoals] = useState<string[]>([]);
+  const [filingStatus, setFilingStatus] = useState<string>('');
 
   // Track original values for dirty detection
   const [originalValues, setOriginalValues] = useState<Record<string, unknown> | null>(null);
@@ -60,7 +62,8 @@ export default function Profile() {
         profileType: profile.profile_type || '',
         numChildren: profile.num_children || 0,
         childrenAges: profile.children_ages || [],
-        financialGoals: profile.financial_goals || []
+        financialGoals: profile.financial_goals || [],
+        filingStatus: profile.filing_status || ''
       };
 
       setFullName(loadedValues.fullName);
@@ -75,6 +78,7 @@ export default function Profile() {
       setNumChildren(loadedValues.numChildren);
       setChildrenAges(loadedValues.childrenAges);
       setFinancialGoals(loadedValues.financialGoals);
+      setFilingStatus(loadedValues.filingStatus);
 
       setOriginalValues(loadedValues);
     }
@@ -109,7 +113,8 @@ export default function Profile() {
       profileType,
       numChildren,
       childrenAges,
-      financialGoals
+      financialGoals,
+      filingStatus
     };
 
     return (
@@ -123,6 +128,7 @@ export default function Profile() {
       currentValues.monthlyLivingExpenses !== originalValues.monthlyLivingExpenses ||
       currentValues.profileType !== originalValues.profileType ||
       currentValues.numChildren !== originalValues.numChildren ||
+      currentValues.filingStatus !== originalValues.filingStatus ||
       JSON.stringify(currentValues.childrenAges) !== JSON.stringify(originalValues.childrenAges) ||
       JSON.stringify(currentValues.financialGoals) !== JSON.stringify(originalValues.financialGoals));
 
@@ -139,7 +145,8 @@ export default function Profile() {
   profileType,
   numChildren,
   childrenAges,
-  financialGoals]
+  financialGoals,
+  filingStatus]
   );
 
   const getInitials = () => {
@@ -233,7 +240,8 @@ export default function Profile() {
         profile_type: profileType || null,
         num_children: numChildren || null,
         children_ages: numChildren > 0 ? childrenAges.slice(0, numChildren) : null,
-        financial_goals: financialGoals.length > 0 ? financialGoals : null
+        financial_goals: financialGoals.length > 0 ? financialGoals : null,
+        filing_status: filingStatus || null
       });
 
       // Update original values to reflect saved state
@@ -249,7 +257,8 @@ export default function Profile() {
         profileType,
         numChildren,
         childrenAges,
-        financialGoals
+        financialGoals,
+        filingStatus
       });
 
       toast({
@@ -280,7 +289,8 @@ export default function Profile() {
   profileType,
   numChildren,
   childrenAges,
-  financialGoals]
+  financialGoals,
+  filingStatus]
   );
 
   // Validation: all fields required
@@ -434,6 +444,35 @@ export default function Profile() {
                 </SelectContent>
               </Select>
               {validationErrors.profileType && <p className="text-xs text-destructive">{validationErrors.profileType}</p>}
+            </div>
+
+            {/* Filing Status */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="filingStatus">Filing Status</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-[220px]">
+                      <p className="text-xs">Your filing status affects which tax optimization strategies apply to you</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Select value={filingStatus} onValueChange={setFilingStatus}>
+                <SelectTrigger id="filingStatus">
+                  <SelectValue placeholder="Select your filing status..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {FILING_STATUSES.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Number of Children */}
