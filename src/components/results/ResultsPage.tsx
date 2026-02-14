@@ -7,6 +7,8 @@ import { PrimaryHorsemanCard } from './PrimaryHorsemanCard';
 import { CashFlowIndicator } from './CashFlowIndicator';
 import { DiagnosticFeedback } from './DiagnosticFeedback';
 import { SuggestedPromptCard } from './SuggestedPromptCard';
+import { RPRxScoreCard } from './RPRxScoreCard';
+import { QuickWinCard } from './QuickWinCard';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
@@ -87,6 +89,9 @@ export function ResultsPage() {
           </p>
         </div>
 
+        {/* RPRx Score */}
+        <RPRxScoreCard />
+
         {/* Radar Chart */}
         <section>
           <h3 className="text-lg font-semibold text-foreground mb-4 text-center">
@@ -94,6 +99,9 @@ export function ResultsPage() {
           </h3>
           <HorsemenRadarChart scores={scores} primaryHorseman={primaryHorseman} />
         </section>
+
+        {/* Quick Win Teaser */}
+        <QuickWinCard primaryHorseman={primaryHorseman} />
 
         {/* Primary Horseman & Cash Flow */}
         <section className="grid md:grid-cols-2 gap-4">
