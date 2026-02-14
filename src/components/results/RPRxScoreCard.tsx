@@ -68,7 +68,9 @@ export function RPRxScoreCard() {
             {tier.emoji} {tier.label}
           </p>
           <p className="text-sm text-muted-foreground">
-            Complete your Deep Dive to earn +75 points
+            {(profile?.rprx_score ?? score) >= 175
+              ? 'Deep Dive complete! Keep building your score.'
+              : 'Complete your Deep Dive to earn +75 points'}
           </p>
         </div>
       </CardContent>

@@ -9,6 +9,7 @@ import { DiagnosticFeedback } from './DiagnosticFeedback';
 import { SuggestedPromptCard } from './SuggestedPromptCard';
 import { RPRxScoreCard } from './RPRxScoreCard';
 import { QuickWinCard } from './QuickWinCard';
+import { DeepDiveWizard } from '@/components/assessment/DeepDiveWizard';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
@@ -102,6 +103,11 @@ export function ResultsPage() {
 
         {/* Quick Win Teaser */}
         <QuickWinCard primaryHorseman={primaryHorseman} />
+
+        {/* Deep Dive */}
+        <section>
+          <DeepDiveWizard primaryHorseman={primaryHorseman} assessmentId={assessment.id} />
+        </section>
 
         {/* Primary Horseman & Cash Flow */}
         <section className="grid md:grid-cols-2 gap-4">
