@@ -260,6 +260,7 @@ export type Database = {
           children_ages: number[] | null
           company: string | null
           created_at: string
+          filing_status: string | null
           financial_goals: string[] | null
           full_name: string | null
           id: string
@@ -280,6 +281,7 @@ export type Database = {
           children_ages?: number[] | null
           company?: string | null
           created_at?: string
+          filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
           id: string
@@ -300,6 +302,7 @@ export type Database = {
           children_ages?: number[] | null
           company?: string | null
           created_at?: string
+          filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
           id?: string
