@@ -24,6 +24,7 @@ export interface Profile {
   motivation_text: string | null;
   motivation_images: string[] | null;
   filing_status: string | null;
+  rprx_score: number | null;
 }
 
 export function useProfile() {

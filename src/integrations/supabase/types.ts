@@ -274,6 +274,7 @@ export type Database = {
           num_children: number | null
           phone: string | null
           profile_type: string | null
+          rprx_score: number | null
           updated_at: string
         }
         Insert: {
@@ -295,6 +296,7 @@ export type Database = {
           num_children?: number | null
           phone?: string | null
           profile_type?: string | null
+          rprx_score?: number | null
           updated_at?: string
         }
         Update: {
@@ -316,6 +318,7 @@ export type Database = {
           num_children?: number | null
           phone?: string | null
           profile_type?: string | null
+          rprx_score?: number | null
           updated_at?: string
         }
         Relationships: []
