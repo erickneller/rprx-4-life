@@ -123,7 +123,9 @@ export function useProfile() {
       p.monthly_insurance !== null &&
       p.monthly_living_expenses !== null &&
       p.profile_type?.trim() &&
-      p.financial_goals && p.financial_goals.length > 0
+      p.financial_goals && p.financial_goals.length > 0 &&
+      p.filing_status?.trim() &&
+      p.num_children !== null && p.num_children !== undefined
     );
   })();
 

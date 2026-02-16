@@ -316,8 +316,9 @@ export default function Profile() {
     if (!monthlyLivingExpenses) errors.monthlyLivingExpenses = 'Living expenses is required';
     if (!profileType) errors.profileType = 'Profile type is required';
     if (financialGoals.length === 0) errors.financialGoals = 'Select at least one financial goal';
+    if (!filingStatus) errors.filingStatus = 'Filing status is required';
     return errors;
-  }, [fullName, phone, company, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileType, financialGoals]);
+  }, [fullName, phone, company, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileType, financialGoals, filingStatus]);
 
   const isValid = Object.keys(validationErrors).length === 0;
 
@@ -459,7 +460,7 @@ export default function Profile() {
             {/* Filing Status */}
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
-                <Label htmlFor="filingStatus">Filing Status</Label>
+                <Label htmlFor="filingStatus">Filing Status <span className="text-destructive">*</span></Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -472,7 +473,7 @@ export default function Profile() {
                 </TooltipProvider>
               </div>
               <Select value={filingStatus} onValueChange={setFilingStatus}>
-                <SelectTrigger id="filingStatus">
+                <SelectTrigger id="filingStatus" className={validationErrors.filingStatus ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select your filing status..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -483,17 +484,18 @@ export default function Profile() {
                   ))}
                 </SelectContent>
               </Select>
+              {validationErrors.filingStatus && <p className="text-xs text-destructive">{validationErrors.filingStatus}</p>}
             </div>
 
             {/* Number of Children */}
             <div className="space-y-2">
-              <Label htmlFor="numChildren">Number of Children</Label>
+              <Label htmlFor="numChildren">Number of Children <span className="text-destructive">*</span></Label>
               <Input
                 id="numChildren"
                 type="number"
                 min={0}
                 max={10}
-                value={numChildren || ''}
+                value={numChildren}
                 onChange={(e) => setNumChildren(parseInt(e.target.value) || 0)}
                 placeholder="0"
                 className="w-24" />
