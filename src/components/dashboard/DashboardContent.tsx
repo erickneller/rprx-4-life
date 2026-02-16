@@ -13,6 +13,7 @@ import { GamificationScoreCard } from '@/components/gamification/GamificationSco
 import { TierProgressBar } from '@/components/gamification/TierProgressBar';
 import { StreakCounter } from '@/components/gamification/StreakCounter';
 import { RecentBadges } from '@/components/gamification/RecentBadges';
+import { MyStrategiesCard } from './MyStrategiesCard';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import { Loader2 } from 'lucide-react';
 
@@ -129,6 +130,9 @@ export function DashboardContent() {
                 />
               )}
               <CashFlowStatusCard surplus={surplus} status={status} />
+
+              {/* Active strategies */}
+              <MyStrategiesCard />
 
               {/* Recent achievements */}
               <RecentBadges />
