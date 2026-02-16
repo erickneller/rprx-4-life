@@ -25,6 +25,16 @@ export interface Profile {
   motivation_images: string[] | null;
   filing_status: string | null;
   rprx_score: number | null;
+  // Retirement fields
+  years_until_retirement: number | null;
+  desired_retirement_income: number | null;
+  retirement_balance_total: number | null;
+  retirement_contribution_monthly: number | null;
+  // Insurance coverage fields
+  health_insurance: boolean;
+  life_insurance: boolean;
+  disability_insurance: boolean;
+  long_term_care_insurance: boolean;
   // Gamification fields
   current_tier: string;
   current_streak: number;
