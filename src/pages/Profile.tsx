@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Camera, Loader2, Info, DollarSign } from 'lucide-react';
+import { Camera, Loader2, Info, DollarSign, Check, CloudUpload } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -346,6 +346,35 @@ export default function Profile() {
   }, [fullName, phone, company, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileType, financialGoals, filingStatus]);
 
   const isValid = Object.keys(validationErrors).length === 0;
+
+  // Auto-save status for UI
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  // Debounced auto-save: triggers 2s after last change if valid
+  useEffect(() => {
+    if (!isDirty || !isValid) return;
+
+    setAutoSaveStatus('idle');
+    const timer = setTimeout(() => {
+      setAutoSaveStatus('saving');
+      handleSave().then(() => {
+        setAutoSaveStatus('saved');
+        // Reset status after 3s
+        setTimeout(() => setAutoSaveStatus('idle'), 3000);
+      }).catch(() => {
+        setAutoSaveStatus('idle');
+      });
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [
+    isDirty, isValid, handleSave,
+    fullName, phone, company,
+    monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
+    profileType, numChildren, childrenAges, financialGoals, filingStatus,
+    yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
+    healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance,
+  ]);
 
   // Unsaved changes warning
   const {
@@ -718,30 +747,36 @@ export default function Profile() {
         <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
             <Info className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
             <p className="text-sm text-destructive">
-              Please complete all required fields before saving your profile.
+              Please complete all required fields. Changes will auto-save once all required fields are filled.
             </p>
           </div>
         }
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pb-8">
+        {/* Auto-save status & Cancel */}
+        <div className="flex items-center justify-between pb-8">
           <Button variant="outline" onClick={attemptNavigation}>
             Cancel
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || !isDirty || !isValid}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground">
-
-            {isSaving ?
-            <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </> :
-
-            'Save Changes'
-            }
-          </Button>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {autoSaveStatus === 'saving' && (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Saving...</span>
+              </>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <>
+                <Check className="h-4 w-4 text-accent" />
+                <span className="text-accent">Saved</span>
+              </>
+            )}
+            {autoSaveStatus === 'idle' && isDirty && isValid && (
+              <>
+                <CloudUpload className="h-4 w-4" />
+                <span>Auto-saving soon...</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
