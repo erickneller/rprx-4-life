@@ -22,7 +22,7 @@ export interface DeepDiveQuestionItem {
   order_index: number;
 }
 
-export function useAssessment(questions: AssessmentQuestion[]) {
+export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?: string) {
   const { profile } = useProfile();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export function useAssessment(questions: AssessmentQuestion[]) {
     currentStep: 0,
     responses: {},
     isSubmitting: false,
-    assessmentId: null,
+    assessmentId: editAssessmentId || null,
   });
 
   const [phase, setPhase] = useState<AssessmentPhase>('core');
@@ -40,6 +40,48 @@ export function useAssessment(questions: AssessmentQuestion[]) {
   const [deepDiveAnswers, setDeepDiveAnswers] = useState<Record<string, string | string[]>>({});
   const [deepDiveStep, setDeepDiveStep] = useState(0);
   const [calculatedHorseman, setCalculatedHorseman] = useState<HorsemanType | null>(null);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(!!editAssessmentId);
+
+  // Pre-populate responses when editing an existing assessment
+  useEffect(() => {
+    if (!editAssessmentId || questions.length === 0) return;
+
+    const fetchExistingResponses = async () => {
+      try {
+        // Fetch core responses
+        const { data: responses, error: respError } = await supabase
+          .from('assessment_responses')
+          .select('question_id, response_value')
+          .eq('assessment_id', editAssessmentId);
+
+        if (!respError && responses) {
+          const prefilled: Record<string, string> = {};
+          responses.forEach((r) => {
+            const val = (r.response_value as { value: string })?.value;
+            if (val) prefilled[r.question_id] = val;
+          });
+          setState((prev) => ({ ...prev, responses: prefilled }));
+        }
+
+        // Fetch deep dive answers
+        const { data: deepDive, error: ddError } = await supabase
+          .from('user_deep_dives')
+          .select('answers, horseman_type')
+          .eq('assessment_id', editAssessmentId)
+          .maybeSingle();
+
+        if (!ddError && deepDive) {
+          setDeepDiveAnswers((deepDive.answers as Record<string, string | string[]>) || {});
+        }
+      } catch (err) {
+        console.error('Error loading existing assessment:', err);
+      } finally {
+        setIsLoadingEdit(false);
+      }
+    };
+
+    fetchExistingResponses();
+  }, [editAssessmentId, questions.length]);
 
   // Core question navigation
   const currentQuestion = phase === 'core' ? questions[state.currentStep] : null;
@@ -259,6 +301,7 @@ export function useAssessment(questions: AssessmentQuestion[]) {
     responses: state.responses,
     isSubmitting: state.isSubmitting,
     isLastCoreStep,
+    isLoadingEdit,
     setResponse,
     // Deep dive
     deepDiveQuestions,
