@@ -1,6 +1,8 @@
 import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, LucideIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
+import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
+import { StreakCounter } from "@/components/gamification/StreakCounter";
 
 import {
   Sidebar,
@@ -63,6 +65,13 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent className="pt-4">
+        {/* Compact gamification stats */}
+        {!isCollapsed && (
+          <div className="px-3 pb-2 space-y-2">
+            <GamificationScoreCard compact />
+            <StreakCounter compact />
+          </div>
+        )}
         {sections.map((section, idx) => (
           <SidebarGroup key={idx}>
             {section.label && (
