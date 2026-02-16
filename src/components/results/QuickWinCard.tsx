@@ -28,7 +28,7 @@ export function QuickWinCard({ primaryHorseman }: QuickWinCardProps) {
           {QUICK_WIN_MESSAGES[primaryHorseman]}
         </p>
         <p className="text-sm text-primary/80 italic">
-          Complete the Deep Dive below to get your personalized action plan →
+          Ready for more? Answer 5 quick questions next to unlock your full personalized plan →
         </p>
       </div>
     </div>

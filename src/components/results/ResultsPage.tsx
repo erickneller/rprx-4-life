@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Home, RotateCcw } from 'lucide-react';
 import { HorsemenRadarChart } from './HorsemenRadarChart';
@@ -14,6 +14,7 @@ import { QuickWinCard } from './QuickWinCard';
 import { DeepDiveWizard } from '@/components/assessment/DeepDiveWizard';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
+import { useExistingDeepDive } from '@/hooks/useDeepDive';
 import { useProfile } from '@/hooks/useProfile';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import type { HorsemanScores, HorsemanType } from '@/lib/scoringEngine';
@@ -25,6 +26,10 @@ export function ResultsPage() {
   const navigate = useNavigate();
   const { data: assessment, isLoading, error } = useAssessmentById(id);
   const { profile } = useProfile();
+  const { data: existingDeepDive } = useExistingDeepDive(id);
+  const [deepDiveJustCompleted, setDeepDiveJustCompleted] = useState(false);
+
+  const deepDiveCompleted = !!existingDeepDive || deepDiveJustCompleted;
 
   // Derive live cash flow status from profile, falling back to stored assessment value
   const cashFlowStatus = useMemo<CashFlowStatus | null>(() => {
@@ -92,10 +97,6 @@ export function ResultsPage() {
           </p>
         </div>
 
-        {/* RPRx Score */}
-        <GamificationScoreCard />
-        <TierProgressBar />
-
         {/* Radar Chart */}
         <section>
           <h3 className="text-lg font-semibold text-foreground mb-4 text-center">
@@ -104,26 +105,13 @@ export function ResultsPage() {
           <HorsemenRadarChart scores={scores} primaryHorseman={primaryHorseman} />
         </section>
 
-        {/* Quick Win Teaser */}
-        <QuickWinCard primaryHorseman={primaryHorseman} />
-
-        {/* Strategy Activation */}
-        <section>
-          <StrategyActivationCard primaryHorseman={primaryHorseman} />
-        </section>
-
-        {/* Deep Dive */}
-        <section>
-          <DeepDiveWizard primaryHorseman={primaryHorseman} assessmentId={assessment.id} />
-        </section>
-
         {/* Primary Horseman & Cash Flow */}
         <section className="grid md:grid-cols-2 gap-4">
           <PrimaryHorsemanCard primaryHorseman={primaryHorseman} />
           {cashFlowStatus && <CashFlowIndicator status={cashFlowStatus} />}
         </section>
 
-        {/* Diagnostic Feedback */}
+        {/* Understanding Your Results */}
         <section>
           <h3 className="text-lg font-semibold text-foreground mb-4">
             Understanding Your Results
@@ -131,15 +119,36 @@ export function ResultsPage() {
           <DiagnosticFeedback primaryHorseman={primaryHorseman} />
         </section>
 
-        {/* Next Steps */}
+        {/* Quick Win */}
+        <QuickWinCard primaryHorseman={primaryHorseman} />
+
+        {/* Deep Dive */}
         <section>
-          <h3 className="text-lg font-semibold text-foreground mb-4">
-            Next Steps
-          </h3>
-          <SuggestedPromptCard
-            assessment={assessment as unknown as UserAssessment}
+          <DeepDiveWizard
+            primaryHorseman={primaryHorseman}
+            assessmentId={assessment.id}
+            onComplete={() => setDeepDiveJustCompleted(true)}
           />
         </section>
+
+        {/* Strategy sections — gated behind Deep Dive completion */}
+        {deepDiveCompleted && (
+          <>
+            <section>
+              <StrategyActivationCard primaryHorseman={primaryHorseman} />
+            </section>
+
+            <section>
+              <SuggestedPromptCard
+                assessment={assessment as unknown as UserAssessment}
+              />
+            </section>
+          </>
+        )}
+
+        {/* RPRx Score & Tier */}
+        <GamificationScoreCard />
+        <TierProgressBar />
 
         {/* Action Buttons */}
         <section className="flex flex-col sm:flex-row gap-4 pt-4">

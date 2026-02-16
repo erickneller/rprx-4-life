@@ -15,9 +15,10 @@ import type { HorsemanType } from '@/lib/scoringEngine';
 interface DeepDiveWizardProps {
   primaryHorseman: HorsemanType;
   assessmentId: string;
+  onComplete?: () => void;
 }
 
-export function DeepDiveWizard({ primaryHorseman, assessmentId }: DeepDiveWizardProps) {
+export function DeepDiveWizard({ primaryHorseman, assessmentId, onComplete }: DeepDiveWizardProps) {
   const { data: questions = [], isLoading } = useDeepDiveQuestions(primaryHorseman);
   const { data: existingDive } = useExistingDeepDive(assessmentId);
   const saveDeepDive = useSaveDeepDive();
@@ -72,6 +73,7 @@ export function DeepDiveWizard({ primaryHorseman, assessmentId }: DeepDiveWizard
     });
 
     setCompleted(true);
+    onComplete?.();
   };
 
   if (isLoading) return null;
