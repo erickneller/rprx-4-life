@@ -13,7 +13,7 @@ const PROFILE_FIELDS: (keyof Profile)[] = [
   'filing_status',
 ];
 
-export function calculateRPRxScore(profile: Profile | null | undefined): number {
+export function calculateRPRxScore(profile: Profile | null | undefined, hasDeepDive?: boolean): number {
   // Base: 100 points for assessment completion (always true on results page)
   let score = 100;
 
@@ -25,6 +25,11 @@ export function calculateRPRxScore(profile: Profile | null | undefined): number 
     if (value != null && value !== '' && !(Array.isArray(value) && value.length === 0)) {
       score += 5;
     }
+  }
+
+  // Deep Dive bonus: +75 points
+  if (hasDeepDive) {
+    score += 75;
   }
 
   return score;
