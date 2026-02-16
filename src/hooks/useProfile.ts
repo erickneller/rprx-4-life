@@ -17,7 +17,7 @@ export interface Profile {
   monthly_insurance: number | null;
   monthly_living_expenses: number | null;
   // Optional profile fields
-  profile_type: string | null;
+  profile_type: string[] | null;
   num_children: number | null;
   children_ages: number[] | null;
   financial_goals: string[] | null;
@@ -132,7 +132,7 @@ export function useProfile() {
       p.monthly_housing !== null &&
       p.monthly_insurance !== null &&
       p.monthly_living_expenses !== null &&
-      p.profile_type?.trim() &&
+      p.profile_type && p.profile_type.length > 0 &&
       p.financial_goals && p.financial_goals.length > 0 &&
       p.filing_status?.trim() &&
       p.num_children !== null && p.num_children !== undefined

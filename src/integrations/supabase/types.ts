@@ -321,7 +321,7 @@ export type Database = {
           motivation_text: string | null
           num_children: number | null
           phone: string | null
-          profile_type: string | null
+          profile_type: string[] | null
           retirement_balance_total: number | null
           retirement_contribution_monthly: number | null
           rprx_score: number | null
@@ -356,7 +356,7 @@ export type Database = {
           motivation_text?: string | null
           num_children?: number | null
           phone?: string | null
-          profile_type?: string | null
+          profile_type?: string[] | null
           retirement_balance_total?: number | null
           retirement_contribution_monthly?: number | null
           rprx_score?: number | null
@@ -391,7 +391,7 @@ export type Database = {
           motivation_text?: string | null
           num_children?: number | null
           phone?: string | null
-          profile_type?: string | null
+          profile_type?: string[] | null
           retirement_balance_total?: number | null
           retirement_contribution_monthly?: number | null
           rprx_score?: number | null
