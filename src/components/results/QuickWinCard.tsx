@@ -22,7 +22,7 @@ export function QuickWinCard({ primaryHorseman }: QuickWinCardProps) {
       <div className="bg-card rounded-lg p-6 space-y-3">
         <div className="flex items-center gap-2">
           <Zap className="h-5 w-5 text-yellow-400 fill-yellow-400" />
-          <h3 className="text-lg font-semibold text-foreground">⚡ Your Quick Win</h3>
+          <h3 className="text-lg font-semibold text-foreground">Your Quick Win</h3>
         </div>
         <p className="text-muted-foreground leading-relaxed">
           {QUICK_WIN_MESSAGES[primaryHorseman]}
