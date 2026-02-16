@@ -47,8 +47,8 @@ export function generateAutoStrategyPrompt(
   // Profile summary
   lines.push('## My Profile');
   if (profile) {
-    const profileType = getProfileTypeLabel(profile.profile_type);
-    if (profileType) lines.push(`- Profile type: ${profileType}`);
+    const profileTypeLabel = getProfileTypeLabel(profile.profile_type);
+    if (profileTypeLabel) lines.push(`- Profile type: ${profileTypeLabel}`);
     if (profile.monthly_income) lines.push(`- Monthly income: $${profile.monthly_income.toLocaleString()}`);
     const totalExpenses = [
       profile.monthly_debt_payments,

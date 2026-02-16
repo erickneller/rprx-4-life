@@ -44,7 +44,7 @@ export default function Profile() {
   const [monthlyLivingExpenses, setMonthlyLivingExpenses] = useState('');
 
   // Optional profile fields
-  const [profileType, setProfileType] = useState<string>('');
+  const [profileTypes, setProfileTypes] = useState<string[]>([]);
   const [numChildren, setNumChildren] = useState<number>(0);
   const [childrenAges, setChildrenAges] = useState<number[]>([]);
   const [financialGoals, setFinancialGoals] = useState<string[]>([]);
@@ -77,7 +77,7 @@ export default function Profile() {
         monthlyHousing: profile.monthly_housing?.toString() || '',
         monthlyInsurance: profile.monthly_insurance?.toString() || '',
         monthlyLivingExpenses: profile.monthly_living_expenses?.toString() || '',
-        profileType: profile.profile_type || '',
+        profileTypes: profile.profile_type || [],
         numChildren: profile.num_children || 0,
         childrenAges: profile.children_ages || [],
         financialGoals: profile.financial_goals || [],
@@ -100,7 +100,7 @@ export default function Profile() {
       setMonthlyHousing(loadedValues.monthlyHousing);
       setMonthlyInsurance(loadedValues.monthlyInsurance);
       setMonthlyLivingExpenses(loadedValues.monthlyLivingExpenses);
-      setProfileType(loadedValues.profileType);
+      setProfileTypes(loadedValues.profileTypes);
       setNumChildren(loadedValues.numChildren);
       setChildrenAges(loadedValues.childrenAges);
       setFinancialGoals(loadedValues.financialGoals);
@@ -144,7 +144,7 @@ export default function Profile() {
       monthlyHousing,
       monthlyInsurance,
       monthlyLivingExpenses,
-      profileType,
+      profileTypes,
       numChildren,
       childrenAges,
       financialGoals,
@@ -168,25 +168,15 @@ export default function Profile() {
       currentValues.monthlyHousing !== originalValues.monthlyHousing ||
       currentValues.monthlyInsurance !== originalValues.monthlyInsurance ||
       currentValues.monthlyLivingExpenses !== originalValues.monthlyLivingExpenses ||
-      currentValues.profileType !== originalValues.profileType ||
-      currentValues.numChildren !== originalValues.numChildren ||
-      currentValues.filingStatus !== originalValues.filingStatus ||
-      currentValues.yearsUntilRetirement !== originalValues.yearsUntilRetirement ||
-      currentValues.desiredRetirementIncome !== originalValues.desiredRetirementIncome ||
-      currentValues.retirementBalanceTotal !== originalValues.retirementBalanceTotal ||
-      currentValues.retirementContributionMonthly !== originalValues.retirementContributionMonthly ||
-      currentValues.healthInsurance !== originalValues.healthInsurance ||
-      currentValues.lifeInsurance !== originalValues.lifeInsurance ||
-      currentValues.disabilityInsurance !== originalValues.disabilityInsurance ||
-      currentValues.longTermCareInsurance !== originalValues.longTermCareInsurance ||
       JSON.stringify(currentValues.childrenAges) !== JSON.stringify(originalValues.childrenAges) ||
-      JSON.stringify(currentValues.financialGoals) !== JSON.stringify(originalValues.financialGoals));
+      JSON.stringify(currentValues.financialGoals) !== JSON.stringify(originalValues.financialGoals) ||
+      JSON.stringify(currentValues.profileTypes) !== JSON.stringify(originalValues.profileTypes));
 
   }, [
   originalValues,
   fullName, phone, company,
   monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
-  profileType, numChildren, childrenAges, financialGoals, filingStatus,
+  profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
   yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
   healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance]
   );
@@ -278,7 +268,7 @@ export default function Profile() {
         monthly_housing: monthlyHousing ? Number(monthlyHousing) : null,
         monthly_insurance: monthlyInsurance ? Number(monthlyInsurance) : null,
         monthly_living_expenses: monthlyLivingExpenses ? Number(monthlyLivingExpenses) : null,
-        profile_type: profileType || null,
+        profile_type: profileTypes.length > 0 ? profileTypes : null,
         num_children: numChildren || null,
         children_ages: numChildren > 0 ? childrenAges.slice(0, numChildren) : null,
         financial_goals: financialGoals.length > 0 ? financialGoals : null,
@@ -296,7 +286,7 @@ export default function Profile() {
       setOriginalValues({
         fullName, phone, company,
         monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
-        profileType, numChildren, childrenAges, financialGoals, filingStatus,
+        profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
         yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
         healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance,
       });
@@ -323,7 +313,7 @@ export default function Profile() {
   }, [
   updateProfile, fullName, phone, company,
   monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
-  profileType, numChildren, childrenAges, financialGoals, filingStatus,
+  profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
   yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
   healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance]
   );
@@ -339,11 +329,11 @@ export default function Profile() {
     if (!monthlyHousing) errors.monthlyHousing = 'Housing cost is required';
     if (!monthlyInsurance) errors.monthlyInsurance = 'Insurance cost is required';
     if (!monthlyLivingExpenses) errors.monthlyLivingExpenses = 'Living expenses is required';
-    if (!profileType) errors.profileType = 'Profile type is required';
+    if (profileTypes.length === 0) errors.profileTypes = 'Select at least one profile type';
     if (financialGoals.length === 0) errors.financialGoals = 'Select at least one financial goal';
     if (!filingStatus) errors.filingStatus = 'Filing status is required';
     return errors;
-  }, [fullName, phone, company, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileType, financialGoals, filingStatus]);
+  }, [fullName, phone, company, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileTypes, financialGoals, filingStatus]);
 
   const isValid = Object.keys(validationErrors).length === 0;
 
@@ -490,22 +480,27 @@ export default function Profile() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Profile Type */}
+            {/* Profile Type - Multi-select */}
             <div className="space-y-2">
-              <Label htmlFor="profileType">I am a: <span className="text-destructive">*</span></Label>
-              <Select value={profileType} onValueChange={setProfileType}>
-                <SelectTrigger id="profileType" className={validationErrors.profileType ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Select which one BEST applies to you..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROFILE_TYPES.map((type) =>
-                  <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              {validationErrors.profileType && <p className="text-xs text-destructive">{validationErrors.profileType}</p>}
+              <Label>I am a: <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <div className="space-y-2">
+                {PROFILE_TYPES.map((type) => (
+                  <label key={type.value} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={profileTypes.includes(type.value)}
+                      onCheckedChange={(checked) => {
+                        setProfileTypes((prev) =>
+                          checked
+                            ? [...prev, type.value]
+                            : prev.filter((v) => v !== type.value)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{type.label}</span>
+                  </label>
+                ))}
+              </div>
+              {validationErrors.profileTypes && <p className="text-xs text-destructive">{validationErrors.profileTypes}</p>}
             </div>
 
             {/* Filing Status */}

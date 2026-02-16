@@ -34,8 +34,12 @@ export type FilingStatus = typeof FILING_STATUSES[number]['value'];
 export type FinancialGoal = typeof FINANCIAL_GOALS[number]['value'];
 
 // Helper to get label from value
-export function getProfileTypeLabel(value: string | null): string | null {
+export function getProfileTypeLabel(value: string | string[] | null): string | null {
   if (!value) return null;
+  if (Array.isArray(value)) {
+    const labels = value.map(v => PROFILE_TYPES.find(t => t.value === v)?.label).filter(Boolean);
+    return labels.length > 0 ? labels.join(', ') : null;
+  }
   return PROFILE_TYPES.find(t => t.value === value)?.label ?? null;
 }
 
