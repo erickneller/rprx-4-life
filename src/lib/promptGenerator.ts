@@ -36,11 +36,12 @@ export interface AssessmentResponseDetail {
 export function generateAutoStrategyPrompt(
   profile: Profile | null,
   assessment: UserAssessment,
-  responses: AssessmentResponseDetail[]
+  responses: AssessmentResponseDetail[],
+  completedStrategies: string[] = []
 ): string {
   const lines: string[] = [];
 
-  lines.push('I need my top 3 financial strategies ranked by ease of implementation and speed of results.');
+  lines.push('I need the single best financial strategy for my situation right now — the one that is easiest to implement and will produce the fastest results.');
   lines.push('');
 
   // Profile summary
@@ -96,10 +97,21 @@ export function generateAutoStrategyPrompt(
     lines.push('');
   }
 
+  // Previously completed strategies
+  if (completedStrategies.length > 0) {
+    lines.push('## Strategies I\'ve Already Completed');
+    for (const name of completedStrategies) {
+      lines.push(`- ${name}`);
+    }
+    lines.push('');
+    lines.push('Do NOT recommend any strategy I have already completed.');
+    lines.push('');
+  }
+
   lines.push('## Instructions');
-  lines.push('Based on all of the above, recommend exactly 3 strategies that are easiest to implement and will produce the fastest results for my situation.');
-  lines.push('Rank them by ease of implementation (easiest first).');
-  lines.push('For each strategy, use the standard strategy output format with name, summary, estimated savings, implementation steps, and any disclaimers.');
+  lines.push('Based on all of the above, recommend exactly 1 strategy that is the easiest to implement and will produce the fastest results for my situation.');
+  lines.push('For the strategy, use the standard strategy output format with name, summary, estimated savings, implementation steps, and any disclaimers.');
+  lines.push('Include detailed numbered implementation steps that I can check off as I complete them.');
 
   return lines.join('\n');
 }

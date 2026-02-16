@@ -11,8 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Loader2, Trash2, Edit2, Save, X, Calendar, Clock, FileText, Star } from 'lucide-react';
+import { Loader2, Trash2, Edit2, Save, X, Calendar, Clock, FileText, Star, Sparkles, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 
 export default function PlanDetail() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export default function PlanDetail() {
   const updatePlan = useUpdatePlan();
   const deletePlan = useDeletePlan();
   const { toast } = useToast();
+  const { data: assessments } = useAssessmentHistory();
   
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
@@ -59,6 +61,10 @@ export default function PlanDetail() {
   const completedSteps = content.completedSteps || [];
   const totalSteps = content.steps?.length || 0;
   const progress = totalSteps > 0 ? Math.round((completedSteps.length / totalSteps) * 100) : 0;
+  const isCompleted = plan.status === 'completed' || (totalSteps > 0 && completedSteps.length === totalSteps);
+
+  // Get latest assessment for "next strategy" link
+  const latestAssessment = assessments && assessments.length > 0 ? assessments[0] : null;
 
   const handleToggleStep = async (stepIndex: number) => {
     const currentCompleted = content.completedSteps || [];
@@ -346,6 +352,30 @@ export default function PlanDetail() {
                 onToggleStep={handleToggleStep}
                 disabled={updatePlan.isPending}
               />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Ready for next strategy? — shown when plan is completed */}
+        {isCompleted && latestAssessment && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-6 flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Ready for your next strategy?
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  You've completed this plan! Generate your next strategy or take a new assessment.
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate(`/results/${latestAssessment.id}`)}
+                className="shrink-0 bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                Next Strategy
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
             </CardContent>
           </Card>
         )}
