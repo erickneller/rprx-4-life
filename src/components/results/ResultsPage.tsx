@@ -1,20 +1,16 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Home, RotateCcw } from 'lucide-react';
+import { Loader2, Home, RotateCcw, Pencil } from 'lucide-react';
 import { HorsemenRadarChart } from './HorsemenRadarChart';
 import { PrimaryHorsemanCard } from './PrimaryHorsemanCard';
 import { CashFlowIndicator } from './CashFlowIndicator';
 import { DiagnosticFeedback } from './DiagnosticFeedback';
 import { SuggestedPromptCard } from './SuggestedPromptCard';
-import { StrategyActivationCard } from './StrategyActivationCard';
 import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
 import { TierProgressBar } from '@/components/gamification/TierProgressBar';
-import { QuickWinCard } from './QuickWinCard';
-import { DeepDiveWizard } from '@/components/assessment/DeepDiveWizard';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
-import { useExistingDeepDive } from '@/hooks/useDeepDive';
 import { useProfile } from '@/hooks/useProfile';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import type { HorsemanScores, HorsemanType } from '@/lib/scoringEngine';
@@ -26,10 +22,6 @@ export function ResultsPage() {
   const navigate = useNavigate();
   const { data: assessment, isLoading, error } = useAssessmentById(id);
   const { profile } = useProfile();
-  const { data: existingDeepDive } = useExistingDeepDive(id);
-  const [deepDiveJustCompleted, setDeepDiveJustCompleted] = useState(false);
-
-  const deepDiveCompleted = !!existingDeepDive || deepDiveJustCompleted;
 
   // Derive live cash flow status from profile, falling back to stored assessment value
   const cashFlowStatus = useMemo<CashFlowStatus | null>(() => {
@@ -119,32 +111,12 @@ export function ResultsPage() {
           <DiagnosticFeedback primaryHorseman={primaryHorseman} />
         </section>
 
-        {/* Quick Win */}
-        <QuickWinCard primaryHorseman={primaryHorseman} />
-
-        {/* Deep Dive */}
+        {/* Generate My Next Strategy — single CTA */}
         <section>
-          <DeepDiveWizard
-            primaryHorseman={primaryHorseman}
-            assessmentId={assessment.id}
-            onComplete={() => setDeepDiveJustCompleted(true)}
+          <SuggestedPromptCard
+            assessment={assessment as unknown as UserAssessment}
           />
         </section>
-
-        {/* Strategy sections — gated behind Deep Dive completion */}
-        {deepDiveCompleted && (
-          <>
-            <section>
-              <StrategyActivationCard primaryHorseman={primaryHorseman} />
-            </section>
-
-            <section>
-              <SuggestedPromptCard
-                assessment={assessment as unknown as UserAssessment}
-              />
-            </section>
-          </>
-        )}
 
         {/* RPRx Score & Tier */}
         <GamificationScoreCard />
@@ -152,6 +124,14 @@ export function ResultsPage() {
 
         {/* Action Buttons */}
         <section className="flex flex-col sm:flex-row gap-4 pt-4">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => navigate(`/assessment/edit/${assessment.id}`)}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit My Answers
+          </Button>
           <Button
             variant="outline"
             className="flex-1"
