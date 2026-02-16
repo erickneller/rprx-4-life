@@ -7,6 +7,8 @@ import { SingleChoiceQuestion } from './SingleChoiceQuestion';
 import { RangeSelectQuestion } from './RangeSelectQuestion';
 import { MultiSelectQuestion } from './MultiSelectQuestion';
 import { useDeepDiveQuestions, useExistingDeepDive, useSaveDeepDive } from '@/hooks/useDeepDive';
+import { useGamification } from '@/hooks/useGamification';
+import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
 import { getHorsemanLabel } from '@/lib/scoringEngine';
 import type { HorsemanType } from '@/lib/scoringEngine';
 
@@ -19,6 +21,7 @@ export function DeepDiveWizard({ primaryHorseman, assessmentId }: DeepDiveWizard
   const { data: questions = [], isLoading } = useDeepDiveQuestions(primaryHorseman);
   const { data: existingDive } = useExistingDeepDive(assessmentId);
   const saveDeepDive = useSaveDeepDive();
+  const { logActivity } = useGamification();
 
   const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -60,6 +63,12 @@ export function DeepDiveWizard({ primaryHorseman, assessmentId }: DeepDiveWizard
       assessmentId,
       horsemanType: primaryHorseman,
       answers,
+    });
+
+    // Log gamification activity
+    logActivity('deep_dive_complete', { assessment_id: assessmentId, horseman_type: primaryHorseman }).then((awarded) => {
+      showPointsEarnedToast(75, 'Deep Dive completed!');
+      awarded.forEach((badge) => showAchievementToast(badge));
     });
 
     setCompleted(true);
