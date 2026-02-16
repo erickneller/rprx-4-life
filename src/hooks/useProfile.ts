@@ -25,6 +25,12 @@ export interface Profile {
   motivation_images: string[] | null;
   filing_status: string | null;
   rprx_score: number | null;
+  // Gamification fields
+  current_tier: string;
+  current_streak: number;
+  longest_streak: number;
+  last_active_date: string | null;
+  total_points_earned: number;
 }
 
 export function useProfile() {

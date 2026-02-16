@@ -4,7 +4,7 @@ import type { Tables, Enums } from "@/integrations/supabase/types";
 export type DebtJourney = Tables<"debt_journeys">;
 export type UserDebt = Tables<"user_debts">;
 export type DebtPayment = Tables<"debt_payments">;
-export type Badge = Tables<"badges">;
+export type BadgeDefinition = Tables<"badge_definitions">;
 export type UserBadge = Tables<"user_badges">;
 
 // Enums
