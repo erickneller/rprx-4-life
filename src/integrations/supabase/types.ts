@@ -301,11 +301,16 @@ export type Database = {
           created_at: string
           current_streak: number
           current_tier: string
+          desired_retirement_income: number | null
+          disability_insurance: boolean
           filing_status: string | null
           financial_goals: string[] | null
           full_name: string | null
+          health_insurance: boolean
           id: string
           last_active_date: string | null
+          life_insurance: boolean
+          long_term_care_insurance: boolean
           longest_streak: number
           monthly_debt_payments: number | null
           monthly_housing: number | null
@@ -317,9 +322,12 @@ export type Database = {
           num_children: number | null
           phone: string | null
           profile_type: string | null
+          retirement_balance_total: number | null
+          retirement_contribution_monthly: number | null
           rprx_score: number | null
           total_points_earned: number
           updated_at: string
+          years_until_retirement: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -328,11 +336,16 @@ export type Database = {
           created_at?: string
           current_streak?: number
           current_tier?: string
+          desired_retirement_income?: number | null
+          disability_insurance?: boolean
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
+          health_insurance?: boolean
           id: string
           last_active_date?: string | null
+          life_insurance?: boolean
+          long_term_care_insurance?: boolean
           longest_streak?: number
           monthly_debt_payments?: number | null
           monthly_housing?: number | null
@@ -344,9 +357,12 @@ export type Database = {
           num_children?: number | null
           phone?: string | null
           profile_type?: string | null
+          retirement_balance_total?: number | null
+          retirement_contribution_monthly?: number | null
           rprx_score?: number | null
           total_points_earned?: number
           updated_at?: string
+          years_until_retirement?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -355,11 +371,16 @@ export type Database = {
           created_at?: string
           current_streak?: number
           current_tier?: string
+          desired_retirement_income?: number | null
+          disability_insurance?: boolean
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
+          health_insurance?: boolean
           id?: string
           last_active_date?: string | null
+          life_insurance?: boolean
+          long_term_care_insurance?: boolean
           longest_streak?: number
           monthly_debt_payments?: number | null
           monthly_housing?: number | null
@@ -371,9 +392,12 @@ export type Database = {
           num_children?: number | null
           phone?: string | null
           profile_type?: string | null
+          retirement_balance_total?: number | null
+          retirement_contribution_monthly?: number | null
           rprx_score?: number | null
           total_points_earned?: number
           updated_at?: string
+          years_until_retirement?: number | null
         }
         Relationships: []
       }

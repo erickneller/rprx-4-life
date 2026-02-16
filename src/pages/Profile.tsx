@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Camera, Loader2, Info } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Camera, Loader2, Info, DollarSign } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -49,6 +50,18 @@ export default function Profile() {
   const [financialGoals, setFinancialGoals] = useState<string[]>([]);
   const [filingStatus, setFilingStatus] = useState<string>('');
 
+  // Retirement fields
+  const [yearsUntilRetirement, setYearsUntilRetirement] = useState<string>('');
+  const [desiredRetirementIncome, setDesiredRetirementIncome] = useState<string>('');
+  const [retirementBalanceTotal, setRetirementBalanceTotal] = useState<string>('');
+  const [retirementContributionMonthly, setRetirementContributionMonthly] = useState<string>('');
+
+  // Insurance coverage fields
+  const [healthInsurance, setHealthInsurance] = useState(false);
+  const [lifeInsurance, setLifeInsurance] = useState(false);
+  const [disabilityInsurance, setDisabilityInsurance] = useState(false);
+  const [longTermCareInsurance, setLongTermCareInsurance] = useState(false);
+
   // Track original values for dirty detection
   const [originalValues, setOriginalValues] = useState<Record<string, unknown> | null>(null);
 
@@ -68,7 +81,15 @@ export default function Profile() {
         numChildren: profile.num_children || 0,
         childrenAges: profile.children_ages || [],
         financialGoals: profile.financial_goals || [],
-        filingStatus: profile.filing_status || ''
+        filingStatus: profile.filing_status || '',
+        yearsUntilRetirement: profile.years_until_retirement?.toString() || '',
+        desiredRetirementIncome: profile.desired_retirement_income?.toString() || '',
+        retirementBalanceTotal: profile.retirement_balance_total?.toString() || '',
+        retirementContributionMonthly: profile.retirement_contribution_monthly?.toString() || '',
+        healthInsurance: profile.health_insurance ?? false,
+        lifeInsurance: profile.life_insurance ?? false,
+        disabilityInsurance: profile.disability_insurance ?? false,
+        longTermCareInsurance: profile.long_term_care_insurance ?? false,
       };
 
       setFullName(loadedValues.fullName);
@@ -84,6 +105,14 @@ export default function Profile() {
       setChildrenAges(loadedValues.childrenAges);
       setFinancialGoals(loadedValues.financialGoals);
       setFilingStatus(loadedValues.filingStatus);
+      setYearsUntilRetirement(loadedValues.yearsUntilRetirement);
+      setDesiredRetirementIncome(loadedValues.desiredRetirementIncome);
+      setRetirementBalanceTotal(loadedValues.retirementBalanceTotal);
+      setRetirementContributionMonthly(loadedValues.retirementContributionMonthly);
+      setHealthInsurance(loadedValues.healthInsurance);
+      setLifeInsurance(loadedValues.lifeInsurance);
+      setDisabilityInsurance(loadedValues.disabilityInsurance);
+      setLongTermCareInsurance(loadedValues.longTermCareInsurance);
 
       setOriginalValues(loadedValues);
     }
@@ -119,7 +148,15 @@ export default function Profile() {
       numChildren,
       childrenAges,
       financialGoals,
-      filingStatus
+      filingStatus,
+      yearsUntilRetirement,
+      desiredRetirementIncome,
+      retirementBalanceTotal,
+      retirementContributionMonthly,
+      healthInsurance,
+      lifeInsurance,
+      disabilityInsurance,
+      longTermCareInsurance,
     };
 
     return (
@@ -134,24 +171,24 @@ export default function Profile() {
       currentValues.profileType !== originalValues.profileType ||
       currentValues.numChildren !== originalValues.numChildren ||
       currentValues.filingStatus !== originalValues.filingStatus ||
+      currentValues.yearsUntilRetirement !== originalValues.yearsUntilRetirement ||
+      currentValues.desiredRetirementIncome !== originalValues.desiredRetirementIncome ||
+      currentValues.retirementBalanceTotal !== originalValues.retirementBalanceTotal ||
+      currentValues.retirementContributionMonthly !== originalValues.retirementContributionMonthly ||
+      currentValues.healthInsurance !== originalValues.healthInsurance ||
+      currentValues.lifeInsurance !== originalValues.lifeInsurance ||
+      currentValues.disabilityInsurance !== originalValues.disabilityInsurance ||
+      currentValues.longTermCareInsurance !== originalValues.longTermCareInsurance ||
       JSON.stringify(currentValues.childrenAges) !== JSON.stringify(originalValues.childrenAges) ||
       JSON.stringify(currentValues.financialGoals) !== JSON.stringify(originalValues.financialGoals));
 
   }, [
   originalValues,
-  fullName,
-  phone,
-  company,
-  monthlyIncome,
-  monthlyDebtPayments,
-  monthlyHousing,
-  monthlyInsurance,
-  monthlyLivingExpenses,
-  profileType,
-  numChildren,
-  childrenAges,
-  financialGoals,
-  filingStatus]
+  fullName, phone, company,
+  monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
+  profileType, numChildren, childrenAges, financialGoals, filingStatus,
+  yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
+  healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance]
   );
 
   const getInitials = () => {
@@ -241,29 +278,27 @@ export default function Profile() {
         monthly_housing: monthlyHousing ? Number(monthlyHousing) : null,
         monthly_insurance: monthlyInsurance ? Number(monthlyInsurance) : null,
         monthly_living_expenses: monthlyLivingExpenses ? Number(monthlyLivingExpenses) : null,
-        // Optional fields
         profile_type: profileType || null,
         num_children: numChildren || null,
         children_ages: numChildren > 0 ? childrenAges.slice(0, numChildren) : null,
         financial_goals: financialGoals.length > 0 ? financialGoals : null,
-        filing_status: filingStatus || null
+        filing_status: filingStatus || null,
+        years_until_retirement: yearsUntilRetirement ? Number(yearsUntilRetirement) : null,
+        desired_retirement_income: desiredRetirementIncome ? Number(desiredRetirementIncome) : null,
+        retirement_balance_total: retirementBalanceTotal ? Number(retirementBalanceTotal) : null,
+        retirement_contribution_monthly: retirementContributionMonthly ? Number(retirementContributionMonthly) : null,
+        health_insurance: healthInsurance,
+        life_insurance: lifeInsurance,
+        disability_insurance: disabilityInsurance,
+        long_term_care_insurance: longTermCareInsurance,
       });
 
-      // Update original values to reflect saved state
       setOriginalValues({
-        fullName,
-        phone,
-        company,
-        monthlyIncome,
-        monthlyDebtPayments,
-        monthlyHousing,
-        monthlyInsurance,
-        monthlyLivingExpenses,
-        profileType,
-        numChildren,
-        childrenAges,
-        financialGoals,
-        filingStatus
+        fullName, phone, company,
+        monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
+        profileType, numChildren, childrenAges, financialGoals, filingStatus,
+        yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
+        healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance,
       });
 
       toast({
@@ -271,7 +306,6 @@ export default function Profile() {
         description: 'Your profile has been saved.'
       });
 
-      // Log gamification activity
       logActivity('profile_updated').then((awarded) => {
         awarded.forEach((badge) => showAchievementToast(badge));
       });
@@ -282,25 +316,16 @@ export default function Profile() {
         description: 'Failed to save profile. Please try again.',
         variant: 'destructive'
       });
-      throw error; // Re-throw to let the dialog know save failed
+      throw error;
     } finally {
       setIsSaving(false);
     }
   }, [
-  updateProfile,
-  fullName,
-  phone,
-  company,
-  monthlyIncome,
-  monthlyDebtPayments,
-  monthlyHousing,
-  monthlyInsurance,
-  monthlyLivingExpenses,
-  profileType,
-  numChildren,
-  childrenAges,
-  financialGoals,
-  filingStatus]
+  updateProfile, fullName, phone, company,
+  monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
+  profileType, numChildren, childrenAges, financialGoals, filingStatus,
+  yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
+  healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance]
   );
 
   // Validation: all fields required
@@ -559,7 +584,7 @@ export default function Profile() {
         {/* Cash Flow Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Cash Flow Snapshot <span className="text-destructive">*</span></CardTitle>
+            <CardTitle>Your River — Cash Flow <span className="text-destructive">*</span></CardTitle>
             <CardDescription>Required for personalized debt and strategy recommendations</CardDescription>
           </CardHeader>
           <CardContent>
@@ -574,11 +599,102 @@ export default function Profile() {
               setMonthlyInsurance={setMonthlyInsurance}
               monthlyLivingExpenses={monthlyLivingExpenses}
               setMonthlyLivingExpenses={setMonthlyLivingExpenses} />
-
           </CardContent>
         </Card>
 
-        {/* My Achievements */}
+        {/* Your Lake — Retirement */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Lake — Retirement</CardTitle>
+            <CardDescription>Help us understand your retirement outlook</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="yearsUntilRetirement">Years Until Retirement</Label>
+              <Input
+                id="yearsUntilRetirement"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={80}
+                value={yearsUntilRetirement}
+                onChange={(e) => setYearsUntilRetirement(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="0"
+                className="w-32" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="desiredRetirementIncome">Desired Retirement Income (annual)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="desiredRetirementIncome"
+                  type="text"
+                  inputMode="numeric"
+                  value={desiredRetirementIncome ? Number(desiredRetirementIncome).toLocaleString() : ''}
+                  onChange={(e) => setDesiredRetirementIncome(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="0"
+                  className="pl-9" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="retirementBalanceTotal">Retirement Balance Total</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="retirementBalanceTotal"
+                  type="text"
+                  inputMode="numeric"
+                  value={retirementBalanceTotal ? Number(retirementBalanceTotal).toLocaleString() : ''}
+                  onChange={(e) => setRetirementBalanceTotal(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="0"
+                  className="pl-9" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="retirementContributionMonthly">Monthly Retirement Contribution</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="retirementContributionMonthly"
+                  type="text"
+                  inputMode="numeric"
+                  value={retirementContributionMonthly ? Number(retirementContributionMonthly).toLocaleString() : ''}
+                  onChange={(e) => setRetirementContributionMonthly(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="0"
+                  className="pl-9" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Your Rainbow — Insurance Coverage */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Rainbow — Insurance Coverage / Protection</CardTitle>
+            <CardDescription>Let us know which coverages you currently have</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="healthInsurance" className="cursor-pointer">Health Insurance</Label>
+              <Switch id="healthInsurance" checked={healthInsurance} onCheckedChange={setHealthInsurance} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="lifeInsurance" className="cursor-pointer">Life Insurance</Label>
+              <Switch id="lifeInsurance" checked={lifeInsurance} onCheckedChange={setLifeInsurance} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="disabilityInsurance" className="cursor-pointer">Disability Insurance</Label>
+              <Switch id="disabilityInsurance" checked={disabilityInsurance} onCheckedChange={setDisabilityInsurance} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="longTermCareInsurance" className="cursor-pointer">Long‑Term Care Insurance</Label>
+              <Switch id="longTermCareInsurance" checked={longTermCareInsurance} onCheckedChange={setLongTermCareInsurance} />
+            </div>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle>My Achievements</CardTitle>

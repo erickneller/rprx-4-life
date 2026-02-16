@@ -114,7 +114,7 @@ export function CashFlowSection({
       <Separator />
       <div>
         <h3 className="text-sm font-semibold text-foreground">
-          Cash Flow Snapshot
+          Your River — Cash Flow
         </h3>
         <p className="text-xs text-muted-foreground mt-1">
           Used for personalized debt and strategy recommendations
