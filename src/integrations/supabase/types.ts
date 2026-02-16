@@ -86,36 +86,45 @@ export type Database = {
           },
         ]
       }
-      badges: {
+      badge_definitions: {
         Row: {
           category: string
           created_at: string
-          criteria_type: string
-          criteria_value: number
           description: string
           icon: string
           id: string
+          is_active: boolean
           name: string
+          points: number
+          sort_order: number
+          trigger_type: string
+          trigger_value: Json | null
         }
         Insert: {
-          category?: string
+          category: string
           created_at?: string
-          criteria_type: string
-          criteria_value: number
           description: string
           icon: string
-          id?: string
+          id: string
+          is_active?: boolean
           name: string
+          points: number
+          sort_order?: number
+          trigger_type: string
+          trigger_value?: Json | null
         }
         Update: {
           category?: string
           created_at?: string
-          criteria_type?: string
-          criteria_value?: number
           description?: string
           icon?: string
           id?: string
+          is_active?: boolean
           name?: string
+          points?: number
+          sort_order?: number
+          trigger_type?: string
+          trigger_value?: Json | null
         }
         Relationships: []
       }
@@ -290,10 +299,14 @@ export type Database = {
           children_ages: number[] | null
           company: string | null
           created_at: string
+          current_streak: number
+          current_tier: string
           filing_status: string | null
           financial_goals: string[] | null
           full_name: string | null
           id: string
+          last_active_date: string | null
+          longest_streak: number
           monthly_debt_payments: number | null
           monthly_housing: number | null
           monthly_income: number | null
@@ -305,6 +318,7 @@ export type Database = {
           phone: string | null
           profile_type: string | null
           rprx_score: number | null
+          total_points_earned: number
           updated_at: string
         }
         Insert: {
@@ -312,10 +326,14 @@ export type Database = {
           children_ages?: number[] | null
           company?: string | null
           created_at?: string
+          current_streak?: number
+          current_tier?: string
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
           id: string
+          last_active_date?: string | null
+          longest_streak?: number
           monthly_debt_payments?: number | null
           monthly_housing?: number | null
           monthly_income?: number | null
@@ -327,6 +345,7 @@ export type Database = {
           phone?: string | null
           profile_type?: string | null
           rprx_score?: number | null
+          total_points_earned?: number
           updated_at?: string
         }
         Update: {
@@ -334,10 +353,14 @@ export type Database = {
           children_ages?: number[] | null
           company?: string | null
           created_at?: string
+          current_streak?: number
+          current_tier?: string
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
           id?: string
+          last_active_date?: string | null
+          longest_streak?: number
           monthly_debt_payments?: number | null
           monthly_housing?: number | null
           monthly_income?: number | null
@@ -349,6 +372,7 @@ export type Database = {
           phone?: string | null
           profile_type?: string | null
           rprx_score?: number | null
+          total_points_earned?: number
           updated_at?: string
         }
         Relationships: []
@@ -391,6 +415,110 @@ export type Database = {
           strategy_name?: string
           title?: string
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      strategy_definitions: {
+        Row: {
+          created_at: string
+          description: string
+          difficulty: string
+          estimated_impact: string | null
+          horseman_type: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          steps: Json
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          difficulty?: string
+          estimated_impact?: string | null
+          horseman_type: string
+          id: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          steps?: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          difficulty?: string
+          estimated_impact?: string | null
+          horseman_type?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          steps?: Json
+        }
+        Relationships: []
+      }
+      user_active_strategies: {
+        Row: {
+          activated_at: string
+          completed_at: string | null
+          id: string
+          notes: string | null
+          status: string
+          strategy_id: string
+          user_id: string
+        }
+        Insert: {
+          activated_at?: string
+          completed_at?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          strategy_id: string
+          user_id: string
+        }
+        Update: {
+          activated_at?: string
+          completed_at?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          strategy_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_active_strategies_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategy_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_activity_log: {
+        Row: {
+          activity_data: Json | null
+          activity_type: string
+          created_at: string
+          id: string
+          points_earned: number
+          user_id: string
+        }
+        Insert: {
+          activity_data?: Json | null
+          activity_type: string
+          created_at?: string
+          id?: string
+          points_earned?: number
+          user_id: string
+        }
+        Update: {
+          activity_data?: Json | null
+          activity_type?: string
+          created_at?: string
+          id?: string
+          points_earned?: number
           user_id?: string
         }
         Relationships: []
@@ -451,18 +579,21 @@ export type Database = {
           badge_id: string
           earned_at: string
           id: string
+          points_awarded: number
           user_id: string
         }
         Insert: {
           badge_id: string
           earned_at?: string
           id?: string
+          points_awarded: number
           user_id: string
         }
         Update: {
           badge_id?: string
           earned_at?: string
           id?: string
+          points_awarded?: number
           user_id?: string
         }
         Relationships: [
@@ -470,7 +601,7 @@ export type Database = {
             foreignKeyName: "user_badges_badge_id_fkey"
             columns: ["badge_id"]
             isOneToOne: false
-            referencedRelation: "badges"
+            referencedRelation: "badge_definitions"
             referencedColumns: ["id"]
           },
         ]
