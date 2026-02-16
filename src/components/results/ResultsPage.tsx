@@ -7,6 +7,7 @@ import { PrimaryHorsemanCard } from './PrimaryHorsemanCard';
 import { CashFlowIndicator } from './CashFlowIndicator';
 import { DiagnosticFeedback } from './DiagnosticFeedback';
 import { SuggestedPromptCard } from './SuggestedPromptCard';
+import { StrategyActivationCard } from './StrategyActivationCard';
 import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
 import { TierProgressBar } from '@/components/gamification/TierProgressBar';
 import { QuickWinCard } from './QuickWinCard';
@@ -105,6 +106,11 @@ export function ResultsPage() {
 
         {/* Quick Win Teaser */}
         <QuickWinCard primaryHorseman={primaryHorseman} />
+
+        {/* Strategy Activation */}
+        <section>
+          <StrategyActivationCard primaryHorseman={primaryHorseman} />
+        </section>
 
         {/* Deep Dive */}
         <section>
