@@ -5,6 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { calculateHorsemanScores, determinePrimaryHorseman } from '@/lib/scoringEngine';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import { useProfile } from '@/hooks/useProfile';
+import { useGamification } from '@/hooks/useGamification';
+import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
 import type { AssessmentQuestion, AssessmentState } from '@/lib/assessmentTypes';
 import type { HorsemanType } from '@/lib/scoringEngine';
 import type { CashFlowStatus } from '@/lib/cashFlowCalculator';
@@ -13,6 +15,7 @@ export function useAssessment(questions: AssessmentQuestion[]) {
   const { profile } = useProfile();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { logActivity } = useGamification();
   
   const [state, setState] = useState<AssessmentState>({
     currentStep: 0,
@@ -126,6 +129,12 @@ export function useAssessment(questions: AssessmentQuestion[]) {
         .insert(responseRecords);
 
       if (responsesError) throw responsesError;
+
+      // Log gamification activity
+      logActivity('assessment_complete', { assessment_id: assessment.id }).then((awarded) => {
+        showPointsEarnedToast(100, 'Assessment completed!');
+        awarded.forEach((badge) => showAchievementToast(badge));
+      });
 
       // Navigate to results
       navigate(`/results/${assessment.id}`);

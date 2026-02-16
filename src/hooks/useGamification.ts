@@ -78,8 +78,8 @@ export function useGamification() {
 
   // Log activity + check badges
   const logActivity = useCallback(
-    async (action: ActivityType, context?: Record<string, unknown>) => {
-      if (!user?.id) return;
+    async (action: ActivityType, context?: Record<string, unknown>): Promise<AwardedBadge[]> => {
+      if (!user?.id) return [];
 
       // Log the activity
       await supabase.from('user_activity_log').insert([{
@@ -102,6 +102,8 @@ export function useGamification() {
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['user-badges', user.id] });
       queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+
+      return awarded;
     },
     [user?.id, queryClient]
   );

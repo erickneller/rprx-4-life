@@ -19,10 +19,13 @@ import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import { UnsavedChangesDialog } from '@/components/profile/UnsavedChangesDialog';
 import { BadgeDisplay as BadgeDisplayComponent } from '@/components/gamification/BadgeDisplay';
 import { StreakCounter as StreakCounterComponent } from '@/components/gamification/StreakCounter';
+import { useGamification } from '@/hooks/useGamification';
+import { showAchievementToast } from '@/components/gamification/AchievementToast';
 
 export default function Profile() {
   const { user } = useAuth();
   const { profile, updateProfile, uploadAvatar } = useProfile();
+  const { logActivity } = useGamification();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState('');
@@ -266,6 +269,11 @@ export default function Profile() {
       toast({
         title: 'Profile updated',
         description: 'Your profile has been saved.'
+      });
+
+      // Log gamification activity
+      logActivity('profile_updated').then((awarded) => {
+        awarded.forEach((badge) => showAchievementToast(badge));
       });
     } catch (error) {
       console.error('Save error:', error);
