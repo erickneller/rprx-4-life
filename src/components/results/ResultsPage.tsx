@@ -7,7 +7,8 @@ import { PrimaryHorsemanCard } from './PrimaryHorsemanCard';
 import { CashFlowIndicator } from './CashFlowIndicator';
 import { DiagnosticFeedback } from './DiagnosticFeedback';
 import { SuggestedPromptCard } from './SuggestedPromptCard';
-import { RPRxScoreCard } from './RPRxScoreCard';
+import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
+import { TierProgressBar } from '@/components/gamification/TierProgressBar';
 import { QuickWinCard } from './QuickWinCard';
 import { DeepDiveWizard } from '@/components/assessment/DeepDiveWizard';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
@@ -91,7 +92,8 @@ export function ResultsPage() {
         </div>
 
         {/* RPRx Score */}
-        <RPRxScoreCard />
+        <GamificationScoreCard />
+        <TierProgressBar />
 
         {/* Radar Chart */}
         <section>

@@ -9,6 +9,10 @@ import { CurrentFocusCard } from './CurrentFocusCard';
 import { CashFlowStatusCard } from '@/components/debt-eliminator/dashboard/CashFlowStatusCard';
 import { MotivationCard } from '@/components/debt-eliminator/dashboard/MotivationCard';
 import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/EditMotivationDialog';
+import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
+import { TierProgressBar } from '@/components/gamification/TierProgressBar';
+import { StreakCounter } from '@/components/gamification/StreakCounter';
+import { RecentBadges } from '@/components/gamification/RecentBadges';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import { Loader2 } from 'lucide-react';
 
@@ -95,6 +99,17 @@ export function DashboardContent() {
                 onDelete={() => updateProfile.mutate({ motivation_text: null, motivation_images: [] })}
               />
 
+              {/* RPRx Score + Streak row */}
+              <div className="grid md:grid-cols-[1fr_auto] gap-4 items-start">
+                <div className="space-y-3">
+                  <GamificationScoreCard />
+                  <TierProgressBar />
+                </div>
+                <div className="flex md:flex-col gap-3 items-start">
+                  <StreakCounter />
+                </div>
+              </div>
+
               {/* Plan focus takes priority */}
               {focusPlan && (
                 <CurrentFocusCard
@@ -114,6 +129,10 @@ export function DashboardContent() {
                 />
               )}
               <CashFlowStatusCard surplus={surplus} status={status} />
+
+              {/* Recent achievements */}
+              <RecentBadges />
+
               {!focusPlan && !activeDebtFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
             </>
           )}

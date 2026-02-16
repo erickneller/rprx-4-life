@@ -17,6 +17,8 @@ import { PROFILE_TYPES, FINANCIAL_GOALS, FILING_STATUSES } from '@/lib/profileTy
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import { UnsavedChangesDialog } from '@/components/profile/UnsavedChangesDialog';
+import { BadgeDisplay as BadgeDisplayComponent } from '@/components/gamification/BadgeDisplay';
+import { StreakCounter as StreakCounterComponent } from '@/components/gamification/StreakCounter';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -563,6 +565,25 @@ export default function Profile() {
               monthlyLivingExpenses={monthlyLivingExpenses}
               setMonthlyLivingExpenses={setMonthlyLivingExpenses} />
 
+          </CardContent>
+        </Card>
+
+        {/* My Achievements */}
+        <Card>
+          <CardHeader>
+            <CardTitle>My Achievements</CardTitle>
+            <CardDescription>
+              Track your progress and unlock badges as you take control of your finances.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <StreakCounterComponent />
+              <div className="text-xs text-muted-foreground">
+                Longest streak: {profile?.longest_streak ?? 0} days
+              </div>
+            </div>
+            <BadgeDisplayComponent />
           </CardContent>
         </Card>
 
