@@ -1,10 +1,11 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { AssessmentWizard } from '@/components/assessment/AssessmentWizard';
 import { Loader2 } from 'lucide-react';
 
 const Assessment = () => {
   const { user, loading } = useAuth();
+  const { id: editAssessmentId } = useParams<{ id?: string }>();
 
   if (loading) {
     return (
@@ -18,7 +19,7 @@ const Assessment = () => {
     return <Navigate to="/auth" replace />;
   }
 
-  return <AssessmentWizard />;
+  return <AssessmentWizard editAssessmentId={editAssessmentId} />;
 };
 
 export default Assessment;

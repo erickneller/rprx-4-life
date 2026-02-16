@@ -13,7 +13,11 @@ import { useAssessmentQuestions } from '@/hooks/useAssessmentQuestions';
 import { useAssessment } from '@/hooks/useAssessment';
 import { getHorsemanLabel } from '@/lib/scoringEngine';
 
-export function AssessmentWizard() {
+interface AssessmentWizardProps {
+  editAssessmentId?: string;
+}
+
+export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   const navigate = useNavigate();
   const [showExitDialog, setShowExitDialog] = useState(false);
   const { data: questions = [], isLoading: questionsLoading } = useAssessmentQuestions();
@@ -28,6 +32,7 @@ export function AssessmentWizard() {
     responses,
     isSubmitting,
     isLastCoreStep,
+    isLoadingEdit,
     setResponse,
     deepDiveQuestions,
     currentDeepDiveQuestion,
@@ -43,9 +48,9 @@ export function AssessmentWizard() {
     transitionToDeepDive,
     startDeepDive,
     submitAssessment,
-  } = useAssessment(questions);
+  } = useAssessment(questions, editAssessmentId);
 
-  if (questionsLoading) {
+  if (questionsLoading || isLoadingEdit) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
