@@ -350,6 +350,10 @@ export default function Profile() {
   // Auto-save status for UI
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
+  // Stable ref for handleSave so the effect doesn't restart on every field change
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => { handleSaveRef.current = handleSave; }, [handleSave]);
+
   // Debounced auto-save: triggers 2s after last change if valid
   useEffect(() => {
     if (!isDirty || !isValid) return;
@@ -357,7 +361,7 @@ export default function Profile() {
     setAutoSaveStatus('idle');
     const timer = setTimeout(() => {
       setAutoSaveStatus('saving');
-      handleSave().then(() => {
+      handleSaveRef.current().then(() => {
         setAutoSaveStatus('saved');
         // Reset status after 3s
         setTimeout(() => setAutoSaveStatus('idle'), 3000);
@@ -367,14 +371,7 @@ export default function Profile() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [
-    isDirty, isValid, handleSave,
-    fullName, phone, company,
-    monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
-    profileType, numChildren, childrenAges, financialGoals, filingStatus,
-    yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
-    healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance,
-  ]);
+  }, [isDirty, isValid]);
 
   // Unsaved changes warning
   const {
