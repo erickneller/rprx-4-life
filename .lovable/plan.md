@@ -1,82 +1,113 @@
 
+# Streamline to a Single-Strategy Transformational Path
 
-# Streamline the Results Page Into a Single Transformational Path
+## Overview
 
-## The Problem
+This is a significant UX overhaul that transforms the assessment-to-strategy flow from "buffet of options" into a focused, guided journey: **one strategy at a time, earned through completing the full assessment (including Deep Dive), editable at any point**.
 
-The current Results page presents three competing calls-to-action in a confusing sequence:
+## What Changes
 
-1. **Quick Win Card** -- tells user to "do the Deep Dive below"
-2. **Strategy Activation Card** -- asks user to commit to strategies (before understanding results)
-3. **Deep Dive Wizard** -- refines recommendations (shown after strategies are already displayed)
-4. **Diagnostic Feedback** -- explains what the results mean (buried below the action items)
-5. **"Generate My Strategies" button** -- a separate AI-powered strategy path
+### 1. Merge Deep Dive into the Assessment Wizard (mandatory)
+Currently the Deep Dive is a separate widget on the Results page. Instead, after the user answers the 15 core questions, the wizard seamlessly continues with the 5 Deep Dive questions (loaded based on the primary horseman calculated mid-flow). The user completes all 20 questions in one sitting before seeing results.
 
-Users see strategies to activate before they understand their situation, and two different strategy systems compete for attention.
+- **AssessmentWizard.tsx**: After the last core question, calculate the primary horseman on-the-fly, fetch deep dive questions, and continue the wizard seamlessly (show a brief interstitial like "Great! 5 more questions to personalize your strategy...")
+- **useAssessment.ts**: Add a "phase 2" state that loads deep dive questions and appends them. Submit both assessment + deep dive records together at the end.
+- **DeepDiveWizard.tsx**: Keep the component for potential standalone use, but it will no longer appear on the Results page.
 
-## The Fix: A Linear Journey
+### 2. Make the entire assessment editable
+Add an "Edit Answers" mode on the Results page that lets users revisit and change both core and deep dive answers, then recalculate scores.
 
-Reorganize the Results page into a clear top-to-bottom narrative:
+- **ResultsPage.tsx**: Add an "Edit My Answers" button that navigates to `/assessment/edit/{assessmentId}`
+- **New route/page**: `AssessmentEditor` -- loads existing responses (core + deep dive) into the wizard, lets user change answers, then re-submits (updates existing records rather than creating new ones)
+- **useAssessment.ts**: Add an "edit mode" that pre-populates responses and uses `UPDATE` instead of `INSERT`
+
+### 3. Simplify the Results page (remove clutter)
+Remove the following from ResultsPage:
+- **QuickWinCard** -- removed entirely
+- **StrategyActivationCard** (Recommended Strategies list) -- removed entirely
+- **DeepDiveWizard** -- removed (now part of the assessment)
+
+The Results page becomes:
+1. Radar Chart + Primary Horseman + Cash Flow (diagnosis)
+2. Diagnostic Feedback (what it means)
+3. "Generate My Next Strategy" button (single CTA)
+4. RPRx Score + Tier Progress
+5. Edit Answers / Dashboard / New Assessment buttons
+
+### 4. One strategy at a time
+- **SuggestedPromptCard.tsx**: Rename button to "Generate My Next Strategy". Change the prompt from "recommend exactly 3 strategies" to "recommend the single best next strategy for my situation, considering strategies I've already completed"
+- **promptGenerator.ts**: Update `generateAutoStrategyPrompt` to request 1 strategy instead of 3. Include the user's completed strategies in the prompt context so the AI doesn't repeat them.
+- **ChatThread.tsx auto-mode**: Update the follow-up message to request steps for 1 strategy (not 3). The "Create My Plan" button auto-saves and navigates directly to the plan detail page.
+- **Strategy unlock logic**: After completing a strategy (marking all steps done on the Plan Detail page), show a prompt: "Ready for your next strategy?" linking back to the Results page to generate another.
+
+### 5. Remove the multi-strategy activation system
+- **StrategyActivationCard.tsx**: No longer rendered anywhere
+- **MyStrategiesCard.tsx on Dashboard**: Refactor to show only the user's current active plan (from `saved_plans`) with progress, instead of pulling from `user_active_strategies`
+- The `user_active_strategies` and `strategy_definitions` tables remain in the DB but are no longer the primary flow -- the AI-generated single plan in `saved_plans` becomes the core execution path
+
+### 6. Auto-navigate to plan after generation
+When the user clicks "Generate My Next Strategy":
+- Show a loading state on the Results page (no redirect to Strategy Assistant chat)
+- Send the prompt, wait for the response, parse it, auto-create the plan in `saved_plans`
+- Navigate directly to `/plans/{id}` -- the user lands on their actionable checklist immediately
+- This replaces the current flow of: Results -> Strategy Assistant chat -> read conversation -> click "Create My Plan" -> Plan Detail
+
+## Flow Diagram
+
+The new user journey:
 
 ```text
-1. Your Results (Radar Chart + Primary Horseman + Cash Flow)
-     "Here's what we found"
-          |
-2. Understanding Your Results (Diagnostic Feedback)
-     "Here's what it means"
-          |
-3. Quick Win Card
-     "Here's one thing you can do right now"
-          |
-4. Deep Dive Wizard
-     "Answer 5 questions to unlock your personalized plan"
-          |
-5. Strategy Activation Card (GATED -- only visible after Deep Dive is complete)
-     "Now commit to the strategies that fit you"
-          |
-6. Generate My Strategies (AI button)
-     "Or let us build a custom plan for you"
-          |
-7. RPRx Score + Tier Progress
-     "See how you're progressing"
-          |
-8. Action Buttons (Dashboard / New Assessment)
+Take Assessment (15 core + 5 deep dive = 20 questions)
+         |
+    Results Page
+    (Diagnosis + Feedback + "Generate My Next Strategy")
+         |
+    [Edit Answers]  or  [Generate My Next Strategy]
+         |                      |
+   Re-take wizard         Loading... AI generates plan
+         |                      |
+    Updated Results       Auto-navigate to Plan Detail
+                                |
+                          Complete steps (checklist)
+                                |
+                          "Ready for next strategy?"
+                                |
+                          Back to Results -> Generate next
 ```
-
-## Key Changes
-
-### 1. Reorder ResultsPage sections
-Move Diagnostic Feedback and Primary Horseman/Cash Flow up (right after the radar chart) so users understand their results before seeing any strategies.
-
-### 2. Gate the Strategy Activation Card behind Deep Dive completion
-Pass the `alreadyCompleted` / `completed` state from Deep Dive to conditionally show StrategyActivationCard. Before the deep dive is done, the card stays hidden -- the Deep Dive wizard is the single clear next step.
-
-### 3. Move gamification score to the bottom
-RPRx Score and Tier Progress are motivational reinforcement, not the primary narrative. Move them below the strategy sections.
-
-### 4. Merge the "Next Steps" heading
-Remove the separate "Next Steps" section header. The "Generate My Strategies" button will sit naturally after Strategy Activation as an alternative path, under a combined strategies section.
-
----
 
 ## Technical Details
 
-### File: `src/components/results/ResultsPage.tsx`
+### Files to modify:
+- **src/components/assessment/AssessmentWizard.tsx** -- add deep dive phase after core questions
+- **src/hooks/useAssessment.ts** -- add deep dive integration, edit mode support
+- **src/components/results/ResultsPage.tsx** -- remove QuickWinCard, DeepDiveWizard, StrategyActivationCard; add edit button; simplify layout
+- **src/components/results/SuggestedPromptCard.tsx** -- rename to "Generate My Next Strategy", change to single-strategy prompt, add inline generation (no chat redirect)
+- **src/lib/promptGenerator.ts** -- change prompt to request 1 strategy, include completed strategies as context
+- **src/components/assistant/ChatThread.tsx** -- update auto-mode follow-up for single strategy
+- **src/components/dashboard/MyStrategiesCard.tsx** -- refactor to show current active plan from `saved_plans` instead of `user_active_strategies`
+- **src/components/dashboard/DashboardContent.tsx** -- minor adjustments for new card
+- **src/pages/PlanDetail.tsx** -- add "Ready for next strategy?" CTA when plan is completed
+- **src/App.tsx** -- add route for assessment editor
 
-Reorder the JSX sections and add gating logic:
+### Files to remove/deprecate:
+- **src/components/results/QuickWinCard.tsx** -- no longer used
+- **src/components/results/StrategyActivationCard.tsx** -- no longer used on results page
 
-- Import and use `useExistingDeepDive` from `@/hooks/useDeepDive` to check if the deep dive is already completed
-- Add a `deepDiveCompleted` state that flips to `true` when the `DeepDiveWizard` finishes (pass an `onComplete` callback prop)
-- Conditionally render `StrategyActivationCard` only when deep dive is done
-- New section order: Intro, Radar Chart, Primary Horseman + Cash Flow, Diagnostic Feedback, Quick Win, Deep Dive, (conditional) Strategy Activation + Generate Strategies, RPRx Score/Tier, Action Buttons
+### No database migrations required
+- All existing tables (`saved_plans`, `user_deep_dives`, `user_assessments`, `assessment_responses`) support this flow
+- `user_active_strategies` and `strategy_definitions` remain but become secondary
 
-### File: `src/components/assessment/DeepDiveWizard.tsx`
+### Phased implementation
+Given the scope, this should be implemented in 2 phases:
 
-Add an optional `onComplete` callback prop so the parent (`ResultsPage`) knows when the deep dive finishes and can reveal the strategy sections.
+**Phase 1 -- Core flow changes:**
+- Merge Deep Dive into Assessment Wizard
+- Simplify Results page (remove clutter)
+- Change "Generate My Strategies" to single-strategy generation with auto-navigate to plan
+- Update prompt to request 1 strategy
 
-### File: `src/components/results/QuickWinCard.tsx`
-
-Update the teaser text from "Complete the Deep Dive below..." to something that flows with the new position (it now sits directly above the Deep Dive).
-
-### No database or migration changes needed.
-
+**Phase 2 -- Polish:**
+- Add assessment edit mode
+- Add "Ready for next strategy?" on completed plans
+- Refactor Dashboard MyStrategiesCard to show current plan
+- Include completed strategies in prompt context to avoid repeats
