@@ -1,11 +1,16 @@
 import { useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { useProfile } from '@/hooks/useProfile';
+import { useExistingDeepDive } from '@/hooks/useDeepDive';
 import { calculateRPRxScore, getRPRxTier } from '@/lib/rprxScore';
 
 export function RPRxScoreCard() {
+  const { id: assessmentId } = useParams<{ id: string }>();
   const { profile, updateProfile } = useProfile();
-  const score = calculateRPRxScore(profile);
+  const { data: existingDive } = useExistingDeepDive(assessmentId);
+  const hasDeepDive = !!existingDive;
+  const score = calculateRPRxScore(profile, hasDeepDive);
   const tier = getRPRxTier(score);
   const lastPersistedScore = useRef<number | null>(null);
 
@@ -68,7 +73,7 @@ export function RPRxScoreCard() {
             {tier.emoji} {tier.label}
           </p>
           <p className="text-sm text-muted-foreground">
-            {(profile?.rprx_score ?? score) >= 175
+            {hasDeepDive
               ? 'Deep Dive complete! Keep building your score.'
               : 'Complete your Deep Dive to earn +75 points'}
           </p>

@@ -7,8 +7,6 @@ import { SingleChoiceQuestion } from './SingleChoiceQuestion';
 import { RangeSelectQuestion } from './RangeSelectQuestion';
 import { MultiSelectQuestion } from './MultiSelectQuestion';
 import { useDeepDiveQuestions, useExistingDeepDive, useSaveDeepDive } from '@/hooks/useDeepDive';
-import { useProfile } from '@/hooks/useProfile';
-import { calculateRPRxScore } from '@/lib/rprxScore';
 import { getHorsemanLabel } from '@/lib/scoringEngine';
 import type { HorsemanType } from '@/lib/scoringEngine';
 
@@ -21,7 +19,6 @@ export function DeepDiveWizard({ primaryHorseman, assessmentId }: DeepDiveWizard
   const { data: questions = [], isLoading } = useDeepDiveQuestions(primaryHorseman);
   const { data: existingDive } = useExistingDeepDive(assessmentId);
   const saveDeepDive = useSaveDeepDive();
-  const { profile, updateProfile } = useProfile();
 
   const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -64,13 +61,6 @@ export function DeepDiveWizard({ primaryHorseman, assessmentId }: DeepDiveWizard
       horsemanType: primaryHorseman,
       answers,
     });
-
-    // Update RPRx score +75
-    if (profile) {
-      const currentScore = calculateRPRxScore(profile);
-      const newScore = Math.min(currentScore + 75, 1000);
-      await updateProfile.mutateAsync({ rprx_score: newScore });
-    }
 
     setCompleted(true);
   };
