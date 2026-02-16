@@ -154,7 +154,7 @@ export function StrategyActivationCard({ primaryHorseman }: StrategyActivationCa
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="outline" className="text-xs bg-accent/10 text-accent-foreground border-accent/30">
+                            <Badge variant="outline" className="text-xs bg-accent/10 text-foreground border-accent/30">
                               {strategy.estimated_impact}
                             </Badge>
                           </TooltipTrigger>
