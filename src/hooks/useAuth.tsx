@@ -74,18 +74,42 @@ export function useAuth() {
       }
 
       return new Promise<{ error: any }>((resolve) => {
-        // Listen for auth state change (works cross-origin, unlike popup.closed)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-          if (event === 'SIGNED_IN') {
-            subscription.unsubscribe();
-            clearTimeout(timeout);
-            resolve({ error: null });
-            window.location.reload();
-          }
-        });
+        const cleanup = () => {
+          window.removeEventListener('message', messageHandler);
+          clearInterval(pollInterval);
+          clearTimeout(timeout);
+        };
+
+        // Listen for postMessage from the popup callback page
+        const messageHandler = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
+          if (event.data?.type !== 'oauth-complete') return;
+          cleanup();
+          popup?.close();
+          resolve({ error: null });
+          window.location.reload();
+        };
+        window.addEventListener('message', messageHandler);
+
+        // Fallback: poll popup.closed (may not work due to COOP, but harmless)
+        const pollInterval = setInterval(async () => {
+          try {
+            if (popup.closed) {
+              clearInterval(pollInterval);
+              // Give a moment for auth state to propagate
+              await new Promise(r => setTimeout(r, 1000));
+              const { data: sessionData } = await supabase.auth.getSession();
+              if (sessionData?.session) {
+                cleanup();
+                resolve({ error: null });
+                window.location.reload();
+              }
+            }
+          } catch {}
+        }, 1000);
 
         const timeout = setTimeout(() => {
-          subscription.unsubscribe();
+          cleanup();
           resolve({ error: { message: 'Sign in timed out. Please try again.' } as any });
         }, 120000);
       });
