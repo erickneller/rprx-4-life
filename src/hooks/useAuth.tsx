@@ -74,26 +74,19 @@ export function useAuth() {
       }
 
       return new Promise<{ error: any }>((resolve) => {
-        const interval = setInterval(async () => {
-          try {
-            if (popup.closed) {
-              clearInterval(interval);
-              // Check if session was established
-              const { data: sessionData } = await supabase.auth.getSession();
-              if (sessionData?.session) {
-                resolve({ error: null });
-                window.location.reload();
-              } else {
-                resolve({ error: { message: 'Sign in was cancelled' } as any });
-              }
-              return;
-            }
-          } catch {}
-        }, 500);
+        // Listen for auth state change (works cross-origin, unlike popup.closed)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+          if (event === 'SIGNED_IN') {
+            subscription.unsubscribe();
+            clearTimeout(timeout);
+            resolve({ error: null });
+            window.location.reload();
+          }
+        });
 
-        setTimeout(() => {
-          clearInterval(interval);
-          resolve({ error: { message: 'Sign in timed out' } as any });
+        const timeout = setTimeout(() => {
+          subscription.unsubscribe();
+          resolve({ error: { message: 'Sign in timed out. Please try again.' } as any });
         }, 120000);
       });
     }
