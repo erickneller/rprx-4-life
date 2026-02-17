@@ -1,44 +1,89 @@
 
-# Streamline to a Single-Strategy Transformational Path
-
-## Status: Phase 1 ✅ Complete | Phase 2 🔲 Pending
+# Expand Admin Panel: Full Content Management + Analytics
 
 ## Overview
+Add 4 new tabs to the existing Admin Panel: **Badge Definitions**, **Assessment Questions**, **Deep Dive Questions**, and an **Analytics Dashboard**. This gives admins complete control over all seeded content tables plus visibility into platform usage.
 
-This is a significant UX overhaul that transforms the assessment-to-strategy flow from "buffet of options" into a focused, guided journey: **one strategy at a time, earned through completing the full assessment (including Deep Dive), editable at any point**.
+---
 
-## Phase 1 — COMPLETED ✅
+## What Gets Built
 
-### 1. ✅ Merged Deep Dive into Assessment Wizard (mandatory)
-- `useAssessment.ts` now has `phase` state: `core` → `transition` → `deep_dive`
-- After 15 core questions, calculates primary horseman, fetches deep dive questions, shows transition screen
-- Deep dive questions rendered inline in AssessmentWizard with same navigation
-- Both assessment + deep dive records saved together on final submit
+### Tab 1: Badge Definitions Management
+Full CRUD for the 21 existing badges:
+- **Table columns**: ID, Name, Icon, Category, Trigger Type, Points, Active toggle
+- **Create/Edit form fields**: id, name, description, icon (emoji/text), category, trigger_type, trigger_value (JSON), points, sort_order, is_active
+- Delete with confirmation dialog
 
-### 2. ✅ Simplified Results page
-- Removed QuickWinCard, StrategyActivationCard, DeepDiveWizard from ResultsPage
-- Results page now: Radar Chart → Horseman + Cash Flow → Diagnostic Feedback → "Generate My Next Strategy" → RPRx Score → Action Buttons
-- Added "Edit My Answers" button (navigates to `/assessment/edit/{id}` — route TBD in Phase 2)
+### Tab 2: Assessment Questions Management
+Full CRUD for the 15 core assessment questions:
+- **Table columns**: Order, Question Text (truncated), Category, Type, Horseman Weights preview
+- **Create/Edit form fields**: question_text, question_type (single_choice, multi_select, range, slider, yes_no), category, order_index, options (JSON editor), horseman_weights (JSON editor)
+- Reordering via order_index field
 
-### 3. ✅ Single-strategy generation with auto-navigate
-- SuggestedPromptCard renamed to "Generate My Next Strategy"
-- Sends prompt, gets AI response, sends follow-up for steps, parses response, auto-creates plan in `saved_plans`
-- Navigates directly to `/plans/{id}` — no chat intermediary
-- promptGenerator requests exactly 1 strategy, includes completed strategies to avoid repeats
+### Tab 3: Deep Dive Questions Management
+Full CRUD for the 20 deep-dive questions:
+- **Table columns**: Horseman Type, Order, Question Text, Type
+- **Create/Edit form fields**: horseman_type (select from 4 Horsemen), question_text, question_type, order_index, options (JSON editor)
+- Filterable by Horseman type
 
-### 4. ✅ "Ready for next strategy?" on completed plans
-- PlanDetail page shows CTA when plan is completed, linking back to latest assessment results
+### Tab 4: Analytics Dashboard
+Read-only stats overview:
+- Total users, total assessments completed, total active strategies
+- Assessments per Horseman (primary_horseman breakdown)
+- Recent signups (last 7 days)
+- Badge earning stats (most/least earned)
 
-## Phase 2 — PENDING 🔲
+---
 
-### Assessment edit mode
-- Create `/assessment/edit/{assessmentId}` route and page
-- `useAssessment.ts` edit mode: pre-populate responses, use UPDATE instead of INSERT
-- Allow editing both core and deep dive answers, recalculate scores
+## Technical Details
 
-### Dashboard MyStrategiesCard refactor
-- Show current active plan from `saved_plans` with progress instead of `user_active_strategies`
+### Database Changes (Migration)
+Add admin RLS policies to 3 tables that currently block all writes:
 
-### Cleanup
-- Consider removing unused `QuickWinCard.tsx` and `StrategyActivationCard.tsx` files
-- ChatThread auto-mode may need updates for single-strategy context
+```sql
+-- badge_definitions: admin CRUD
+CREATE POLICY "Admins can insert badges" ON badge_definitions FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can update badges" ON badge_definitions FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete badges" ON badge_definitions FOR DELETE TO authenticated
+  USING (has_role(auth.uid(), 'admin'));
+
+-- assessment_questions: admin CRUD
+CREATE POLICY "Admins can insert questions" ON assessment_questions FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can update questions" ON assessment_questions FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete questions" ON assessment_questions FOR DELETE TO authenticated
+  USING (has_role(auth.uid(), 'admin'));
+
+-- deep_dive_questions: admin CRUD
+CREATE POLICY "Admins can insert deep dive questions" ON deep_dive_questions FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can update deep dive questions" ON deep_dive_questions FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete deep dive questions" ON deep_dive_questions FOR DELETE TO authenticated
+  USING (has_role(auth.uid(), 'admin'));
+```
+
+### New Files
+- `src/hooks/useAdminBadges.ts` -- query/mutation hooks for badge_definitions
+- `src/hooks/useAdminQuestions.ts` -- query/mutation hooks for assessment_questions and deep_dive_questions
+- `src/hooks/useAdminAnalytics.ts` -- read-only queries for analytics stats
+- `src/components/admin/BadgesTab.tsx` -- Badge management tab UI
+- `src/components/admin/AssessmentQuestionsTab.tsx` -- Assessment questions tab UI
+- `src/components/admin/DeepDiveQuestionsTab.tsx` -- Deep dive questions tab UI
+- `src/components/admin/AnalyticsTab.tsx` -- Analytics dashboard tab UI
+
+### Modified Files
+- `src/pages/AdminPanel.tsx` -- Add 4 new TabsTrigger + TabsContent entries, import the new tab components. This also cleans up the file by extracting the existing Strategies and Users tabs into their own components if needed.
+
+### Pattern
+Each tab follows the same proven pattern already used in the Strategies tab:
+1. Table with key columns + active toggle
+2. Create/Edit dialog with form fields
+3. Delete confirmation AlertDialog
+4. Toast notifications for success/error
+
+### JSON Fields
+For `options`, `horseman_weights`, and `trigger_value` fields, a simple Textarea with JSON validation will be used (parse on save, show error toast if invalid JSON).
