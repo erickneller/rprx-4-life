@@ -74,13 +74,16 @@ export function useAuth() {
       }
 
       return new Promise<{ error: any }>((resolve) => {
+        let resolved = false;
         const cleanup = () => {
+          if (resolved) return;
+          resolved = true;
           window.removeEventListener('message', messageHandler);
-          clearInterval(pollInterval);
+          window.removeEventListener('storage', storageHandler);
           clearTimeout(timeout);
         };
 
-        // Listen for postMessage from the popup callback page
+        // Method 1: postMessage (works if COOP doesn't block window.opener)
         const messageHandler = (event: MessageEvent) => {
           if (event.origin !== window.location.origin) return;
           if (event.data?.type !== 'oauth-complete') return;
@@ -91,22 +94,16 @@ export function useAuth() {
         };
         window.addEventListener('message', messageHandler);
 
-        // Fallback: poll popup.closed (may not work due to COOP, but harmless)
-        const pollInterval = setInterval(async () => {
-          try {
-            if (popup.closed) {
-              clearInterval(pollInterval);
-              // Give a moment for auth state to propagate
-              await new Promise(r => setTimeout(r, 1000));
-              const { data: sessionData } = await supabase.auth.getSession();
-              if (sessionData?.session) {
-                cleanup();
-                resolve({ error: null });
-                window.location.reload();
-              }
-            }
-          } catch {}
-        }, 1000);
+        // Method 2: localStorage event (works even when COOP blocks window.opener)
+        const storageHandler = (event: StorageEvent) => {
+          if (event.key !== 'oauth-complete') return;
+          cleanup();
+          popup?.close();
+          localStorage.removeItem('oauth-complete');
+          resolve({ error: null });
+          window.location.reload();
+        };
+        window.addEventListener('storage', storageHandler);
 
         const timeout = setTimeout(() => {
           cleanup();
