@@ -57,8 +57,11 @@ export function useAuth() {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/auth/callback`,
         skipBrowserRedirect: true,
+        queryParams: {
+          prompt: 'select_account',
+        },
       },
     });
 
@@ -70,20 +73,29 @@ export function useAuth() {
         return { error: { message: 'Please allow popups for this site to sign in with Google, then try again.' } as any };
       }
 
-      // Poll for session completion
-      const interval = setInterval(async () => {
-        try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData?.session) {
-            clearInterval(interval);
-            popup.close();
-            window.location.reload();
-          }
-        } catch {}
-      }, 1000);
+      return new Promise<{ error: any }>((resolve) => {
+        const interval = setInterval(async () => {
+          try {
+            if (popup.closed) {
+              clearInterval(interval);
+              // Check if session was established
+              const { data: sessionData } = await supabase.auth.getSession();
+              if (sessionData?.session) {
+                resolve({ error: null });
+                window.location.reload();
+              } else {
+                resolve({ error: { message: 'Sign in was cancelled' } as any });
+              }
+              return;
+            }
+          } catch {}
+        }, 500);
 
-      // Clean up after 2 minutes
-      setTimeout(() => clearInterval(interval), 120000);
+        setTimeout(() => {
+          clearInterval(interval);
+          resolve({ error: { message: 'Sign in timed out' } as any });
+        }, 120000);
+      });
     }
 
     return { error: null };

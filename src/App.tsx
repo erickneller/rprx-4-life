@@ -8,6 +8,7 @@ import { AdminRoute } from "@/components/auth/AdminRoute";
 import { NavigationBlockerProvider } from "@/contexts/NavigationBlockerContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Assessment from "./pages/Assessment";
@@ -33,6 +34,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/assessment" element={<ProtectedRoute><Assessment /></ProtectedRoute>} />
