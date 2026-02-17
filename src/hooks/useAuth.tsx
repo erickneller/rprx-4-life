@@ -54,13 +54,39 @@ export function useAuth() {
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/`,
+        skipBrowserRedirect: true,
       },
     });
-    return { error };
+
+    if (error) return { error };
+
+    if (data?.url) {
+      const popup = window.open(data.url, 'google-oauth', 'width=500,height=600');
+      if (!popup) {
+        return { error: { message: 'Please allow popups for this site to sign in with Google, then try again.' } as any };
+      }
+
+      // Poll for session completion
+      const interval = setInterval(async () => {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData?.session) {
+            clearInterval(interval);
+            popup.close();
+            window.location.reload();
+          }
+        } catch {}
+      }, 1000);
+
+      // Clean up after 2 minutes
+      setTimeout(() => clearInterval(interval), 120000);
+    }
+
+    return { error: null };
   };
 
   const resetPasswordForEmail = async (email: string) => {
