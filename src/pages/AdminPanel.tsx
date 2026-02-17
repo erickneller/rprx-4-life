@@ -13,9 +13,13 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { BadgesTab } from '@/components/admin/BadgesTab';
+import { AssessmentQuestionsTab } from '@/components/admin/AssessmentQuestionsTab';
+import { DeepDiveQuestionsTab } from '@/components/admin/DeepDiveQuestionsTab';
+import { AnalyticsTab } from '@/components/admin/AnalyticsTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -196,7 +200,19 @@ export default function AdminPanel() {
               <Shield className="h-4 w-4" /> Strategies
             </TabsTrigger>
             <TabsTrigger value="users" className="gap-1">
-              <Users className="h-4 w-4" /> User Management
+              <Users className="h-4 w-4" /> Users
+            </TabsTrigger>
+            <TabsTrigger value="badges" className="gap-1">
+              <Award className="h-4 w-4" /> Badges
+            </TabsTrigger>
+            <TabsTrigger value="assessment-questions" className="gap-1">
+              <HelpCircle className="h-4 w-4" /> Assessment Q's
+            </TabsTrigger>
+            <TabsTrigger value="deepdive-questions" className="gap-1">
+              <Layers className="h-4 w-4" /> Deep Dive Q's
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-1">
+              <BarChart3 className="h-4 w-4" /> Analytics
             </TabsTrigger>
           </TabsList>
 
@@ -340,6 +356,25 @@ export default function AdminPanel() {
                 </Table>
               </div>
             )}
+          </TabsContent>
+          {/* ===== BADGES TAB ===== */}
+          <TabsContent value="badges" className="space-y-4">
+            <BadgesTab />
+          </TabsContent>
+
+          {/* ===== ASSESSMENT QUESTIONS TAB ===== */}
+          <TabsContent value="assessment-questions" className="space-y-4">
+            <AssessmentQuestionsTab />
+          </TabsContent>
+
+          {/* ===== DEEP DIVE QUESTIONS TAB ===== */}
+          <TabsContent value="deepdive-questions" className="space-y-4">
+            <DeepDiveQuestionsTab />
+          </TabsContent>
+
+          {/* ===== ANALYTICS TAB ===== */}
+          <TabsContent value="analytics" className="space-y-4">
+            <AnalyticsTab />
           </TabsContent>
         </Tabs>
       </div>
