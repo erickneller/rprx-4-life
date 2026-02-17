@@ -3,13 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 
 const AuthCallback = () => {
   useEffect(() => {
-    // Let Supabase process the tokens from the URL hash
     supabase.auth.getSession().then(() => {
-      // If opened as a popup, close it so the parent detects closure
       if (window.opener) {
+        // Notify parent window that OAuth is complete
+        window.opener.postMessage({ type: 'oauth-complete' }, window.location.origin);
         window.close();
       } else {
-        // Fallback: redirect to home if not in a popup
         window.location.href = '/';
       }
     });
