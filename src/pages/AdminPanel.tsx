@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
-import { useAdminStrategies, useCreateStrategy, useUpdateStrategy, useDeleteStrategy, type StrategyRow, type StrategyInput } from '@/hooks/useAdminStrategies';
+import { useAdminStrategies, useCreateStrategy, useUpdateStrategy, useDeleteStrategy, useDeleteStrategies, useImportStrategies, useBulkToggleActive, type StrategyRow, type StrategyInput } from '@/hooks/useAdminStrategies';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BadgesTab } from '@/components/admin/BadgesTab';
@@ -100,15 +101,20 @@ export default function AdminPanel() {
   const createStrategy = useCreateStrategy();
   const updateStrategy = useUpdateStrategy();
   const deleteStrategy = useDeleteStrategy();
+  const deleteStrategies = useDeleteStrategies();
+  const importStrategies = useImportStrategies();
+  const bulkToggleActive = useBulkToggleActive();
 
   const { data: users = [], isLoading: usersLoading } = useAdminUsers();
   const toggleAdmin = useToggleAdmin();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<StrategyInput>(emptyForm);
   const [goalsInput, setGoalsInput] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const openCreate = () => {
     setEditingId(null);
@@ -167,6 +173,158 @@ export default function AdminPanel() {
     setDeleteId(null);
   };
 
+  const handleBulkDelete = async () => {
+    try {
+      await deleteStrategies.mutateAsync(Array.from(selectedIds));
+      toast.success(`${selectedIds.size} strategies deleted`);
+      setSelectedIds(new Set());
+    } catch (err: unknown) {
+      toast.error((err as Error).message || 'Failed to delete');
+    }
+    setBulkDeleteOpen(false);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === strategies.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(strategies.map(s => s.id)));
+    }
+  };
+
+  // CSV helpers
+  const escapeCSV = (val: string) => {
+    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+      return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
+  };
+
+  const handleExportCSV = () => {
+    const rows = selectedIds.size > 0 ? strategies.filter(s => selectedIds.has(s.id)) : strategies;
+    const headers = ['id','name','description','horseman_type','difficulty','estimated_impact','tax_return_line_or_area','financial_goals','strategy_summary','sort_order','is_active'];
+    const csvLines = [headers.join(',')];
+    for (const s of rows) {
+      csvLines.push([
+        escapeCSV(s.id),
+        escapeCSV(s.name),
+        escapeCSV(s.description),
+        escapeCSV(s.horseman_type),
+        escapeCSV(s.difficulty),
+        escapeCSV(s.estimated_impact || ''),
+        escapeCSV(s.tax_return_line_or_area || ''),
+        escapeCSV((s.financial_goals || []).join(';')),
+        escapeCSV(s.strategy_summary || ''),
+        String(s.sort_order),
+        String(s.is_active),
+      ].join(','));
+    }
+    const blob = new Blob([csvLines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'strategies.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${rows.length} strategies`);
+  };
+
+  const parseCSV = (text: string): string[][] => {
+    const rows: string[][] = [];
+    let current = '';
+    let inQuotes = false;
+    let row: string[] = [];
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"' && text[i + 1] === '"') { current += '"'; i++; }
+        else if (ch === '"') { inQuotes = false; }
+        else { current += ch; }
+      } else {
+        if (ch === '"') { inQuotes = true; }
+        else if (ch === ',') { row.push(current); current = ''; }
+        else if (ch === '\n' || ch === '\r') {
+          if (ch === '\r' && text[i + 1] === '\n') i++;
+          row.push(current); current = '';
+          if (row.some(c => c.trim())) rows.push(row);
+          row = [];
+        } else { current += ch; }
+      }
+    }
+    row.push(current);
+    if (row.some(c => c.trim())) rows.push(row);
+    return rows;
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const text = ev.target?.result as string;
+        const parsed = parseCSV(text);
+        if (parsed.length < 2) { toast.error('CSV has no data rows'); return; }
+        const headers = parsed[0].map(h => h.trim().toLowerCase());
+        const idIdx = headers.indexOf('id');
+        const nameIdx = headers.indexOf('name');
+        const descIdx = headers.indexOf('description');
+        const horseIdx = headers.indexOf('horseman_type');
+        const diffIdx = headers.indexOf('difficulty');
+        if (idIdx < 0 || nameIdx < 0 || descIdx < 0 || horseIdx < 0 || diffIdx < 0) {
+          toast.error('CSV missing required columns: id, name, description, horseman_type, difficulty');
+          return;
+        }
+        const impactIdx = headers.indexOf('estimated_impact');
+        const taxIdx = headers.indexOf('tax_return_line_or_area');
+        const goalsIdx = headers.indexOf('financial_goals');
+        const summaryIdx = headers.indexOf('strategy_summary');
+        const orderIdx = headers.indexOf('sort_order');
+        const activeIdx = headers.indexOf('is_active');
+
+        const items: StrategyInput[] = parsed.slice(1).map(row => ({
+          id: row[idIdx]?.trim() || '',
+          name: row[nameIdx]?.trim() || '',
+          description: row[descIdx]?.trim() || '',
+          horseman_type: row[horseIdx]?.trim() || 'taxes',
+          difficulty: row[diffIdx]?.trim() || 'moderate',
+          estimated_impact: impactIdx >= 0 ? row[impactIdx]?.trim() : undefined,
+          tax_return_line_or_area: taxIdx >= 0 ? row[taxIdx]?.trim() : undefined,
+          financial_goals: goalsIdx >= 0 ? (row[goalsIdx]?.trim() || '').split(';').filter(Boolean) : [],
+          strategy_summary: summaryIdx >= 0 ? row[summaryIdx]?.trim() : undefined,
+          sort_order: orderIdx >= 0 ? parseInt(row[orderIdx]?.trim() || '0', 10) || 0 : 0,
+          is_active: activeIdx >= 0 ? row[activeIdx]?.trim().toLowerCase() !== 'false' : true,
+        })).filter(r => r.id && r.name);
+
+        await importStrategies.mutateAsync(items);
+        toast.success(`Imported ${items.length} strategies`);
+      } catch (err: unknown) {
+        toast.error((err as Error).message || 'Import failed');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const allActive = strategies.length > 0 && strategies.every(s => s.is_active);
+  const noneActive = strategies.length > 0 && strategies.every(s => !s.is_active);
+  const handleMasterToggle = async (checked: boolean) => {
+    try {
+      await bulkToggleActive.mutateAsync(checked);
+      toast.success(checked ? 'All strategies activated' : 'All strategies deactivated');
+    } catch (err: unknown) {
+      toast.error((err as Error).message || 'Failed to toggle');
+    }
+  };
+
   const handleToggleAdmin = async (userId: string, currentlyAdmin: boolean) => {
     try {
       await toggleAdmin.mutateAsync({ userId, makeAdmin: !currentlyAdmin });
@@ -218,7 +376,36 @@ export default function AdminPanel() {
 
           {/* ===== STRATEGIES TAB ===== */}
           <TabsContent value="strategies" className="space-y-4">
-            <div className="flex justify-end">
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="master-active" className="text-sm">All Active</Label>
+                <Switch
+                  id="master-active"
+                  checked={allActive}
+                  onCheckedChange={handleMasterToggle}
+                  disabled={bulkToggleActive.isPending || strategies.length === 0}
+                  className={!allActive && !noneActive ? 'opacity-60' : ''}
+                />
+              </div>
+              <div className="flex-1" />
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+                  <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+                    <Trash2 className="h-4 w-4 mr-1" /> Delete Selected
+                  </Button>
+                </div>
+              )}
+              <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1">
+                <Download className="h-4 w-4" /> Export CSV
+              </Button>
+              <label>
+                <Button variant="outline" size="sm" className="gap-1" asChild>
+                  <span><Upload className="h-4 w-4" /> Import CSV</span>
+                </Button>
+                <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
+              </label>
               <Button onClick={openCreate} className="gap-1">
                 <Plus className="h-4 w-4" /> Add Strategy
               </Button>
@@ -233,6 +420,12 @@ export default function AdminPanel() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={strategies.length > 0 && selectedIds.size === strategies.length}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
                       <TableHead className="w-24">ID</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Horseman</TableHead>
@@ -245,7 +438,13 @@ export default function AdminPanel() {
                   </TableHeader>
                   <TableBody>
                     {strategies.map((s) => (
-                      <TableRow key={s.id}>
+                      <TableRow key={s.id} data-state={selectedIds.has(s.id) ? 'selected' : undefined}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(s.id)}
+                            onCheckedChange={() => toggleSelect(s.id)}
+                          />
+                        </TableCell>
                         <TableCell className="font-mono text-xs">{s.id}</TableCell>
                         <TableCell className="font-medium">{s.name}</TableCell>
                         <TableCell>
@@ -282,7 +481,7 @@ export default function AdminPanel() {
                     ))}
                     {strategies.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                           No strategies found. Add your first one!
                         </TableCell>
                       </TableRow>
@@ -292,8 +491,6 @@ export default function AdminPanel() {
               </div>
             )}
           </TabsContent>
-
-          {/* ===== USER MANAGEMENT TAB ===== */}
           <TabsContent value="users" className="space-y-4">
             {usersLoading ? (
               <div className="flex justify-center py-12">
@@ -503,6 +700,24 @@ export default function AdminPanel() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} Strategies?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {selectedIds.size} selected strategies. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
