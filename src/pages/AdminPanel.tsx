@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -22,6 +22,7 @@ import { BadgesTab } from '@/components/admin/BadgesTab';
 import { AssessmentQuestionsTab } from '@/components/admin/AssessmentQuestionsTab';
 import { DeepDiveQuestionsTab } from '@/components/admin/DeepDiveQuestionsTab';
 import { AnalyticsTab } from '@/components/admin/AnalyticsTab';
+import { PromptTemplatesTab } from '@/components/admin/PromptTemplatesTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -457,6 +458,9 @@ export default function AdminPanel() {
             <TabsTrigger value="analytics" className="gap-1">
               <BarChart3 className="h-4 w-4" /> Analytics
             </TabsTrigger>
+            <TabsTrigger value="prompts" className="gap-1">
+              <MessageSquare className="h-4 w-4" /> Prompts
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
@@ -671,6 +675,11 @@ export default function AdminPanel() {
           {/* ===== ANALYTICS TAB ===== */}
           <TabsContent value="analytics" className="space-y-4">
             <AnalyticsTab />
+          </TabsContent>
+
+          {/* ===== PROMPT TEMPLATES TAB ===== */}
+          <TabsContent value="prompts" className="space-y-4">
+            <PromptTemplatesTab />
           </TabsContent>
         </Tabs>
       </div>

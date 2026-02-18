@@ -6,11 +6,16 @@ import { Message } from './useMessages';
 interface SendMessageParams {
   conversationId: string | null;
   userMessage: string;
+  mode?: 'auto' | 'manual';
+  page?: number;
 }
 
 interface SendMessageResult {
   conversationId: string;
   assistantMessage: string;
+  hasMoreStrategies?: boolean;
+  totalStrategies?: number;
+  currentPage?: number;
 }
 
 export function useSendMessage() {
@@ -18,7 +23,7 @@ export function useSendMessage() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const sendMessage = async ({ conversationId, userMessage }: SendMessageParams): Promise<SendMessageResult | null> => {
+  const sendMessage = async ({ conversationId, userMessage, mode, page }: SendMessageParams): Promise<SendMessageResult | null> => {
     setIsLoading(true);
     setError(null);
 
@@ -43,11 +48,15 @@ export function useSendMessage() {
         );
       }
 
+      const body: Record<string, unknown> = {
+        conversation_id: conversationId,
+        user_message: userMessage,
+      };
+      if (mode) body.mode = mode;
+      if (page) body.page = page;
+
       const { data, error: invokeError } = await supabase.functions.invoke('rprx-chat', {
-        body: {
-          conversation_id: conversationId,
-          user_message: userMessage,
-        },
+        body,
       });
 
       if (invokeError) {
@@ -61,6 +70,9 @@ export function useSendMessage() {
       return {
         conversationId: data.conversation_id,
         assistantMessage: data.assistant_message,
+        hasMoreStrategies: data.has_more_strategies,
+        totalStrategies: data.total_strategies,
+        currentPage: data.current_page,
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to send message';
