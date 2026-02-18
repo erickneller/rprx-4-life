@@ -35,7 +35,7 @@ export interface Profile {
   life_insurance: boolean;
   disability_insurance: boolean;
   long_term_care_insurance: boolean;
-  // Gamification fields
+  no_insurance: boolean;
   current_tier: string;
   current_streak: number;
   longest_streak: number;
@@ -135,7 +135,12 @@ export function useProfile() {
       p.profile_type && p.profile_type.length > 0 &&
       p.financial_goals && p.financial_goals.length > 0 &&
       p.filing_status?.trim() &&
-      p.num_children !== null && p.num_children !== undefined
+      p.num_children !== null && p.num_children !== undefined &&
+      p.years_until_retirement !== null &&
+      p.desired_retirement_income !== null &&
+      p.retirement_balance_total !== null &&
+      p.retirement_contribution_monthly !== null &&
+      (p.health_insurance || p.life_insurance || p.disability_insurance || p.long_term_care_insurance || p.no_insurance)
     );
   })();
 

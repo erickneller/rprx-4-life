@@ -319,6 +319,7 @@ export type Database = {
           monthly_living_expenses: number | null
           motivation_images: string[] | null
           motivation_text: string | null
+          no_insurance: boolean
           num_children: number | null
           phone: string | null
           profile_type: string[] | null
@@ -354,6 +355,7 @@ export type Database = {
           monthly_living_expenses?: number | null
           motivation_images?: string[] | null
           motivation_text?: string | null
+          no_insurance?: boolean
           num_children?: number | null
           phone?: string | null
           profile_type?: string[] | null
@@ -389,6 +391,7 @@ export type Database = {
           monthly_living_expenses?: number | null
           motivation_images?: string[] | null
           motivation_text?: string | null
+          no_insurance?: boolean
           num_children?: number | null
           phone?: string | null
           profile_type?: string[] | null

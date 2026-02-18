@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN no_insurance boolean NOT NULL DEFAULT false;

@@ -61,6 +61,7 @@ export default function Profile() {
   const [lifeInsurance, setLifeInsurance] = useState(false);
   const [disabilityInsurance, setDisabilityInsurance] = useState(false);
   const [longTermCareInsurance, setLongTermCareInsurance] = useState(false);
+  const [noInsurance, setNoInsurance] = useState(false);
 
   // Track original values for dirty detection
   const [originalValues, setOriginalValues] = useState<Record<string, unknown> | null>(null);
@@ -90,6 +91,7 @@ export default function Profile() {
         lifeInsurance: profile.life_insurance ?? false,
         disabilityInsurance: profile.disability_insurance ?? false,
         longTermCareInsurance: profile.long_term_care_insurance ?? false,
+        noInsurance: (profile as any).no_insurance ?? false,
       };
 
       setFullName(loadedValues.fullName);
@@ -113,6 +115,7 @@ export default function Profile() {
       setLifeInsurance(loadedValues.lifeInsurance);
       setDisabilityInsurance(loadedValues.disabilityInsurance);
       setLongTermCareInsurance(loadedValues.longTermCareInsurance);
+      setNoInsurance(loadedValues.noInsurance);
 
       setOriginalValues(loadedValues);
     }
@@ -157,6 +160,7 @@ export default function Profile() {
       lifeInsurance,
       disabilityInsurance,
       longTermCareInsurance,
+      noInsurance,
     };
 
     return (
@@ -170,7 +174,19 @@ export default function Profile() {
       currentValues.monthlyLivingExpenses !== originalValues.monthlyLivingExpenses ||
       JSON.stringify(currentValues.childrenAges) !== JSON.stringify(originalValues.childrenAges) ||
       JSON.stringify(currentValues.financialGoals) !== JSON.stringify(originalValues.financialGoals) ||
-      JSON.stringify(currentValues.profileTypes) !== JSON.stringify(originalValues.profileTypes));
+      JSON.stringify(currentValues.profileTypes) !== JSON.stringify(originalValues.profileTypes) ||
+      currentValues.filingStatus !== originalValues.filingStatus ||
+      currentValues.numChildren !== originalValues.numChildren ||
+      currentValues.yearsUntilRetirement !== originalValues.yearsUntilRetirement ||
+      currentValues.desiredRetirementIncome !== originalValues.desiredRetirementIncome ||
+      currentValues.retirementBalanceTotal !== originalValues.retirementBalanceTotal ||
+      currentValues.retirementContributionMonthly !== originalValues.retirementContributionMonthly ||
+      currentValues.healthInsurance !== originalValues.healthInsurance ||
+      currentValues.lifeInsurance !== originalValues.lifeInsurance ||
+      currentValues.disabilityInsurance !== originalValues.disabilityInsurance ||
+      currentValues.longTermCareInsurance !== originalValues.longTermCareInsurance ||
+      currentValues.noInsurance !== originalValues.noInsurance
+    );
 
   }, [
   originalValues,
@@ -178,7 +194,7 @@ export default function Profile() {
   monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
   profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
   yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
-  healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance]
+  healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance]
   );
 
   const getInitials = () => {
@@ -269,7 +285,7 @@ export default function Profile() {
         monthly_insurance: monthlyInsurance ? Number(monthlyInsurance) : null,
         monthly_living_expenses: monthlyLivingExpenses ? Number(monthlyLivingExpenses) : null,
         profile_type: profileTypes.length > 0 ? profileTypes : null,
-        num_children: numChildren || null,
+        num_children: numChildren,
         children_ages: numChildren > 0 ? childrenAges.slice(0, numChildren) : null,
         financial_goals: financialGoals.length > 0 ? financialGoals : null,
         filing_status: filingStatus || null,
@@ -281,14 +297,15 @@ export default function Profile() {
         life_insurance: lifeInsurance,
         disability_insurance: disabilityInsurance,
         long_term_care_insurance: longTermCareInsurance,
-      });
+        no_insurance: noInsurance,
+      } as any);
 
       setOriginalValues({
         fullName, phone, company,
         monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
         profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
         yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
-        healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance,
+        healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance,
       });
 
       toast({
@@ -315,7 +332,7 @@ export default function Profile() {
   monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
   profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
   yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
-  healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance]
+  healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance]
   );
 
   // Validation: all fields required
@@ -323,17 +340,24 @@ export default function Profile() {
     const errors: Record<string, string> = {};
     if (!fullName.trim()) errors.fullName = 'Full name is required';
     if (!phone.trim()) errors.phone = 'Phone number is required';
-    // company validation hidden for now
     if (!monthlyIncome) errors.monthlyIncome = 'Monthly income is required';
-    if (!monthlyDebtPayments) errors.monthlyDebtPayments = 'Debt payments is required';
+    if (!monthlyDebtPayments && monthlyDebtPayments !== '0') errors.monthlyDebtPayments = 'Debt payments is required';
     if (!monthlyHousing) errors.monthlyHousing = 'Housing cost is required';
-    if (!monthlyInsurance) errors.monthlyInsurance = 'Insurance cost is required';
+    if (!monthlyInsurance && monthlyInsurance !== '0') errors.monthlyInsurance = 'Insurance cost is required';
     if (!monthlyLivingExpenses) errors.monthlyLivingExpenses = 'Living expenses is required';
     if (profileTypes.length === 0) errors.profileTypes = 'Select at least one profile type';
     if (financialGoals.length === 0) errors.financialGoals = 'Select at least one financial goal';
     if (!filingStatus) errors.filingStatus = 'Filing status is required';
+    if (!yearsUntilRetirement) errors.yearsUntilRetirement = 'Years until retirement is required';
+    if (!desiredRetirementIncome) errors.desiredRetirementIncome = 'Desired retirement income is required';
+    if (!retirementBalanceTotal && retirementBalanceTotal !== '0') errors.retirementBalanceTotal = 'Retirement balance is required';
+    if (!retirementContributionMonthly && retirementContributionMonthly !== '0') errors.retirementContributionMonthly = 'Monthly contribution is required';
+    // Insurance: at least one option must be selected (including "no insurance")
+    if (!healthInsurance && !lifeInsurance && !disabilityInsurance && !longTermCareInsurance && !noInsurance) {
+      errors.insurance = 'Select at least one insurance option or "I don\'t have any insurance"';
+    }
     return errors;
-  }, [fullName, phone, company, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileTypes, financialGoals, filingStatus]);
+  }, [fullName, phone, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileTypes, financialGoals, filingStatus, yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly, healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance]);
 
   const isValid = Object.keys(validationErrors).length === 0;
 
@@ -626,12 +650,12 @@ export default function Profile() {
         {/* Your Lake — Retirement */}
         <Card>
           <CardHeader>
-            <CardTitle>Your Lake — Retirement</CardTitle>
+            <CardTitle>Your Lake — Retirement <span className="text-destructive">*</span></CardTitle>
             <CardDescription>Help us understand your retirement outlook</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="yearsUntilRetirement">Years Until Retirement</Label>
+              <Label htmlFor="yearsUntilRetirement">Years Until Retirement <span className="text-destructive">*</span></Label>
               <Input
                 id="yearsUntilRetirement"
                 type="number"
@@ -641,11 +665,12 @@ export default function Profile() {
                 value={yearsUntilRetirement}
                 onChange={(e) => setYearsUntilRetirement(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="0"
-                className="w-32" />
+                className={`w-32 ${validationErrors.yearsUntilRetirement ? 'border-destructive' : ''}`} />
+              {validationErrors.yearsUntilRetirement && <p className="text-xs text-destructive">{validationErrors.yearsUntilRetirement}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="desiredRetirementIncome">Desired Retirement Income (annual)</Label>
+              <Label htmlFor="desiredRetirementIncome">Desired Retirement Income (annual) <span className="text-destructive">*</span></Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -655,12 +680,13 @@ export default function Profile() {
                   value={desiredRetirementIncome ? Number(desiredRetirementIncome).toLocaleString() : ''}
                   onChange={(e) => setDesiredRetirementIncome(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="0"
-                  className="pl-9" />
+                  className={`pl-9 ${validationErrors.desiredRetirementIncome ? 'border-destructive' : ''}`} />
               </div>
+              {validationErrors.desiredRetirementIncome && <p className="text-xs text-destructive">{validationErrors.desiredRetirementIncome}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="retirementBalanceTotal">Retirement Balance Total</Label>
+              <Label htmlFor="retirementBalanceTotal">Retirement Balance Total <span className="text-destructive">*</span></Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -670,12 +696,13 @@ export default function Profile() {
                   value={retirementBalanceTotal ? Number(retirementBalanceTotal).toLocaleString() : ''}
                   onChange={(e) => setRetirementBalanceTotal(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="0"
-                  className="pl-9" />
+                  className={`pl-9 ${validationErrors.retirementBalanceTotal ? 'border-destructive' : ''}`} />
               </div>
+              {validationErrors.retirementBalanceTotal && <p className="text-xs text-destructive">{validationErrors.retirementBalanceTotal}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="retirementContributionMonthly">Monthly Retirement Contribution</Label>
+              <Label htmlFor="retirementContributionMonthly">Monthly Retirement Contribution <span className="text-destructive">*</span></Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -685,8 +712,9 @@ export default function Profile() {
                   value={retirementContributionMonthly ? Number(retirementContributionMonthly).toLocaleString() : ''}
                   onChange={(e) => setRetirementContributionMonthly(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="0"
-                  className="pl-9" />
+                  className={`pl-9 ${validationErrors.retirementContributionMonthly ? 'border-destructive' : ''}`} />
               </div>
+              {validationErrors.retirementContributionMonthly && <p className="text-xs text-destructive">{validationErrors.retirementContributionMonthly}</p>}
             </div>
           </CardContent>
         </Card>
@@ -694,26 +722,41 @@ export default function Profile() {
         {/* Your Rainbow — Insurance Coverage */}
         <Card>
           <CardHeader>
-            <CardTitle>Your Rainbow — Insurance Coverage / Protection</CardTitle>
-            <CardDescription>Let us know which coverages you currently have</CardDescription>
+            <CardTitle>Your Rainbow — Insurance Coverage / Protection <span className="text-destructive">*</span></CardTitle>
+            <CardDescription>Select all coverages you currently have, or indicate you don't have any</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <Label htmlFor="healthInsurance" className="cursor-pointer">Health Insurance</Label>
-              <Switch id="healthInsurance" checked={healthInsurance} onCheckedChange={setHealthInsurance} />
+              <Switch id="healthInsurance" checked={healthInsurance} disabled={noInsurance} onCheckedChange={(v) => { setHealthInsurance(v); if (v) setNoInsurance(false); }} />
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="lifeInsurance" className="cursor-pointer">Life Insurance</Label>
-              <Switch id="lifeInsurance" checked={lifeInsurance} onCheckedChange={setLifeInsurance} />
+              <Switch id="lifeInsurance" checked={lifeInsurance} disabled={noInsurance} onCheckedChange={(v) => { setLifeInsurance(v); if (v) setNoInsurance(false); }} />
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="disabilityInsurance" className="cursor-pointer">Disability Insurance</Label>
-              <Switch id="disabilityInsurance" checked={disabilityInsurance} onCheckedChange={setDisabilityInsurance} />
+              <Switch id="disabilityInsurance" checked={disabilityInsurance} disabled={noInsurance} onCheckedChange={(v) => { setDisabilityInsurance(v); if (v) setNoInsurance(false); }} />
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="longTermCareInsurance" className="cursor-pointer">Long‑Term Care Insurance</Label>
-              <Switch id="longTermCareInsurance" checked={longTermCareInsurance} onCheckedChange={setLongTermCareInsurance} />
+              <Switch id="longTermCareInsurance" checked={longTermCareInsurance} disabled={noInsurance} onCheckedChange={(v) => { setLongTermCareInsurance(v); if (v) setNoInsurance(false); }} />
             </div>
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="noInsurance" className="cursor-pointer text-muted-foreground">I don't have any insurance</Label>
+                <Switch id="noInsurance" checked={noInsurance} onCheckedChange={(v) => {
+                  setNoInsurance(v);
+                  if (v) {
+                    setHealthInsurance(false);
+                    setLifeInsurance(false);
+                    setDisabilityInsurance(false);
+                    setLongTermCareInsurance(false);
+                  }
+                }} />
+              </div>
+            </div>
+            {validationErrors.insurance && <p className="text-xs text-destructive">{validationErrors.insurance}</p>}
           </CardContent>
         </Card>
         <Card>
