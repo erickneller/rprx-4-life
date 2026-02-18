@@ -769,6 +769,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          expires_at: string | null
+          id: string
+          started_at: string
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          expires_at?: string | null
+          id?: string
+          started_at?: string
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          expires_at?: string | null
+          id?: string
+          started_at?: string
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -782,6 +812,7 @@ export type Database = {
           id: string
         }[]
       }
+      get_subscription_tier: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -806,6 +837,7 @@ export type Database = {
       payment_type: "payment" | "balance_update"
       plan_status: "not_started" | "in_progress" | "completed"
       question_type: "slider" | "single_choice" | "yes_no" | "range_select"
+      subscription_tier: "free" | "paid"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -949,6 +981,7 @@ export const Constants = {
       payment_type: ["payment", "balance_update"],
       plan_status: ["not_started", "in_progress", "completed"],
       question_type: ["slider", "single_choice", "yes_no", "range_select"],
+      subscription_tier: ["free", "paid"],
     },
   },
 } as const

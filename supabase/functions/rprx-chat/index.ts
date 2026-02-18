@@ -542,8 +542,13 @@ serve(async (req) => {
     const profile = profileResult.data;
     const { context: profileContext, cashFlowStatus, profileTypes, financialGoals } = buildProfileContext(profile);
 
-    // Determine mode
-    const isAutoMode = requestMode === 'auto' || 
+    // Determine subscription tier from DB
+    const { data: userTier } = await serviceClient.rpc('get_subscription_tier', { _user_id: userId });
+    const isFreeUser = (userTier || 'free') === 'free';
+    console.log('User subscription tier:', userTier || 'free');
+
+    // Determine mode — free users always get auto mode
+    const isAutoMode = isFreeUser || requestMode === 'auto' || 
       user_message.includes('## My Assessment Results') || 
       user_message.includes('## My Profile');
     
