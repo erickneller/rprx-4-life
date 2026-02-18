@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAdminStrategies, useCreateStrategy, useUpdateStrategy, useDeleteStrategy, useDeleteStrategies, useImportStrategies, useBulkToggleActive, type StrategyRow, type StrategyInput } from '@/hooks/useAdminStrategies';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BadgesTab } from '@/components/admin/BadgesTab';
@@ -114,6 +115,44 @@ export default function AdminPanel() {
   const [form, setForm] = useState<StrategyInput>(emptyForm);
   const [goalsInput, setGoalsInput] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Sort state
+  type SortField = 'id' | 'name' | 'horseman_type' | 'difficulty' | 'tax_return_line_or_area' | 'sort_order' | 'is_active';
+  const [sortField, setSortField] = useState<SortField>('horseman_type');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const sortedStrategies = useMemo(() => {
+    const sorted = [...strategies].sort((a, b) => {
+      const aVal = a[sortField];
+      const bVal = b[sortField];
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+      if (typeof aVal === 'boolean') return (aVal === bVal ? 0 : aVal ? -1 : 1);
+      if (typeof aVal === 'number' && typeof bVal === 'number') return aVal - bVal;
+      return String(aVal).localeCompare(String(bVal));
+    });
+    return sortDir === 'desc' ? sorted.reverse() : sorted;
+  }, [strategies, sortField, sortDir]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDir === 'asc' ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  // Import error state
+  interface ImportError { row: number; id: string; field: string; message: string }
+  const [importErrors, setImportErrors] = useState<ImportError[]>([]);
+  const [importErrorsOpen, setImportErrorsOpen] = useState(false);
 
   const openCreate = () => {
     setEditingId(null);
@@ -286,21 +325,72 @@ export default function AdminPanel() {
         const orderIdx = headers.indexOf('sort_order');
         const activeIdx = headers.indexOf('is_active');
 
-        const items: StrategyInput[] = parsed.slice(1).map(row => ({
-          id: row[idIdx]?.trim() || '',
-          name: row[nameIdx]?.trim() || '',
-          description: row[descIdx]?.trim() || '',
-          horseman_type: row[horseIdx]?.trim() || 'taxes',
-          difficulty: row[diffIdx]?.trim() || 'moderate',
-          estimated_impact: impactIdx >= 0 ? row[impactIdx]?.trim() : undefined,
-          tax_return_line_or_area: taxIdx >= 0 ? row[taxIdx]?.trim() : undefined,
-          financial_goals: goalsIdx >= 0 ? (row[goalsIdx]?.trim() || '').split(';').filter(Boolean) : [],
-          sort_order: orderIdx >= 0 ? parseInt(row[orderIdx]?.trim() || '0', 10) || 0 : 0,
-          is_active: activeIdx >= 0 ? row[activeIdx]?.trim().toLowerCase() !== 'false' : true,
-        })).filter(r => r.id && r.name);
+        const errors: ImportError[] = [];
+        const validItems: StrategyInput[] = [];
+        const seenIds = new Set<string>();
 
-        await importStrategies.mutateAsync(items);
-        toast.success(`Imported ${items.length} strategies`);
+        for (let i = 1; i < parsed.length; i++) {
+          const row = parsed[i];
+          const rowNum = i + 1;
+          const id = row[idIdx]?.trim() || '';
+          const name = row[nameIdx]?.trim() || '';
+          const description = row[descIdx]?.trim() || '';
+          const horseman = row[horseIdx]?.trim() || '';
+          const diff = row[diffIdx]?.trim() || '';
+          let hasError = false;
+
+          if (!id) { errors.push({ row: rowNum, id: id || '(empty)', field: 'id', message: 'ID is required' }); hasError = true; }
+          if (!name) { errors.push({ row: rowNum, id: id || '(empty)', field: 'name', message: 'Name is required' }); hasError = true; }
+          if (!description) { errors.push({ row: rowNum, id: id || '(empty)', field: 'description', message: 'Description is required' }); hasError = true; }
+          if (!HORSEMAN_TYPES.includes(horseman)) { errors.push({ row: rowNum, id: id || '(empty)', field: 'horseman_type', message: `Invalid horseman type: "${horseman}"` }); hasError = true; }
+          if (!DIFFICULTIES.includes(diff)) { errors.push({ row: rowNum, id: id || '(empty)', field: 'difficulty', message: `Invalid difficulty: "${diff}"` }); hasError = true; }
+          if (id && seenIds.has(id)) { errors.push({ row: rowNum, id, field: 'id', message: 'Duplicate ID in CSV' }); hasError = true; }
+
+          if (id) seenIds.add(id);
+
+          if (!hasError) {
+            validItems.push({
+              id,
+              name,
+              description,
+              horseman_type: horseman,
+              difficulty: diff,
+              estimated_impact: impactIdx >= 0 ? row[impactIdx]?.trim() : undefined,
+              tax_return_line_or_area: taxIdx >= 0 ? row[taxIdx]?.trim() : undefined,
+              financial_goals: goalsIdx >= 0 ? (row[goalsIdx]?.trim() || '').split(';').filter(Boolean) : [],
+              sort_order: orderIdx >= 0 ? parseInt(row[orderIdx]?.trim() || '0', 10) || 0 : 0,
+              is_active: activeIdx >= 0 ? row[activeIdx]?.trim().toLowerCase() !== 'false' : true,
+            });
+          }
+        }
+
+        // Upsert valid rows
+        let dbImported = 0;
+        if (validItems.length > 0) {
+          try {
+            await importStrategies.mutateAsync(validItems);
+            dbImported = validItems.length;
+          } catch {
+            // Batch failed — try individual upserts
+            for (const item of validItems) {
+              try {
+                await importStrategies.mutateAsync([item]);
+                dbImported++;
+              } catch (itemErr: unknown) {
+                errors.push({ row: 0, id: item.id, field: 'database', message: (itemErr as Error).message || 'DB insert failed' });
+              }
+            }
+          }
+        }
+
+        const totalRows = parsed.length - 1;
+        if (errors.length > 0) {
+          setImportErrors(errors);
+          setImportErrorsOpen(true);
+          toast.warning(`Imported ${dbImported} of ${totalRows} strategies. ${errors.length} error(s) found.`);
+        } else {
+          toast.success(`Imported ${dbImported} strategies successfully`);
+        }
       } catch (err: unknown) {
         toast.error((err as Error).message || 'Import failed');
       }
@@ -421,17 +511,33 @@ export default function AdminPanel() {
                           onCheckedChange={toggleSelectAll}
                         />
                       </TableHead>
-                      <TableHead className="w-24">ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Horseman</TableHead>
-                      <TableHead>Tax Line / Area</TableHead>
+                      <TableHead className="w-24 cursor-pointer select-none" onClick={() => handleSort('id')}>
+                        <span className="flex items-center">ID <SortIcon field="id" /></span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort('name')}>
+                        <span className="flex items-center">Name <SortIcon field="name" /></span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort('horseman_type')}>
+                        <span className="flex items-center">Horseman <SortIcon field="horseman_type" /></span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort('difficulty')}>
+                        <span className="flex items-center">Difficulty <SortIcon field="difficulty" /></span>
+                      </TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort('tax_return_line_or_area')}>
+                        <span className="flex items-center">Tax Line / Area <SortIcon field="tax_return_line_or_area" /></span>
+                      </TableHead>
                       <TableHead>Financial Goals</TableHead>
-                      <TableHead className="w-20">Active</TableHead>
+                      <TableHead className="cursor-pointer select-none" onClick={() => handleSort('sort_order')}>
+                        <span className="flex items-center">Order <SortIcon field="sort_order" /></span>
+                      </TableHead>
+                      <TableHead className="w-20 cursor-pointer select-none" onClick={() => handleSort('is_active')}>
+                        <span className="flex items-center">Active <SortIcon field="is_active" /></span>
+                      </TableHead>
                       <TableHead className="w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {strategies.map((s) => (
+                    {sortedStrategies.map((s) => (
                       <TableRow key={s.id} data-state={selectedIds.has(s.id) ? 'selected' : undefined}>
                         <TableCell>
                           <Checkbox
@@ -446,10 +552,12 @@ export default function AdminPanel() {
                             {s.horseman_type}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-xs">{s.difficulty}</TableCell>
                         <TableCell className="text-sm">{s.tax_return_line_or_area || '—'}</TableCell>
                         <TableCell className="text-sm max-w-[200px] truncate">
                           {(s.financial_goals || []).join(', ') || '—'}
                         </TableCell>
+                        <TableCell className="text-xs">{s.sort_order}</TableCell>
                         <TableCell>
                           <Switch
                             checked={s.is_active}
@@ -472,7 +580,7 @@ export default function AdminPanel() {
                     ))}
                     {strategies.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                           No strategies found. Add your first one!
                         </TableCell>
                       </TableRow>
@@ -703,6 +811,42 @@ export default function AdminPanel() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Import Errors Dialog */}
+      <Dialog open={importErrorsOpen} onOpenChange={setImportErrorsOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Import Errors ({importErrors.length})</DialogTitle>
+            <DialogDescription>
+              The following rows failed validation. Fix them in your CSV and re-import.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 min-h-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Row</TableHead>
+                  <TableHead className="w-28">ID</TableHead>
+                  <TableHead className="w-32">Field</TableHead>
+                  <TableHead>Error</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {importErrors.map((err, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="text-sm">{err.row > 0 ? err.row : '—'}</TableCell>
+                    <TableCell className="font-mono text-xs">{err.id}</TableCell>
+                    <TableCell className="text-sm">{err.field}</TableCell>
+                    <TableCell className="text-sm text-destructive">{err.message}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => setImportErrorsOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AuthenticatedLayout>
   );
 }
