@@ -105,3 +105,58 @@ export function useDeleteStrategy() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-strategies'] }),
   });
 }
+
+export function useDeleteStrategies() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('strategy_definitions')
+        .delete()
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-strategies'] }),
+  });
+}
+
+export function useImportStrategies() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: StrategyInput[]) => {
+      const mapped = rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        horseman_type: r.horseman_type,
+        difficulty: r.difficulty,
+        estimated_impact: r.estimated_impact || null,
+        tax_return_line_or_area: r.tax_return_line_or_area || null,
+        financial_goals: r.financial_goals || [],
+        strategy_summary: r.strategy_summary || null,
+        steps: (r.steps || []) as import('@/integrations/supabase/types').Json,
+        sort_order: r.sort_order || 0,
+        is_active: r.is_active ?? true,
+      }));
+      const { error } = await supabase
+        .from('strategy_definitions')
+        .upsert(mapped, { onConflict: 'id' });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-strategies'] }),
+  });
+}
+
+export function useBulkToggleActive() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (active: boolean) => {
+      const { error } = await supabase
+        .from('strategy_definitions')
+        .update({ is_active: active })
+        .neq('id', '___never_match___'); // updates all rows
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-strategies'] }),
+  });
+}
