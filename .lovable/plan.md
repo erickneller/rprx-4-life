@@ -1,89 +1,79 @@
 
-# Expand Admin Panel: Full Content Management + Analytics
+
+# Strategies Tab Enhancements: Bulk Select, CSV Import/Export, Master Toggle
 
 ## Overview
-Add 4 new tabs to the existing Admin Panel: **Badge Definitions**, **Assessment Questions**, **Deep Dive Questions**, and an **Analytics Dashboard**. This gives admins complete control over all seeded content tables plus visibility into platform usage.
+Four enhancements to the Strategies tab, built incrementally so you can test each one before moving to the next.
 
 ---
 
-## What Gets Built
+## Feature 1: Multi-Select with Bulk Delete
 
-### Tab 1: Badge Definitions Management
-Full CRUD for the 21 existing badges:
-- **Table columns**: ID, Name, Icon, Category, Trigger Type, Points, Active toggle
-- **Create/Edit form fields**: id, name, description, icon (emoji/text), category, trigger_type, trigger_value (JSON), points, sort_order, is_active
-- Delete with confirmation dialog
+- Checkbox column added to the left of every row in the strategies table
+- "Select All" checkbox in the header toggles all rows
+- When rows are selected, a toolbar appears: "{N} selected -- Delete Selected"
+- Delete triggers a confirmation dialog, then removes all selected strategies
 
-### Tab 2: Assessment Questions Management
-Full CRUD for the 15 core assessment questions:
-- **Table columns**: Order, Question Text (truncated), Category, Type, Horseman Weights preview
-- **Create/Edit form fields**: question_text, question_type (single_choice, multi_select, range, slider, yes_no), category, order_index, options (JSON editor), horseman_weights (JSON editor)
-- Reordering via order_index field
+**Changes:**
+- `useAdminStrategies.ts` -- add `useDeleteStrategies()` mutation (deletes via `.in('id', ids)`)
+- `AdminPanel.tsx` -- add `selectedIds` state, checkbox column, bulk toolbar
 
-### Tab 3: Deep Dive Questions Management
-Full CRUD for the 20 deep-dive questions:
-- **Table columns**: Horseman Type, Order, Question Text, Type
-- **Create/Edit form fields**: horseman_type (select from 4 Horsemen), question_text, question_type, order_index, options (JSON editor)
-- Filterable by Horseman type
+---
 
-### Tab 4: Analytics Dashboard
-Read-only stats overview:
-- Total users, total assessments completed, total active strategies
-- Assessments per Horseman (primary_horseman breakdown)
-- Recent signups (last 7 days)
-- Badge earning stats (most/least earned)
+## Feature 2: CSV Export
+
+- "Export CSV" button in the toolbar downloads all strategies (or only selected ones) as a `.csv` file
+- CSV columns: `id, name, description, horseman_type, difficulty, estimated_impact, tax_return_line_or_area, financial_goals, strategy_summary, sort_order, is_active`
+- `financial_goals` (array field) serialized as semicolon-separated values within the CSV cell (e.g. `Reduce taxes;Maximize deductions`)
+- Uses `Blob` + anchor click to trigger download
+
+---
+
+## Feature 3: CSV Import
+
+- "Import CSV" button opens a file picker accepting `.csv` files
+- Parses CSV rows, maps columns back to strategy fields
+- `financial_goals` column split on semicolons back into an array
+- Upserts all parsed strategies (inserts new, updates existing by ID)
+- Shows toast with count of imported strategies or validation errors
+
+**Changes:**
+- `useAdminStrategies.ts` -- add `useImportStrategies()` mutation using `.upsert()`
+- `AdminPanel.tsx` -- add hidden file input, parse CSV, call mutation
+- CSV parsing done with a small helper function (no external library needed -- standard comma-delimited with quoted field support)
+
+---
+
+## Feature 4: Master Active Toggle
+
+- A switch labeled "All Active" in the toolbar next to the Add Strategy button
+- ON = sets all strategies to `is_active = true`; OFF = sets all to `false`
+- Shows indeterminate state when mix of active/inactive
+
+**Changes:**
+- `useAdminStrategies.ts` -- add `useBulkToggleActive()` mutation
+- `AdminPanel.tsx` -- add Switch with computed state from current data
 
 ---
 
 ## Technical Details
 
-### Database Changes (Migration)
-Add admin RLS policies to 3 tables that currently block all writes:
+### Files Modified
+- **`src/hooks/useAdminStrategies.ts`** -- 3 new hooks: `useDeleteStrategies`, `useImportStrategies`, `useBulkToggleActive`
+- **`src/pages/AdminPanel.tsx`** -- selection state, checkbox column, bulk action toolbar, CSV export/import buttons, master active switch
 
-```sql
--- badge_definitions: admin CRUD
-CREATE POLICY "Admins can insert badges" ON badge_definitions FOR INSERT TO authenticated
-  WITH CHECK (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can update badges" ON badge_definitions FOR UPDATE TO authenticated
-  USING (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can delete badges" ON badge_definitions FOR DELETE TO authenticated
-  USING (has_role(auth.uid(), 'admin'));
-
--- assessment_questions: admin CRUD
-CREATE POLICY "Admins can insert questions" ON assessment_questions FOR INSERT TO authenticated
-  WITH CHECK (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can update questions" ON assessment_questions FOR UPDATE TO authenticated
-  USING (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can delete questions" ON assessment_questions FOR DELETE TO authenticated
-  USING (has_role(auth.uid(), 'admin'));
-
--- deep_dive_questions: admin CRUD
-CREATE POLICY "Admins can insert deep dive questions" ON deep_dive_questions FOR INSERT TO authenticated
-  WITH CHECK (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can update deep dive questions" ON deep_dive_questions FOR UPDATE TO authenticated
-  USING (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can delete deep dive questions" ON deep_dive_questions FOR DELETE TO authenticated
-  USING (has_role(auth.uid(), 'admin'));
+### CSV Format Example
+```text
+id,name,description,horseman_type,difficulty,estimated_impact,tax_return_line_or_area,financial_goals,strategy_summary,sort_order,is_active
+T-1,HSA Strategy,Use HSA for triple tax benefit,taxes,easy,$1000-3000/yr,Schedule A,"Reduce taxes;Maximize deductions",Leverage HSA contributions,1,true
 ```
 
-### New Files
-- `src/hooks/useAdminBadges.ts` -- query/mutation hooks for badge_definitions
-- `src/hooks/useAdminQuestions.ts` -- query/mutation hooks for assessment_questions and deep_dive_questions
-- `src/hooks/useAdminAnalytics.ts` -- read-only queries for analytics stats
-- `src/components/admin/BadgesTab.tsx` -- Badge management tab UI
-- `src/components/admin/AssessmentQuestionsTab.tsx` -- Assessment questions tab UI
-- `src/components/admin/DeepDiveQuestionsTab.tsx` -- Deep dive questions tab UI
-- `src/components/admin/AnalyticsTab.tsx` -- Analytics dashboard tab UI
+### No Database Changes Needed
+All operations use existing admin RLS policies on `strategy_definitions`.
 
-### Modified Files
-- `src/pages/AdminPanel.tsx` -- Add 4 new TabsTrigger + TabsContent entries, import the new tab components. This also cleans up the file by extracting the existing Strategies and Users tabs into their own components if needed.
-
-### Pattern
-Each tab follows the same proven pattern already used in the Strategies tab:
-1. Table with key columns + active toggle
-2. Create/Edit dialog with form fields
-3. Delete confirmation AlertDialog
-4. Toast notifications for success/error
-
-### JSON Fields
-For `options`, `horseman_weights`, and `trigger_value` fields, a simple Textarea with JSON validation will be used (parse on save, show error toast if invalid JSON).
+### Build Order
+Each feature ships independently -- after each one you say "yes" and I build the next:
+1. Multi-select + bulk delete
+2. CSV Export
+3. CSV Import
+4. Master Active toggle
