@@ -335,8 +335,8 @@ export default function AdminPanel() {
           const id = row[idIdx]?.trim() || '';
           const name = row[nameIdx]?.trim() || '';
           const description = row[descIdx]?.trim() || '';
-          const horseman = row[horseIdx]?.trim() || '';
-          const diff = row[diffIdx]?.trim() || '';
+          const horseman = row[horseIdx]?.trim().toLowerCase() || '';
+          const diff = row[diffIdx]?.trim().toLowerCase() || '';
           let hasError = false;
 
           if (!id) { errors.push({ row: rowNum, id: id || '(empty)', field: 'id', message: 'ID is required' }); hasError = true; }
