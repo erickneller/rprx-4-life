@@ -2,7 +2,7 @@ import type { HorsemanType } from './scoringEngine';
 import type { CashFlowStatus } from './cashFlowCalculator';
 import type { Profile } from '@/hooks/useProfile';
 import type { UserAssessment } from './assessmentTypes';
-import { getProfileTypeLabel, getFinancialGoalLabels } from './profileTypes';
+import { getProfileTypeLabel, getFinancialGoalLabels, FILING_STATUSES } from './profileTypes';
 
 const HORSEMAN_PHRASES: Record<HorsemanType, string> = {
   interest: 'debt and interest costs',
@@ -23,7 +23,6 @@ export function generateStrategyPrompt(
 ): string {
   const horsemanPhrase = HORSEMAN_PHRASES[primaryHorseman];
   const cashFlowPhrase = cashFlowStatus ? ` ${CASH_FLOW_PHRASES[cashFlowStatus]}` : '';
-
   return `My biggest financial pressure is ${horsemanPhrase}.${cashFlowPhrase} What are some strategies to address this?`;
 }
 
@@ -31,6 +30,11 @@ export interface AssessmentResponseDetail {
   question_text: string;
   category: string;
   value: string;
+}
+
+function getFilingStatusLabel(value: string | null): string | null {
+  if (!value) return null;
+  return FILING_STATUSES.find(f => f.value === value)?.label ?? value;
 }
 
 export function generateAutoStrategyPrompt(
@@ -49,6 +53,11 @@ export function generateAutoStrategyPrompt(
   if (profile) {
     const profileTypeLabel = getProfileTypeLabel(profile.profile_type);
     if (profileTypeLabel) lines.push(`- Profile type: ${profileTypeLabel}`);
+    
+    // Filing status
+    const filingLabel = getFilingStatusLabel(profile.filing_status ?? null);
+    if (filingLabel) lines.push(`- Filing status: ${filingLabel}`);
+    
     if (profile.monthly_income) lines.push(`- Monthly income: $${profile.monthly_income.toLocaleString()}`);
     const totalExpenses = [
       profile.monthly_debt_payments,
@@ -63,6 +72,30 @@ export function generateAutoStrategyPrompt(
     }
     const goalLabels = getFinancialGoalLabels(profile.financial_goals);
     if (goalLabels.length > 0) lines.push(`- Financial goals: ${goalLabels.join(', ')}`);
+
+    // Retirement data
+    if (profile.years_until_retirement != null) {
+      lines.push(`- Years until retirement: ${profile.years_until_retirement}`);
+    }
+    if (profile.desired_retirement_income != null) {
+      lines.push(`- Desired retirement income: $${Number(profile.desired_retirement_income).toLocaleString()}/year`);
+    }
+    if (profile.retirement_balance_total != null) {
+      lines.push(`- Current retirement balance: $${Number(profile.retirement_balance_total).toLocaleString()}`);
+    }
+    if (profile.retirement_contribution_monthly != null) {
+      lines.push(`- Monthly retirement contribution: $${Number(profile.retirement_contribution_monthly).toLocaleString()}`);
+    }
+
+    // Insurance coverage
+    const hasCoverage: string[] = [];
+    const missingCoverage: string[] = [];
+    if (profile.health_insurance) hasCoverage.push('Health'); else missingCoverage.push('Health');
+    if (profile.life_insurance) hasCoverage.push('Life'); else missingCoverage.push('Life');
+    if (profile.disability_insurance) hasCoverage.push('Disability'); else missingCoverage.push('Disability');
+    if (profile.long_term_care_insurance) hasCoverage.push('Long-Term Care'); else missingCoverage.push('Long-Term Care');
+    if (hasCoverage.length > 0) lines.push(`- Insurance coverage: ${hasCoverage.join(', ')}`);
+    if (missingCoverage.length > 0) lines.push(`- Missing insurance: ${missingCoverage.join(', ')}`);
   } else {
     lines.push('- Profile data not available');
   }
