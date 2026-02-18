@@ -438,7 +438,7 @@ export default function AdminPanel() {
         </div>
 
         <Tabs defaultValue="strategies">
-          <TabsList>
+          <TabsList className="overflow-x-auto flex-wrap">
             <TabsTrigger value="strategies" className="gap-1">
               <Shield className="h-4 w-4" /> Strategies
             </TabsTrigger>
@@ -501,8 +501,8 @@ export default function AdminPanel() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="border rounded-lg overflow-auto">
-                <Table>
+              <div className="border rounded-lg overflow-x-auto">
+                <Table className="min-w-[1000px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10">
