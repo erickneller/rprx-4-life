@@ -13,7 +13,6 @@ export interface StrategyRow {
   is_active: boolean;
   tax_return_line_or_area: string | null;
   financial_goals: string[] | null;
-  strategy_summary: string | null;
   created_at: string;
 }
 
@@ -26,7 +25,6 @@ export interface StrategyInput {
   estimated_impact?: string;
   tax_return_line_or_area?: string;
   financial_goals?: string[];
-  strategy_summary?: string;
   steps?: unknown;
   sort_order?: number;
   is_active?: boolean;
@@ -60,7 +58,6 @@ export function useCreateStrategy() {
         estimated_impact: input.estimated_impact || null,
         tax_return_line_or_area: input.tax_return_line_or_area || null,
         financial_goals: input.financial_goals || [],
-        strategy_summary: input.strategy_summary || null,
         steps: (input.steps || []) as import('@/integrations/supabase/types').Json,
         sort_order: input.sort_order || 0,
         is_active: input.is_active ?? true,
@@ -133,7 +130,6 @@ export function useImportStrategies() {
         estimated_impact: r.estimated_impact || null,
         tax_return_line_or_area: r.tax_return_line_or_area || null,
         financial_goals: r.financial_goals || [],
-        strategy_summary: r.strategy_summary || null,
         steps: (r.steps || []) as import('@/integrations/supabase/types').Json,
         sort_order: r.sort_order || 0,
         is_active: r.is_active ?? true,
