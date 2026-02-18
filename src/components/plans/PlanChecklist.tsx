@@ -8,37 +8,50 @@ interface PlanChecklistProps {
   disabled?: boolean;
 }
 
+/** Strip markdown bold markers from text */
+function cleanStepText(text: string): string {
+  return text.replace(/\*\*/g, '').trim();
+}
+
 export function PlanChecklist({ steps, completedSteps, onToggleStep, disabled }: PlanChecklistProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {steps.map((step, index) => {
         const isCompleted = completedSteps.includes(index);
-        
+        const cleanText = cleanStepText(step);
+
         return (
-          <div 
+          <div
             key={index}
             className={cn(
-              "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-              isCompleted ? "bg-muted/50 border-muted" : "bg-background border-border hover:border-primary/50"
+              "group flex items-start gap-3 py-2.5 px-3 rounded-lg transition-colors cursor-pointer",
+              isCompleted
+                ? "bg-muted/40"
+                : "hover:bg-muted/30"
             )}
+            onClick={() => !disabled && onToggleStep(index)}
           >
-            <Checkbox
-              checked={isCompleted}
-              onCheckedChange={() => onToggleStep(index)}
-              disabled={disabled}
-              className={cn(
-                "mt-0.5",
-                isCompleted && "data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-              )}
-            />
-            <span 
-              className={cn(
-                "text-sm leading-relaxed",
-                isCompleted && "text-muted-foreground line-through"
-              )}
-            >
-              {step}
-            </span>
+            <div className="pt-0.5 shrink-0">
+              <Checkbox
+                checked={isCompleted}
+                onCheckedChange={() => onToggleStep(index)}
+                disabled={disabled}
+                className="pointer-events-none"
+              />
+            </div>
+            <div className="flex items-start gap-2 min-w-0">
+              <span className="text-sm font-semibold text-muted-foreground shrink-0 pt-px">
+                {index + 1}.
+              </span>
+              <span
+                className={cn(
+                  "text-sm leading-relaxed",
+                  isCompleted && "text-muted-foreground line-through"
+                )}
+              >
+                {cleanText}
+              </span>
+            </div>
           </div>
         );
       })}
