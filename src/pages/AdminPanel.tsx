@@ -45,30 +45,51 @@ interface AppUser {
   email: string;
   created_at: string;
   is_admin: boolean;
+  tier: 'free' | 'paid';
 }
 
 function useAdminUsers() {
   return useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
-      // Get users via secure function
       const { data: users, error: usersErr } = await supabase.rpc('admin_list_users');
       if (usersErr) throw usersErr;
 
-      // Get all admin roles
-      const { data: roles, error: rolesErr } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
+      const [{ data: roles, error: rolesErr }, { data: subs, error: subsErr }] = await Promise.all([
+        supabase.from('user_roles').select('user_id, role'),
+        supabase.from('user_subscriptions' as any).select('user_id, tier'),
+      ]);
       if (rolesErr) throw rolesErr;
+      if (subsErr) throw subsErr;
 
       const adminIds = new Set((roles || []).filter(r => r.role === 'admin').map(r => r.user_id));
+      const tierMap = new Map((subs || []).map((s: any) => [s.user_id, s.tier]));
 
       return (users || []).map((u: { id: string; email: string; created_at: string }) => ({
         id: u.id,
         email: u.email,
         created_at: u.created_at,
         is_admin: adminIds.has(u.id),
+        tier: (tierMap.get(u.id) || 'free') as 'free' | 'paid',
       })) as AppUser[];
+    },
+  });
+}
+
+function useToggleTier() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, newTier }: { userId: string; newTier: 'free' | 'paid' }) => {
+      const { error } = await supabase
+        .from('user_subscriptions' as any)
+        .upsert(
+          { user_id: userId, tier: newTier, updated_by: (await supabase.auth.getUser()).data.user?.id } as any,
+          { onConflict: 'user_id' }
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
     },
   });
 }
@@ -108,6 +129,7 @@ export default function AdminPanel() {
 
   const { data: users = [], isLoading: usersLoading } = useAdminUsers();
   const toggleAdmin = useToggleAdmin();
+  const toggleTier = useToggleTier();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -607,6 +629,7 @@ export default function AdminPanel() {
                       <TableHead>Email</TableHead>
                       <TableHead>Joined</TableHead>
                       <TableHead className="w-28">Role</TableHead>
+                      <TableHead className="w-28">Tier</TableHead>
                       <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -623,6 +646,26 @@ export default function AdminPanel() {
                           ) : (
                             <Badge variant="secondary">User</Badge>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={u.tier === 'paid'}
+                              onCheckedChange={(checked) => {
+                                toggleTier.mutate(
+                                  { userId: u.id, newTier: checked ? 'paid' : 'free' },
+                                  {
+                                    onSuccess: () => toast.success(`User set to ${checked ? 'Paid' : 'Free'}`),
+                                    onError: (err) => toast.error((err as Error).message || 'Failed to update tier'),
+                                  }
+                                );
+                              }}
+                              disabled={toggleTier.isPending}
+                            />
+                            <Badge variant={u.tier === 'paid' ? 'default' : 'secondary'} className={u.tier === 'paid' ? 'bg-green-600 text-white' : ''}>
+                              {u.tier === 'paid' ? 'Paid' : 'Free'}
+                            </Badge>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Button
@@ -647,7 +690,7 @@ export default function AdminPanel() {
                     ))}
                     {users.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                           No users found.
                         </TableCell>
                       </TableRow>

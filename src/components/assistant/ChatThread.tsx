@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useCreatePlan, usePlans } from '@/hooks/usePlans';
 import { parseStrategyFromMessage } from '@/lib/strategyParser';
 import { toast } from 'sonner';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface StarterOption {
   icon: LucideIcon;
@@ -115,6 +116,7 @@ export function ChatThread({ conversationId, onSendMessage, isSending, autoMode,
   const navigate = useNavigate();
   const createPlan = useCreatePlan();
   const { data: existingPlans = [] } = usePlans();
+  const { isFree } = useSubscription();
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [autoFollowUpSent, setAutoFollowUpSent] = useState(false);
 
@@ -236,7 +238,7 @@ export function ChatThread({ conversationId, onSendMessage, isSending, autoMode,
               : buildFallbackPlan(lastAssistant.content, autoHorseman);
 
             // Free tier guard
-            const isFree = true;
+            // Free tier guard
             if (isFree && existingPlans.length >= 1) {
               toast.error('Free accounts are limited to 1 plan. Delete your current plan or upgrade.');
               return;
