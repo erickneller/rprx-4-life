@@ -34,7 +34,6 @@ const emptyForm: StrategyInput = {
   estimated_impact: '',
   tax_return_line_or_area: '',
   financial_goals: [],
-  strategy_summary: '',
 };
 
 // --- User management hooks ---
@@ -134,7 +133,6 @@ export default function AdminPanel() {
       estimated_impact: row.estimated_impact || '',
       tax_return_line_or_area: row.tax_return_line_or_area || '',
       financial_goals: row.financial_goals || [],
-      strategy_summary: row.strategy_summary || '',
     });
     setGoalsInput((row.financial_goals || []).join(', '));
     setDialogOpen(true);
@@ -210,7 +208,7 @@ export default function AdminPanel() {
 
   const handleExportCSV = () => {
     const rows = selectedIds.size > 0 ? strategies.filter(s => selectedIds.has(s.id)) : strategies;
-    const headers = ['id','name','description','horseman_type','difficulty','estimated_impact','tax_return_line_or_area','financial_goals','strategy_summary','sort_order','is_active'];
+    const headers = ['id','name','description','horseman_type','difficulty','estimated_impact','tax_return_line_or_area','financial_goals','sort_order','is_active'];
     const csvLines = [headers.join(',')];
     for (const s of rows) {
       csvLines.push([
@@ -222,7 +220,6 @@ export default function AdminPanel() {
         escapeCSV(s.estimated_impact || ''),
         escapeCSV(s.tax_return_line_or_area || ''),
         escapeCSV((s.financial_goals || []).join(';')),
-        escapeCSV(s.strategy_summary || ''),
         String(s.sort_order),
         String(s.is_active),
       ].join(','));
@@ -286,7 +283,6 @@ export default function AdminPanel() {
         const impactIdx = headers.indexOf('estimated_impact');
         const taxIdx = headers.indexOf('tax_return_line_or_area');
         const goalsIdx = headers.indexOf('financial_goals');
-        const summaryIdx = headers.indexOf('strategy_summary');
         const orderIdx = headers.indexOf('sort_order');
         const activeIdx = headers.indexOf('is_active');
 
@@ -299,7 +295,6 @@ export default function AdminPanel() {
           estimated_impact: impactIdx >= 0 ? row[impactIdx]?.trim() : undefined,
           tax_return_line_or_area: taxIdx >= 0 ? row[taxIdx]?.trim() : undefined,
           financial_goals: goalsIdx >= 0 ? (row[goalsIdx]?.trim() || '').split(';').filter(Boolean) : [],
-          strategy_summary: summaryIdx >= 0 ? row[summaryIdx]?.trim() : undefined,
           sort_order: orderIdx >= 0 ? parseInt(row[orderIdx]?.trim() || '0', 10) || 0 : 0,
           is_active: activeIdx >= 0 ? row[activeIdx]?.trim().toLowerCase() !== 'false' : true,
         })).filter(r => r.id && r.name);
@@ -431,7 +426,6 @@ export default function AdminPanel() {
                       <TableHead>Horseman</TableHead>
                       <TableHead>Tax Line / Area</TableHead>
                       <TableHead>Financial Goals</TableHead>
-                      <TableHead>Strategy Summary</TableHead>
                       <TableHead className="w-20">Active</TableHead>
                       <TableHead className="w-24">Actions</TableHead>
                     </TableRow>
@@ -456,9 +450,6 @@ export default function AdminPanel() {
                         <TableCell className="text-sm max-w-[200px] truncate">
                           {(s.financial_goals || []).join(', ') || '—'}
                         </TableCell>
-                        <TableCell className="text-sm max-w-[250px] truncate">
-                          {s.strategy_summary || '—'}
-                        </TableCell>
                         <TableCell>
                           <Switch
                             checked={s.is_active}
@@ -481,7 +472,7 @@ export default function AdminPanel() {
                     ))}
                     {strategies.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           No strategies found. Add your first one!
                         </TableCell>
                       </TableRow>
@@ -629,16 +620,6 @@ export default function AdminPanel() {
                 placeholder="e.g. Reduce taxes, Maximize deductions"
                 value={goalsInput}
                 onChange={(e) => setGoalsInput(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Strategy Summary</Label>
-              <Textarea
-                rows={3}
-                placeholder="Brief summary of this strategy..."
-                value={form.strategy_summary || ''}
-                onChange={(e) => setForm(f => ({ ...f, strategy_summary: e.target.value }))}
               />
             </div>
 

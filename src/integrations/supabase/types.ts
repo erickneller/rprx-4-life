@@ -456,7 +456,6 @@ export type Database = {
           name: string
           sort_order: number
           steps: Json
-          strategy_summary: string | null
           tax_return_line_or_area: string | null
         }
         Insert: {
@@ -471,7 +470,6 @@ export type Database = {
           name: string
           sort_order?: number
           steps?: Json
-          strategy_summary?: string | null
           tax_return_line_or_area?: string | null
         }
         Update: {
@@ -486,7 +484,6 @@ export type Database = {
           name?: string
           sort_order?: number
           steps?: Json
-          strategy_summary?: string | null
           tax_return_line_or_area?: string | null
         }
         Relationships: []

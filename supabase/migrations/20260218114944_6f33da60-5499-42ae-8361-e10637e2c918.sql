@@ -1,0 +1,1 @@
+ALTER TABLE strategy_definitions DROP COLUMN IF EXISTS strategy_summary;
