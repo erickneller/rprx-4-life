@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Home, RotateCcw, Pencil } from 'lucide-react';
 import { HorsemenRadarChart } from './HorsemenRadarChart';
@@ -9,6 +9,7 @@ import { DiagnosticFeedback } from './DiagnosticFeedback';
 import { SuggestedPromptCard } from './SuggestedPromptCard';
 import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
 import { TierProgressBar } from '@/components/gamification/TierProgressBar';
+import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
@@ -22,6 +23,10 @@ export function ResultsPage() {
   const navigate = useNavigate();
   const { data: assessment, isLoading, error } = useAssessmentById(id);
   const { profile } = useProfile();
+  const { score, refreshScore } = useRPRxScore();
+
+  // Refresh score when results page loads
+  useEffect(() => { refreshScore(); }, [refreshScore]);
 
   // Derive live cash flow status from profile, falling back to stored assessment value
   const cashFlowStatus = useMemo<CashFlowStatus | null>(() => {
@@ -119,8 +124,13 @@ export function ResultsPage() {
         </section>
 
         {/* RPRx Score & Tier */}
-        <GamificationScoreCard />
-        <TierProgressBar />
+        <section className="space-y-3">
+          <GamificationScoreCard compact />
+          <TierProgressBar />
+          <p className="text-sm text-muted-foreground text-center">
+            Your RPRx Score updated! Complete your profile and Deep Dive to improve your score.
+          </p>
+        </section>
 
         {/* Action Buttons */}
         <section className="flex flex-col sm:flex-row gap-4 pt-4">

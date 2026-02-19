@@ -20,7 +20,9 @@ import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import { UnsavedChangesDialog } from '@/components/profile/UnsavedChangesDialog';
 import { BadgeDisplay as BadgeDisplayComponent } from '@/components/gamification/BadgeDisplay';
 import { StreakCounter as StreakCounterComponent } from '@/components/gamification/StreakCounter';
+import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
 import { useGamification } from '@/hooks/useGamification';
+import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { showAchievementToast } from '@/components/gamification/AchievementToast';
 
 const EMPLOYER_MATCH_OPTIONS = [
@@ -65,6 +67,7 @@ export default function Profile() {
   const { user } = useAuth();
   const { profile, updateProfile, uploadAvatar } = useProfile();
   const { logActivity } = useGamification();
+  const { refreshScore } = useRPRxScore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState('');
@@ -349,7 +352,10 @@ export default function Profile() {
         stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling,
       });
 
-      toast({ title: 'Profile updated', description: 'Your profile has been saved.' });
+      toast({ title: 'RPRx Score updated!', description: 'Your profile and score have been saved.' });
+
+      // Refresh RPRx score after save
+      refreshScore();
 
       logActivity('profile_updated').then((awarded) => {
         awarded.forEach((badge) => showAchievementToast(badge));
@@ -890,6 +896,9 @@ export default function Profile() {
             </p>
           </div>
         )}
+
+        {/* Live RPRx Score */}
+        <GamificationScoreCard compact />
 
         {/* Auto-save status & Cancel */}
         <div className="flex items-center justify-between pb-8">
