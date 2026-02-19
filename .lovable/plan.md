@@ -1,98 +1,47 @@
 
 
-# User Subscription Tiers: Free vs Paid
+# Add "None" Option to Tax Efficiency Section
 
-## What This Solves
+## What Changes
 
-Today, "free vs paid" is a hardcoded `const isFree = true` in several files. There's no database backing, no admin toggle, and no way to test paid features. This plan adds a proper subscription tier system that admins can toggle per user, with admin users automatically getting full access to everything.
+Add a "None of these" toggle to the Tax-Advantaged Accounts list in the Profile page, following the same mutual-exclusion pattern already used in the Insurance section (where "I don't have any insurance" deselects all specific coverages and vice versa).
 
-## Design Decisions
+## Profile UI Changes
 
-**Where to store subscription data**: A new `user_subscriptions` table (not on the profiles table) keeps subscription concerns separate from profile data. This follows the same pattern as `user_roles` — a dedicated table for access control.
-
-**Tier levels**: Start simple with `free` and `paid`. The table includes a `tier` column using a new `subscription_tier` enum, making it easy to add more tiers later (e.g., `premium`, `enterprise`) without schema changes beyond extending the enum.
-
-**Admin override**: Admins automatically get "paid" access everywhere — the `useSubscription` hook checks admin status first, so admins never need a subscription row.
-
-## Database Changes
-
-### New enum and table
-
+**Add a new option** to the `TAX_ACCOUNT_OPTIONS` array:
 ```text
-subscription_tier enum: 'free', 'paid'
-
-user_subscriptions table:
-  - id (uuid, PK)
-  - user_id (uuid, references auth.users, unique)
-  - tier (subscription_tier, default 'free')
-  - started_at (timestamptz)
-  - expires_at (timestamptz, nullable — for future use)
-  - updated_at (timestamptz)
-  - updated_by (uuid, nullable — tracks which admin changed it)
+{ value: 'none', label: "I don't contribute to any of these" }
 ```
 
-### RLS policies
-- Users can read their own subscription
-- Admins can read all, insert, update, and delete subscriptions
+**Mutual exclusion logic** (mirrors the insurance section):
+- Selecting "None" clears all other account selections, leaving only `['none']`
+- Selecting any specific account clears `'none'` from the array
+- This satisfies the existing validation rule ("select at least one") since `['none']` has length > 0
 
-### Helper function
-A `get_subscription_tier()` SQL function (security definer) that returns the tier for a given user, defaulting to `'free'` if no row exists. This keeps the logic centralized.
+**Update `handleTaxAccountToggle`** to handle the mutual exclusion:
+- If user clicks `'none'`: set array to `['none']`
+- If user clicks any other account while `'none'` is selected: remove `'none'`, add the clicked account
 
-## New Hook: useSubscription
+## Scoring Engine Changes
 
-A React hook that combines subscription tier lookup with admin status:
+**Update `calcTax` in `src/lib/rprxScoreEngine.ts`**:
 
-```text
-useSubscription() returns:
-  - tier: 'free' | 'paid'
-  - isFree: boolean
-  - isPaid: boolean
-  - isLoading: boolean
-```
+Current logic scores based on array length:
+- 0 accounts = 0 pts, 1 = 2 pts, 2 = 3 pts, 3+ = 5 pts
 
-Logic: If user is admin, always return `isPaid = true`. Otherwise, query `user_subscriptions` for the user's tier, defaulting to `free`.
+New logic: Filter out `'none'` before counting. If the array contains only `'none'` (or is empty after filtering), the accounts score = 0. Otherwise count as before.
 
-## Admin Panel Changes
-
-### Users tab enhancements
-Add a "Tier" column next to the existing "Admin" toggle in the Users table. Each user row will show:
-- Current tier as a badge (Free / Paid)
-- A toggle or dropdown to switch between Free and Paid
-- When toggled, upserts into `user_subscriptions`
-
-This reuses the existing `useAdminUsers` pattern — fetch subscription data alongside user/role data and display it in the same table.
-
-## Replace Hardcoded isFree
-
-Every place that currently has `const isFree = true` will be updated to use the new `useSubscription` hook:
-
-1. **ChatThread.tsx** (line 239): Plan limit enforcement — `isFree` controls whether user is limited to 1 plan
-2. **Edge function** (`rprx-chat/index.ts`): The `isFree` flag that controls auto vs manual mode — will read from user's subscription via a DB query in the edge function
-3. **Any future feature gates**: The hook provides a single source of truth
-
-## Files to Create
-
-1. **`src/hooks/useSubscription.ts`** — The core hook
-2. **Database migration** — New enum, table, RLS, and helper function
+This means choosing "None" gives 0 points for the tax-advantaged accounts sub-score (max 5), which accurately reflects the user's situation.
 
 ## Files to Modify
 
-1. **`src/pages/AdminPanel.tsx`** — Add tier column/toggle to Users tab
-2. **`src/components/assistant/ChatThread.tsx`** — Replace `const isFree = true` with `useSubscription()`
-3. **`supabase/functions/rprx-chat/index.ts`** — Query subscription tier instead of hardcoding
-4. **`src/integrations/supabase/types.ts`** — Will auto-update after migration
+1. **`src/pages/Profile.tsx`**
+   - Add `'none'` option to `TAX_ACCOUNT_OPTIONS`
+   - Update `handleTaxAccountToggle` with mutual exclusion logic
+   - Style the "None" option slightly differently (muted/italic) to visually separate it, same as the insurance "no insurance" option
 
-## Sequencing
+2. **`src/lib/rprxScoreEngine.ts`**
+   - Filter `'none'` from the accounts array before counting in `calcTax`
 
-1. Database migration (enum + table + RLS + function)
-2. `useSubscription` hook
-3. Admin Panel tier toggle
-4. Replace hardcoded `isFree` references
-5. Edge function subscription query
-
-## Future-Proofing
-
-- The `expires_at` column is included now (nullable) so when Stripe billing is integrated, subscriptions can auto-expire
-- The enum can be extended with `ALTER TYPE subscription_tier ADD VALUE 'premium'` without breaking existing data
-- The `updated_by` column creates an audit trail of which admin changed a user's tier
+No database changes needed -- `'none'` is just another string value in the existing jsonb array column.
 
