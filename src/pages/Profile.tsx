@@ -779,11 +779,12 @@ export default function Profile() {
                   >
                     <Checkbox
                       checked={taxAdvantagedAccounts.includes(account.value)}
-                      onCheckedChange={() => handleTaxAccountToggle(account.value)}
+                      onCheckedChange={(e) => e} 
+                      onClick={(e) => e.stopPropagation()}
                       id={`tax-${account.value}`}
                     />
                     <Label
-                      htmlFor={`tax-${account.value}`}
+                      htmlFor=""
                       className={`cursor-pointer flex-1 text-sm ${
                         account.value === 'none' ? 'italic text-muted-foreground' : 'font-medium'
                       }`}
