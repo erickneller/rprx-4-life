@@ -23,6 +23,44 @@ import { StreakCounter as StreakCounterComponent } from '@/components/gamificati
 import { useGamification } from '@/hooks/useGamification';
 import { showAchievementToast } from '@/components/gamification/AchievementToast';
 
+const EMPLOYER_MATCH_OPTIONS = [
+  { value: 'yes', label: 'Yes — I get the full match' },
+  { value: 'no', label: "No — I'm leaving match money behind" },
+  { value: 'not_sure', label: 'Not sure' },
+  { value: 'na', label: "My employer doesn't offer a match" },
+] as const;
+
+const TAX_ACCOUNT_OPTIONS = [
+  { value: '401k', label: '401(k)/403(b)' },
+  { value: 'ira', label: 'Traditional IRA' },
+  { value: 'roth_ira', label: 'Roth IRA' },
+  { value: 'hsa', label: 'HSA' },
+  { value: 'fsa', label: 'FSA' },
+  { value: '529', label: '529 Plan' },
+] as const;
+
+const STRESS_WORRY_OPTIONS = [
+  { value: 'never', label: 'Never' },
+  { value: 'rarely', label: 'Rarely' },
+  { value: 'sometimes', label: 'Sometimes' },
+  { value: 'often', label: 'Often' },
+  { value: 'constantly', label: 'Constantly' },
+] as const;
+
+const STRESS_CONFIDENCE_OPTIONS = [
+  { value: 'very_confident', label: 'Very confident' },
+  { value: 'somewhat', label: 'Somewhat confident' },
+  { value: 'not_confident', label: 'Not confident' },
+  { value: 'couldnt', label: "I couldn't handle it" },
+] as const;
+
+const STRESS_CONTROL_OPTIONS = [
+  { value: 'fully', label: 'Fully in control' },
+  { value: 'mostly', label: 'Mostly in control' },
+  { value: 'somewhat', label: 'Somewhat in control' },
+  { value: 'not_at_all', label: 'Not in control' },
+] as const;
+
 export default function Profile() {
   const { user } = useAuth();
   const { profile, updateProfile, uploadAvatar } = useProfile();
@@ -63,6 +101,14 @@ export default function Profile() {
   const [longTermCareInsurance, setLongTermCareInsurance] = useState(false);
   const [noInsurance, setNoInsurance] = useState(false);
 
+  // New RPRx fields
+  const [emergencyFundBalance, setEmergencyFundBalance] = useState('');
+  const [employerMatchCaptured, setEmployerMatchCaptured] = useState('');
+  const [taxAdvantagedAccounts, setTaxAdvantagedAccounts] = useState<string[]>([]);
+  const [stressMoneyWorry, setStressMoneyWorry] = useState('');
+  const [stressEmergencyConfidence, setStressEmergencyConfidence] = useState('');
+  const [stressControlFeeling, setStressControlFeeling] = useState('');
+
   // Track original values for dirty detection
   const [originalValues, setOriginalValues] = useState<Record<string, unknown> | null>(null);
 
@@ -92,6 +138,12 @@ export default function Profile() {
         disabilityInsurance: profile.disability_insurance ?? false,
         longTermCareInsurance: profile.long_term_care_insurance ?? false,
         noInsurance: (profile as any).no_insurance ?? false,
+        emergencyFundBalance: profile.emergency_fund_balance?.toString() || '',
+        employerMatchCaptured: profile.employer_match_captured || '',
+        taxAdvantagedAccounts: (profile.tax_advantaged_accounts as string[]) || [],
+        stressMoneyWorry: profile.stress_money_worry || '',
+        stressEmergencyConfidence: profile.stress_emergency_confidence || '',
+        stressControlFeeling: profile.stress_control_feeling || '',
       };
 
       setFullName(loadedValues.fullName);
@@ -116,6 +168,12 @@ export default function Profile() {
       setDisabilityInsurance(loadedValues.disabilityInsurance);
       setLongTermCareInsurance(loadedValues.longTermCareInsurance);
       setNoInsurance(loadedValues.noInsurance);
+      setEmergencyFundBalance(loadedValues.emergencyFundBalance);
+      setEmployerMatchCaptured(loadedValues.employerMatchCaptured);
+      setTaxAdvantagedAccounts(loadedValues.taxAdvantagedAccounts);
+      setStressMoneyWorry(loadedValues.stressMoneyWorry);
+      setStressEmergencyConfidence(loadedValues.stressEmergencyConfidence);
+      setStressControlFeeling(loadedValues.stressControlFeeling);
 
       setOriginalValues(loadedValues);
     }
@@ -125,10 +183,8 @@ export default function Profile() {
   useEffect(() => {
     setChildrenAges((prev) => {
       if (numChildren > prev.length) {
-        // Add empty slots for new children
         return [...prev, ...Array(numChildren - prev.length).fill(0)];
       } else {
-        // Trim excess children
         return prev.slice(0, numChildren);
       }
     });
@@ -139,28 +195,13 @@ export default function Profile() {
     if (!originalValues) return false;
 
     const currentValues = {
-      fullName,
-      phone,
-      company,
-      monthlyIncome,
-      monthlyDebtPayments,
-      monthlyHousing,
-      monthlyInsurance,
-      monthlyLivingExpenses,
-      profileTypes,
-      numChildren,
-      childrenAges,
-      financialGoals,
-      filingStatus,
-      yearsUntilRetirement,
-      desiredRetirementIncome,
-      retirementBalanceTotal,
-      retirementContributionMonthly,
-      healthInsurance,
-      lifeInsurance,
-      disabilityInsurance,
-      longTermCareInsurance,
-      noInsurance,
+      fullName, phone, company,
+      monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
+      profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
+      yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
+      healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance,
+      emergencyFundBalance, employerMatchCaptured, taxAdvantagedAccounts,
+      stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling,
     };
 
     return (
@@ -185,26 +226,29 @@ export default function Profile() {
       currentValues.lifeInsurance !== originalValues.lifeInsurance ||
       currentValues.disabilityInsurance !== originalValues.disabilityInsurance ||
       currentValues.longTermCareInsurance !== originalValues.longTermCareInsurance ||
-      currentValues.noInsurance !== originalValues.noInsurance
+      currentValues.noInsurance !== originalValues.noInsurance ||
+      currentValues.emergencyFundBalance !== originalValues.emergencyFundBalance ||
+      currentValues.employerMatchCaptured !== originalValues.employerMatchCaptured ||
+      JSON.stringify(currentValues.taxAdvantagedAccounts) !== JSON.stringify(originalValues.taxAdvantagedAccounts) ||
+      currentValues.stressMoneyWorry !== originalValues.stressMoneyWorry ||
+      currentValues.stressEmergencyConfidence !== originalValues.stressEmergencyConfidence ||
+      currentValues.stressControlFeeling !== originalValues.stressControlFeeling
     );
 
   }, [
-  originalValues,
-  fullName, phone, company,
-  monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
-  profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
-  yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
-  healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance]
-  );
+    originalValues,
+    fullName, phone, company,
+    monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
+    profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
+    yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
+    healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance,
+    emergencyFundBalance, employerMatchCaptured, taxAdvantagedAccounts,
+    stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling,
+  ]);
 
   const getInitials = () => {
     if (fullName) {
-      return fullName.
-      split(' ').
-      map((n) => n[0]).
-      join('').
-      toUpperCase().
-      slice(0, 2);
+      return fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
     }
     if (user?.email) {
       return user.email[0].toUpperCase();
@@ -217,20 +261,12 @@ export default function Profile() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please select an image file.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Invalid file type', description: 'Please select an image file.', variant: 'destructive' });
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Please select an image under 5MB.',
-        variant: 'destructive'
-      });
+      toast({ title: 'File too large', description: 'Please select an image under 5MB.', variant: 'destructive' });
       return;
     }
 
@@ -241,17 +277,10 @@ export default function Profile() {
     setIsUploading(true);
     try {
       await uploadAvatar(file);
-      toast({
-        title: 'Avatar updated',
-        description: 'Your profile picture has been updated.'
-      });
+      toast({ title: 'Avatar updated', description: 'Your profile picture has been updated.' });
     } catch (error) {
       console.error('Upload error:', error);
-      toast({
-        title: 'Upload failed',
-        description: 'Failed to upload avatar. Please try again.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Upload failed', description: 'Failed to upload avatar. Please try again.', variant: 'destructive' });
       setPreviewUrl(null);
     } finally {
       setIsUploading(false);
@@ -260,9 +289,7 @@ export default function Profile() {
 
   const handleGoalToggle = (goalValue: string) => {
     setFinancialGoals((prev) =>
-    prev.includes(goalValue) ?
-    prev.filter((g) => g !== goalValue) :
-    [...prev, goalValue]
+      prev.includes(goalValue) ? prev.filter((g) => g !== goalValue) : [...prev, goalValue]
     );
   };
 
@@ -270,6 +297,12 @@ export default function Profile() {
     const newAges = [...childrenAges];
     newAges[index] = parseInt(value) || 0;
     setChildrenAges(newAges);
+  };
+
+  const handleTaxAccountToggle = (accountValue: string) => {
+    setTaxAdvantagedAccounts((prev) =>
+      prev.includes(accountValue) ? prev.filter((a) => a !== accountValue) : [...prev, accountValue]
+    );
   };
 
   const handleSave = useCallback(async () => {
@@ -298,6 +331,12 @@ export default function Profile() {
         disability_insurance: disabilityInsurance,
         long_term_care_insurance: longTermCareInsurance,
         no_insurance: noInsurance,
+        emergency_fund_balance: emergencyFundBalance ? Number(emergencyFundBalance) : 0,
+        employer_match_captured: employerMatchCaptured || null,
+        tax_advantaged_accounts: taxAdvantagedAccounts.length > 0 ? taxAdvantagedAccounts : [],
+        stress_money_worry: stressMoneyWorry || null,
+        stress_emergency_confidence: stressEmergencyConfidence || null,
+        stress_control_feeling: stressControlFeeling || null,
       } as any);
 
       setOriginalValues({
@@ -306,34 +345,31 @@ export default function Profile() {
         profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
         yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
         healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance,
+        emergencyFundBalance, employerMatchCaptured, taxAdvantagedAccounts,
+        stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling,
       });
 
-      toast({
-        title: 'Profile updated',
-        description: 'Your profile has been saved.'
-      });
+      toast({ title: 'Profile updated', description: 'Your profile has been saved.' });
 
       logActivity('profile_updated').then((awarded) => {
         awarded.forEach((badge) => showAchievementToast(badge));
       });
     } catch (error) {
       console.error('Save error:', error);
-      toast({
-        title: 'Save failed',
-        description: 'Failed to save profile. Please try again.',
-        variant: 'destructive'
-      });
+      toast({ title: 'Save failed', description: 'Failed to save profile. Please try again.', variant: 'destructive' });
       throw error;
     } finally {
       setIsSaving(false);
     }
   }, [
-  updateProfile, fullName, phone, company,
-  monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
-  profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
-  yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
-  healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance]
-  );
+    updateProfile, fullName, phone, company,
+    monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses,
+    profileTypes, numChildren, childrenAges, financialGoals, filingStatus,
+    yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly,
+    healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance,
+    emergencyFundBalance, employerMatchCaptured, taxAdvantagedAccounts,
+    stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling,
+  ]);
 
   // Validation: all fields required
   const validationErrors = useMemo(() => {
@@ -352,7 +388,6 @@ export default function Profile() {
     if (!desiredRetirementIncome) errors.desiredRetirementIncome = 'Desired retirement income is required';
     if (!retirementBalanceTotal && retirementBalanceTotal !== '0') errors.retirementBalanceTotal = 'Retirement balance is required';
     if (!retirementContributionMonthly && retirementContributionMonthly !== '0') errors.retirementContributionMonthly = 'Monthly contribution is required';
-    // Insurance: at least one option must be selected (including "no insurance")
     if (!healthInsurance && !lifeInsurance && !disabilityInsurance && !longTermCareInsurance && !noInsurance) {
       errors.insurance = 'Select at least one insurance option or "I don\'t have any insurance"';
     }
@@ -377,7 +412,6 @@ export default function Profile() {
       setAutoSaveStatus('saving');
       handleSaveRef.current().then(() => {
         setAutoSaveStatus('saved');
-        // Reset status after 3s
         setTimeout(() => setAutoSaveStatus('idle'), 3000);
       }).catch(() => {
         setAutoSaveStatus('idle');
@@ -423,21 +457,11 @@ export default function Profile() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="absolute bottom-0 right-0 rounded-full bg-accent p-2 text-accent-foreground shadow-md hover:bg-accent/90 transition-colors disabled:opacity-50">
-
-                  {isUploading ?
-                  <Loader2 className="h-4 w-4 animate-spin" /> :
-
-                  <Camera className="h-4 w-4" />
-                  }
+                  className="absolute bottom-0 right-0 rounded-full bg-accent p-2 text-accent-foreground shadow-md hover:bg-accent/90 transition-colors disabled:opacity-50"
+                >
+                  {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden" />
-
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
               </div>
               <p className="text-sm text-muted-foreground">Click the camera icon to upload a photo</p>
             </div>
@@ -458,39 +482,20 @@ export default function Profile() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name <span className="text-destructive">*</span></Label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Enter your name"
-                className={validationErrors.fullName ? 'border-destructive' : ''} />
-
+              <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter your name" className={validationErrors.fullName ? 'border-destructive' : ''} />
               {validationErrors.fullName && <p className="text-xs text-destructive">{validationErrors.fullName}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                value={user?.email || ''}
-                disabled
-                className="bg-muted" />
-
+              <Input id="email" value={user?.email || ''} disabled className="bg-muted" />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="phone">Phone <span className="text-destructive">*</span></Label>
-              <Input
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter your phone number"
-                className={validationErrors.phone ? 'border-destructive' : ''} />
-
+              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Enter your phone number" className={validationErrors.phone ? 'border-destructive' : ''} />
               {validationErrors.phone && <p className="text-xs text-destructive">{validationErrors.phone}</p>}
             </div>
-
-            {/* Company field hidden for now - keep state/save logic intact */}
           </CardContent>
         </Card>
 
@@ -513,11 +518,7 @@ export default function Profile() {
                     <Checkbox
                       checked={profileTypes.includes(type.value)}
                       onCheckedChange={(checked) => {
-                        setProfileTypes((prev) =>
-                          checked
-                            ? [...prev, type.value]
-                            : prev.filter((v) => v !== type.value)
-                        );
+                        setProfileTypes((prev) => checked ? [...prev, type.value] : prev.filter((v) => v !== type.value));
                       }}
                     />
                     <span className="text-sm">{type.label}</span>
@@ -548,9 +549,7 @@ export default function Profile() {
                 </SelectTrigger>
                 <SelectContent>
                   {FILING_STATUSES.map((status) => (
-                    <SelectItem key={status.value} value={status.value}>
-                      {status.label}
-                    </SelectItem>
+                    <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -560,66 +559,37 @@ export default function Profile() {
             {/* Number of Children */}
             <div className="space-y-2">
               <Label htmlFor="numChildren">Number of Children <span className="text-destructive">*</span></Label>
-              <Input
-                id="numChildren"
-                type="number"
-                min={0}
-                max={10}
-                value={numChildren}
-                onChange={(e) => setNumChildren(parseInt(e.target.value) || 0)}
-                placeholder="0"
-                className="w-24" />
-
+              <Input id="numChildren" type="number" min={0} max={10} value={numChildren} onChange={(e) => setNumChildren(parseInt(e.target.value) || 0)} placeholder="0" className="w-24" />
             </div>
 
             {/* Dynamic Children Ages */}
-            {numChildren > 0 &&
-            <div className="space-y-3">
+            {numChildren > 0 && (
+              <div className="space-y-3">
                 <Label>Children's Ages</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {Array.from({ length: numChildren }).map((_, index) =>
-                <div key={index} className="space-y-1">
-                      <Label htmlFor={`childAge${index}`} className="text-sm text-muted-foreground">
-                        Child {index + 1}
-                      </Label>
+                  {Array.from({ length: numChildren }).map((_, index) => (
+                    <div key={index} className="space-y-1">
+                      <Label htmlFor={`childAge${index}`} className="text-sm text-muted-foreground">Child {index + 1}</Label>
                       <div className="flex items-center gap-2">
-                        <Input
-                      id={`childAge${index}`}
-                      type="number"
-                      min={0}
-                      max={25}
-                      value={childrenAges[index] || ''}
-                      onChange={(e) => handleChildAgeChange(index, e.target.value)}
-                      placeholder="Age"
-                      className="w-20" />
-
+                        <Input id={`childAge${index}`} type="number" min={0} max={25} value={childrenAges[index] || ''} onChange={(e) => handleChildAgeChange(index, e.target.value)} placeholder="Age" className="w-20" />
                         <span className="text-sm text-muted-foreground">years</span>
                       </div>
                     </div>
-                )}
+                  ))}
                 </div>
               </div>
-            }
+            )}
 
             {/* Financial Goals */}
             <div className="space-y-3">
               <Label>Financial Goals <span className="text-destructive">*</span> <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
               <div className="space-y-3">
-                {FINANCIAL_GOALS.map((goal) =>
-                <div key={goal.value} className="flex items-center space-x-3">
-                    <Checkbox
-                    id={goal.value}
-                    checked={financialGoals.includes(goal.value)}
-                    onCheckedChange={() => handleGoalToggle(goal.value)} />
-
-                    <Label
-                    htmlFor={goal.value}
-                    className="text-sm font-normal cursor-pointer">
-
-                      {goal.label}
-                    </Label>
+                {FINANCIAL_GOALS.map((goal) => (
+                  <div key={goal.value} className="flex items-center space-x-3">
+                    <Checkbox id={goal.value} checked={financialGoals.includes(goal.value)} onCheckedChange={() => handleGoalToggle(goal.value)} />
+                    <Label htmlFor={goal.value} className="text-sm font-normal cursor-pointer">{goal.label}</Label>
                   </div>
-                )}
+                ))}
               </div>
               {validationErrors.financialGoals && <p className="text-xs text-destructive">{validationErrors.financialGoals}</p>}
             </div>
@@ -643,14 +613,41 @@ export default function Profile() {
               monthlyInsurance={monthlyInsurance}
               setMonthlyInsurance={setMonthlyInsurance}
               monthlyLivingExpenses={monthlyLivingExpenses}
-              setMonthlyLivingExpenses={setMonthlyLivingExpenses} />
+              setMonthlyLivingExpenses={setMonthlyLivingExpenses}
+            />
           </CardContent>
         </Card>
 
-        {/* Your Lake — Retirement */}
+        {/* 🌊 Emergency Savings */}
         <Card>
           <CardHeader>
-            <CardTitle>Your Lake — Retirement <span className="text-destructive">*</span></CardTitle>
+            <CardTitle>🌊 Emergency Savings</CardTitle>
+            <CardDescription>Your financial safety net for unexpected expenses</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="emergencyFundBalance">Emergency Fund Balance</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="emergencyFundBalance"
+                  type="text"
+                  inputMode="numeric"
+                  value={emergencyFundBalance ? Number(emergencyFundBalance).toLocaleString() : ''}
+                  onChange={(e) => setEmergencyFundBalance(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="$0"
+                  className="pl-9"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Total savings you could access within 1 week for emergencies</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 🏞️ Retirement Planning */}
+        <Card>
+          <CardHeader>
+            <CardTitle>🏞️ Your Lake — Retirement <span className="text-destructive">*</span></CardTitle>
             <CardDescription>Help us understand your retirement outlook</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -665,7 +662,8 @@ export default function Profile() {
                 value={yearsUntilRetirement}
                 onChange={(e) => setYearsUntilRetirement(e.target.value.replace(/[^0-9]/g, ''))}
                 placeholder="0"
-                className={`w-32 ${validationErrors.yearsUntilRetirement ? 'border-destructive' : ''}`} />
+                className={`w-32 ${validationErrors.yearsUntilRetirement ? 'border-destructive' : ''}`}
+              />
               {validationErrors.yearsUntilRetirement && <p className="text-xs text-destructive">{validationErrors.yearsUntilRetirement}</p>}
             </div>
 
@@ -680,7 +678,8 @@ export default function Profile() {
                   value={desiredRetirementIncome ? Number(desiredRetirementIncome).toLocaleString() : ''}
                   onChange={(e) => setDesiredRetirementIncome(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="0"
-                  className={`pl-9 ${validationErrors.desiredRetirementIncome ? 'border-destructive' : ''}`} />
+                  className={`pl-9 ${validationErrors.desiredRetirementIncome ? 'border-destructive' : ''}`}
+                />
               </div>
               {validationErrors.desiredRetirementIncome && <p className="text-xs text-destructive">{validationErrors.desiredRetirementIncome}</p>}
             </div>
@@ -696,7 +695,8 @@ export default function Profile() {
                   value={retirementBalanceTotal ? Number(retirementBalanceTotal).toLocaleString() : ''}
                   onChange={(e) => setRetirementBalanceTotal(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="0"
-                  className={`pl-9 ${validationErrors.retirementBalanceTotal ? 'border-destructive' : ''}`} />
+                  className={`pl-9 ${validationErrors.retirementBalanceTotal ? 'border-destructive' : ''}`}
+                />
               </div>
               {validationErrors.retirementBalanceTotal && <p className="text-xs text-destructive">{validationErrors.retirementBalanceTotal}</p>}
             </div>
@@ -712,9 +712,58 @@ export default function Profile() {
                   value={retirementContributionMonthly ? Number(retirementContributionMonthly).toLocaleString() : ''}
                   onChange={(e) => setRetirementContributionMonthly(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="0"
-                  className={`pl-9 ${validationErrors.retirementContributionMonthly ? 'border-destructive' : ''}`} />
+                  className={`pl-9 ${validationErrors.retirementContributionMonthly ? 'border-destructive' : ''}`}
+                />
               </div>
               {validationErrors.retirementContributionMonthly && <p className="text-xs text-destructive">{validationErrors.retirementContributionMonthly}</p>}
+            </div>
+
+            {/* Employer Match - new field */}
+            <div className="space-y-1.5">
+              <Label htmlFor="employerMatchCaptured">Employer Match Captured</Label>
+              <Select value={employerMatchCaptured} onValueChange={setEmployerMatchCaptured}>
+                <SelectTrigger id="employerMatchCaptured">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMPLOYER_MATCH_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Is your employer matching your retirement contributions?</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 💰 Tax Efficiency */}
+        <Card>
+          <CardHeader>
+            <CardTitle>💰 Tax Efficiency</CardTitle>
+            <CardDescription>Understanding your tax-advantaged accounts helps us optimize your strategy</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <Label>Tax-Advantaged Accounts <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
+              <div className="space-y-3">
+                {TAX_ACCOUNT_OPTIONS.map((account) => (
+                  <div
+                    key={account.value}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => handleTaxAccountToggle(account.value)}
+                  >
+                    <Checkbox
+                      checked={taxAdvantagedAccounts.includes(account.value)}
+                      onCheckedChange={() => handleTaxAccountToggle(account.value)}
+                      id={`tax-${account.value}`}
+                    />
+                    <Label htmlFor={`tax-${account.value}`} className="cursor-pointer flex-1 text-sm font-medium">
+                      {account.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">Select all accounts you currently contribute to</p>
             </div>
           </CardContent>
         </Card>
@@ -759,6 +808,61 @@ export default function Profile() {
             {validationErrors.insurance && <p className="text-xs text-destructive">{validationErrors.insurance}</p>}
           </CardContent>
         </Card>
+
+        {/* 🧠 How You Feel About Money */}
+        <Card className="bg-muted/30 border-muted">
+          <CardHeader>
+            <CardTitle>🧠 How You Feel About Money</CardTitle>
+            <CardDescription>
+              These questions help personalize your RPRx Score. You can update your answers anytime.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="stressMoneyWorry">How often do you worry about money?</Label>
+              <Select value={stressMoneyWorry} onValueChange={setStressMoneyWorry}>
+                <SelectTrigger id="stressMoneyWorry">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {STRESS_WORRY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="stressEmergencyConfidence">How confident are you that you could handle a $2,000 unexpected expense?</Label>
+              <Select value={stressEmergencyConfidence} onValueChange={setStressEmergencyConfidence}>
+                <SelectTrigger id="stressEmergencyConfidence">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {STRESS_CONFIDENCE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="stressControlFeeling">How in control do you feel of your financial future?</Label>
+              <Select value={stressControlFeeling} onValueChange={setStressControlFeeling}>
+                <SelectTrigger id="stressControlFeeling">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {STRESS_CONTROL_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* My Achievements */}
         <Card>
           <CardHeader>
             <CardTitle>My Achievements</CardTitle>
@@ -778,14 +882,14 @@ export default function Profile() {
         </Card>
 
         {/* Required fields reminder */}
-        {!isValid && isDirty &&
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+        {!isValid && isDirty && (
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
             <Info className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
             <p className="text-sm text-destructive">
               Please complete all required fields. Changes will auto-save once all required fields are filled.
             </p>
           </div>
-        }
+        )}
 
         {/* Auto-save status & Cancel */}
         <div className="flex items-center justify-between pb-8">
@@ -821,8 +925,8 @@ export default function Profile() {
         isSaving={isDialogSaving}
         onSave={handleDialogSave}
         onDiscard={handleDiscard}
-        onCancel={handleCancel} />
-
-    </AuthenticatedLayout>);
-
+        onCancel={handleCancel}
+      />
+    </AuthenticatedLayout>
+  );
 }

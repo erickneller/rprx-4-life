@@ -41,6 +41,24 @@ export interface Profile {
   longest_streak: number;
   last_active_date: string | null;
   total_points_earned: number;
+  // Emergency savings
+  emergency_fund_balance: number | null;
+  // Employer match
+  employer_match_captured: string | null;
+  // Tax efficiency
+  tax_advantaged_accounts: string[] | null;
+  // Stress & control
+  stress_money_worry: string | null;
+  stress_emergency_confidence: string | null;
+  stress_control_feeling: string | null;
+  // RPRx pillar scores
+  rprx_score_river: number | null;
+  rprx_score_lake: number | null;
+  rprx_score_rainbow: number | null;
+  rprx_score_tax: number | null;
+  rprx_score_stress: number | null;
+  rprx_score_total: number | null;
+  rprx_grade: string | null;
 }
 
 export function useProfile() {
