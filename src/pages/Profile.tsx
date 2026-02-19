@@ -779,7 +779,7 @@ export default function Profile() {
                   >
                     <Checkbox
                       checked={taxAdvantagedAccounts.includes(account.value)}
-                      onCheckedChange={(e) => e} 
+                      onCheckedChange={() => handleTaxAccountToggle(account.value)}
                       onClick={(e) => e.stopPropagation()}
                       id={`tax-${account.value}`}
                     />
