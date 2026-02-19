@@ -12,7 +12,6 @@ import {
   recalculateAndPersistScore,
   updateStreak,
   getProfileCompleteness,
-  calculateRPRxScoreV2,
 } from '@/lib/gamification';
 
 export function useGamification() {
