@@ -1,47 +1,26 @@
 
+# Fix Tax Efficiency Checkbox Toggle
 
-# Add "None" Option to Tax Efficiency Section
+## Problem
+Clicking directly on the checkbox circle does nothing because:
+1. `onClick={(e) => e.stopPropagation()}` prevents the click from reaching the parent `div`
+2. `onCheckedChange={(e) => e}` is a no-op that does nothing with the event
 
-## What Changes
+So clicks on the checkbox itself are completely swallowed.
 
-Add a "None of these" toggle to the Tax-Advantaged Accounts list in the Profile page, following the same mutual-exclusion pattern already used in the Insurance section (where "I don't have any insurance" deselects all specific coverages and vice versa).
+## Fix (1 file: `src/pages/Profile.tsx`, lines 780-784)
 
-## Profile UI Changes
+Change the Checkbox to call the toggle handler from `onCheckedChange`, and keep `stopPropagation` on the native `onClick` to prevent the parent div from double-toggling:
 
-**Add a new option** to the `TAX_ACCOUNT_OPTIONS` array:
-```text
-{ value: 'none', label: "I don't contribute to any of these" }
+```tsx
+<Checkbox
+  checked={taxAdvantagedAccounts.includes(account.value)}
+  onCheckedChange={() => handleTaxAccountToggle(account.value)}
+  onClick={(e) => e.stopPropagation()}
+  id={`tax-${account.value}`}
+/>
 ```
 
-**Mutual exclusion logic** (mirrors the insurance section):
-- Selecting "None" clears all other account selections, leaving only `['none']`
-- Selecting any specific account clears `'none'` from the array
-- This satisfies the existing validation rule ("select at least one") since `['none']` has length > 0
-
-**Update `handleTaxAccountToggle`** to handle the mutual exclusion:
-- If user clicks `'none'`: set array to `['none']`
-- If user clicks any other account while `'none'` is selected: remove `'none'`, add the clicked account
-
-## Scoring Engine Changes
-
-**Update `calcTax` in `src/lib/rprxScoreEngine.ts`**:
-
-Current logic scores based on array length:
-- 0 accounts = 0 pts, 1 = 2 pts, 2 = 3 pts, 3+ = 5 pts
-
-New logic: Filter out `'none'` before counting. If the array contains only `'none'` (or is empty after filtering), the accounts score = 0. Otherwise count as before.
-
-This means choosing "None" gives 0 points for the tax-advantaged accounts sub-score (max 5), which accurately reflects the user's situation.
-
-## Files to Modify
-
-1. **`src/pages/Profile.tsx`**
-   - Add `'none'` option to `TAX_ACCOUNT_OPTIONS`
-   - Update `handleTaxAccountToggle` with mutual exclusion logic
-   - Style the "None" option slightly differently (muted/italic) to visually separate it, same as the insurance "no insurance" option
-
-2. **`src/lib/rprxScoreEngine.ts`**
-   - Filter `'none'` from the accounts array before counting in `calcTax`
-
-No database changes needed -- `'none'` is just another string value in the existing jsonb array column.
-
+This way:
+- Clicking the checkbox circle: `onCheckedChange` fires the toggle, `stopPropagation` prevents the parent div from also firing it
+- Clicking the label/row area: parent div's `onClick` fires the toggle (checkbox doesn't re-fire since the click target isn't the checkbox)
