@@ -303,6 +303,8 @@ export type Database = {
           current_tier: string
           desired_retirement_income: number | null
           disability_insurance: boolean
+          emergency_fund_balance: number | null
+          employer_match_captured: string | null
           filing_status: string | null
           financial_goals: string[] | null
           full_name: string | null
@@ -325,7 +327,18 @@ export type Database = {
           profile_type: string[] | null
           retirement_balance_total: number | null
           retirement_contribution_monthly: number | null
+          rprx_grade: string | null
           rprx_score: number | null
+          rprx_score_lake: number | null
+          rprx_score_rainbow: number | null
+          rprx_score_river: number | null
+          rprx_score_stress: number | null
+          rprx_score_tax: number | null
+          rprx_score_total: number | null
+          stress_control_feeling: string | null
+          stress_emergency_confidence: string | null
+          stress_money_worry: string | null
+          tax_advantaged_accounts: Json | null
           total_points_earned: number
           updated_at: string
           years_until_retirement: number | null
@@ -339,6 +352,8 @@ export type Database = {
           current_tier?: string
           desired_retirement_income?: number | null
           disability_insurance?: boolean
+          emergency_fund_balance?: number | null
+          employer_match_captured?: string | null
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
@@ -361,7 +376,18 @@ export type Database = {
           profile_type?: string[] | null
           retirement_balance_total?: number | null
           retirement_contribution_monthly?: number | null
+          rprx_grade?: string | null
           rprx_score?: number | null
+          rprx_score_lake?: number | null
+          rprx_score_rainbow?: number | null
+          rprx_score_river?: number | null
+          rprx_score_stress?: number | null
+          rprx_score_tax?: number | null
+          rprx_score_total?: number | null
+          stress_control_feeling?: string | null
+          stress_emergency_confidence?: string | null
+          stress_money_worry?: string | null
+          tax_advantaged_accounts?: Json | null
           total_points_earned?: number
           updated_at?: string
           years_until_retirement?: number | null
@@ -375,6 +401,8 @@ export type Database = {
           current_tier?: string
           desired_retirement_income?: number | null
           disability_insurance?: boolean
+          emergency_fund_balance?: number | null
+          employer_match_captured?: string | null
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
@@ -397,7 +425,18 @@ export type Database = {
           profile_type?: string[] | null
           retirement_balance_total?: number | null
           retirement_contribution_monthly?: number | null
+          rprx_grade?: string | null
           rprx_score?: number | null
+          rprx_score_lake?: number | null
+          rprx_score_rainbow?: number | null
+          rprx_score_river?: number | null
+          rprx_score_stress?: number | null
+          rprx_score_tax?: number | null
+          rprx_score_total?: number | null
+          stress_control_feeling?: string | null
+          stress_emergency_confidence?: string | null
+          stress_money_worry?: string | null
+          tax_advantaged_accounts?: Json | null
           total_points_earned?: number
           updated_at?: string
           years_until_retirement?: number | null
