@@ -809,19 +809,19 @@ export default function Profile() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <Label htmlFor="healthInsurance" className="cursor-pointer">Health Insurance</Label>
-              <Switch id="healthInsurance" checked={healthInsurance} disabled={noInsurance} onCheckedChange={(v) => { setHealthInsurance(v); if (v) setNoInsurance(false); }} />
+              <Switch id="healthInsurance" checked={healthInsurance} onCheckedChange={(v) => { setHealthInsurance(v); if (v) setNoInsurance(false); }} />
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="lifeInsurance" className="cursor-pointer">Life Insurance</Label>
-              <Switch id="lifeInsurance" checked={lifeInsurance} disabled={noInsurance} onCheckedChange={(v) => { setLifeInsurance(v); if (v) setNoInsurance(false); }} />
+              <Switch id="lifeInsurance" checked={lifeInsurance} onCheckedChange={(v) => { setLifeInsurance(v); if (v) setNoInsurance(false); }} />
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="disabilityInsurance" className="cursor-pointer">Disability Insurance</Label>
-              <Switch id="disabilityInsurance" checked={disabilityInsurance} disabled={noInsurance} onCheckedChange={(v) => { setDisabilityInsurance(v); if (v) setNoInsurance(false); }} />
+              <Switch id="disabilityInsurance" checked={disabilityInsurance} onCheckedChange={(v) => { setDisabilityInsurance(v); if (v) setNoInsurance(false); }} />
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="longTermCareInsurance" className="cursor-pointer">Long‑Term Care Insurance</Label>
-              <Switch id="longTermCareInsurance" checked={longTermCareInsurance} disabled={noInsurance} onCheckedChange={(v) => { setLongTermCareInsurance(v); if (v) setNoInsurance(false); }} />
+              <Switch id="longTermCareInsurance" checked={longTermCareInsurance} onCheckedChange={(v) => { setLongTermCareInsurance(v); if (v) setNoInsurance(false); }} />
             </div>
             <div className="border-t pt-4">
               <div className="flex items-center justify-between">
