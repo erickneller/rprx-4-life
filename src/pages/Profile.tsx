@@ -39,6 +39,7 @@ const TAX_ACCOUNT_OPTIONS = [
   { value: 'hsa', label: 'HSA' },
   { value: 'fsa', label: 'FSA' },
   { value: '529', label: '529 Plan' },
+  { value: 'none', label: "I don't contribute to any of these" },
 ] as const;
 
 const STRESS_WORRY_OPTIONS = [
@@ -303,9 +304,15 @@ export default function Profile() {
   };
 
   const handleTaxAccountToggle = (accountValue: string) => {
-    setTaxAdvantagedAccounts((prev) =>
-      prev.includes(accountValue) ? prev.filter((a) => a !== accountValue) : [...prev, accountValue]
-    );
+    setTaxAdvantagedAccounts((prev) => {
+      if (accountValue === 'none') {
+        return prev.includes('none') ? [] : ['none'];
+      }
+      const withoutNone = prev.filter((a) => a !== 'none');
+      return withoutNone.includes(accountValue)
+        ? withoutNone.filter((a) => a !== accountValue)
+        : [...withoutNone, accountValue];
+    });
   };
 
   const handleSave = useCallback(async () => {
@@ -760,10 +767,14 @@ export default function Profile() {
             <div className="space-y-3">
               <Label>Tax-Advantaged Accounts <span className="text-destructive">*</span> <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
               <div className="space-y-3">
-                {TAX_ACCOUNT_OPTIONS.map((account) => (
+              {TAX_ACCOUNT_OPTIONS.map((account) => (
                   <div
                     key={account.value}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors"
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      account.value === 'none'
+                        ? 'border-dashed border-muted-foreground/40 hover:bg-muted/30'
+                        : 'border-border hover:bg-muted/50'
+                    }`}
                     onClick={() => handleTaxAccountToggle(account.value)}
                   >
                     <Checkbox
@@ -771,7 +782,12 @@ export default function Profile() {
                       onCheckedChange={() => handleTaxAccountToggle(account.value)}
                       id={`tax-${account.value}`}
                     />
-                    <Label htmlFor={`tax-${account.value}`} className="cursor-pointer flex-1 text-sm font-medium">
+                    <Label
+                      htmlFor={`tax-${account.value}`}
+                      className={`cursor-pointer flex-1 text-sm ${
+                        account.value === 'none' ? 'italic text-muted-foreground' : 'font-medium'
+                      }`}
+                    >
                       {account.label}
                     </Label>
                   </div>
