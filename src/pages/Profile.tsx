@@ -397,8 +397,14 @@ export default function Profile() {
     if (!healthInsurance && !lifeInsurance && !disabilityInsurance && !longTermCareInsurance && !noInsurance) {
       errors.insurance = 'Select at least one insurance option or "I don\'t have any insurance"';
     }
+    if (!emergencyFundBalance && emergencyFundBalance !== '0') errors.emergencyFundBalance = 'Emergency fund balance is required';
+    if (!employerMatchCaptured) errors.employerMatchCaptured = 'Employer match status is required';
+    if (taxAdvantagedAccounts.length === 0) errors.taxAdvantagedAccounts = 'Select at least one account or indicate none';
+    if (!stressMoneyWorry) errors.stressMoneyWorry = 'This question is required';
+    if (!stressEmergencyConfidence) errors.stressEmergencyConfidence = 'This question is required';
+    if (!stressControlFeeling) errors.stressControlFeeling = 'This question is required';
     return errors;
-  }, [fullName, phone, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileTypes, financialGoals, filingStatus, yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly, healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance]);
+  }, [fullName, phone, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileTypes, financialGoals, filingStatus, yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly, healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance, emergencyFundBalance, employerMatchCaptured, taxAdvantagedAccounts, stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling]);
 
   const isValid = Object.keys(validationErrors).length === 0;
 
@@ -632,7 +638,7 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="emergencyFundBalance">Emergency Fund Balance</Label>
+              <Label htmlFor="emergencyFundBalance">Emergency Fund Balance <span className="text-destructive">*</span></Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -646,6 +652,7 @@ export default function Profile() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">Total savings you could access within 1 week for emergencies</p>
+              {validationErrors.emergencyFundBalance && <p className="text-xs text-destructive">{validationErrors.emergencyFundBalance}</p>}
             </div>
           </CardContent>
         </Card>
@@ -726,9 +733,9 @@ export default function Profile() {
 
             {/* Employer Match - new field */}
             <div className="space-y-1.5">
-              <Label htmlFor="employerMatchCaptured">Employer Match Captured</Label>
+              <Label htmlFor="employerMatchCaptured">Employer Match Captured <span className="text-destructive">*</span></Label>
               <Select value={employerMatchCaptured} onValueChange={setEmployerMatchCaptured}>
-                <SelectTrigger id="employerMatchCaptured">
+                <SelectTrigger id="employerMatchCaptured" className={validationErrors.employerMatchCaptured ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -738,6 +745,7 @@ export default function Profile() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">Is your employer matching your retirement contributions?</p>
+              {validationErrors.employerMatchCaptured && <p className="text-xs text-destructive">{validationErrors.employerMatchCaptured}</p>}
             </div>
           </CardContent>
         </Card>
@@ -750,7 +758,7 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
-              <Label>Tax-Advantaged Accounts <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
+              <Label>Tax-Advantaged Accounts <span className="text-destructive">*</span> <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
               <div className="space-y-3">
                 {TAX_ACCOUNT_OPTIONS.map((account) => (
                   <div
@@ -770,6 +778,7 @@ export default function Profile() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">Select all accounts you currently contribute to</p>
+              {validationErrors.taxAdvantagedAccounts && <p className="text-xs text-destructive">{validationErrors.taxAdvantagedAccounts}</p>}
             </div>
           </CardContent>
         </Card>
@@ -825,9 +834,9 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="stressMoneyWorry">How often do you worry about money?</Label>
+              <Label htmlFor="stressMoneyWorry">How often do you worry about money? <span className="text-destructive">*</span></Label>
               <Select value={stressMoneyWorry} onValueChange={setStressMoneyWorry}>
-                <SelectTrigger id="stressMoneyWorry">
+                <SelectTrigger id="stressMoneyWorry" className={validationErrors.stressMoneyWorry ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -836,12 +845,13 @@ export default function Profile() {
                   ))}
                 </SelectContent>
               </Select>
+              {validationErrors.stressMoneyWorry && <p className="text-xs text-destructive">{validationErrors.stressMoneyWorry}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="stressEmergencyConfidence">How confident are you that you could handle a $2,000 unexpected expense?</Label>
+              <Label htmlFor="stressEmergencyConfidence">How confident are you that you could handle a $2,000 unexpected expense? <span className="text-destructive">*</span></Label>
               <Select value={stressEmergencyConfidence} onValueChange={setStressEmergencyConfidence}>
-                <SelectTrigger id="stressEmergencyConfidence">
+                <SelectTrigger id="stressEmergencyConfidence" className={validationErrors.stressEmergencyConfidence ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -850,12 +860,13 @@ export default function Profile() {
                   ))}
                 </SelectContent>
               </Select>
+              {validationErrors.stressEmergencyConfidence && <p className="text-xs text-destructive">{validationErrors.stressEmergencyConfidence}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="stressControlFeeling">How in control do you feel of your financial future?</Label>
+              <Label htmlFor="stressControlFeeling">How in control do you feel of your financial future? <span className="text-destructive">*</span></Label>
               <Select value={stressControlFeeling} onValueChange={setStressControlFeeling}>
-                <SelectTrigger id="stressControlFeeling">
+                <SelectTrigger id="stressControlFeeling" className={validationErrors.stressControlFeeling ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -864,6 +875,7 @@ export default function Profile() {
                   ))}
                 </SelectContent>
               </Select>
+              {validationErrors.stressControlFeeling && <p className="text-xs text-destructive">{validationErrors.stressControlFeeling}</p>}
             </div>
           </CardContent>
         </Card>
