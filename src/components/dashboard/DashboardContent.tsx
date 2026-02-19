@@ -12,6 +12,7 @@ import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/Edi
 import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
 import { TierProgressBar } from '@/components/gamification/TierProgressBar';
 import { StreakCounter } from '@/components/gamification/StreakCounter';
+import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { RecentBadges } from '@/components/gamification/RecentBadges';
 import { MyStrategiesCard } from './MyStrategiesCard';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
@@ -24,6 +25,7 @@ export function DashboardContent() {
   const { journey, debts, hasActiveJourney } = useDebtJourney();
   const { data: plans = [] } = usePlans();
   const { data: focusPlan } = useFocusPlan();
+  const { refreshScore } = useRPRxScore();
 
   const [showEditMotivation, setShowEditMotivation] = useState(false);
 

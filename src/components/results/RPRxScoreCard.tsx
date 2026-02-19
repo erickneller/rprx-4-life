@@ -6,7 +6,6 @@ export function RPRxScoreCard() {
 
   if (!score) return null;
 
-  // SVG circular progress
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const progress = Math.min(score.total / 100, 1);
@@ -15,29 +14,14 @@ export function RPRxScoreCard() {
   return (
     <Card>
       <CardContent className="flex flex-col sm:flex-row items-center gap-6 p-6">
-        {/* Circular indicator */}
         <div className="relative flex-shrink-0">
           <svg width="128" height="128" viewBox="0 0 128 128">
+            <circle cx="64" cy="64" r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="10" />
             <circle
-              cx="64"
-              cy="64"
-              r={radius}
-              fill="none"
-              stroke="hsl(var(--muted))"
-              strokeWidth="10"
-            />
-            <circle
-              cx="64"
-              cy="64"
-              r={radius}
-              fill="none"
-              stroke="hsl(var(--primary))"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              transform="rotate(-90 64 64)"
-              className="transition-all duration-700"
+              cx="64" cy="64" r={radius} fill="none"
+              stroke="hsl(var(--primary))" strokeWidth="10" strokeLinecap="round"
+              strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+              transform="rotate(-90 64 64)" className="transition-all duration-700"
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -45,17 +29,11 @@ export function RPRxScoreCard() {
             <span className="text-xs text-muted-foreground">/100</span>
           </div>
         </div>
-
-        {/* Text content */}
         <div className="text-center sm:text-left space-y-2">
           <h3 className="text-lg font-semibold text-foreground">RPRx Score</h3>
-          <p className="text-2xl font-bold">
-            {score.gradeIcon} {score.gradeLabel}
-          </p>
+          <p className="text-2xl font-bold">{score.gradeIcon} {score.gradeLabel}</p>
           {score.insights.length > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {score.insights[0]}
-            </p>
+            <p className="text-sm text-muted-foreground">{score.insights[0]}</p>
           )}
         </div>
       </CardContent>
