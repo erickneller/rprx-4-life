@@ -168,11 +168,12 @@ function calcTax(profile: Profile, strategyData: StrategyData): number {
   if (filingStatus) filingScore = 2;
   if (strategyData.deepDiveCompleted) filingScore = 3;
 
-  // Tax-advantaged accounts score (max 5)
+  // Tax-advantaged accounts score (max 5) — filter out 'none'
+  const realAccounts = taxAccounts.filter((a) => a !== 'none');
   let accountsScore = 0;
-  if (taxAccounts.length >= 3) accountsScore = 5;
-  else if (taxAccounts.length === 2) accountsScore = 3;
-  else if (taxAccounts.length === 1) accountsScore = 2;
+  if (realAccounts.length >= 3) accountsScore = 5;
+  else if (realAccounts.length === 2) accountsScore = 3;
+  else if (realAccounts.length === 1) accountsScore = 2;
 
   // W-4 optimization score (max 4)
   let w4Score = 2; // neutral default
