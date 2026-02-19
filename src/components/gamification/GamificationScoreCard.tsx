@@ -20,7 +20,7 @@ export function GamificationScoreCard({ compact = false }: GamificationScoreCard
 
   const radius = compact ? 32 : 54;
   const circumference = 2 * Math.PI * radius;
-  const progress = Math.min(rprxScore / 1000, 1);
+  const progress = Math.min(rprxScore / 100, 1);
   const strokeDashoffset = circumference * (1 - progress);
   const svgSize = compact ? 80 : 128;
   const strokeWidth = compact ? 6 : 10;
@@ -75,7 +75,7 @@ export function GamificationScoreCard({ compact = false }: GamificationScoreCard
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-2xl font-bold text-foreground">{rprxScore}</span>
-            <span className="text-xs text-muted-foreground">/1000</span>
+            <span className="text-xs text-muted-foreground">/100</span>
           </div>
         </div>
 

@@ -28,24 +28,14 @@ export type ActivityType =
   | 'strategy_completed'
   | 'profile_updated';
 
-interface ScoreParams {
-  profileCompleteness: number;
-  assessmentsCompleted: number;
-  deepDivesCompleted: number;
-  strategiesActivated: number;
-  strategiesCompleted: number;
-  badgePointsTotal: number;
-  currentStreak: number;
-}
-
-// ── Tiers ──────────────────────────────────────────────────────────
+// ── Tiers (0-100 scale) ───────────────────────────────────────────
 
 const TIERS: TierInfo[] = [
-  { name: 'Awakening', icon: '🔴', color: 'red', minScore: 0, maxScore: 199, nextTier: 'Reducing' },
-  { name: 'Reducing', icon: '🟠', color: 'orange', minScore: 200, maxScore: 399, nextTier: 'Paying' },
-  { name: 'Paying', icon: '🟡', color: 'yellow', minScore: 400, maxScore: 599, nextTier: 'Recovering' },
-  { name: 'Recovering', icon: '🟢', color: 'green', minScore: 600, maxScore: 799, nextTier: 'Thriving' },
-  { name: 'Thriving', icon: '💎', color: 'purple', minScore: 800, maxScore: 1000, nextTier: null },
+  { name: 'At Risk', icon: '🔴', color: 'red', minScore: 0, maxScore: 39, nextTier: 'Awakening' },
+  { name: 'Awakening', icon: '🟠', color: 'orange', minScore: 40, maxScore: 54, nextTier: 'Progressing' },
+  { name: 'Progressing', icon: '🟡', color: 'yellow', minScore: 55, maxScore: 69, nextTier: 'Recovering' },
+  { name: 'Recovering', icon: '🟢', color: 'green', minScore: 70, maxScore: 84, nextTier: 'Thriving' },
+  { name: 'Thriving', icon: '💎', color: 'purple', minScore: 85, maxScore: 100, nextTier: null },
 ];
 
 export function getTier(score: number): TierInfo {
@@ -53,38 +43,6 @@ export function getTier(score: number): TierInfo {
     if (score >= TIERS[i].minScore) return TIERS[i];
   }
   return TIERS[0];
-}
-
-// ── Score Calculation ──────────────────────────────────────────────
-
-export function calculateRPRxScoreV2(params: ScoreParams): { score: number; tier: TierInfo } {
-  let score = 0;
-
-  // Assessment completed: 100 pts (first one only)
-  if (params.assessmentsCompleted >= 1) score += 100;
-
-  // Profile completeness: up to 50 pts
-  score += Math.round(params.profileCompleteness * 0.5);
-
-  // Deep Dive: 75 pts (first one only)
-  if (params.deepDivesCompleted >= 1) score += 75;
-
-  // Strategies activated: 50 pts each (max 200 for first 4)
-  score += Math.min(params.strategiesActivated, 4) * 50;
-
-  // Strategies completed: 30 pts each (max 300 for first 10)
-  score += Math.min(params.strategiesCompleted, 10) * 30;
-
-  // Badge bonus points (already included in total, not added on top)
-  score += params.badgePointsTotal;
-
-  // Streak bonus: 1 pt per day, max 100
-  score += Math.min(params.currentStreak, 100);
-
-  // Cap at 1000
-  score = Math.min(score, 1000);
-
-  return { score, tier: getTier(score) };
 }
 
 // ── Profile Completeness ───────────────────────────────────────────
@@ -405,44 +363,24 @@ async function checkBadgeEligibility(
 // ── Score Persistence ──────────────────────────────────────────────
 
 export async function recalculateAndPersistScore(userId: string): Promise<{ score: number; tier: TierInfo }> {
-  // Gather all counts
-  const [
-    { data: profile },
-    { count: assessmentCount },
-    { count: deepDiveCount },
-    { count: strategiesActivated },
-    { count: strategiesCompleted },
-    { data: badgePoints },
-  ] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', userId).single(),
-    supabase.from('user_assessments').select('*', { count: 'exact', head: true }).eq('user_id', userId),
-    supabase.from('user_deep_dives').select('*', { count: 'exact', head: true }).eq('user_id', userId),
-    supabase.from('user_active_strategies').select('*', { count: 'exact', head: true }).eq('user_id', userId),
-    supabase.from('user_active_strategies').select('*', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'completed'),
-    supabase.from('user_badges').select('points_awarded').eq('user_id', userId),
-  ]);
-
-  const badgePointsTotal = (badgePoints ?? []).reduce((sum, b) => sum + b.points_awarded, 0);
-  const completeness = getProfileCompleteness(profile as Profile | null);
-
-  const { score, tier } = calculateRPRxScoreV2({
-    profileCompleteness: completeness,
-    assessmentsCompleted: assessmentCount ?? 0,
-    deepDivesCompleted: deepDiveCount ?? 0,
-    strategiesActivated: strategiesActivated ?? 0,
-    strategiesCompleted: strategiesCompleted ?? 0,
-    badgePointsTotal,
-    currentStreak: (profile as Record<string, unknown>)?.current_streak as number ?? 0,
-  });
-
-  await supabase
+  // The new RPRx score is calculated client-side via useRPRxScore hook.
+  // This function now just reads the persisted score and returns it for badge checks.
+  const { data: profile } = await supabase
     .from('profiles')
-    .update({
-      rprx_score: score,
-      current_tier: tier.name.toLowerCase(),
-      total_points_earned: score,
-    })
-    .eq('id', userId);
+    .select('rprx_score, current_tier')
+    .eq('id', userId)
+    .single();
+
+  const score = (profile?.rprx_score as number) ?? 0;
+  const tier = getTier(score);
+
+  // Update current_tier if it changed
+  if (profile?.current_tier !== tier.name.toLowerCase()) {
+    await supabase
+      .from('profiles')
+      .update({ current_tier: tier.name.toLowerCase() })
+      .eq('id', userId);
+  }
 
   return { score, tier };
 }

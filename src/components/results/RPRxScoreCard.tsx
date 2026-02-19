@@ -1,35 +1,15 @@
-import { useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { useProfile } from '@/hooks/useProfile';
-import { useExistingDeepDive } from '@/hooks/useDeepDive';
-import { calculateRPRxScore, getRPRxTier } from '@/lib/rprxScore';
+import { useRPRxScore } from '@/hooks/useRPRxScore';
 
 export function RPRxScoreCard() {
-  const { id: assessmentId } = useParams<{ id: string }>();
-  const { profile, updateProfile } = useProfile();
-  const { data: existingDive } = useExistingDeepDive(assessmentId);
-  const hasDeepDive = !!existingDive;
-  const score = calculateRPRxScore(profile, hasDeepDive);
-  const tier = getRPRxTier(score);
-  const lastPersistedScore = useRef<number | null>(null);
+  const { score } = useRPRxScore();
 
-  // Persist score to profile when it changes
-  useEffect(() => {
-    if (
-      profile &&
-      score !== lastPersistedScore.current &&
-      score !== profile.rprx_score
-    ) {
-      lastPersistedScore.current = score;
-      updateProfile.mutate({ rprx_score: score });
-    }
-  }, [score, profile?.rprx_score]);
+  if (!score) return null;
 
   // SVG circular progress
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
-  const progress = Math.min(score / 1000, 1);
+  const progress = Math.min(score.total / 100, 1);
   const strokeDashoffset = circumference * (1 - progress);
 
   return (
@@ -61,8 +41,8 @@ export function RPRxScoreCard() {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-foreground">{score}</span>
-            <span className="text-xs text-muted-foreground">/1000</span>
+            <span className="text-2xl font-bold text-foreground">{score.total}</span>
+            <span className="text-xs text-muted-foreground">/100</span>
           </div>
         </div>
 
@@ -70,13 +50,13 @@ export function RPRxScoreCard() {
         <div className="text-center sm:text-left space-y-2">
           <h3 className="text-lg font-semibold text-foreground">RPRx Score</h3>
           <p className="text-2xl font-bold">
-            {tier.emoji} {tier.label}
+            {score.gradeIcon} {score.gradeLabel}
           </p>
-          <p className="text-sm text-muted-foreground">
-            {hasDeepDive
-              ? 'Deep Dive complete! Keep building your score.'
-              : 'Complete your Deep Dive to earn +75 points'}
-          </p>
+          {score.insights.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {score.insights[0]}
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
