@@ -305,6 +305,9 @@ export type Database = {
           disability_insurance: boolean
           emergency_fund_balance: number | null
           employer_match_captured: string | null
+          estimated_annual_leak_high: number | null
+          estimated_annual_leak_low: number | null
+          estimated_annual_leak_recovered: number | null
           filing_status: string | null
           financial_goals: string[] | null
           full_name: string | null
@@ -354,6 +357,9 @@ export type Database = {
           disability_insurance?: boolean
           emergency_fund_balance?: number | null
           employer_match_captured?: string | null
+          estimated_annual_leak_high?: number | null
+          estimated_annual_leak_low?: number | null
+          estimated_annual_leak_recovered?: number | null
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
@@ -403,6 +409,9 @@ export type Database = {
           disability_insurance?: boolean
           emergency_fund_balance?: number | null
           employer_match_captured?: string | null
+          estimated_annual_leak_high?: number | null
+          estimated_annual_leak_low?: number | null
+          estimated_annual_leak_recovered?: number | null
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null

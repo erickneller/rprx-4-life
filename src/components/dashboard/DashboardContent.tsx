@@ -15,6 +15,8 @@ import { StreakCounter } from '@/components/gamification/StreakCounter';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { RecentBadges } from '@/components/gamification/RecentBadges';
 import { MyStrategiesCard } from './MyStrategiesCard';
+import { MoneyLeakCard } from '@/components/money-leak/MoneyLeakCard';
+import { LeakBreakdownList } from '@/components/money-leak/LeakBreakdownList';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import { Loader2 } from 'lucide-react';
 
@@ -101,6 +103,10 @@ export function DashboardContent() {
                 onEdit={() => setShowEditMotivation(true)}
                 onDelete={() => updateProfile.mutate({ motivation_text: null, motivation_images: [] })}
               />
+
+              {/* Money Leak Estimator — primary engagement hook */}
+              <MoneyLeakCard />
+              <LeakBreakdownList />
 
               {/* RPRx Score + Streak row */}
               <div className="grid md:grid-cols-[1fr_auto] gap-4 items-start">

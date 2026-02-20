@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { usePlan, useUpdatePlan, useDeletePlan } from '@/hooks/usePlans';
 import { PlanChecklist } from '@/components/plans/PlanChecklist';
@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Loader2, Trash2, Edit2, Save, X, Calendar, Clock, FileText, Star, Sparkles, ArrowRight, Shield, Target, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function PlanDetail() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +24,7 @@ export default function PlanDetail() {
   const deletePlan = useDeletePlan();
   const { toast } = useToast();
   const { data: assessments } = useAssessmentHistory();
+  const queryClient = useQueryClient();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
@@ -85,12 +87,34 @@ export default function PlanDetail() {
       newStatus = 'in_progress';
     }
 
+    const wasFirstStep = currentCompleted.length === 0 && newCompleted.length === 1;
+    const justCompleted = newCompleted.length === totalSteps && totalSteps > 0;
+
     try {
       await updatePlan.mutateAsync({
         id: plan.id,
         content: { ...content, completedSteps: newCompleted },
         status: newStatus,
       });
+
+      // Invalidate money leak calculations
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+
+      // Contextual toasts
+      if (justCompleted) {
+        const impact = content.estimated_impact;
+        const mid = impact ? Math.round((impact.low + impact.high) / 2) : null;
+        toast({
+          title: '🎉 Plan complete!',
+          description: mid
+            ? `You've recovered an estimated $${mid.toLocaleString()}`
+            : 'Great work completing this plan!',
+        });
+      } else if (wasFirstStep) {
+        toast({ title: '🎉 You\'re on your way!', description: 'First step complete.' });
+      } else if (newCompleted.length > currentCompleted.length) {
+        toast({ title: '✅ Step complete', description: `${newCompleted.length}/${totalSteps} steps done` });
+      }
     } catch {
       toast({ title: 'Error updating plan', description: 'Please try again.', variant: 'destructive' });
     }

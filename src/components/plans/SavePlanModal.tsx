@@ -7,6 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCreatePlan, usePlans, type CreatePlanInput, type PlanContent } from '@/hooks/usePlans';
 import { Loader2, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { parseEstimatedImpact } from '@/lib/moneyLeakEstimator';
 
 interface SavePlanModalProps {
   open: boolean;
@@ -33,11 +35,34 @@ export function SavePlanModal({ open, onOpenChange, initialData }: SavePlanModal
     if (!title.trim() || atLimit) return;
 
     try {
+      // Try to match strategy name to get estimated_impact
+      let estimatedImpact: { low: number; high: number; source: string } = { low: 500, high: 2000, source: 'assessment' };
+      
+      const strategyName = initialData.strategyName;
+      if (strategyName) {
+        const { data: matchedStrategy } = await supabase
+          .from('strategy_definitions')
+          .select('estimated_impact')
+          .ilike('name', `%${strategyName}%`)
+          .limit(1)
+          .maybeSingle();
+
+        if (matchedStrategy?.estimated_impact) {
+          const parsed = parseEstimatedImpact(matchedStrategy.estimated_impact);
+          estimatedImpact = { ...parsed, source: 'strategy_definitions' };
+        }
+      }
+
+      const contentWithImpact: PlanContent = {
+        ...initialData.content,
+        estimated_impact: estimatedImpact,
+      };
+
       await createPlan.mutateAsync({
         title: title.trim(),
         strategy_id: initialData.strategyId,
         strategy_name: initialData.strategyName,
-        content: initialData.content,
+        content: contentWithImpact,
         notes: notes.trim() || undefined,
       });
       
