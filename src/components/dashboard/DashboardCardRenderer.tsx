@@ -13,7 +13,7 @@ import { CurrentFocusCard } from './CurrentFocusCard';
 import { CashFlowStatusCard } from '@/components/debt-eliminator/dashboard/CashFlowStatusCard';
 import { MyStrategiesCard } from './MyStrategiesCard';
 import { RecentBadges } from '@/components/gamification/RecentBadges';
-
+import { OnboardingCard } from '@/components/onboarding/OnboardingCard';
 interface DashboardCardRendererProps {
   cards: DashboardCardConfig[];
   cardProps: {
@@ -109,6 +109,8 @@ function renderCard(card: DashboardCardConfig, props: DashboardCardRendererProps
       return <MyStrategiesCard />;
     case 'RecentBadges':
       return <RecentBadges />;
+    case 'OnboardingCard':
+      return <OnboardingCard />;
     default:
       return null;
   }

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateHorsemanScores, determinePrimaryHorseman } from '@/lib/scoringEngine';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
+import { startOnboarding } from '@/lib/onboardingEngine';
 import { useProfile } from '@/hooks/useProfile';
 import { useGamification } from '@/hooks/useGamification';
 import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
@@ -280,6 +281,9 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
         showPointsEarnedToast(75, 'Deep Dive completed!');
         awarded.forEach((badge) => showAchievementToast(badge));
       });
+
+      // Fire-and-forget: start onboarding journey
+      startOnboarding(user.id).catch(() => {});
 
       // Navigate to results
       navigate(`/results/${assessment.id}`);
