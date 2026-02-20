@@ -152,6 +152,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_card_config: {
+        Row: {
+          component_key: string
+          created_at: string
+          default_size: string
+          description: string | null
+          display_name: string
+          id: string
+          is_visible: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          component_key: string
+          created_at?: string
+          default_size?: string
+          description?: string | null
+          display_name: string
+          id: string
+          is_visible?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          component_key?: string
+          created_at?: string
+          default_size?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_visible?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       debt_journeys: {
         Row: {
           completed_at: string | null

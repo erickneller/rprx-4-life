@@ -4,21 +4,14 @@ import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
 import { useDebtJourney } from '@/hooks/useDebtJourney';
 import { usePlans, useFocusPlan } from '@/hooks/usePlans';
+import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
-import { CurrentFocusCard } from './CurrentFocusCard';
-import { CashFlowStatusCard } from '@/components/debt-eliminator/dashboard/CashFlowStatusCard';
-import { MotivationCard } from '@/components/debt-eliminator/dashboard/MotivationCard';
 import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/EditMotivationDialog';
-import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
-import { TierProgressBar } from '@/components/gamification/TierProgressBar';
-import { StreakCounter } from '@/components/gamification/StreakCounter';
+import { DashboardCardRenderer } from './DashboardCardRenderer';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
-import { RecentBadges } from '@/components/gamification/RecentBadges';
-import { MyStrategiesCard } from './MyStrategiesCard';
-import { MoneyLeakCard } from '@/components/money-leak/MoneyLeakCard';
-import { LeakBreakdownList } from '@/components/money-leak/LeakBreakdownList';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function DashboardContent() {
   const navigate = useNavigate();
@@ -28,6 +21,7 @@ export function DashboardContent() {
   const { data: plans = [] } = usePlans();
   const { data: focusPlan } = useFocusPlan();
   const { refreshScore } = useRPRxScore();
+  const { cards, isLoading: cardsLoading } = useDashboardConfig();
 
   const [showEditMotivation, setShowEditMotivation] = useState(false);
 
@@ -55,7 +49,6 @@ export function DashboardContent() {
     return { surplus: result.surplus, status: result.status };
   }, [profile]);
 
-  // Derive focus debt details from journey data
   const focusDebt = useMemo(() => {
     if (!journey?.focus_debt_id || debts.length === 0) return null;
     return debts.find((d) => d.id === journey.focus_debt_id) ?? null;
@@ -70,7 +63,6 @@ export function DashboardContent() {
 
   const activeDebtFocus = !hasNoHistory && hasActiveJourney && !!focusDebt;
 
-  // Focus plan progress
   const focusPlanProgress = useMemo(() => {
     if (!focusPlan) return 0;
     const total = focusPlan.content.steps?.length || 0;
@@ -84,6 +76,27 @@ export function DashboardContent() {
     });
   };
 
+  // Build current focus props
+  const currentFocusProps = useMemo(() => {
+    if (focusPlan) {
+      return {
+        focusName: focusPlan.title,
+        description: `Strategy: ${focusPlan.strategy_name}`,
+        progressPercent: focusPlanProgress,
+        onContinue: () => navigate(`/plans/${focusPlan.id}`),
+      };
+    }
+    if (activeDebtFocus && focusDebt) {
+      return {
+        focusName: focusDebt.name,
+        description: `Pay down your ${focusDebt.debt_type.replace('_', ' ')} to free up monthly cash flow.`,
+        progressPercent: focusProgress,
+        onContinue: () => navigate('/debt-eliminator'),
+      };
+    }
+    return null;
+  }, [focusPlan, focusPlanProgress, activeDebtFocus, focusDebt, focusProgress, navigate]);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       {isLoading ? (
@@ -96,60 +109,30 @@ export function DashboardContent() {
             <StartAssessmentCTA isFirstTime />
           ) : (
             <>
-              {/* Motivation at the very top — drives everything */}
-              <MotivationCard
-                motivation={profile?.motivation_text ?? null}
-                images={profile?.motivation_images ?? []}
-                onEdit={() => setShowEditMotivation(true)}
-                onDelete={() => updateProfile.mutate({ motivation_text: null, motivation_images: [] })}
-              />
-
-              {/* Money Leak Estimator — primary engagement hook */}
-              <MoneyLeakCard />
-              <LeakBreakdownList />
-
-              {/* RPRx Score + Streak row */}
-              <div className="grid md:grid-cols-[1fr_auto] gap-4 items-start">
-                <div className="space-y-3">
-                  <GamificationScoreCard />
-                  <TierProgressBar />
+              {cardsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
                 </div>
-                <div className="flex md:flex-col gap-3 items-start">
-                  <StreakCounter />
-                </div>
-              </div>
-
-              {/* Plan focus takes priority */}
-              {focusPlan && (
-                <CurrentFocusCard
-                  focusName={focusPlan.title}
-                  description={`Strategy: ${focusPlan.strategy_name}`}
-                  progressPercent={focusPlanProgress}
-                  onContinue={() => navigate(`/plans/${focusPlan.id}`)}
+              ) : (
+                <DashboardCardRenderer
+                  cards={cards}
+                  cardProps={{
+                    motivation: {
+                      motivation: profile?.motivation_text ?? null,
+                      images: profile?.motivation_images ?? [],
+                      onEdit: () => setShowEditMotivation(true),
+                      onDelete: () => updateProfile.mutate({ motivation_text: null, motivation_images: [] }),
+                    },
+                    currentFocus: currentFocusProps,
+                    cashFlow: { surplus, status },
+                  }}
                 />
               )}
-              {/* Debt focus as secondary */}
-              {!focusPlan && activeDebtFocus && focusDebt && (
-                <CurrentFocusCard
-                  focusName={focusDebt.name}
-                  description={`Pay down your ${focusDebt.debt_type.replace('_', ' ')} to free up monthly cash flow.`}
-                  progressPercent={focusProgress}
-                  onContinue={() => navigate('/debt-eliminator')}
-                />
-              )}
-              <CashFlowStatusCard surplus={surplus} status={status} />
-
-              {/* Active strategies */}
-              <MyStrategiesCard />
-
-              {/* Recent achievements */}
-              <RecentBadges />
 
               {!focusPlan && !activeDebtFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
             </>
           )}
 
-          {/* Edit motivation dialog — always available */}
           <EditMotivationDialog
             open={showEditMotivation}
             onOpenChange={setShowEditMotivation}
