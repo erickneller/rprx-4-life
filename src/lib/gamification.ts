@@ -26,7 +26,8 @@ export type ActivityType =
   | 'deep_dive_complete'
   | 'strategy_activated'
   | 'strategy_completed'
-  | 'profile_updated';
+  | 'profile_updated'
+  | 'onboarding_day_complete';
 
 // ── Tiers (0-100 scale) ───────────────────────────────────────────
 

@@ -329,6 +329,63 @@ export type Database = {
           },
         ]
       }
+      onboarding_content: {
+        Row: {
+          action_target: string | null
+          action_text: string | null
+          action_type: string | null
+          body: string
+          content_type: string
+          created_at: string
+          day_number: number
+          estimated_minutes: number
+          horseman_type: string
+          id: string
+          is_active: boolean
+          phase: string
+          points_reward: number
+          quiz_data: Json | null
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          action_target?: string | null
+          action_text?: string | null
+          action_type?: string | null
+          body: string
+          content_type: string
+          created_at?: string
+          day_number: number
+          estimated_minutes?: number
+          horseman_type: string
+          id?: string
+          is_active?: boolean
+          phase: string
+          points_reward?: number
+          quiz_data?: Json | null
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          action_target?: string | null
+          action_text?: string | null
+          action_type?: string | null
+          body?: string
+          content_type?: string
+          created_at?: string
+          day_number?: number
+          estimated_minutes?: number
+          horseman_type?: string
+          id?: string
+          is_active?: boolean
+          phase?: string
+          points_reward?: number
+          quiz_data?: Json | null
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -362,6 +419,7 @@ export type Database = {
           motivation_text: string | null
           no_insurance: boolean
           num_children: number | null
+          onboarding_completed: boolean
           phone: string | null
           profile_type: string[] | null
           retirement_balance_total: number | null
@@ -414,6 +472,7 @@ export type Database = {
           motivation_text?: string | null
           no_insurance?: boolean
           num_children?: number | null
+          onboarding_completed?: boolean
           phone?: string | null
           profile_type?: string[] | null
           retirement_balance_total?: number | null
@@ -466,6 +525,7 @@ export type Database = {
           motivation_text?: string | null
           no_insurance?: boolean
           num_children?: number | null
+          onboarding_completed?: boolean
           phone?: string | null
           profile_type?: string[] | null
           retirement_balance_total?: number | null
@@ -834,6 +894,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          completed_days: Json
+          created_at: string
+          current_day: number
+          current_phase: string
+          id: string
+          onboarding_start_date: string
+          quiz_answers: Json
+          reflections: Json
+          status: string
+          streak_count: number
+          total_points_earned: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_days?: Json
+          created_at?: string
+          current_day?: number
+          current_phase?: string
+          id?: string
+          onboarding_start_date: string
+          quiz_answers?: Json
+          reflections?: Json
+          status?: string
+          streak_count?: number
+          total_points_earned?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_days?: Json
+          created_at?: string
+          current_day?: number
+          current_phase?: string
+          id?: string
+          onboarding_start_date?: string
+          quiz_answers?: Json
+          reflections?: Json
+          status?: string
+          streak_count?: number
+          total_points_earned?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

@@ -9,6 +9,8 @@ import { StartAssessmentCTA } from './StartAssessmentCTA';
 import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/EditMotivationDialog';
 import { DashboardCardRenderer } from './DashboardCardRenderer';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
+import { useOnboarding } from '@/hooks/useOnboarding';
+import { OnboardingProgressBar } from '@/components/onboarding/OnboardingProgressBar';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import { Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +24,7 @@ export function DashboardContent() {
   const { data: focusPlan } = useFocusPlan();
   const { refreshScore } = useRPRxScore();
   const { cards, isLoading: cardsLoading } = useDashboardConfig();
+  const { isOnboarding, completedDays: onboardingCompletedDays, currentDay: onboardingCurrentDay } = useOnboarding();
 
   const [showEditMotivation, setShowEditMotivation] = useState(false);
 
@@ -114,19 +117,24 @@ export function DashboardContent() {
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
                 </div>
               ) : (
-                <DashboardCardRenderer
-                  cards={cards}
-                  cardProps={{
-                    motivation: {
-                      motivation: profile?.motivation_text ?? null,
-                      images: profile?.motivation_images ?? [],
-                      onEdit: () => setShowEditMotivation(true),
-                      onDelete: () => updateProfile.mutate({ motivation_text: null, motivation_images: [] }),
-                    },
-                    currentFocus: currentFocusProps,
-                    cashFlow: { surplus, status },
-                  }}
-                />
+                <div className="space-y-4">
+                  {isOnboarding && (
+                    <OnboardingProgressBar completedDays={onboardingCompletedDays} currentDay={onboardingCurrentDay} />
+                  )}
+                  <DashboardCardRenderer
+                    cards={cards}
+                    cardProps={{
+                      motivation: {
+                        motivation: profile?.motivation_text ?? null,
+                        images: profile?.motivation_images ?? [],
+                        onEdit: () => setShowEditMotivation(true),
+                        onDelete: () => updateProfile.mutate({ motivation_text: null, motivation_images: [] }),
+                      },
+                      currentFocus: currentFocusProps,
+                      cashFlow: { surplus, status },
+                    }}
+                  />
+                </div>
               )}
 
               {!focusPlan && !activeDebtFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}

@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard, GraduationCap } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -24,6 +24,7 @@ import { DeepDiveQuestionsTab } from '@/components/admin/DeepDiveQuestionsTab';
 import { AnalyticsTab } from '@/components/admin/AnalyticsTab';
 import { PromptTemplatesTab } from '@/components/admin/PromptTemplatesTab';
 import { DashboardTab } from '@/components/admin/DashboardTab';
+import { OnboardingTab } from '@/components/admin/OnboardingTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -487,6 +488,9 @@ export default function AdminPanel() {
             <TabsTrigger value="dashboard" className="gap-1">
               <LayoutDashboard className="h-4 w-4" /> Dashboard
             </TabsTrigger>
+            <TabsTrigger value="onboarding" className="gap-1">
+              <GraduationCap className="h-4 w-4" /> Onboarding
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
@@ -732,6 +736,11 @@ export default function AdminPanel() {
           {/* ===== DASHBOARD CONFIG TAB ===== */}
           <TabsContent value="dashboard" className="space-y-4">
             <DashboardTab />
+          </TabsContent>
+
+          {/* ===== ONBOARDING TAB ===== */}
+          <TabsContent value="onboarding" className="space-y-4">
+            <OnboardingTab />
           </TabsContent>
         </Tabs>
       </div>

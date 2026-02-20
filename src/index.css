@@ -138,4 +138,13 @@
   .gradient-accent {
     background: linear-gradient(135deg, hsl(220 90% 51%) 0%, hsl(220 70% 60%) 100%);
   }
+
+  @keyframes sparkle {
+    0%, 100% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  .animate-sparkle {
+    animation: sparkle 2s ease-in-out infinite;
+  }
 }
