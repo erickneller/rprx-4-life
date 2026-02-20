@@ -59,6 +59,10 @@ export interface Profile {
   rprx_score_stress: number | null;
   rprx_score_total: number | null;
   rprx_grade: string | null;
+  // Money leak estimator
+  estimated_annual_leak_low: number | null;
+  estimated_annual_leak_high: number | null;
+  estimated_annual_leak_recovered: number | null;
 }
 
 export function useProfile() {

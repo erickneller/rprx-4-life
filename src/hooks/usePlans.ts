@@ -13,6 +13,7 @@ export interface PlanContent {
   taxReference?: string;
   disclaimer?: string;
   completedSteps?: number[];
+  estimated_impact?: { low: number; high: number; source: string };
 }
 
 export interface SavedPlan {
@@ -59,6 +60,9 @@ function parsePlanContent(json: Json): PlanContent {
       taxReference: typeof obj.taxReference === 'string' ? obj.taxReference : undefined,
       disclaimer: typeof obj.disclaimer === 'string' ? obj.disclaimer : undefined,
       completedSteps: Array.isArray(obj.completedSteps) ? obj.completedSteps.map(Number) : undefined,
+      estimated_impact: typeof obj.estimated_impact === 'object' && obj.estimated_impact !== null
+        ? obj.estimated_impact as { low: number; high: number; source: string }
+        : undefined,
     };
   }
   return { steps: [] };
