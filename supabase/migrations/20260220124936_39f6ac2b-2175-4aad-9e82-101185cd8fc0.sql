@@ -1,0 +1,3 @@
+UPDATE onboarding_content 
+SET body = E'Most working Americans are unknowingly leaving $2,000\u20138,000 per year on the table through tax inefficiencies, unnecessary interest, insurance gaps, and missed education benefits.\n\nYou''ve already taken the biggest step \u2014 you showed up.\n\nYour Money Leak Estimator shows your personalized opportunity. Today, take 2 minutes to review it and let the number sink in.\n\nThis isn''t about cutting back. It''s about recovering what''s already yours.'
+WHERE day_number = 1 AND horseman_type = 'universal';
