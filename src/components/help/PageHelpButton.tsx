@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
 
 const STORAGE_KEY = 'help_hints_dismissed';
+const CLICKED_KEY = 'help_clicked_pages';
 
 function getDismissedPages(): string[] {
   try {
@@ -22,6 +23,22 @@ function dismissPage(pageId: string) {
   if (!dismissed.includes(pageId)) {
     dismissed.push(pageId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dismissed));
+  }
+}
+
+function getClickedPages(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(CLICKED_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function markPageClicked(pageId: string) {
+  const clicked = getClickedPages();
+  if (!clicked.includes(pageId)) {
+    clicked.push(pageId);
+    localStorage.setItem(CLICKED_KEY, JSON.stringify(clicked));
   }
 }
 
@@ -49,10 +66,12 @@ export function PageHelpButton() {
   const { helpContent, pageId } = usePageHelp();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hintDismissed, setHintDismissed] = useState(true);
+  const [glowActive, setGlowActive] = useState(false);
 
   useEffect(() => {
     if (pageId) {
       setHintDismissed(getDismissedPages().includes(pageId));
+      setGlowActive(!getClickedPages().includes(pageId));
     }
   }, [pageId]);
 
@@ -85,8 +104,14 @@ export function PageHelpButton() {
         <Button
           variant="outline"
           size="icon"
-          className="h-12 w-12 rounded-full shadow-lg bg-primary/10 hover:bg-primary/20 text-primary border-primary/20 transition-transform hover:scale-105"
-          onClick={() => setDrawerOpen(true)}
+          className={`h-[52px] w-[52px] rounded-full shadow-lg bg-amber-400 hover:bg-amber-500 text-white border-none transition-transform hover:scale-105 ${glowActive ? 'animate-[helpGlow_2s_ease-in-out_infinite]' : ''}`}
+          onClick={() => {
+            if (pageId) {
+              markPageClicked(pageId);
+              setGlowActive(false);
+            }
+            setDrawerOpen(true);
+          }}
           aria-label="Page help"
         >
           <HelpCircle className="h-5 w-5" />
