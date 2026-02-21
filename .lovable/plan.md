@@ -1,25 +1,53 @@
 
-# Scroll-to Support for Onboarding Card
 
-## What Changes
+# XP Score Display — Sidebar + Dashboard
 
-### 1. `src/components/onboarding/OnboardingCard.tsx`
-Add `scroll_to` handling in `handleAction` (around line 49-56):
-```typescript
-if (todayContent.action_type === 'scroll_to' && todayContent.action_target) {
-  document.getElementById(todayContent.action_target)?.scrollIntoView({ behavior: 'smooth' });
-}
+## Overview
+Add visible total XP alongside the RPRx Score in two places: the sidebar compact widget and the dashboard achievements card.
+
+## Changes
+
+### 1. Sidebar compact widget (`GamificationScoreCard.tsx` — compact mode)
+
+Current layout:
+```text
+[RPRx Ring 80px]  🌱 Progressing
 ```
 
-### 2. `src/components/money-leak/MoneyLeakCard.tsx`
-Add `id="money-leak-card"` to both `<Card>` elements (teaser state at line 64 and full state at line ~95).
+New layout:
+```text
+  RPRx Score        XP
+  [Ring w/ 42]     1,250
+```
 
-### 3. Admin field syntax
-Once deployed, you edit Day 1 in the admin panel:
-- **Action Target**: `money-leak-card` (just the element ID, no slash or hash)
-- **Action Type**: You'll need to type `scroll_to` in the action type. However, the current admin UI uses a dropdown for content_type but the action_type/action_target are plain text inputs, so you can type it directly.
+- Remove the grade label text ("Progressing") from the compact view
+- Add total XP from `profile.total_points_earned` next to the ring
+- Add small labels ("RPRx Score" / "XP") above each value
+- The ring stays as-is (shows RPRx score number + grade emoji inside)
 
-For any future day, you'd use the same pattern: set action_type to `scroll_to` and action_target to whatever element ID you want to scroll to.
+The component will import `useProfile` to access `total_points_earned`.
 
-### Database update for Day 1
-A migration will update Day 1 universal content: `action_type = 'scroll_to'`, `action_target = 'money-leak-card'`.
+### 2. Streak counter in sidebar (`StreakCounter.tsx` — compact mode)
+
+Current: `🔥 7`
+
+Updated: `🔥 7 days` — append "days" label for clarity. Keeps existing layout below the two scores.
+
+### 3. Dashboard "Recent Achievements" card (`RecentBadges.tsx`)
+
+- Add a header row showing total XP (e.g., "⭐ 1,250 XP") pulled from `useProfile().profile.total_points_earned`
+- Keep "Recent Achievements" as the card title
+- The XP total appears as a prominent number between the title and the badge list
+
+## Technical Details
+
+**Files modified:**
+- `src/components/gamification/GamificationScoreCard.tsx` — compact mode: remove grade label, add XP display with `useProfile`
+- `src/components/gamification/StreakCounter.tsx` — compact mode: append "days" text
+- `src/components/gamification/RecentBadges.tsx` — add total XP header using `useProfile`
+
+**No changes to:**
+- Database schema or column names
+- RPRx Score calculation logic
+- Any scoring engines or hooks
+- Full-size GamificationScoreCard (dashboard version)
