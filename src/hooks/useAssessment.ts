@@ -271,14 +271,14 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
       }
 
       // Log gamification activity
-      logActivity('assessment_complete', { assessment_id: assessment.id }).then((awarded) => {
-        showPointsEarnedToast(100, 'Assessment completed!');
+      logActivity('assessment_complete', { assessment_id: assessment.id }).then(({ awarded, xpEarned }) => {
+        if (xpEarned > 0) showPointsEarnedToast(xpEarned, 'Assessment completed!');
         awarded.forEach((badge) => showAchievementToast(badge));
       });
 
       // Also log deep dive completion
-      logActivity('deep_dive_complete', { assessment_id: assessment.id, horseman_type: primaryHorseman }).then((awarded) => {
-        showPointsEarnedToast(75, 'Deep Dive completed!');
+      logActivity('deep_dive_complete', { assessment_id: assessment.id, horseman_type: primaryHorseman }).then(({ awarded, xpEarned }) => {
+        if (xpEarned > 0) showPointsEarnedToast(xpEarned, 'Deep Dive completed!');
         awarded.forEach((badge) => showAchievementToast(badge));
       });
 

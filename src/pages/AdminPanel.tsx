@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard, GraduationCap } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard, GraduationCap, Zap } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -26,6 +26,7 @@ import { PromptTemplatesTab } from '@/components/admin/PromptTemplatesTab';
 import { DashboardTab } from '@/components/admin/DashboardTab';
 import { OnboardingTab } from '@/components/admin/OnboardingTab';
 import { PageHelpTab } from '@/components/admin/PageHelpTab';
+import { ActivityXpTab } from '@/components/admin/ActivityXpTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -474,6 +475,9 @@ export default function AdminPanel() {
             <TabsTrigger value="badges" className="gap-1">
               <Award className="h-4 w-4" /> Badges
             </TabsTrigger>
+            <TabsTrigger value="xp-activities" className="gap-1">
+              <Zap className="h-4 w-4" /> XP Activities
+            </TabsTrigger>
             <TabsTrigger value="assessment-questions" className="gap-1">
               <HelpCircle className="h-4 w-4" /> Assessment Q's
             </TabsTrigger>
@@ -715,6 +719,10 @@ export default function AdminPanel() {
           {/* ===== BADGES TAB ===== */}
           <TabsContent value="badges" className="space-y-4">
             <BadgesTab />
+          </TabsContent>
+          {/* ===== XP ACTIVITIES TAB ===== */}
+          <TabsContent value="xp-activities" className="space-y-4">
+            <ActivityXpTab />
           </TabsContent>
 
           {/* ===== ASSESSMENT QUESTIONS TAB ===== */}

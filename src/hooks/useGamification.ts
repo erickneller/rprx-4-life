@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useProfile } from './useProfile';
+import { useActivityXpConfig, getXpForActivity } from './useActivityXpConfig';
 import {
   type ActivityType,
   type AwardedBadge,
@@ -18,6 +19,7 @@ export function useGamification() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const queryClient = useQueryClient();
+  const xpConfig = useActivityXpConfig();
   const streakChecked = useRef(false);
 
   const [recentlyEarned, setRecentlyEarned] = useState<AwardedBadge[]>([]);
@@ -77,16 +79,27 @@ export function useGamification() {
 
   // Log activity + check badges
   const logActivity = useCallback(
-    async (action: ActivityType, context?: Record<string, unknown>): Promise<AwardedBadge[]> => {
-      if (!user?.id) return [];
+    async (action: ActivityType, context?: Record<string, unknown>): Promise<{ awarded: AwardedBadge[]; xpEarned: number }> => {
+      if (!user?.id) return { awarded: [], xpEarned: 0 };
 
-      // Log the activity
+      const activityXp = getXpForActivity(xpConfig, action);
+
+      // Log the activity with config-driven XP
       await supabase.from('user_activity_log').insert([{
         user_id: user.id,
         activity_type: action,
         activity_data: (context as Record<string, string | number | boolean | null>) ?? null,
-        points_earned: 0,
+        points_earned: activityXp,
       }]);
+
+      // Increment total_points_earned on profile
+      if (activityXp > 0) {
+        const currentTotal = profile?.total_points_earned ?? 0;
+        await supabase
+          .from('profiles')
+          .update({ total_points_earned: currentTotal + activityXp })
+          .eq('id', user.id);
+      }
 
       // Check and award badges
       const awarded = await checkAndAwardBadges(user.id, action, context);
@@ -102,9 +115,9 @@ export function useGamification() {
       queryClient.invalidateQueries({ queryKey: ['user-badges', user.id] });
       queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
 
-      return awarded;
+      return { awarded, xpEarned: activityXp };
     },
-    [user?.id, queryClient]
+    [user?.id, queryClient, xpConfig, profile?.total_points_earned]
   );
 
   const refreshScore = useCallback(async () => {

@@ -88,13 +88,13 @@ export function StrategyActivationCard({ primaryHorseman }: StrategyActivationCa
       queryClient.invalidateQueries({ queryKey: ['user-active-strategies', user?.id] });
 
       // Log gamification activity
-      const awarded = await logActivity('strategy_activated', {
+      const { awarded, xpEarned } = await logActivity('strategy_activated', {
         strategy_id: strategy.id,
         horseman_type: strategy.horseman_type,
         difficulty: strategy.difficulty,
       });
 
-      showPointsEarnedToast(50, `Strategy activated: ${strategy.name}`);
+      if (xpEarned > 0) showPointsEarnedToast(xpEarned, `Strategy activated: ${strategy.name}`);
       awarded.forEach((badge) => showAchievementToast(badge));
       setActivatingId(null);
     },

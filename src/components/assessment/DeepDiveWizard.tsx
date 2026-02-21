@@ -67,8 +67,8 @@ export function DeepDiveWizard({ primaryHorseman, assessmentId, onComplete }: De
     });
 
     // Log gamification activity
-    logActivity('deep_dive_complete', { assessment_id: assessmentId, horseman_type: primaryHorseman }).then((awarded) => {
-      showPointsEarnedToast(75, 'Deep Dive completed!');
+    logActivity('deep_dive_complete', { assessment_id: assessmentId, horseman_type: primaryHorseman }).then(({ awarded, xpEarned }) => {
+      if (xpEarned > 0) showPointsEarnedToast(xpEarned, 'Deep Dive completed!');
       awarded.forEach((badge) => showAchievementToast(badge));
     });
 
