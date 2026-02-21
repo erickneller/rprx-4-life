@@ -1,53 +1,29 @@
-
-
-# XP Score Display — Sidebar + Dashboard
-
-## Overview
-Add visible total XP alongside the RPRx Score in two places: the sidebar compact widget and the dashboard achievements card.
+# Add "XP Score" Label + Definition
 
 ## Changes
 
-### 1. Sidebar compact widget (`GamificationScoreCard.tsx` — compact mode)
+### 1. Sidebar compact label (`GamificationScoreCard.tsx`, line 85)
 
-Current layout:
-```text
-[RPRx Ring 80px]  🌱 Progressing
-```
+Change `"XP"` to `"XP Score"` so both metrics read consistently:
 
-New layout:
-```text
-  RPRx Score        XP
-  [Ring w/ 42]     1,250
-```
+- **RPRx Score** | **XP Score**
 
-- Remove the grade label text ("Progressing") from the compact view
-- Add total XP from `profile.total_points_earned` next to the ring
-- Add small labels ("RPRx Score" / "XP") above each value
-- The ring stays as-is (shows RPRx score number + grade emoji inside)
+### 2. Dashboard "Recent Achievements" card (`RecentBadges.tsx`)
 
-The component will import `useProfile` to access `total_points_earned`.
+Add a short explanatory line below the XP total to define what XP Score means. Something like:
 
-### 2. Streak counter in sidebar (`StreakCounter.tsx` — compact mode)
+> XP = Experience Points. Earn XP by completing assessments, unlocking badges, and maintaining streaks.
 
-Current: `🔥 7`
-
-Updated: `🔥 7 days` — append "days" label for clarity. Keeps existing layout below the two scores.
-
-### 3. Dashboard "Recent Achievements" card (`RecentBadges.tsx`)
-
-- Add a header row showing total XP (e.g., "⭐ 1,250 XP") pulled from `useProfile().profile.total_points_earned`
-- Keep "Recent Achievements" as the card title
-- The XP total appears as a prominent number between the title and the badge list
+This sits as a small muted-text line under the `"⭐ 1,250 XP"` header, before the badge list. Keeps the card clean while giving first-time users immediate clarity.
 
 ## Technical Details
 
-**Files modified:**
-- `src/components/gamification/GamificationScoreCard.tsx` — compact mode: remove grade label, add XP display with `useProfile`
-- `src/components/gamification/StreakCounter.tsx` — compact mode: append "days" text
-- `src/components/gamification/RecentBadges.tsx` — add total XP header using `useProfile`
+`**src/components/gamification/GamificationScoreCard.tsx**` (line 85):
 
-**No changes to:**
-- Database schema or column names
-- RPRx Score calculation logic
-- Any scoring engines or hooks
-- Full-size GamificationScoreCard (dashboard version)
+- Change label from `"XP"` to `"XP Score"`
+
+`**src/components/gamification/RecentBadges.tsx**` (after line 27):
+
+- Add a `<p>` with muted styling: `"XP = Experience Points. Earn XP by completing assessments, unlocking badges, and maintaining streaks."`
+
+No other files, logic, or database changes needed.
