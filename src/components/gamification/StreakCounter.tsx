@@ -21,7 +21,7 @@ export function StreakCounter({ compact = false }: StreakCounterProps) {
       <div className={`flex items-center gap-1.5 ${!isActive ? 'opacity-50' : ''}`}>
         <span className={`text-sm ${shouldPulse ? 'animate-pulse' : ''}`}>{flameEmoji}</span>
         <span className="text-xs font-medium text-foreground">
-          {isActive ? streak.current : 0}
+          {isActive ? `${streak.current} days` : '0 days'}
         </span>
       </div>
     );
