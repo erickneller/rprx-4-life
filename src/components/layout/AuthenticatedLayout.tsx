@@ -4,6 +4,7 @@ import { AppSidebar } from "./AppSidebar";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import rprxLogo from "@/assets/rprx-logo.png";
+import { PageHelpButton } from "@/components/help/PageHelpButton";
 
 interface AuthenticatedLayoutProps {
   children: ReactNode;
@@ -41,6 +42,8 @@ export function AuthenticatedLayout({ children, title }: AuthenticatedLayoutProp
           <main className="flex-1">
             {children}
           </main>
+
+          <PageHelpButton />
         </div>
       </div>
     </SidebarProvider>

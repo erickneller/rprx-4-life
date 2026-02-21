@@ -386,6 +386,48 @@ export type Database = {
         }
         Relationships: []
       }
+      page_help_content: {
+        Row: {
+          created_at: string
+          help_body: string
+          help_title: string
+          hint_text: string
+          id: string
+          is_active: boolean
+          page_name: string
+          sort_order: number
+          updated_at: string
+          video_placeholder_text: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          help_body: string
+          help_title: string
+          hint_text: string
+          id: string
+          is_active?: boolean
+          page_name: string
+          sort_order?: number
+          updated_at?: string
+          video_placeholder_text?: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          help_body?: string
+          help_title?: string
+          hint_text?: string
+          id?: string
+          is_active?: boolean
+          page_name?: string
+          sort_order?: number
+          updated_at?: string
+          video_placeholder_text?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
