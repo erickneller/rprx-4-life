@@ -82,7 +82,7 @@ export function GamificationScoreCard({ compact = false }: GamificationScoreCard
           </div>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-[10px] text-muted-foreground font-medium mb-1">XP</span>
+          <span className="text-[10px] text-muted-foreground font-medium mb-1">XP Score</span>
           <span className="text-lg font-bold text-foreground">{totalXP.toLocaleString()}</span>
         </div>
       </div>
