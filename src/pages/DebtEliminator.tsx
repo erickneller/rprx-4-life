@@ -49,7 +49,7 @@ export default function DebtEliminator() {
   const initialExpenses = profile?.monthly_living_expenses ? Number(profile.monthly_living_expenses) : 0;
 
   return (
-    <AuthenticatedLayout>
+    <AuthenticatedLayout title="Debt Elimination System">
       <div className="container py-6 px-4 md:px-6 max-w-6xl">
         {isLoading || profileLoading ? (
           <div className="flex items-center justify-center min-h-[400px]">

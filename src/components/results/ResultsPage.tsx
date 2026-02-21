@@ -52,7 +52,7 @@ export function ResultsPage() {
 
   if (isLoading) {
     return (
-      <AuthenticatedLayout title="Results">
+        <AuthenticatedLayout breadcrumbs={[{ label: "My Assessments", href: "/assessments" }, { label: "Results" }]}>
         <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -62,7 +62,7 @@ export function ResultsPage() {
 
   if (error || !assessment) {
     return (
-      <AuthenticatedLayout title="Results">
+      <AuthenticatedLayout breadcrumbs={[{ label: "My Assessments", href: "/assessments" }, { label: "Results" }]}>
         <div className="flex h-[calc(100vh-3.5rem)] flex-col items-center justify-center gap-4">
           <p className="text-muted-foreground">Assessment not found.</p>
           <Button onClick={() => navigate('/dashboard')}>
@@ -83,7 +83,7 @@ export function ResultsPage() {
   const primaryHorseman = assessment.primary_horseman as HorsemanType;
 
   return (
-    <AuthenticatedLayout title="Assessment Results">
+    <AuthenticatedLayout breadcrumbs={[{ label: "My Assessments", href: "/assessments" }, { label: "Results" }]}>
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
         {/* Intro */}
         <div>
