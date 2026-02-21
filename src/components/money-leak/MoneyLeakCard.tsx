@@ -50,7 +50,7 @@ interface MoneyLeakCardProps {
 
 export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
   const navigate = useNavigate();
-  const { result, focusedPlan, isLoading } = useMoneyLeak();
+  const { result, focusedPlan, isLoading, hasAssessment, hasPlans, hasFocusPlan } = useMoneyLeak();
 
   const lowAnimated = useCountUp(result?.totalLeakLow ?? 0);
   const highAnimated = useCountUp(result?.totalLeakHigh ?? 0);
@@ -58,8 +58,8 @@ export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
 
   if (isLoading) return null;
 
-  // Teaser state — no plans
-  if (!result) {
+  // STATE 1: No assessment completed
+  if (!hasAssessment) {
     return (
       <Card id="money-leak-card" className="gradient-hero text-primary-foreground border-0 overflow-hidden">
         <CardContent className="p-6 text-center space-y-3">
@@ -70,17 +70,55 @@ export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
           <p className="text-sm opacity-80">
             Complete your assessment to see how much money you may be leaving on the table.
           </p>
-          <Button
-            variant="secondary"
-            onClick={() => navigate('/assessment')}
-            className="mt-2"
-          >
+          <Button variant="secondary" onClick={() => navigate('/assessment')} className="mt-2">
             Take Your Assessment <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </CardContent>
       </Card>
     );
   }
+
+  // STATE 2: Assessment done, no plans yet
+  if (!hasPlans) {
+    return (
+      <Card id="money-leak-card" className="gradient-hero text-primary-foreground border-0 overflow-hidden">
+        <CardContent className="p-6 text-center space-y-3">
+          <DollarSign className="h-10 w-10 mx-auto opacity-80" />
+          <p className="text-lg font-semibold">
+            💸 Your opportunities are waiting
+          </p>
+          <p className="text-sm opacity-80">
+            Generate your first strategy and create a plan to start recovering what's yours.
+          </p>
+          <Button variant="secondary" onClick={() => navigate('/results')} className="mt-2">
+            Generate My Strategy <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // STATE 3: Plans exist but none focused
+  if (!hasFocusPlan) {
+    return (
+      <Card id="money-leak-card" className="gradient-hero text-primary-foreground border-0 overflow-hidden">
+        <CardContent className="p-6 text-center space-y-3">
+          <DollarSign className="h-10 w-10 mx-auto opacity-80" />
+          <p className="text-lg font-semibold">
+            💸 You have a plan ready
+          </p>
+          <p className="text-sm opacity-80">
+            Set your focus plan to start tracking your recovery.
+          </p>
+          <Button variant="secondary" onClick={() => navigate('/plans')} className="mt-2">
+            View My Plans <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // STATE 4: Focused plan active — show full estimator
 
   if (compact) {
     return (
