@@ -170,7 +170,7 @@ export function MyStrategiesCard() {
                   {s.strategy?.name ?? s.strategy_id}
                 </span>
                 <Badge variant="outline" className="text-xs ml-auto shrink-0">
-                  +30 pts
+                  +30 XP
                 </Badge>
               </div>
             ))}
@@ -178,7 +178,7 @@ export function MyStrategiesCard() {
         )}
 
         <p className="text-xs text-muted-foreground text-center pt-1">
-          +30 RPRx points per strategy completed
+          +30 XP per strategy completed
         </p>
       </CardContent>
     </Card>

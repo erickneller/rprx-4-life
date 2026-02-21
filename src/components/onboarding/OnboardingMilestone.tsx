@@ -45,7 +45,7 @@ export function OnboardingMilestone({ dayNumber, completedDays, totalPoints, str
           </div>
           <div>
             <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{totalPoints}</p>
-            <p className="text-muted-foreground">Points</p>
+            <p className="text-muted-foreground">XP</p>
           </div>
           {streak > 1 && (
             <div>

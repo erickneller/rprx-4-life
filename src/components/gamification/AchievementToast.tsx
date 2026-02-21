@@ -12,7 +12,7 @@ export function showAchievementToast(badge: AwardedBadge) {
           <p className="text-sm font-semibold text-foreground">🏆 Achievement Unlocked!</p>
           <p className="text-sm font-medium text-foreground">{badge.name}</p>
           <p className="text-xs text-muted-foreground truncate">{badge.description}</p>
-          <p className="text-xs font-semibold text-accent mt-0.5">+{badge.points} RPRx Points</p>
+          <p className="text-xs font-semibold text-accent mt-0.5">+{badge.points} XP</p>
         </div>
       </div>
     ),
@@ -28,7 +28,7 @@ export function showPointsEarnedToast(points: number, reason: string) {
           ⭐
         </div>
         <div>
-          <p className="text-sm font-semibold text-accent">+{points} RPRx Points</p>
+          <p className="text-sm font-semibold text-accent">+{points} XP</p>
           <p className="text-xs text-muted-foreground">{reason}</p>
         </div>
       </div>

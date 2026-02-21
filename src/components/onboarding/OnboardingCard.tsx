@@ -176,7 +176,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
                 <Clock className="h-3 w-3" /> ~{todayContent.estimated_minutes} min
               </Badge>
               <Badge variant="secondary" className="gap-1 text-xs">
-                <Star className="h-3 w-3" /> +{todayContent.points_reward} pts
+                <Star className="h-3 w-3" /> +{todayContent.points_reward} XP
               </Badge>
             </div>
           </div>
