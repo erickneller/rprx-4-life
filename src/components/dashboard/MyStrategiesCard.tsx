@@ -81,12 +81,12 @@ export function MyStrategiesCard() {
       queryClient.invalidateQueries({ queryKey: ['my-active-strategies', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['user-active-strategies', user?.id] });
 
-      const awarded = await logActivity('strategy_completed', {
+      const { awarded, xpEarned } = await logActivity('strategy_completed', {
         strategy_id: strategyRow.strategy_id,
         horseman_type: strategyRow.strategy?.horseman_type,
       });
 
-      showPointsEarnedToast(30, `Strategy completed: ${strategyRow.strategy?.name}`);
+      if (xpEarned > 0) showPointsEarnedToast(xpEarned, `Strategy completed: ${strategyRow.strategy?.name}`);
       awarded.forEach((badge) => showAchievementToast(badge));
       setCompletingId(null);
     },

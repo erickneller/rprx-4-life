@@ -27,7 +27,8 @@ export type ActivityType =
   | 'strategy_activated'
   | 'strategy_completed'
   | 'profile_updated'
-  | 'onboarding_day_complete';
+  | 'onboarding_day_complete'
+  | 'plan_step_completed';
 
 // ── Tiers (0-100 scale) ───────────────────────────────────────────
 

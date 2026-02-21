@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_xp_config: {
+        Row: {
+          base_xp: number
+          created_at: string
+          description: string
+          display_name: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          base_xp?: number
+          created_at?: string
+          description?: string
+          display_name: string
+          id: string
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          base_xp?: number
+          created_at?: string
+          description?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       assessment_questions: {
         Row: {
           category: string

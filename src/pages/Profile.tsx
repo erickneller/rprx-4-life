@@ -23,7 +23,7 @@ import { StreakCounter as StreakCounterComponent } from '@/components/gamificati
 import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
 import { useGamification } from '@/hooks/useGamification';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
-import { showAchievementToast } from '@/components/gamification/AchievementToast';
+import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
 
 const EMPLOYER_MATCH_OPTIONS = [
   { value: 'yes', label: 'Yes — I get the full match' },
@@ -364,7 +364,8 @@ export default function Profile() {
       // Refresh RPRx score after save
       refreshScore();
 
-      logActivity('profile_updated').then((awarded) => {
+      logActivity('profile_updated').then(({ awarded, xpEarned }) => {
+        if (xpEarned > 0) showPointsEarnedToast(xpEarned, 'Profile updated!');
         awarded.forEach((badge) => showAchievementToast(badge));
       });
     } catch (error) {
