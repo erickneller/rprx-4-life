@@ -5,9 +5,9 @@ import LandingPage from '@/components/landing/LandingPage';
 
 const Index = () => {
   const { user, loading } = useAuth();
-  const { isLoading: profileLoading, isProfileComplete } = useProfile();
+  const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
 
-  if (loading || (user && profileLoading)) {
+  if (loading || (user && (profileLoading || !profile))) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
