@@ -27,7 +27,7 @@ export function RecentBadges() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{def?.name ?? badge.badge_id}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {new Date(badge.earned_at).toLocaleDateString()} · +{badge.points_awarded} pts
+                    {new Date(badge.earned_at).toLocaleDateString()} · +{badge.points_awarded} XP
                   </p>
                 </div>
               </div>

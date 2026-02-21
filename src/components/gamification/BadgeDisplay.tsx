@@ -80,7 +80,7 @@ export function BadgeDisplay() {
                           </span>
                           {badge.earned && (
                             <span className="text-[10px] text-muted-foreground">
-                              +{badge.points} pts
+                              +{badge.points} XP
                             </span>
                           )}
                         </div>

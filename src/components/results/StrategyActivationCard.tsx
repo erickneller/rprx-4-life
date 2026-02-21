@@ -123,7 +123,7 @@ export function StrategyActivationCard({ primaryHorseman }: StrategyActivationCa
           Recommended Strategies
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Activate strategies to start earning RPRx points and track your progress
+          Activate strategies to start earning XP and track your progress
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -202,7 +202,7 @@ export function StrategyActivationCard({ primaryHorseman }: StrategyActivationCa
         })}
 
         <p className="text-xs text-muted-foreground text-center pt-2">
-          +50 RPRx points per strategy activated • Activate all 4 horsemen for a bonus badge
+          +50 XP per strategy activated • Activate all 4 horsemen for a bonus badge
         </p>
       </CardContent>
     </Card>
