@@ -50,6 +50,9 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
     if (todayContent.action_type === 'navigate' && todayContent.action_target) {
       navigate(todayContent.action_target);
     }
+    if (todayContent.action_type === 'scroll_to' && todayContent.action_target) {
+      document.getElementById(todayContent.action_target)?.scrollIntoView({ behavior: 'smooth' });
+    }
     if (todayContent.action_type === 'complete_step') {
       await completeToday();
       setLocalCompleted(true);

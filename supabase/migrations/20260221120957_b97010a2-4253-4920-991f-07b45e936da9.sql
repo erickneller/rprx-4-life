@@ -1,0 +1,1 @@
+UPDATE onboarding_content SET action_type = 'scroll_to', action_target = 'money-leak-card' WHERE day_number = 1 AND horseman_type = 'universal';
