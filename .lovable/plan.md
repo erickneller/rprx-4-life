@@ -1,38 +1,39 @@
 
-# Add Delete Profile Picture Button
+# Fix: Always Redirected to Profile After Login
 
-## Overview
-Add a delete/remove button to the Profile Photo card that appears only when the user has an existing avatar. Clicking it clears the `avatar_url` from the profile and removes the file from Supabase Storage.
+## Root Cause
 
-## Changes
+A race condition between two separate `useAuth()` hook instances:
 
-### 1. `src/hooks/useProfile.ts`
-- Add a `deleteAvatar` async function:
-  - Extracts the file path from the current `avatar_url`
-  - Calls `supabase.storage.from('avatars').remove([filePath])` to delete the file
-  - Updates the profile with `avatar_url: null`
-  - Invalidates the profile query cache
-- Export `deleteAvatar` from the hook
+1. `Index.tsx` calls `useAuth()` -- gets `user` loaded, `loading: false`
+2. `Index.tsx` calls `useProfile()` -- which internally calls its own `useAuth()`
+3. The `useProfile` instance of `useAuth()` may not have resolved yet, so `user?.id` is still `undefined`
+4. This means the React Query in `useProfile` has `enabled: false`, returning `isLoading: false` and `data: undefined`
+5. `isProfileComplete` evaluates to `false` (because `profileQuery.data` is null)
+6. Index immediately redirects to `/profile`
 
-### 2. `src/pages/Profile.tsx`
-- Import `Trash2` icon from lucide-react
-- Destructure `deleteAvatar` from `useProfile()`
-- Add a `handleDeleteAvatar` function that:
-  - Calls `deleteAvatar()`
-  - Clears the local `previewUrl` state
-  - Shows a success toast
-  - Handles errors with a destructive toast
-- In the Profile Photo card, add a "Remove Photo" button below the avatar (next to the helper text) that:
-  - Only renders when `displayUrl` exists (user has an avatar)
-  - Shows a Trash2 icon with "Remove Photo" text
-  - Uses `variant="ghost"` with destructive text styling
-  - Is disabled while uploading or deleting
+## Fix
 
-### Visual Layout
-```text
-    [Avatar with camera button]
-    "Click the camera icon to upload a photo"
-    [Trash2 icon] Remove Photo    <-- new, only when avatar exists
+**File: `src/pages/Index.tsx`**
+
+Pass the authenticated user's ID into `useProfile` so it doesn't rely on its own separate `useAuth()` timing. Alternatively (and more simply), add a guard in `Index.tsx` that also checks whether profile data has actually been fetched before making the redirect decision.
+
+The simplest, least-invasive fix: change the loading guard in `Index.tsx` to also wait when we have a user but profile data hasn't loaded yet (i.e., `profile` is null/undefined).
+
+Current logic:
+```
+if (loading || (user && profileLoading)) { show spinner }
 ```
 
-No database or storage bucket changes needed -- the existing `avatars` bucket and RLS policies already support delete operations.
+Updated logic:
+```
+if (loading || (user && (profileLoading || !profile))) { show spinner }
+```
+
+This ensures we never evaluate `isProfileComplete` until the profile row has actually been fetched from the database.
+
+**File: `src/pages/Index.tsx`** -- import `profile` from useProfile, update the loading condition:
+- Destructure `profile` alongside `isLoading` and `isProfileComplete` from `useProfile()`
+- Change the loading check to: `if (loading || (user && (profileLoading || !profile)))`
+
+That's it -- one file, one line changed, one new destructured variable.
