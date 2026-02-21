@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { usePlans, useFocusPlan } from './usePlans';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,21 +10,6 @@ export function useMoneyLeak() {
   const { data: plans = [], isLoading: plansLoading } = usePlans();
   const { data: focusPlan = null, isLoading: focusLoading } = useFocusPlan();
   const queryClient = useQueryClient();
-
-  // Check if user has completed at least one assessment
-  const { data: hasAssessment = false, isLoading: assessmentLoading } = useQuery({
-    queryKey: ['has-assessment', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return false;
-      const { count } = await supabase
-        .from('user_assessments')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .not('completed_at', 'is', null);
-      return (count ?? 0) > 0;
-    },
-    enabled: !!user?.id,
-  });
 
   const result = useMemo<MoneyLeakResult | null>(() => {
     if (plans.length === 0) return null;
@@ -53,15 +38,13 @@ export function useMoneyLeak() {
     queryClient.invalidateQueries({ queryKey: ['plans'] });
   }, [queryClient]);
 
-  // Determine card state
   const hasPlans = plans.length > 0;
   const hasFocusPlan = !!focusPlan;
 
   return {
     result,
     focusedPlan: focusPlan,
-    isLoading: plansLoading || focusLoading || assessmentLoading,
-    hasAssessment,
+    isLoading: plansLoading || focusLoading,
     hasPlans,
     hasFocusPlan,
     refreshLeak,

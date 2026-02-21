@@ -8,7 +8,7 @@ import { CashFlowIndicator } from './CashFlowIndicator';
 import { DiagnosticFeedback } from './DiagnosticFeedback';
 import { SuggestedPromptCard } from './SuggestedPromptCard';
 import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
-import { MoneyLeakCard } from '@/components/money-leak/MoneyLeakCard';
+
 import { TierProgressBar } from '@/components/gamification/TierProgressBar';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
@@ -94,11 +94,6 @@ export function ResultsPage() {
             Here's what we found about your financial pressure points
           </p>
         </div>
-
-        {/* Money Leak Estimator — primary engagement hook */}
-        <section>
-          <MoneyLeakCard />
-        </section>
 
         {/* Radar Chart */}
         <section>
