@@ -143,6 +143,24 @@ export function useProfile() {
     return urlWithCacheBust;
   };
 
+  const deleteAvatar = async () => {
+    if (!user?.id) throw new Error('Not authenticated');
+    const currentUrl = profileQuery.data?.avatar_url;
+    if (currentUrl) {
+      try {
+        const url = new URL(currentUrl.split('?')[0]);
+        const pathParts = url.pathname.split('/storage/v1/object/public/avatars/');
+        if (pathParts[1]) {
+          await supabase.storage.from('avatars').remove([decodeURIComponent(pathParts[1])]);
+        }
+      } catch {
+        // If URL parsing fails, still clear the profile field
+      }
+    }
+    await updateProfile.mutateAsync({ avatar_url: null } as any);
+    queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+  };
+
   const isProfileComplete = (() => {
     const p = profileQuery.data;
     if (!p) return false;
@@ -173,5 +191,6 @@ export function useProfile() {
     error: profileQuery.error,
     updateProfile,
     uploadAvatar,
+    deleteAvatar,
   };
 }

@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Camera, Loader2, Info, DollarSign, Check, CloudUpload } from 'lucide-react';
+import { Camera, Loader2, Info, DollarSign, Check, CloudUpload, Trash2 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -66,7 +66,8 @@ const STRESS_CONTROL_OPTIONS = [
 
 export default function Profile() {
   const { user } = useAuth();
-  const { profile, updateProfile, uploadAvatar } = useProfile();
+  const { profile, updateProfile, uploadAvatar, deleteAvatar } = useProfile();
+  const [isDeleting, setIsDeleting] = useState(false);
   const { logActivity } = useGamification();
   const { refreshScore } = useRPRxScore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -484,6 +485,29 @@ export default function Profile() {
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
               </div>
               <p className="text-sm text-muted-foreground">Click the camera icon to upload a photo</p>
+              {displayUrl && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  disabled={isUploading || isDeleting}
+                  onClick={async () => {
+                    setIsDeleting(true);
+                    try {
+                      await deleteAvatar();
+                      setPreviewUrl(null);
+                      toast({ title: 'Photo removed', description: 'Your profile picture has been removed.' });
+                    } catch (error) {
+                      toast({ title: 'Remove failed', description: 'Failed to remove photo. Please try again.', variant: 'destructive' });
+                    } finally {
+                      setIsDeleting(false);
+                    }
+                  }}
+                >
+                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                  Remove Photo
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
