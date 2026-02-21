@@ -25,6 +25,7 @@ export function RecentBadges() {
           <span className="text-lg">⭐</span>
           <span className="text-xl font-bold text-foreground">{totalXP.toLocaleString()} XP</span>
         </div>
+        <p className="text-[11px] text-muted-foreground mb-3">XP = Experience Points. Earn XP by completing assessments, unlocking badges, and maintaining streaks.</p>
         <div className="flex flex-col gap-2">
           {recentThree.map((badge) => {
             const def = badges.available.find((b) => b.id === badge.badge_id);
