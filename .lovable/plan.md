@@ -1,79 +1,104 @@
 
 
-# Add Breadcrumb Navigation to Header
+# Admin-Managed XP Activity System
 
-## Overview
-Replace the current static `logo / title` text in the header with proper interactive breadcrumb links. Dashboard serves as the root, and detail pages (like a specific plan) get a multi-level breadcrumb trail.
+## Current State
 
-## How It Works
+The XP system is active but has two separate XP sources:
 
-The breadcrumb is determined automatically from the current route. Examples:
+1. **Badge XP** -- Already admin-managed via the `badge_definitions` table. When a badge is earned, its `points` value is awarded. This works well.
 
-- `/dashboard` --> Logo / **Dashboard**
-- `/plans` --> Logo / Dashboard / **My Plans**
-- `/plans/:id` --> Logo / Dashboard / My Plans / **Education Funding - Feb 2026**
-- `/profile` --> Logo / Dashboard / **Profile**
-- `/results/:id` --> Logo / Dashboard / My Assessments / **Results**
-- `/strategy-assistant` --> Logo / Dashboard / **Strategy Assistant**
-- `/debt-eliminator` --> Logo / Dashboard / **Debt Elimination System**
-- `/assessments` --> Logo / Dashboard / **My Assessments**
+2. **Activity XP** -- Hardcoded values scattered across component files:
+   - Strategy activated: 50 XP (in StrategyActivationCard.tsx)
+   - Strategy completed: 30 XP (in MyStrategiesCard.tsx)
+   - Deep Dive completed: 75 XP (in DeepDiveWizard.tsx)
+   - Profile updated: no XP awarded directly
+   - Assessment completed: no XP awarded directly
+   - Login/streak: no direct XP (only badge XP)
 
-The last item in the trail is plain text (current page). All preceding items are clickable links back to those pages.
+There is also a gap: the `logActivity` function inserts `points_earned: 0` into `user_activity_log` -- meaning the activity log doesn't reflect the actual XP shown in toasts. The XP toasts are cosmetic only in some cases and don't always update `profiles.total_points_earned`.
 
-## Changes
+## What We'll Build
 
-### 1. `src/components/layout/AuthenticatedLayout.tsx`
-- Replace the `title` prop with an optional `breadcrumbs` prop: `Array<{ label: string; href?: string }>`
-- Keep `title` as a simpler fallback (auto-generates a two-level breadcrumb: Dashboard + title)
-- Render using the existing `Breadcrumb` components from `src/components/ui/breadcrumb.tsx`
-- Dashboard is always the first clickable crumb after the logo
-- The last crumb uses `BreadcrumbPage` (non-clickable, current page indicator)
-- Links use `react-router-dom` `Link` for client-side navigation
+A new `activity_xp_config` table that defines base XP for each activity type, fully manageable from the Admin Panel.
 
-Updated header structure:
+### Database: New table `activity_xp_config`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | text (PK) | Matches activity type key (e.g., `strategy_completed`) |
+| display_name | text | Human-readable label (e.g., "Strategy Completed") |
+| description | text | What triggers this activity |
+| base_xp | integer | XP awarded each time |
+| is_active | boolean | Enable/disable XP for this activity |
+| sort_order | integer | Admin display ordering |
+| created_at | timestamptz | Auto |
+| updated_at | timestamptz | Auto |
+
+RLS: Authenticated users can SELECT. Admins can INSERT/UPDATE/DELETE.
+
+### Seed data
+
+| ID | Display Name | Base XP |
+|----|-------------|---------|
+| login | Daily Login | 5 |
+| assessment_complete | Assessment Completed | 25 |
+| deep_dive_complete | Deep Dive Completed | 75 |
+| strategy_activated | Strategy Activated | 50 |
+| strategy_completed | Strategy Completed | 30 |
+| profile_updated | Profile Updated | 10 |
+| onboarding_day_complete | Onboarding Day Completed | 10 |
+| plan_step_completed | Plan Step Completed | 15 |
+
+### Code Changes
+
+**1. New hook: `src/hooks/useActivityXpConfig.ts`**
+- Fetches all active `activity_xp_config` rows
+- Returns a lookup map: `Record<string, number>` (activity_id -> base_xp)
+- React Query with 30-minute stale time (rarely changes)
+- Exports a helper: `getXpForActivity(configMap, activityType): number`
+
+**2. Update `src/lib/gamification.ts`**
+- Accept an optional `xpConfig` map in `logActivity`-related functions
+- When logging to `user_activity_log`, use the config-driven XP value instead of hardcoded 0
+- After logging, increment `profiles.total_points_earned` by the base XP amount
+
+**3. Update `src/hooks/useGamification.ts`**
+- Fetch the XP config via the new hook
+- Pass config values into `logActivity` so it writes the correct `points_earned`
+- After each activity, update `profiles.total_points_earned` with the config-driven XP
+
+**4. Update calling components** (remove hardcoded XP values)
+- `MyStrategiesCard.tsx`: Replace `showPointsEarnedToast(30, ...)` with the config-driven value
+- `StrategyActivationCard.tsx`: Replace `showPointsEarnedToast(50, ...)` with config-driven value
+- `DeepDiveWizard.tsx`: Replace `showPointsEarnedToast(75, ...)` with config-driven value
+- `Profile.tsx`: Add XP toast using config value for `profile_updated`
+
+**5. New Admin tab: `src/components/admin/ActivityXpTab.tsx`**
+- Table view showing all activity XP configs: Display Name, Description, Base XP, Active toggle
+- Inline edit or modal for changing XP values
+- "Add Activity" button for future activity types
+- No delete for seed activities (to prevent breaking references), but admin can set `is_active = false`
+
+**6. Update `src/pages/AdminPanel.tsx`**
+- Add new "XP Activities" tab with a Zap icon next to the existing Badges tab
+
+### How It All Connects
+
+```text
+User performs action (e.g., completes strategy)
+  --> Component calls logActivity('strategy_completed', context)
+    --> useGamification looks up 'strategy_completed' in activity_xp_config
+    --> Inserts into user_activity_log with points_earned = 30 (from config)
+    --> Updates profiles.total_points_earned += 30
+    --> Checks badge eligibility (badge_definitions, already admin-managed)
+    --> Shows XP toast with config-driven value
+    --> Shows badge toast if any earned
 ```
-[SidebarTrigger] [Logo] / Dashboard / My Plans / Plan Title
-                         ^link        ^link      ^current page (plain text)
-```
 
-### 2. Update all page files to pass breadcrumb data
+This means admins can change the XP value for any activity at any time, and the entire app reflects it immediately (within the React Query stale window).
 
-Pages with simple breadcrumbs (just use `title` prop, auto-generates Dashboard > Title):
-- `Dashboard.tsx` -- title="Dashboard" (renders as just "Dashboard" with no parent link since it IS the root)
-- `Profile.tsx` -- title="Profile"
-- `Plans.tsx` -- title="My Plans"
-- `Assessments.tsx` -- title="My Assessments"
-- `StrategyAssistant.tsx` -- title="Strategy Assistant"
-- `DebtEliminator.tsx` -- title="Debt Elimination System"
-- `AdminPanel.tsx` -- title="Admin Panel"
-
-Pages with deeper breadcrumbs (use `breadcrumbs` prop):
-- `PlanDetail.tsx` -- `[{ label: "My Plans", href: "/plans" }, { label: displayTitle }]`
-- `ResultsPage.tsx` -- `[{ label: "My Assessments", href: "/assessments" }, { label: "Results" }]`
-
-### 3. No new files needed
-We already have `src/components/ui/breadcrumb.tsx` with all the necessary components (`Breadcrumb`, `BreadcrumbList`, `BreadcrumbItem`, `BreadcrumbLink`, `BreadcrumbSeparator`, `BreadcrumbPage`).
-
-## Technical Details
-
-### AuthenticatedLayout interface update
-```typescript
-interface AuthenticatedLayoutProps {
-  children: ReactNode;
-  title?: string;
-  breadcrumbs?: Array<{ label: string; href?: string }>;
-}
-```
-
-Logic:
-- If `breadcrumbs` is provided, render the full custom trail with Dashboard as root
-- If only `title` is provided, auto-generate: Dashboard (link) > title (current page)
-- If `title` is "Dashboard", render just "Dashboard" as current page (no redundant self-link)
-- Use `Link` from react-router-dom inside `BreadcrumbLink` with `asChild`
-
-### Styling
-- Matches the existing header height (h-14) and alignment
-- Breadcrumb text uses `text-sm` for intermediate items, `text-lg font-semibold` for the last (current page) item
-- Separator uses the default `ChevronRight` from the breadcrumb component
-- Clickable crumbs use `text-muted-foreground hover:text-foreground` transition
-
+## What This Does NOT Change
+- Badge XP remains managed separately via the existing Badges admin tab
+- The RPRx Score (financial wellness 0-100) is unaffected -- it's a separate calculation
+- Onboarding day XP continues to use `onboarding_content.points_reward` for per-day granularity, but can be supplemented by the base `onboarding_day_complete` config
