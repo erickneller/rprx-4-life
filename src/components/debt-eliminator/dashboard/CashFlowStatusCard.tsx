@@ -71,7 +71,8 @@ export function CashFlowStatusCard({ surplus, status }: CashFlowStatusCardProps)
 
   return (
     <Card className={cn("border", colors.border, colors.bg)}>
-      <CardContent className="pt-6">
+      <CardContent className="pt-5 space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Cash Flow Snapshot</h3>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={cn("p-2 rounded-full", colors.bg)}>
