@@ -1,32 +1,79 @@
 
 
-# Update PageHelpButton Styling — Amber Glow Effect
+# Add Breadcrumb Navigation to Header
 
 ## Overview
-Restyle the floating help button to be more noticeable with an amber color, pulsing glow animation on first visit, and localStorage-based glow persistence per page.
+Replace the current static `logo / title` text in the header with proper interactive breadcrumb links. Dashboard serves as the root, and detail pages (like a specific plan) get a multi-level breadcrumb trail.
+
+## How It Works
+
+The breadcrumb is determined automatically from the current route. Examples:
+
+- `/dashboard` --> Logo / **Dashboard**
+- `/plans` --> Logo / Dashboard / **My Plans**
+- `/plans/:id` --> Logo / Dashboard / My Plans / **Education Funding - Feb 2026**
+- `/profile` --> Logo / Dashboard / **Profile**
+- `/results/:id` --> Logo / Dashboard / My Assessments / **Results**
+- `/strategy-assistant` --> Logo / Dashboard / **Strategy Assistant**
+- `/debt-eliminator` --> Logo / Dashboard / **Debt Elimination System**
+- `/assessments` --> Logo / Dashboard / **My Assessments**
+
+The last item in the trail is plain text (current page). All preceding items are clickable links back to those pages.
 
 ## Changes
 
-### 1. `src/index.css` — Add glow keyframes
-Add the `helpGlow` keyframe animation in the `@layer utilities` section:
-```css
-@keyframes helpGlow {
-  0%, 100% { box-shadow: 0 0 8px 2px rgba(251, 191, 36, 0.4); }
-  50% { box-shadow: 0 0 20px 6px rgba(251, 191, 36, 0.6); }
+### 1. `src/components/layout/AuthenticatedLayout.tsx`
+- Replace the `title` prop with an optional `breadcrumbs` prop: `Array<{ label: string; href?: string }>`
+- Keep `title` as a simpler fallback (auto-generates a two-level breadcrumb: Dashboard + title)
+- Render using the existing `Breadcrumb` components from `src/components/ui/breadcrumb.tsx`
+- Dashboard is always the first clickable crumb after the logo
+- The last crumb uses `BreadcrumbPage` (non-clickable, current page indicator)
+- Links use `react-router-dom` `Link` for client-side navigation
+
+Updated header structure:
+```
+[SidebarTrigger] [Logo] / Dashboard / My Plans / Plan Title
+                         ^link        ^link      ^current page (plain text)
+```
+
+### 2. Update all page files to pass breadcrumb data
+
+Pages with simple breadcrumbs (just use `title` prop, auto-generates Dashboard > Title):
+- `Dashboard.tsx` -- title="Dashboard" (renders as just "Dashboard" with no parent link since it IS the root)
+- `Profile.tsx` -- title="Profile"
+- `Plans.tsx` -- title="My Plans"
+- `Assessments.tsx` -- title="My Assessments"
+- `StrategyAssistant.tsx` -- title="Strategy Assistant"
+- `DebtEliminator.tsx` -- title="Debt Elimination System"
+- `AdminPanel.tsx` -- title="Admin Panel"
+
+Pages with deeper breadcrumbs (use `breadcrumbs` prop):
+- `PlanDetail.tsx` -- `[{ label: "My Plans", href: "/plans" }, { label: displayTitle }]`
+- `ResultsPage.tsx` -- `[{ label: "My Assessments", href: "/assessments" }, { label: "Results" }]`
+
+### 3. No new files needed
+We already have `src/components/ui/breadcrumb.tsx` with all the necessary components (`Breadcrumb`, `BreadcrumbList`, `BreadcrumbItem`, `BreadcrumbLink`, `BreadcrumbSeparator`, `BreadcrumbPage`).
+
+## Technical Details
+
+### AuthenticatedLayout interface update
+```typescript
+interface AuthenticatedLayoutProps {
+  children: ReactNode;
+  title?: string;
+  breadcrumbs?: Array<{ label: string; href?: string }>;
 }
 ```
 
-### 2. `src/components/help/PageHelpButton.tsx`
-- Add localStorage helpers for `help_clicked_pages` (separate from existing `help_hints_dismissed`)
-- Track whether the current page has been clicked before using state initialized from localStorage
-- On drawer open, mark the page as clicked in localStorage and stop the glow
-- Update the `Button` styling:
-  - Size: `h-[52px] w-[52px]` (up from h-12 w-12)
-  - Color: `bg-amber-400 hover:bg-amber-500 text-white border-none`
-  - Shadow: `shadow-lg`
-  - Hover: `hover:scale-105 transition-transform`
-  - Glow: conditionally apply `animate-[helpGlow_2s_ease-in-out_infinite]` only when the page hasn't been clicked yet
-  - Icon: `text-white` (remove `text-primary`)
+Logic:
+- If `breadcrumbs` is provided, render the full custom trail with Dashboard as root
+- If only `title` is provided, auto-generate: Dashboard (link) > title (current page)
+- If `title` is "Dashboard", render just "Dashboard" as current page (no redundant self-link)
+- Use `Link` from react-router-dom inside `BreadcrumbLink` with `asChild`
 
-No other files are affected.
+### Styling
+- Matches the existing header height (h-14) and alignment
+- Breadcrumb text uses `text-sm` for intermediate items, `text-lg font-semibold` for the last (current page) item
+- Separator uses the default `ChevronRight` from the breadcrumb component
+- Clickable crumbs use `text-muted-foreground hover:text-foreground` transition
 
