@@ -1,9 +1,12 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useGamification } from '@/hooks/useGamification';
+import { useProfile } from '@/hooks/useProfile';
 
 export function RecentBadges() {
   const { badges } = useGamification();
+  const { profile } = useProfile();
+  const totalXP = profile?.total_points_earned ?? 0;
 
   const recentThree = useMemo(
     () => badges.earned.slice(0, 3),
@@ -18,6 +21,10 @@ export function RecentBadges() {
         <CardTitle className="text-base">Recent Achievements</CardTitle>
       </CardHeader>
       <CardContent>
+        <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+          <span className="text-lg">⭐</span>
+          <span className="text-xl font-bold text-foreground">{totalXP.toLocaleString()} XP</span>
+        </div>
         <div className="flex flex-col gap-2">
           {recentThree.map((badge) => {
             const def = badges.available.find((b) => b.id === badge.badge_id);

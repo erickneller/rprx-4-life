@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Lightbulb } from 'lucide-react';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
+import { useProfile } from '@/hooks/useProfile';
 
 const GRADE_RING_COLORS: Record<string, string> = {
   at_risk: 'stroke-red-500',
@@ -26,6 +27,8 @@ interface GamificationScoreCardProps {
 
 export function GamificationScoreCard({ compact = false }: GamificationScoreCardProps) {
   const { score } = useRPRxScore();
+  const { profile } = useProfile();
+  const totalXP = profile?.total_points_earned ?? 0;
   const [displayScore, setDisplayScore] = useState(0);
 
   // Count-up animation
@@ -58,25 +61,29 @@ export function GamificationScoreCard({ compact = false }: GamificationScoreCard
 
   if (compact) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="relative flex-shrink-0">
-          <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
-            <circle cx={center} cy={center} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={strokeWidth} />
-            <circle
-              cx={center} cy={center} r={radius} fill="none"
-              className={`${ringColor} transition-all duration-700`}
-              strokeWidth={strokeWidth} strokeLinecap="round"
-              strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
-              transform={`rotate(-90 ${center} ${center})`}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-sm font-bold text-foreground">{displayScore}</span>
-            <span className="text-[10px]">{score.gradeIcon}</span>
+      <div className="flex items-center gap-4">
+        <div className="flex flex-col items-center">
+          <span className="text-[10px] text-muted-foreground font-medium mb-1">RPRx Score</span>
+          <div className="relative flex-shrink-0">
+            <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
+              <circle cx={center} cy={center} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={strokeWidth} />
+              <circle
+                cx={center} cy={center} r={radius} fill="none"
+                className={`${ringColor} transition-all duration-700`}
+                strokeWidth={strokeWidth} strokeLinecap="round"
+                strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+                transform={`rotate(-90 ${center} ${center})`}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-sm font-bold text-foreground">{displayScore}</span>
+              <span className="text-[10px]">{score.gradeIcon}</span>
+            </div>
           </div>
         </div>
-        <div className="flex flex-col">
-          <span className="text-xs font-medium text-foreground">{score.gradeIcon} {score.gradeLabel}</span>
+        <div className="flex flex-col items-center">
+          <span className="text-[10px] text-muted-foreground font-medium mb-1">XP</span>
+          <span className="text-lg font-bold text-foreground">{totalXP.toLocaleString()}</span>
         </div>
       </div>
     );
