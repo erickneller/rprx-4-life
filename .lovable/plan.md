@@ -1,18 +1,38 @@
 
+# Add Delete Profile Picture Button
 
-# Remove Duplicate Onboarding Progress Bar from Dashboard Top
+## Overview
+Add a delete/remove button to the Profile Photo card that appears only when the user has an existing avatar. Clicking it clears the `avatar_url` from the profile and removes the file from Supabase Storage.
 
-## What's Happening
-The Clarity-to-Vision progress bar (`OnboardingProgressBar`) appears twice on the dashboard -- once at the very top of the page and again inside the Onboarding Day card. They show the same data and are the same component.
+## Changes
 
-## Change
-Remove the standalone `OnboardingProgressBar` from `src/components/dashboard/DashboardContent.tsx` (lines 121-123). The progress bar inside the `OnboardingCard` remains untouched.
+### 1. `src/hooks/useProfile.ts`
+- Add a `deleteAvatar` async function:
+  - Extracts the file path from the current `avatar_url`
+  - Calls `supabase.storage.from('avatars').remove([filePath])` to delete the file
+  - Updates the profile with `avatar_url: null`
+  - Invalidates the profile query cache
+- Export `deleteAvatar` from the hook
 
-## Technical Detail
+### 2. `src/pages/Profile.tsx`
+- Import `Trash2` icon from lucide-react
+- Destructure `deleteAvatar` from `useProfile()`
+- Add a `handleDeleteAvatar` function that:
+  - Calls `deleteAvatar()`
+  - Clears the local `previewUrl` state
+  - Shows a success toast
+  - Handles errors with a destructive toast
+- In the Profile Photo card, add a "Remove Photo" button below the avatar (next to the helper text) that:
+  - Only renders when `displayUrl` exists (user has an avatar)
+  - Shows a Trash2 icon with "Remove Photo" text
+  - Uses `variant="ghost"` with destructive text styling
+  - Is disabled while uploading or deleting
 
-**File: `src/components/dashboard/DashboardContent.tsx`**
-- Remove the `OnboardingProgressBar` rendering block (the `{isOnboarding && (...)}` block on lines 121-123)
-- Remove the unused import of `OnboardingProgressBar` (line 13)
-- Remove `onboardingCompletedDays` and `onboardingCurrentDay` from the `useOnboarding()` destructure if no longer needed (line 27) -- keep `isOnboarding` since it may be used elsewhere, but checking... it is not used elsewhere in this file after removing the bar, so the entire `useOnboarding()` call and import can be removed from this file.
+### Visual Layout
+```text
+    [Avatar with camera button]
+    "Click the camera icon to upload a photo"
+    [Trash2 icon] Remove Photo    <-- new, only when avatar exists
+```
 
-No other files are affected.
+No database or storage bucket changes needed -- the existing `avatars` bucket and RLS policies already support delete operations.
