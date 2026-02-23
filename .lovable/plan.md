@@ -1,39 +1,86 @@
 
-# Fix: Always Redirected to Profile After Login
+# Fix Google OAuth `invalid_grant` Error
 
-## Root Cause
+## Problem
 
-A race condition between two separate `useAuth()` hook instances:
+Two issues are causing intermittent OAuth failures:
 
-1. `Index.tsx` calls `useAuth()` -- gets `user` loaded, `loading: false`
-2. `Index.tsx` calls `useProfile()` -- which internally calls its own `useAuth()`
-3. The `useProfile` instance of `useAuth()` may not have resolved yet, so `user?.id` is still `undefined`
-4. This means the React Query in `useProfile` has `enabled: false`, returning `isLoading: false` and `data: undefined`
-5. `isProfileComplete` evaluates to `false` (because `profileQuery.data` is null)
-6. Index immediately redirects to `/profile`
+1. **AuthCallback page**: Calls `supabase.auth.getSession()` which can trigger the PKCE code exchange. In React StrictMode (dev) or on re-renders, this fires twice, consuming the auth code on the first call and causing `invalid_grant` on the second.
 
-## Fix
+2. **`redirectTo` uses `window.location.origin`**: When testing from the preview domain, the redirect goes to a different origin than production, which may not be registered in Google Cloud Console. This causes mismatches.
 
-**File: `src/pages/Index.tsx`**
+## Changes
 
-Pass the authenticated user's ID into `useProfile` so it doesn't rely on its own separate `useAuth()` timing. Alternatively (and more simply), add a guard in `Index.tsx` that also checks whether profile data has actually been fetched before making the redirect decision.
+### 1. `src/pages/AuthCallback.tsx` -- Rewrite to use `onAuthStateChange` listener
 
-The simplest, least-invasive fix: change the loading guard in `Index.tsx` to also wait when we have a user but profile data hasn't loaded yet (i.e., `profile` is null/undefined).
+Replace the current `getSession()` call with the recommended pattern: listen for `SIGNED_IN` via `onAuthStateChange` and let Supabase handle the PKCE exchange automatically. Add a `useRef` guard to prevent double-firing in StrictMode.
 
-Current logic:
+```typescript
+import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+
+const AuthCallback = () => {
+  const navigate = useNavigate();
+  const handled = useRef(false);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (handled.current) return;
+        if (event === 'SIGNED_IN' && session) {
+          handled.current = true;
+          // Signal parent window (popup flow)
+          localStorage.setItem('oauth-complete', Date.now().toString());
+          if (window.opener) {
+            window.opener.postMessage(
+              { type: 'oauth-complete' },
+              window.location.origin
+            );
+            window.close();
+          } else {
+            // Full-page redirect flow
+            navigate('/', { replace: true });
+          }
+        }
+      }
+    );
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <p className="text-muted-foreground">Completing sign in...</p>
+    </div>
+  );
+};
+
+export default AuthCallback;
 ```
-if (loading || (user && profileLoading)) { show spinner }
+
+Key differences from current code:
+- No manual `getSession()` call -- Supabase auto-exchanges the PKCE code
+- `useRef` guard prevents double-fire in StrictMode
+- Uses `onAuthStateChange` to react to `SIGNED_IN` event
+- Uses `navigate('/')` instead of `window.location.href` for cleaner routing
+
+### 2. `src/hooks/useAuth.tsx` -- Hardcode `redirectTo` to production URL
+
+Change line 60 from:
+```
+redirectTo: `${window.location.origin}/auth/callback`,
+```
+to:
+```
+redirectTo: `https://rprx4life.lovable.app/auth/callback`,
 ```
 
-Updated logic:
-```
-if (loading || (user && (profileLoading || !profile))) { show spinner }
-```
+This ensures the redirect always goes to the production callback regardless of whether the user is on the preview domain. Only this one URL needs to be registered in Google Cloud Console (along with the Supabase callback URL).
 
-This ensures we never evaluate `isProfileComplete` until the profile row has actually been fetched from the database.
+### 3. Manual step (user action required)
 
-**File: `src/pages/Index.tsx`** -- import `profile` from useProfile, update the loading condition:
-- Destructure `profile` alongside `isLoading` and `isProfileComplete` from `useProfile()`
-- Change the loading check to: `if (loading || (user && (profileLoading || !profile)))`
+Confirm these two URLs are in Google Cloud Console under **OAuth 2.0 Client > Authorized redirect URIs**:
+- `https://rprx4life.lovable.app/auth/callback`
+- `https://wkzgjvnpnhyluxvclymh.supabase.co/auth/v1/callback`
 
-That's it -- one file, one line changed, one new destructured variable.
+(Note: the Supabase project ID in the user's message said `vizvowohqzgduyufipdr` but the actual project ID is `wkzgjvnpnhyluxvclymh`.)
