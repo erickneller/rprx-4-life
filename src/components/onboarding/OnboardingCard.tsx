@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Star, Flame } from 'lucide-react';
+import { CheckCircle2, Clock, Star, Flame, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { OnboardingQuiz } from './OnboardingQuiz';
 import { OnboardingReflection } from './OnboardingReflection';
 import { OnboardingMilestone } from './OnboardingMilestone';
+import { useDayOneCTA } from '@/hooks/useDayOneCTA';
 import { OnboardingProgressBar } from './OnboardingProgressBar';
 import type { QuizData } from '@/lib/onboardingEngine';
 
@@ -28,6 +29,7 @@ interface OnboardingCardProps {
 
 export function OnboardingCard({ compact }: OnboardingCardProps) {
   const navigate = useNavigate();
+  const dayOneCTA = useDayOneCTA();
   const {
     isOnboarding, isCompleted, isLoading,
     currentDay, todayContent, completedDays,
@@ -162,15 +164,41 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
         )}
 
         {/* Action button for non-quiz/reflection */}
-        {!isQuiz && !isReflection && !isDone && todayContent.action_text && (
+        {!isQuiz && !isReflection && !isDone && (
           <div className="flex items-center gap-3">
-            <Button
-              onClick={handleAction}
-              disabled={isCompleting}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              {todayContent.action_text}
-            </Button>
+            {currentDay === 1 ? (
+              <Button
+                onClick={async () => {
+                  await dayOneCTA.action();
+                  // If it was a build action that stayed on page, also mark day complete
+                  if (dayOneCTA.state === 'build' || dayOneCTA.state === 'view_leak') {
+                    await completeToday();
+                    setLocalCompleted(true);
+                  }
+                }}
+                disabled={dayOneCTA.isGenerating || isCompleting}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {dayOneCTA.isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Building Your Plan…
+                  </>
+                ) : (
+                  dayOneCTA.buttonText
+                )}
+              </Button>
+            ) : (
+              todayContent.action_text && (
+                <Button
+                  onClick={handleAction}
+                  disabled={isCompleting}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {todayContent.action_text}
+                </Button>
+              )
+            )}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="secondary" className="gap-1 text-xs">
                 <Clock className="h-3 w-3" /> ~{todayContent.estimated_minutes} min
