@@ -4,32 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { generateAutoStrategyPrompt, type AssessmentResponseDetail } from '@/lib/promptGenerator';
+import { type AssessmentResponseDetail } from '@/lib/promptGenerator';
 import { useSendMessage } from '@/hooks/useSendMessage';
 import { useProfile } from '@/hooks/useProfile';
 import { useCreatePlan, usePlans } from '@/hooks/usePlans';
-import { parseStrategyFromMessage } from '@/lib/strategyParser';
+import { autoGenerateStrategy } from '@/lib/autoStrategyGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import type { UserAssessment } from '@/lib/assessmentTypes';
 
 interface SuggestedPromptCardProps {
   assessment: UserAssessment;
-}
-
-const HORSEMAN_LABELS: Record<string, string> = {
-  interest: 'Interest & Debt',
-  taxes: 'Tax Efficiency',
-  insurance: 'Insurance & Protection',
-  education: 'Education Funding',
-};
-
-function getAutoPlanTitle(horseman: string | null | undefined): string {
-  const label = HORSEMAN_LABELS[horseman || 'interest'] || 'Financial Strategy';
-  const now = new Date();
-  const month = now.toLocaleString('en-US', { month: 'short' });
-  const year = now.getFullYear();
-  return `${label} - ${month} ${year}`;
 }
 
 function useAssessmentResponses(assessmentId: string | undefined) {
@@ -93,62 +78,14 @@ export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
 
     setIsGenerating(true);
     try {
-      // Build prompt requesting 1 strategy
-      const prompt = generateAutoStrategyPrompt(
-        profile ?? null,
+      const plan = await autoGenerateStrategy({
+        profile: profile ?? null,
         assessment,
-        responses ?? [],
-        existingPlans.map((p) => p.strategy_name)
-      );
-
-      // Send prompt and get AI response
-      const result = await sendMessage({
-        conversationId: null,
-        userMessage: prompt,
+        responses: responses ?? [],
+        existingPlanNames: existingPlans.map((p) => p.strategy_name),
+        sendMessage,
+        createPlan: (input) => createPlan.mutateAsync(input),
       });
-
-      if (!result) {
-        toast({
-          title: 'Generation failed',
-          description: 'Could not generate a strategy. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Send follow-up for detailed steps
-      const followUp = await sendMessage({
-        conversationId: result.conversationId,
-        userMessage: 'Please provide the detailed step-by-step implementation plan for the strategy above. Include numbered steps I can check off as I complete them.',
-      });
-
-      const messageContent = followUp?.assistantMessage || result.assistantMessage;
-
-      // Parse the strategy from the response
-      const parsed = parseStrategyFromMessage(messageContent, true);
-      const horseman = assessment.primary_horseman || 'interest';
-
-      const planTitle = getAutoPlanTitle(horseman);
-      const planData = parsed
-        ? {
-            title: planTitle,
-            strategy_name: parsed.strategyName,
-            strategy_id: parsed.strategyId,
-            content: parsed.content,
-          }
-        : {
-            title: planTitle,
-            strategy_name: 'Implementation Plan',
-            content: {
-              steps: extractStepsFromContent(messageContent),
-              summary: messageContent.substring(0, 500),
-              disclaimer: 'This information is for educational purposes only and does not constitute tax, legal, or financial advice.',
-              completedSteps: [] as number[],
-            },
-          };
-
-      // Auto-save the plan
-      const plan = await createPlan.mutateAsync(planData);
 
       // Navigate directly to the plan
       navigate(`/plans/${plan.id}`);
@@ -195,31 +132,4 @@ export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
       </CardContent>
     </Card>
   );
-}
-
-function extractStepsFromContent(content: string): string[] {
-  const metadataPattern = /^\*\*[^*]+\*\*[:]/;
-  const steps = content
-    .split('\n')
-    .filter((line: string) => /^\s*\d+\.\s+/.test(line))
-    .map((line: string) => line.replace(/^\s*\d+\.\s+/, '').trim())
-    .filter((s: string) => s.length > 10 && !metadataPattern.test(s))
-    .slice(0, 20);
-
-  if (steps.length < 2) {
-    const bulletSteps = content
-      .split('\n')
-      .filter((line: string) => /^\s*[-•]\s+/.test(line) && !metadataPattern.test(line.replace(/^\s*[-•]\s+/, '')))
-      .map((line: string) => line.replace(/^\s*[-•]\s+/, '').trim())
-      .filter((s: string) => s.length > 10);
-    if (bulletSteps.length > steps.length) {
-      return bulletSteps.slice(0, 20);
-    }
-  }
-
-  if (steps.length === 0) {
-    return ['Review the strategy details and take action.'];
-  }
-
-  return steps;
 }
