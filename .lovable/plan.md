@@ -1,86 +1,56 @@
 
-# Fix Google OAuth `invalid_grant` Error
+
+# Context-Aware Day 1 Onboarding CTA
 
 ## Problem
+The Day 1 onboarding card always shows "View My Money Leak Estimate" with a `scroll_to` action targeting `money-leak-card`. But this card only renders when the user has at least one saved plan with estimated impact data. For new users who just completed their first assessment, the money-leak-card doesn't exist yet, so the button scrolls to nothing.
 
-Two issues are causing intermittent OAuth failures:
+## Solution
+Override the Day 1 CTA in `OnboardingCard.tsx` with context-aware logic that checks the user's current state and renders the appropriate button. The database content remains unchanged (it serves as the fallback/default), but the component dynamically swaps the button text and action based on a priority waterfall.
 
-1. **AuthCallback page**: Calls `supabase.auth.getSession()` which can trigger the PKCE code exchange. In React StrictMode (dev) or on re-renders, this fires twice, consuming the auth code on the first call and causing `invalid_grant` on the second.
+## State Priority (checked in order)
 
-2. **`redirectTo` uses `window.location.origin`**: When testing from the preview domain, the redirect goes to a different origin than production, which may not be registered in Google Cloud Console. This causes mismatches.
+1. **No plans exist** -- Button: "Build My Recovery Plan" -- Action: trigger the same auto-generation flow used in `SuggestedPromptCard` (calls the AI, parses the strategy, saves a plan), then refreshes dashboard queries so the money-leak-card appears inline
+2. **Plan exists but no active strategies** -- Button: "Activate My First Strategy" -- Action: navigate to `/plans?prompt=activate`
+3. **Plan exists + active strategy + estimated_annual_leak_low > 0** -- Button: "View My Money Leak" -- Action: scroll to `money-leak-card` (current behavior)
+4. **Plan exists but estimated_annual_leak_low === 0** -- Button: "See My Results" -- Action: navigate to `/results/{latestAssessmentId}`
 
-## Changes
+## Technical Changes
 
-### 1. `src/pages/AuthCallback.tsx` -- Rewrite to use `onAuthStateChange` listener
+### 1. New hook: `src/hooks/useDayOneCTA.ts`
+Encapsulates all state-checking logic in a clean hook that returns `{ buttonText, action, isGenerating }`.
 
-Replace the current `getSession()` call with the recommended pattern: listen for `SIGNED_IN` via `onAuthStateChange` and let Supabase handle the PKCE exchange automatically. Add a `useRef` guard to prevent double-firing in StrictMode.
+- Queries `saved_plans` count (reuses `usePlans`)
+- Queries `user_active_strategies` count
+- Reads `estimated_annual_leak_low` from `useProfile`
+- Gets latest assessment ID from `useAssessmentHistory`
+- Exposes an `action()` function that does the right thing per state
+- For State 1, contains the auto-generation logic extracted from `SuggestedPromptCard` (same prompt builder, same parser, same plan creation). After plan creation, invalidates `['plans']` and `['profile']` queries instead of navigating away. This causes the dashboard to re-render with the money-leak-card visible and the CTA to auto-update to State 3.
 
-```typescript
-import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+### 2. Extract generation logic: `src/lib/autoStrategyGenerator.ts`
+Move the core generation flow from `SuggestedPromptCard.handleGenerate` into a reusable async function so both `SuggestedPromptCard` and the new Day 1 CTA can call it without duplication.
 
-const AuthCallback = () => {
-  const navigate = useNavigate();
-  const handled = useRef(false);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (handled.current) return;
-        if (event === 'SIGNED_IN' && session) {
-          handled.current = true;
-          // Signal parent window (popup flow)
-          localStorage.setItem('oauth-complete', Date.now().toString());
-          if (window.opener) {
-            window.opener.postMessage(
-              { type: 'oauth-complete' },
-              window.location.origin
-            );
-            window.close();
-          } else {
-            // Full-page redirect flow
-            navigate('/', { replace: true });
-          }
-        }
-      }
-    );
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <p className="text-muted-foreground">Completing sign in...</p>
-    </div>
-  );
-};
-
-export default AuthCallback;
+```text
+autoGenerateStrategy(params) -> Promise<SavedPlan>
+  - params: { profile, assessment, responses, existingPlanNames, createPlan }
+  - Returns the created plan
+  - Does NOT navigate (caller decides)
 ```
 
-Key differences from current code:
-- No manual `getSession()` call -- Supabase auto-exchanges the PKCE code
-- `useRef` guard prevents double-fire in StrictMode
-- Uses `onAuthStateChange` to react to `SIGNED_IN` event
-- Uses `navigate('/')` instead of `window.location.href` for cleaner routing
+### 3. Update `src/components/results/SuggestedPromptCard.tsx`
+Refactor to call `autoGenerateStrategy()` instead of inline logic. Keeps the navigate-to-plan behavior after generation.
 
-### 2. `src/hooks/useAuth.tsx` -- Hardcode `redirectTo` to production URL
+### 4. Update `src/components/onboarding/OnboardingCard.tsx`
+- Import `useDayOneCTA`
+- When `currentDay === 1` and it's not a quiz/reflection, replace the default action button with the context-aware CTA from the hook
+- All other days continue using the database-driven `action_text` / `action_type` / `action_target` as before
+- Show a loading spinner on the button during generation (State 1)
 
-Change line 60 from:
-```
-redirectTo: `${window.location.origin}/auth/callback`,
-```
-to:
-```
-redirectTo: `https://rprx4life.lovable.app/auth/callback`,
-```
+### 5. No database changes needed
+The `onboarding_content` row for Day 1 stays as-is. The component simply overrides the CTA when `day_number === 1`.
 
-This ensures the redirect always goes to the production callback regardless of whether the user is on the preview domain. Only this one URL needs to be registered in Google Cloud Console (along with the Supabase callback URL).
+## Key Behavior
+- After "Build My Recovery Plan" completes, the dashboard re-renders (queries invalidated), the money-leak-card appears, and the onboarding card CTA automatically switches to "View My Money Leak" since the state has changed
+- No page navigation occurs during generation -- user stays on the dashboard throughout
+- The free-tier plan limit check (max 1 plan) is preserved in the shared generator function
 
-### 3. Manual step (user action required)
-
-Confirm these two URLs are in Google Cloud Console under **OAuth 2.0 Client > Authorized redirect URIs**:
-- `https://rprx4life.lovable.app/auth/callback`
-- `https://wkzgjvnpnhyluxvclymh.supabase.co/auth/v1/callback`
-
-(Note: the Supabase project ID in the user's message said `vizvowohqzgduyufipdr` but the actual project ID is `wkzgjvnpnhyluxvclymh`.)
