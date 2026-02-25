@@ -170,8 +170,8 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
               <Button
                 onClick={async () => {
                   await dayOneCTA.action();
-                  // If it was a build action that stayed on page, also mark day complete
-                  if (dayOneCTA.state === 'build' || dayOneCTA.state === 'view_leak') {
+                  // Only mark Day 1 complete when user explicitly clicks "View My Money Leak"
+                  if (dayOneCTA.state === 'view_leak') {
                     await completeToday();
                     setLocalCompleted(true);
                   }
