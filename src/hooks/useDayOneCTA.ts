@@ -68,6 +68,7 @@ export type DayOneCTAState = 'build' | 'activate' | 'view_leak' | 'see_results';
 export function useDayOneCTA() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { profile } = useProfile();
   const { data: plans = [] } = usePlans();
   const { data: assessments = [] } = useAssessmentHistory();
@@ -114,6 +115,7 @@ export function useDayOneCTA() {
         setIsGenerating(true);
         try {
           await autoGenerateStrategy({
+            userId: user!.id,
             profile: profile ?? null,
             assessment: latestAssessment,
             responses,
@@ -124,6 +126,7 @@ export function useDayOneCTA() {
           // Refresh dashboard inline — no navigation
           queryClient.invalidateQueries({ queryKey: ['plans'] });
           queryClient.invalidateQueries({ queryKey: ['profile'] });
+          queryClient.invalidateQueries({ queryKey: ['activeStrategiesCount'] });
           toast({
             title: 'Plan created!',
             description: 'Your recovery plan is ready. Check your Money Leak estimate below.',
