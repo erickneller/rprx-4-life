@@ -3,6 +3,7 @@ import { parseStrategyFromMessage } from './strategyParser';
 import type { Profile } from '@/hooks/useProfile';
 import type { UserAssessment } from './assessmentTypes';
 import type { SavedPlan, CreatePlanInput, PlanContent } from '@/hooks/usePlans';
+import { supabase } from '@/integrations/supabase/client';
 
 const HORSEMAN_LABELS: Record<string, string> = {
   interest: 'Interest & Debt',
@@ -47,6 +48,7 @@ function extractStepsFromContent(content: string): string[] {
 }
 
 export interface AutoGenerateParams {
+  userId: string;
   profile: Profile | null;
   assessment: UserAssessment;
   responses: AssessmentResponseDetail[];
@@ -63,7 +65,7 @@ export interface AutoGenerateParams {
  * Does NOT navigate — caller decides what to do after.
  */
 export async function autoGenerateStrategy(params: AutoGenerateParams): Promise<SavedPlan> {
-  const { profile, assessment, responses, existingPlanNames, sendMessage, createPlan } = params;
+  const { userId, profile, assessment, responses, existingPlanNames, sendMessage, createPlan } = params;
 
   // Build prompt requesting 1 strategy
   const prompt = generateAutoStrategyPrompt(profile, assessment, responses, existingPlanNames);
@@ -103,5 +105,36 @@ export async function autoGenerateStrategy(params: AutoGenerateParams): Promise<
         } as PlanContent,
       };
 
-  return createPlan(planData);
+  const plan = await createPlan(planData);
+
+  // Auto-activate: set as focus plan
+  await supabase
+    .from('saved_plans')
+    .update({ is_focus: true })
+    .eq('id', plan.id);
+
+  // Auto-activate: insert active strategy row
+  let strategyId = plan.strategy_id;
+  if (!strategyId) {
+    const { data: topStrategy } = await supabase
+      .from('strategy_definitions')
+      .select('id')
+      .eq('horseman_type', horseman)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    strategyId = topStrategy?.id ?? null;
+  }
+  if (strategyId) {
+    await supabase
+      .from('user_active_strategies')
+      .insert({
+        user_id: userId,
+        strategy_id: strategyId,
+        status: 'active',
+      });
+  }
+
+  return plan;
 }

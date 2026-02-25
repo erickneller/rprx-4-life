@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { type AssessmentResponseDetail } from '@/lib/promptGenerator';
 import { useSendMessage } from '@/hooks/useSendMessage';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 import { useCreatePlan, usePlans } from '@/hooks/usePlans';
 import { autoGenerateStrategy } from '@/lib/autoStrategyGenerator';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +56,7 @@ function useAssessmentResponses(assessmentId: string | undefined) {
 
 export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { profile } = useProfile();
   const { sendMessage, isLoading: isSending } = useSendMessage();
   const { data: responses } = useAssessmentResponses(assessment?.id);
@@ -79,6 +81,7 @@ export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
     setIsGenerating(true);
     try {
       const plan = await autoGenerateStrategy({
+        userId: user!.id,
         profile: profile ?? null,
         assessment,
         responses: responses ?? [],

@@ -142,6 +142,13 @@ export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
             </div>
             <Progress value={result.percentRecovered} className="h-2 bg-white/20 [&>div]:bg-emerald-400" />
           </div>
+        ) : focusedPlan ? (
+          <Button
+            variant="secondary"
+            onClick={() => navigate(`/plans/${focusedPlan.id}`)}
+          >
+            Continue Your Plan <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
         ) : (
           <p className="text-sm opacity-70">
             Start your first plan to begin recovering →
