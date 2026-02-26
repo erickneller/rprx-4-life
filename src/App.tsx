@@ -21,7 +21,9 @@ import Assessments from "./pages/Assessments";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
 import CompletePhone from "./pages/CompletePhone";
+import Wizard from "./pages/Wizard";
 import NotFound from "./pages/NotFound";
+import { WizardGuard } from "@/components/auth/WizardGuard";
 
 const queryClient = new QueryClient();
 
@@ -37,15 +39,16 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/wizard" element={<ProtectedRoute><Wizard /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><WizardGuard><Dashboard /></WizardGuard></ProtectedRoute>} />
           <Route path="/assessment" element={<ProtectedRoute><Assessment /></ProtectedRoute>} />
           <Route path="/assessment/edit/:id" element={<ProtectedRoute><Assessment /></ProtectedRoute>} />
-          <Route path="/results/:id" element={<ProtectedRoute><Results /></ProtectedRoute>} />
-          <Route path="/strategy-assistant" element={<ProtectedRoute><StrategyAssistant /></ProtectedRoute>} />
-          <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
-          <Route path="/plans/:id" element={<ProtectedRoute><PlanDetail /></ProtectedRoute>} />
-          <Route path="/assessments" element={<ProtectedRoute><Assessments /></ProtectedRoute>} />
-          <Route path="/debt-eliminator" element={<ProtectedRoute><DebtEliminator /></ProtectedRoute>} />
+          <Route path="/results/:id" element={<ProtectedRoute><WizardGuard><Results /></WizardGuard></ProtectedRoute>} />
+          <Route path="/strategy-assistant" element={<ProtectedRoute><WizardGuard><StrategyAssistant /></WizardGuard></ProtectedRoute>} />
+          <Route path="/plans" element={<ProtectedRoute><WizardGuard><Plans /></WizardGuard></ProtectedRoute>} />
+          <Route path="/plans/:id" element={<ProtectedRoute><WizardGuard><PlanDetail /></WizardGuard></ProtectedRoute>} />
+          <Route path="/assessments" element={<ProtectedRoute><WizardGuard><Assessments /></WizardGuard></ProtectedRoute>} />
+          <Route path="/debt-eliminator" element={<ProtectedRoute><WizardGuard><DebtEliminator /></WizardGuard></ProtectedRoute>} />
           <Route path="/complete-phone" element={<ProtectedRoute><CompletePhone /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />

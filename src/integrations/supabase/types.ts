@@ -1069,6 +1069,36 @@ export type Database = {
         }
         Relationships: []
       }
+      wizard_step_content: {
+        Row: {
+          id: string
+          is_active: boolean
+          step_number: number
+          subtitle: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id: string
+          is_active?: boolean
+          step_number: number
+          subtitle: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_active?: boolean
+          step_number?: number
+          subtitle?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

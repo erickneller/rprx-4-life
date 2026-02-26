@@ -28,6 +28,7 @@ import { DashboardTab } from '@/components/admin/DashboardTab';
 import { OnboardingTab } from '@/components/admin/OnboardingTab';
 import { PageHelpTab } from '@/components/admin/PageHelpTab';
 import { ActivityXpTab } from '@/components/admin/ActivityXpTab';
+import { WizardCopyTab } from '@/components/admin/WizardCopyTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -408,6 +409,9 @@ export default function AdminPanel() {
             <TabsTrigger value="page-help" className="gap-1">
               <HelpCircle className="h-4 w-4" /> Page Help
             </TabsTrigger>
+            <TabsTrigger value="wizard-copy" className="gap-1">
+              <GraduationCap className="h-4 w-4" /> Wizard Copy
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
@@ -586,6 +590,11 @@ export default function AdminPanel() {
           {/* ===== PAGE HELP TAB ===== */}
           <TabsContent value="page-help" className="space-y-4">
             <PageHelpTab />
+          </TabsContent>
+
+          {/* ===== WIZARD COPY TAB ===== */}
+          <TabsContent value="wizard-copy" className="space-y-4">
+            <WizardCopyTab />
           </TabsContent>
         </Tabs>
       </div>
