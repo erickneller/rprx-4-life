@@ -105,6 +105,8 @@ const Auth = () => {
         if (error) {
           if (error.message.includes('Invalid login credentials')) {
             setError('Invalid email or password. Please try again.');
+          } else if (error.message.toLowerCase().includes('banned') || error.message.toLowerCase().includes('user is banned')) {
+            setError('This account is locked, contact the administrator for information.');
           } else {
             setError(error.message);
           }
