@@ -1,13 +1,15 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import LandingPage from '@/components/landing/LandingPage';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
+  const { data: assessments, isLoading: assessmentsLoading } = useAssessmentHistory();
 
-  if (loading || (user && (profileLoading || !profile))) {
+  if (loading || (user && (profileLoading || !profile || assessmentsLoading))) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -18,7 +20,6 @@ const Index = () => {
     );
   }
 
-  // Show landing page for unauthenticated users
   if (!user) {
     return <LandingPage />;
   }
@@ -28,9 +29,13 @@ const Index = () => {
     return <Navigate to="/complete-phone" replace />;
   }
 
-  // Redirect to profile if incomplete, otherwise dashboard
+  // If profile incomplete, route to wizard (new users) or profile (returning users)
   if (!isProfileComplete) {
-    return <Navigate to="/profile" replace />;
+    const hasCompletedAssessment = (assessments || []).some(a => a.completed_at);
+    if (hasCompletedAssessment) {
+      return <Navigate to="/profile" replace />;
+    }
+    return <Navigate to="/wizard" replace />;
   }
 
   return <Navigate to="/dashboard" replace />;

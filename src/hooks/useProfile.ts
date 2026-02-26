@@ -63,6 +63,7 @@ export interface Profile {
   estimated_annual_leak_low: number | null;
   estimated_annual_leak_high: number | null;
   estimated_annual_leak_recovered: number | null;
+  onboarding_completed: boolean;
 }
 
 export function useProfile() {
@@ -177,14 +178,18 @@ export function useProfile() {
       p.monthly_housing !== null &&
       p.monthly_insurance !== null &&
       p.monthly_living_expenses !== null &&
-      p.profile_type && p.profile_type.length > 0 &&
-      p.financial_goals && p.financial_goals.length > 0 &&
+      p.emergency_fund_balance !== null &&
       p.filing_status?.trim() &&
+      p.employer_match_captured?.trim() &&
       p.num_children !== null && p.num_children !== undefined &&
+      p.financial_goals && p.financial_goals.length > 0 &&
       p.years_until_retirement !== null &&
       p.desired_retirement_income !== null &&
       p.retirement_balance_total !== null &&
       p.retirement_contribution_monthly !== null &&
+      p.stress_money_worry?.trim() &&
+      p.stress_emergency_confidence?.trim() &&
+      p.stress_control_feeling?.trim() &&
       (p.health_insurance || p.life_insurance || p.disability_insurance || p.long_term_care_insurance || p.no_insurance)
     );
   })();
