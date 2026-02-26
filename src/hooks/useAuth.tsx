@@ -35,7 +35,7 @@ export function useAuth() {
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, fullName?: string, phone?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -43,6 +43,7 @@ export function useAuth() {
       password,
       options: {
         emailRedirectTo: redirectUrl,
+        data: { full_name: fullName, phone },
       },
     });
     return { error };

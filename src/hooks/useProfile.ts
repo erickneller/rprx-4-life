@@ -84,9 +84,14 @@ export function useProfile() {
 
       // If no profile exists, create one
       if (!data) {
+        const metadata = user.user_metadata || {};
         const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
-          .insert({ id: user.id })
+          .insert({
+            id: user.id,
+            full_name: metadata.full_name || metadata.name || null,
+            phone: metadata.phone || null,
+          })
           .select()
           .single();
 
