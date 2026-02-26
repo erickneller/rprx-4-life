@@ -12,15 +12,45 @@ import { ArrowLeft, ArrowRight, Loader2, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-const FILING_STATUSES = ['Single', 'Married Filing Jointly', 'Married Filing Separately', 'Head of Household'];
-const EMPLOYER_MATCH_OPTIONS = ['Yes', 'No', 'Not Applicable', 'Not Sure'];
-const FINANCIAL_GOALS = [
-  'Reduce Taxes', 'Reduce Debt & Interest', 'Lower Insurance Costs',
-  'Education Funding', 'Increase Cash Flow', 'Improve Retirement', 'Build Emergency Fund',
+const FILING_STATUSES = [
+  { value: 'single', label: 'Single' },
+  { value: 'married_jointly', label: 'Married Filing Jointly' },
+  { value: 'married_separately', label: 'Married Filing Separately' },
+  { value: 'head_of_household', label: 'Head of Household' },
 ];
-const STRESS_WORRY_OPTIONS = ['Never', 'Sometimes', 'Often', 'Always'];
-const STRESS_CONFIDENCE_OPTIONS = ['Not Confident', 'Somewhat Confident', 'Very Confident', 'Completely Confident'];
-const STRESS_CONTROL_OPTIONS = ['Not at All', 'Somewhat', 'Mostly', 'Completely'];
+const EMPLOYER_MATCH_OPTIONS = [
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No' },
+  { value: 'na', label: 'Not Applicable' },
+  { value: 'not_sure', label: 'Not Sure' },
+];
+const FINANCIAL_GOALS = [
+  { value: 'reduce_taxes', label: 'Reduce Taxes' },
+  { value: 'reduce_debt', label: 'Reduce Debt & Interest' },
+  { value: 'reduce_insurance_costs', label: 'Lower Insurance Costs' },
+  { value: 'save_for_education', label: 'Education Funding' },
+  { value: 'increase_cash_flow', label: 'Increase Cash Flow' },
+  { value: 'improve_retirement', label: 'Improve Retirement' },
+  { value: 'build_emergency_fund', label: 'Build Emergency Fund' },
+];
+const STRESS_WORRY_OPTIONS = [
+  { value: 'never', label: 'Never' },
+  { value: 'sometimes', label: 'Sometimes' },
+  { value: 'often', label: 'Often' },
+  { value: 'always', label: 'Always' },
+];
+const STRESS_CONFIDENCE_OPTIONS = [
+  { value: 'not_confident', label: 'Not Confident' },
+  { value: 'somewhat_confident', label: 'Somewhat Confident' },
+  { value: 'very_confident', label: 'Very Confident' },
+  { value: 'completely_confident', label: 'Completely Confident' },
+];
+const STRESS_CONTROL_OPTIONS = [
+  { value: 'not_at_all', label: 'Not at All' },
+  { value: 'somewhat', label: 'Somewhat' },
+  { value: 'mostly', label: 'Mostly' },
+  { value: 'completely', label: 'Completely' },
+];
 
 // Dollar input helpers
 function formatDollar(val: number | null | undefined): string {
@@ -263,7 +293,7 @@ export function ProfileWizard() {
               <Label>How do you file taxes?</Label>
               <Select value={form.filing_status} onValueChange={v => set('filing_status', v)}>
                 <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>{FILING_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                <SelectContent>{FILING_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
               </Select>
               {errors.filing_status && <p className="text-xs text-destructive">{errors.filing_status}</p>}
             </div>
@@ -271,7 +301,7 @@ export function ProfileWizard() {
               <Label>Capturing your full employer 401k match?</Label>
               <Select value={form.employer_match_captured} onValueChange={v => set('employer_match_captured', v)}>
                 <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>{EMPLOYER_MATCH_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                <SelectContent>{EMPLOYER_MATCH_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
               </Select>
               {errors.employer_match_captured && <p className="text-xs text-destructive">{errors.employer_match_captured}</p>}
             </div>
@@ -319,17 +349,17 @@ export function ProfileWizard() {
             <div className="space-y-2">
               <Label>Top financial goals (select at least 1)</Label>
               {FINANCIAL_GOALS.map(goal => (
-                <label key={goal} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
+                <label key={goal.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
                   <Checkbox
-                    checked={form.financial_goals.includes(goal)}
+                    checked={form.financial_goals.includes(goal.value)}
                     onCheckedChange={(checked) => {
                       set('financial_goals', checked
-                        ? [...form.financial_goals, goal]
-                        : form.financial_goals.filter(g => g !== goal)
+                        ? [...form.financial_goals, goal.value]
+                        : form.financial_goals.filter(g => g !== goal.value)
                       );
                     }}
                   />
-                  <span className="text-sm">{goal}</span>
+                  <span className="text-sm">{goal.label}</span>
                 </label>
               ))}
               {errors.financial_goals && <p className="text-xs text-destructive">{errors.financial_goals}</p>}
@@ -353,7 +383,7 @@ export function ProfileWizard() {
               <Label>How often do you worry about money?</Label>
               <div className="space-y-2">
                 {STRESS_WORRY_OPTIONS.map(opt => (
-                  <OptionCard key={opt} label={opt} selected={form.stress_money_worry === opt} onClick={() => set('stress_money_worry', opt)} />
+                  <OptionCard key={opt.value} label={opt.label} selected={form.stress_money_worry === opt.value} onClick={() => set('stress_money_worry', opt.value)} />
                 ))}
               </div>
               {errors.stress_money_worry && <p className="text-xs text-destructive">{errors.stress_money_worry}</p>}
@@ -362,7 +392,7 @@ export function ProfileWizard() {
               <Label>How confident are you handling an unexpected $2,000 expense?</Label>
               <div className="space-y-2">
                 {STRESS_CONFIDENCE_OPTIONS.map(opt => (
-                  <OptionCard key={opt} label={opt} selected={form.stress_emergency_confidence === opt} onClick={() => set('stress_emergency_confidence', opt)} />
+                  <OptionCard key={opt.value} label={opt.label} selected={form.stress_emergency_confidence === opt.value} onClick={() => set('stress_emergency_confidence', opt.value)} />
                 ))}
               </div>
               {errors.stress_emergency_confidence && <p className="text-xs text-destructive">{errors.stress_emergency_confidence}</p>}
@@ -371,7 +401,7 @@ export function ProfileWizard() {
               <Label>How much control do you feel over your finances?</Label>
               <div className="space-y-2">
                 {STRESS_CONTROL_OPTIONS.map(opt => (
-                  <OptionCard key={opt} label={opt} selected={form.stress_control_feeling === opt} onClick={() => set('stress_control_feeling', opt)} />
+                  <OptionCard key={opt.value} label={opt.label} selected={form.stress_control_feeling === opt.value} onClick={() => set('stress_control_feeling', opt.value)} />
                 ))}
               </div>
               {errors.stress_control_feeling && <p className="text-xs text-destructive">{errors.stress_control_feeling}</p>}
