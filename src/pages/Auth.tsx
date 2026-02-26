@@ -9,10 +9,22 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { formatPhone, isValidUSPhone } from '@/lib/phoneFormat';
 
 const authSchema = z.object({
   email: z.string().trim().email({ message: 'Please enter a valid email address' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+});
+
+const signupSchema = authSchema.extend({
+  fullName: z
+    .string()
+    .trim()
+    .min(2, { message: 'Full name must be at least 2 characters' })
+    .regex(/^[^\d]+$/, { message: 'Full name cannot contain numbers' }),
+  phone: z
+    .string()
+    .refine(isValidUSPhone, { message: 'Please enter a valid US phone number' }),
 });
 
 type AuthView = 'login' | 'forgot-password';
@@ -22,6 +34,8 @@ const Auth = () => {
   const { user, loading, signIn, signUp, signInWithGoogle, resetPasswordForEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,11 +83,18 @@ const Auth = () => {
     setError(null);
     setSuccess(null);
 
-    // Validate input
-    const result = authSchema.safeParse({ email, password });
-    if (!result.success) {
-      setError(result.error.errors[0].message);
-      return;
+    if (mode === 'login') {
+      const result = authSchema.safeParse({ email, password });
+      if (!result.success) {
+        setError(result.error.errors[0].message);
+        return;
+      }
+    } else {
+      const result = signupSchema.safeParse({ email, password, fullName, phone });
+      if (!result.success) {
+        setError(result.error.errors[0].message);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -89,7 +110,7 @@ const Auth = () => {
           }
         }
       } else {
-        const { error } = await signUp(email, password);
+        const { error } = await signUp(email, password, fullName, phone);
         if (error) {
           if (error.message.includes('User already registered')) {
             setError('An account with this email already exists. Please sign in instead.');
@@ -100,6 +121,8 @@ const Auth = () => {
           setSuccess('Account created! Please check your email to confirm your account.');
           setEmail('');
           setPassword('');
+          setFullName('');
+          setPhone('');
         }
       }
     } finally {
@@ -293,6 +316,28 @@ const Auth = () => {
                   <AlertDescription>{success}</AlertDescription>
                 </Alert>
               )}
+              <div className="space-y-2">
+                <Label htmlFor="signup-fullname">Full Name</Label>
+                <Input
+                  id="signup-fullname"
+                  type="text"
+                  placeholder="Your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-phone">Phone Number</Label>
+                <Input
+                  id="signup-phone"
+                  type="tel"
+                  placeholder="(555) 555-5555"
+                  value={phone}
+                  onChange={(e) => setPhone(formatPhone(e.target.value))}
+                  disabled={isSubmitting}
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-email">Email</Label>
                 <Input

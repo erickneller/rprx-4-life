@@ -23,6 +23,11 @@ const Index = () => {
     return <LandingPage />;
   }
 
+  // Redirect to phone interstitial if phone is missing (Google OAuth users)
+  if (!profile?.phone?.trim()) {
+    return <Navigate to="/complete-phone" replace />;
+  }
+
   // Redirect to profile if incomplete, otherwise dashboard
   if (!isProfileComplete) {
     return <Navigate to="/profile" replace />;
