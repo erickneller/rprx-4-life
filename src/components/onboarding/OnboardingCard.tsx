@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,10 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
   } = useOnboarding();
 
   const [localCompleted, setLocalCompleted] = useState(false);
+
+  useEffect(() => {
+    setLocalCompleted(false);
+  }, [currentDay]);
 
   if (isLoading || !isOnboarding || isCompleted || !todayContent) return null;
 
