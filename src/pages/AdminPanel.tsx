@@ -2,8 +2,7 @@ import { useState, useMemo } from 'react';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAdminStrategies, useCreateStrategy, useUpdateStrategy, useDeleteStrategy, useDeleteStrategies, useImportStrategies, useBulkToggleActive, type StrategyRow, type StrategyInput } from '@/hooks/useAdminStrategies';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,15 +10,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
+
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Loader2, Shield, Users, ShieldCheck, ShieldOff, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard, GraduationCap, Zap } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, Users, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard, GraduationCap, Zap } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BadgesTab } from '@/components/admin/BadgesTab';
 import { AssessmentQuestionsTab } from '@/components/admin/AssessmentQuestionsTab';
+import { UsersTab } from '@/components/admin/UsersTab';
 import { DeepDiveQuestionsTab } from '@/components/admin/DeepDiveQuestionsTab';
 import { AnalyticsTab } from '@/components/admin/AnalyticsTab';
 import { PromptTemplatesTab } from '@/components/admin/PromptTemplatesTab';
@@ -42,86 +43,6 @@ const emptyForm: StrategyInput = {
   financial_goals: [],
 };
 
-// --- User management hooks ---
-
-interface AppUser {
-  id: string;
-  email: string;
-  created_at: string;
-  is_admin: boolean;
-  tier: 'free' | 'paid';
-}
-
-function useAdminUsers() {
-  return useQuery({
-    queryKey: ['admin-users'],
-    queryFn: async () => {
-      const { data: users, error: usersErr } = await supabase.rpc('admin_list_users');
-      if (usersErr) throw usersErr;
-
-      const [{ data: roles, error: rolesErr }, { data: subs, error: subsErr }] = await Promise.all([
-        supabase.from('user_roles').select('user_id, role'),
-        supabase.from('user_subscriptions' as any).select('user_id, tier'),
-      ]);
-      if (rolesErr) throw rolesErr;
-      if (subsErr) throw subsErr;
-
-      const adminIds = new Set((roles || []).filter(r => r.role === 'admin').map(r => r.user_id));
-      const tierMap = new Map((subs || []).map((s: any) => [s.user_id, s.tier]));
-
-      return (users || []).map((u: { id: string; email: string; created_at: string }) => ({
-        id: u.id,
-        email: u.email,
-        created_at: u.created_at,
-        is_admin: adminIds.has(u.id),
-        tier: (tierMap.get(u.id) || 'free') as 'free' | 'paid',
-      })) as AppUser[];
-    },
-  });
-}
-
-function useToggleTier() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ userId, newTier }: { userId: string; newTier: 'free' | 'paid' }) => {
-      const { error } = await supabase
-        .from('user_subscriptions' as any)
-        .upsert(
-          { user_id: userId, tier: newTier, updated_by: (await supabase.auth.getUser()).data.user?.id } as any,
-          { onConflict: 'user_id' }
-        );
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-users'] });
-    },
-  });
-}
-
-function useToggleAdmin() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ userId, makeAdmin }: { userId: string; makeAdmin: boolean }) => {
-      if (makeAdmin) {
-        const { error } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role: 'admin' });
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('user_roles')
-          .delete()
-          .eq('user_id', userId)
-          .eq('role', 'admin');
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-users'] });
-    },
-  });
-}
-
 export default function AdminPanel() {
   const { data: strategies = [], isLoading } = useAdminStrategies();
   const createStrategy = useCreateStrategy();
@@ -130,10 +51,6 @@ export default function AdminPanel() {
   const deleteStrategies = useDeleteStrategies();
   const importStrategies = useImportStrategies();
   const bulkToggleActive = useBulkToggleActive();
-
-  const { data: users = [], isLoading: usersLoading } = useAdminUsers();
-  const toggleAdmin = useToggleAdmin();
-  const toggleTier = useToggleTier();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -437,14 +354,6 @@ export default function AdminPanel() {
     }
   };
 
-  const handleToggleAdmin = async (userId: string, currentlyAdmin: boolean) => {
-    try {
-      await toggleAdmin.mutateAsync({ userId, makeAdmin: !currentlyAdmin });
-      toast.success(currentlyAdmin ? 'Admin access removed' : 'Admin access granted');
-    } catch (err: unknown) {
-      toast.error((err as Error).message || 'Failed to update role');
-    }
-  };
 
   const horsemanColor = (h: string) => {
     const map: Record<string, string> = {
@@ -633,88 +542,7 @@ export default function AdminPanel() {
             )}
           </TabsContent>
           <TabsContent value="users" className="space-y-4">
-            {usersLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead className="w-28">Role</TableHead>
-                      <TableHead className="w-28">Tier</TableHead>
-                      <TableHead className="w-32">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((u) => (
-                      <TableRow key={u.id}>
-                        <TableCell className="font-medium">{u.email}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(u.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {u.is_admin ? (
-                            <Badge className="bg-primary/10 text-primary border-primary/20">Admin</Badge>
-                          ) : (
-                            <Badge variant="secondary">User</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={u.tier === 'paid'}
-                              onCheckedChange={(checked) => {
-                                toggleTier.mutate(
-                                  { userId: u.id, newTier: checked ? 'paid' : 'free' },
-                                  {
-                                    onSuccess: () => toast.success(`User set to ${checked ? 'Paid' : 'Free'}`),
-                                    onError: (err) => toast.error((err as Error).message || 'Failed to update tier'),
-                                  }
-                                );
-                              }}
-                              disabled={toggleTier.isPending}
-                            />
-                            <Badge variant={u.tier === 'paid' ? 'default' : 'secondary'} className={u.tier === 'paid' ? 'bg-green-600 text-white' : ''}>
-                              {u.tier === 'paid' ? 'Paid' : 'Free'}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant={u.is_admin ? 'outline' : 'default'}
-                            size="sm"
-                            className="gap-1"
-                            disabled={toggleAdmin.isPending}
-                            onClick={() => handleToggleAdmin(u.id, u.is_admin)}
-                          >
-                            {u.is_admin ? (
-                              <>
-                                <ShieldOff className="h-3 w-3" /> Revoke
-                              </>
-                            ) : (
-                              <>
-                                <ShieldCheck className="h-3 w-3" /> Make Admin
-                              </>
-                            )}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {users.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          No users found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+            <UsersTab />
           </TabsContent>
           {/* ===== BADGES TAB ===== */}
           <TabsContent value="badges" className="space-y-4">
