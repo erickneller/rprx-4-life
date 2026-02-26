@@ -1,134 +1,53 @@
 
 
-# Profile Wizard + Admin Editor + Resume Logic
+# Fix: New Users Not Redirected to Wizard After Signup
 
-## Overview
+## Investigation Summary
 
-Build a 4-step profile wizard for new users, an admin editor for wizard copy, resume logic for incomplete profiles, and update `isProfileComplete`.
+The routing logic in `Index.tsx` is correct: it checks `isProfileComplete` (which is `false` for new users since `monthly_income` is null) and redirects to `/wizard` when there are no completed assessments. The `WizardGuard` also correctly redirects incomplete users.
 
-## Part 1 -- Admin "Wizard Copy" Tab
+However, there are two issues that could prevent the wizard from appearing:
 
-**New file: `src/components/admin/WizardCopyTab.tsx`**
+## Issue 1: Auth.tsx navigates away immediately on auto-login
 
-- Fetch all rows from `wizard_step_content` ordered by `step_number`
-- For each row, display: step label (read-only), title (editable input), subtitle (editable input), Save button
-- On save, update the row in `wizard_step_content` via Supabase
-- Follow the same UI pattern as `OnboardingTab` (table with inline editing or simple cards)
+With `immediate_login_after_signup: true`, the Supabase auth state changes immediately after signup. The `useEffect` in `Auth.tsx` (line 76-80) fires and navigates to `/` before the user sees the success message. This is technically correct behavior BUT creates a confusing flash -- the user briefly sees the success message, then gets redirected.
 
-**Edit: `src/pages/AdminPanel.tsx`**
+**Fix**: After a successful signup with auto-login, navigate directly to `/wizard` instead of showing the "check your email" message. Detect that the user is now logged in and skip the success message entirely.
 
-- Add a new tab "Wizard Copy" that renders `<WizardCopyTab />`
+## Issue 2: WizardGuard loading bypass
 
-## Part 2 -- Profile Wizard Component
+`WizardGuard` (line 16) returns `children` (i.e., renders the page) while profile data is loading. If a user navigates directly to `/dashboard`, they'll briefly see the dashboard before being redirected. This is a minor UX issue but not the root cause.
 
-**New file: `src/components/wizard/ProfileWizard.tsx`**
+## Changes
 
-A 4-step wizard + completion screen. On mount, fetches `wizard_step_content` rows and uses their `title`/`subtitle` for each step header. Never hardcodes these strings.
+### 1. `src/pages/Auth.tsx`
 
-- Progress bar: "Step X of 4"
-- Back button on steps 2-4, hidden on step 1
-- Each step saves to `profiles` on "Next" via `useProfile().updateProfile`
-- Dollar inputs formatted with `$`, no negatives
-- Mobile-first, max-width 480px centered
+Update the signup handler: after a successful `signUp` call, check if the user is immediately logged in. If so, navigate to `/wizard` directly instead of showing the email confirmation message. This avoids confusion and ensures the wizard is the first thing a new user sees.
 
-**Step 1 -- Financial Snapshot** (maps to `wizard_step_1`):
-- Monthly take-home income (monthly_income)
-- Monthly debt payments (monthly_debt_payments, 0 valid)
-- Monthly housing (monthly_housing)
-- Monthly insurance premiums (monthly_insurance, 0 valid)
-- Monthly living expenses (monthly_living_expenses)
-- Emergency fund balance (emergency_fund_balance, 0 valid)
-- Filing status (filing_status) -- select dropdown
-- Employer 401k match (employer_match_captured) -- select dropdown
+```text
+// After successful signup:
+if auto-login occurred (user exists after signUp):
+  navigate('/wizard', { replace: true })
+else:
+  show "check your email" message (for cases where email confirmation is required)
+```
 
-**Step 2 -- Your Situation** (maps to `wizard_step_2`):
-- Number of dependent children (num_children, 0 valid)
-- Insurance coverage (multi-select checkboxes, "None" mutually exclusive)
-- Financial goals (multi-select, min 1)
+Also update the `useEffect` to navigate to `/` only if the user was already logged in (not from a fresh signup), or simply keep it navigating to `/` and let Index.tsx handle the routing (which already works).
 
-**Step 3 -- Retirement Picture** (maps to `wizard_step_3`):
-- Years until retirement (years_until_retirement)
-- Desired annual retirement income (desired_retirement_income)
-- Current retirement savings (retirement_balance_total, 0 valid)
-- Monthly retirement contribution (retirement_contribution_monthly, 0 valid)
-- Static helper text beneath subtitle
+### 2. `src/pages/Auth.tsx` -- Prevent race condition
 
-**Step 4 -- Money Mindset** (maps to `wizard_step_4`):
-- Stress: money worry (stress_money_worry) -- tap-friendly cards
-- Stress: emergency confidence (stress_emergency_confidence) -- tap-friendly cards
-- Stress: control feeling (stress_control_feeling) -- tap-friendly cards
+The `useEffect` that navigates on `user` change fires for both login AND signup. For signup with auto-login, both the success handler and the useEffect compete. Fix: add a ref to track if we just signed up, and in that case navigate to `/wizard` from the handler, not the useEffect.
 
-**Completion screen** (maps to `wizard_complete`):
-- Shows title/subtitle from DB
-- CTA: "Start My Assessment" -- navigates to `/assessment`
-- Does NOT set `onboarding_completed = true`
-
-**New file: `src/hooks/useWizardContent.ts`**
-- Fetches `wizard_step_content` rows, returns a map by id for easy lookup
-
-## Part 3 -- Wizard Page + Routing
-
-**New file: `src/pages/Wizard.tsx`**
-- Renders `ProfileWizard` without `AuthenticatedLayout` (clean full-screen experience)
-- Protected route
-
-**Edit: `src/App.tsx`**
-- Add `/wizard` route as a protected route
-
-**Edit: `src/pages/Index.tsx`**
-- After phone check passes, check `isProfileComplete`:
-  - If false AND user has no completed assessments, redirect to `/wizard`
-  - If false but has assessments, redirect to `/profile` (returning user editing)
-  - If true, redirect to `/dashboard`
-
-## Part 4 -- Resume Logic
-
-**Edit: `src/components/auth/ProtectedRoute.tsx`** (or create a wrapper)
-- For users with `onboarding_completed = false` navigating to routes other than `/wizard`, `/assessment`, `/complete-phone`, `/profile`, `/auth`:
-  - Redirect to `/wizard` at the first step with missing required fields
-  - Show a persistent banner at the top: "Complete your profile to unlock your RPRx Score" with a CTA link back to `/wizard`
-
-Implementation approach: Rather than modifying `ProtectedRoute` (which doesn't have profile context), create a new `<WizardGuard>` wrapper component used inside authenticated routes that checks profile completion and redirects/shows banner as needed.
-
-**New file: `src/components/auth/WizardGuard.tsx`**
-- Uses `useProfile` to check `isProfileComplete` and `onboarding_completed`
-- Uses `useAssessmentHistory` to check if user has any assessments
-- If incomplete and no assessments, redirects to `/wizard`
-- Otherwise renders children with an optional banner
-
-## Part 5 -- Updated `isProfileComplete`
-
-**Edit: `src/hooks/useProfile.ts`**
-
-Update the `isProfileComplete` computed value to check ALL required fields:
-- full_name, phone, monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses, emergency_fund_balance, filing_status, employer_match_captured
-- num_children (not null/undefined), financial_goals (length >= 1)
-- years_until_retirement, desired_retirement_income, retirement_balance_total, retirement_contribution_monthly
-- stress_money_worry, stress_emergency_confidence, stress_control_feeling
-- At least one insurance boolean is true (health/life/disability/long_term_care/no_insurance)
-- Explicitly EXCLUDE profile_type
-
-## File Summary
+### File Summary
 
 | File | Action |
 |------|--------|
-| `src/hooks/useWizardContent.ts` | New -- fetch wizard_step_content |
-| `src/components/wizard/ProfileWizard.tsx` | New -- 4-step wizard component |
-| `src/pages/Wizard.tsx` | New -- wizard page |
-| `src/components/admin/WizardCopyTab.tsx` | New -- admin editor for wizard copy |
-| `src/components/auth/WizardGuard.tsx` | New -- redirect/banner for incomplete profiles |
-| `src/hooks/useProfile.ts` | Edit -- update isProfileComplete |
-| `src/pages/Index.tsx` | Edit -- add wizard redirect logic |
-| `src/App.tsx` | Edit -- add /wizard route |
-| `src/pages/AdminPanel.tsx` | Edit -- add Wizard Copy tab |
+| `src/pages/Auth.tsx` | Edit -- navigate to `/wizard` after successful signup with auto-login, prevent race with useEffect |
 
-## Key Decisions
+## Technical Details
 
-- **No DB migration needed** -- wizard_step_content already exists with data and RLS
-- The wizard saves each step to profiles immediately on "Next", so progress survives app close
-- `onboarding_completed` is NOT set by the wizard -- that happens after assessment + focus plan
-- The wizard is a standalone full-screen page (no sidebar) for a focused onboarding experience
-- Resume logic uses a `WizardGuard` wrapper rather than modifying `ProtectedRoute`, keeping concerns separated
-- Dollar formatting uses a simple `$` prefix pattern with input masking, preventing negative values
-- The stress questions in Step 4 use the values specified in the prompt (Never/Sometimes/Often/Always etc.), which differ slightly from the existing Profile page options -- the wizard will use the prompt-specified values
+- Add a `justSignedUp` ref in Auth.tsx
+- In the signup success branch, check if `supabase.auth.getSession()` returns a session (indicating auto-login). If so, set `justSignedUp.current = true` and navigate to `/wizard`
+- In the `useEffect`, skip navigation if `justSignedUp.current` is true
+- This ensures new users always land on the wizard immediately after signup
 
