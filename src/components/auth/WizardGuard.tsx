@@ -13,7 +13,7 @@ export function WizardGuard({ children }: WizardGuardProps) {
   const { data: assessments, isLoading: assessmentsLoading } = useAssessmentHistory();
   const location = useLocation();
 
-  if (profileLoading || assessmentsLoading) return <>{children}</>;
+  if (profileLoading || assessmentsLoading) return <div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>;
   if (!profile) return <>{children}</>;
 
   const isAllowed = ALLOWED_PATHS.some(p => location.pathname.startsWith(p));
