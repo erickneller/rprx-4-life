@@ -1,107 +1,134 @@
 
 
-# Enhanced Admin User Management
+# Profile Wizard + Admin Editor + Resume Logic
 
 ## Overview
 
-Upgrade the Admin Panel's Users tab from a basic list to a full user management system with detailed user profiles, password reset, account locking, and user deletion.
+Build a 4-step profile wizard for new users, an admin editor for wizard copy, resume logic for incomplete profiles, and update `isProfileComplete`.
 
-## Current State
+## Part 1 -- Admin "Wizard Copy" Tab
 
-The Users tab currently shows: email, join date, admin role toggle, and tier toggle. The `admin_list_users()` SQL function only returns `id`, `email`, and `created_at` from `auth.users`.
+**New file: `src/components/admin/WizardCopyTab.tsx`**
 
-## Changes Required
+- Fetch all rows from `wizard_step_content` ordered by `step_number`
+- For each row, display: step label (read-only), title (editable input), subtitle (editable input), Save button
+- On save, update the row in `wizard_step_content` via Supabase
+- Follow the same UI pattern as `OnboardingTab` (table with inline editing or simple cards)
 
-### 1. Database: Expand `admin_list_users` function
+**Edit: `src/pages/AdminPanel.tsx`**
 
-Replace the existing function to return more user data:
-- `id`, `email`, `created_at`, `last_sign_in_at`, `email_confirmed_at`
-- `banned_until` (Supabase's built-in user banning field)
-- `raw_user_meta_data` (contains full_name from signup)
+- Add a new tab "Wizard Copy" that renders `<WizardCopyTab />`
 
-This stays as a `SECURITY DEFINER` function so only admins can call it, and it safely reads from `auth.users`.
+## Part 2 -- Profile Wizard Component
 
-### 2. Database: Create admin edge functions for privileged operations
+**New file: `src/components/wizard/ProfileWizard.tsx`**
 
-Three operations require the Supabase **service role key** (not the anon key), so they must be edge functions:
+A 4-step wizard + completion screen. On mount, fetches `wizard_step_content` rows and uses their `title`/`subtitle` for each step header. Never hardcodes these strings.
 
-**Edge Function: `admin-user-actions`**
-Handles three actions via a POST body `{ action, userId }`:
+- Progress bar: "Step X of 4"
+- Back button on steps 2-4, hidden on step 1
+- Each step saves to `profiles` on "Next" via `useProfile().updateProfile`
+- Dollar inputs formatted with `$`, no negatives
+- Mobile-first, max-width 480px centered
 
-- **`reset-password`**: Calls `supabase.auth.admin.generateLink({ type: 'recovery', email })` and returns the reset link, OR uses `resetPasswordForEmail` to send the email directly. The admin can then share the link or trigger the email.
-- **`ban-user`**: Calls `supabase.auth.admin.updateUserById(userId, { ban_duration: 'none' | '876000h' })` to lock/unlock accounts. Supabase uses `banned_until` internally.
-- **`delete-user`**: Calls `supabase.auth.admin.deleteUser(userId)`. This cascades to delete the profile and all related data.
+**Step 1 -- Financial Snapshot** (maps to `wizard_step_1`):
+- Monthly take-home income (monthly_income)
+- Monthly debt payments (monthly_debt_payments, 0 valid)
+- Monthly housing (monthly_housing)
+- Monthly insurance premiums (monthly_insurance, 0 valid)
+- Monthly living expenses (monthly_living_expenses)
+- Emergency fund balance (emergency_fund_balance, 0 valid)
+- Filing status (filing_status) -- select dropdown
+- Employer 401k match (employer_match_captured) -- select dropdown
 
-The edge function validates that the calling user is an admin using the `has_role` check before performing any action.
+**Step 2 -- Your Situation** (maps to `wizard_step_2`):
+- Number of dependent children (num_children, 0 valid)
+- Insurance coverage (multi-select checkboxes, "None" mutually exclusive)
+- Financial goals (multi-select, min 1)
 
-### 3. Frontend: New `UsersTab` component
+**Step 3 -- Retirement Picture** (maps to `wizard_step_3`):
+- Years until retirement (years_until_retirement)
+- Desired annual retirement income (desired_retirement_income)
+- Current retirement savings (retirement_balance_total, 0 valid)
+- Monthly retirement contribution (retirement_contribution_monthly, 0 valid)
+- Static helper text beneath subtitle
 
-Extract the Users tab into its own component file `src/components/admin/UsersTab.tsx` for cleanliness. Features:
+**Step 4 -- Money Mindset** (maps to `wizard_step_4`):
+- Stress: money worry (stress_money_worry) -- tap-friendly cards
+- Stress: emergency confidence (stress_emergency_confidence) -- tap-friendly cards
+- Stress: control feeling (stress_control_feeling) -- tap-friendly cards
 
-**User list table columns:**
-- Full Name (from profile or user metadata)
-- Email
-- Phone (from profile)
-- Joined date
-- Last sign-in
-- Status (Active / Locked / Unconfirmed)
-- Role (Admin badge)
-- Tier (Free/Paid toggle)
-- Actions dropdown
+**Completion screen** (maps to `wizard_complete`):
+- Shows title/subtitle from DB
+- CTA: "Start My Assessment" -- navigates to `/assessment`
+- Does NOT set `onboarding_completed = true`
 
-**Expandable row or detail dialog:**
-Clicking a user row opens a detail dialog showing:
-- All profile fields: income, debt payments, housing, insurance, living expenses, emergency fund, filing status, insurance coverage, financial goals, stress indicators, scores, tier, gamification stats
-- Assessment count and last assessment date
-- Plan count
+**New file: `src/hooks/useWizardContent.ts`**
+- Fetches `wizard_step_content` rows, returns a map by id for easy lookup
 
-**Actions dropdown per user:**
-- Toggle Admin role (existing)
-- Toggle Tier (existing)
-- Send Password Reset Email -- calls the edge function, shows confirmation toast
-- Lock/Unlock Account -- calls the edge function, toggles `banned_until`, shows confirmation
-- Delete User -- shows a destructive confirmation dialog ("This will permanently delete the user and all their data"), calls the edge function
+## Part 3 -- Wizard Page + Routing
 
-**Search/filter bar:**
-- Text search filtering by name or email
-- Filter by status (All / Active / Locked)
-- Filter by tier (All / Free / Paid)
+**New file: `src/pages/Wizard.tsx`**
+- Renders `ProfileWizard` without `AuthenticatedLayout` (clean full-screen experience)
+- Protected route
 
-### 4. Update `admin_list_users` to include profile data via JOIN
+**Edit: `src/App.tsx`**
+- Add `/wizard` route as a protected route
 
-Instead of making separate queries, update the SQL function to JOIN profiles:
+**Edit: `src/pages/Index.tsx`**
+- After phone check passes, check `isProfileComplete`:
+  - If false AND user has no completed assessments, redirect to `/wizard`
+  - If false but has assessments, redirect to `/profile` (returning user editing)
+  - If true, redirect to `/dashboard`
 
-```text
-SELECT au.id, au.email, au.created_at, au.last_sign_in_at,
-       au.banned_until, au.raw_user_meta_data,
-       p.full_name, p.phone, p.monthly_income, p.filing_status,
-       p.onboarding_completed, p.rprx_score_total, p.current_tier,
-       p.total_points_earned, p.current_streak
-FROM auth.users au
-LEFT JOIN public.profiles p ON p.id = au.id
-ORDER BY au.created_at DESC
-```
+## Part 4 -- Resume Logic
+
+**Edit: `src/components/auth/ProtectedRoute.tsx`** (or create a wrapper)
+- For users with `onboarding_completed = false` navigating to routes other than `/wizard`, `/assessment`, `/complete-phone`, `/profile`, `/auth`:
+  - Redirect to `/wizard` at the first step with missing required fields
+  - Show a persistent banner at the top: "Complete your profile to unlock your RPRx Score" with a CTA link back to `/wizard`
+
+Implementation approach: Rather than modifying `ProtectedRoute` (which doesn't have profile context), create a new `<WizardGuard>` wrapper component used inside authenticated routes that checks profile completion and redirects/shows banner as needed.
+
+**New file: `src/components/auth/WizardGuard.tsx`**
+- Uses `useProfile` to check `isProfileComplete` and `onboarding_completed`
+- Uses `useAssessmentHistory` to check if user has any assessments
+- If incomplete and no assessments, redirects to `/wizard`
+- Otherwise renders children with an optional banner
+
+## Part 5 -- Updated `isProfileComplete`
+
+**Edit: `src/hooks/useProfile.ts`**
+
+Update the `isProfileComplete` computed value to check ALL required fields:
+- full_name, phone, monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses, emergency_fund_balance, filing_status, employer_match_captured
+- num_children (not null/undefined), financial_goals (length >= 1)
+- years_until_retirement, desired_retirement_income, retirement_balance_total, retirement_contribution_monthly
+- stress_money_worry, stress_emergency_confidence, stress_control_feeling
+- At least one insurance boolean is true (health/life/disability/long_term_care/no_insurance)
+- Explicitly EXCLUDE profile_type
 
 ## File Summary
 
 | File | Action |
 |------|--------|
-| Migration SQL | Alter -- replace `admin_list_users` function with expanded version |
-| `supabase/functions/admin-user-actions/index.ts` | New -- edge function for reset password, ban, delete |
-| `src/components/admin/UsersTab.tsx` | New -- extracted and expanded Users tab component |
-| `src/pages/AdminPanel.tsx` | Edit -- import `UsersTab`, replace inline users tab content |
+| `src/hooks/useWizardContent.ts` | New -- fetch wizard_step_content |
+| `src/components/wizard/ProfileWizard.tsx` | New -- 4-step wizard component |
+| `src/pages/Wizard.tsx` | New -- wizard page |
+| `src/components/admin/WizardCopyTab.tsx` | New -- admin editor for wizard copy |
+| `src/components/auth/WizardGuard.tsx` | New -- redirect/banner for incomplete profiles |
+| `src/hooks/useProfile.ts` | Edit -- update isProfileComplete |
+| `src/pages/Index.tsx` | Edit -- add wizard redirect logic |
+| `src/App.tsx` | Edit -- add /wizard route |
+| `src/pages/AdminPanel.tsx` | Edit -- add Wizard Copy tab |
 
-## Security
+## Key Decisions
 
-- The edge function validates admin role server-side before any action
-- The `admin_list_users` function remains `SECURITY DEFINER` so it can read `auth.users`
-- Delete and ban operations use the service role key only inside the edge function
-- The admin cannot delete or ban themselves (guard in edge function)
-- Confirmation dialogs prevent accidental destructive actions
-
-## Technical Notes
-
-- Supabase's `banned_until` field is the built-in mechanism for locking users. Setting it to a far-future date effectively locks the account. Setting it to `null` unlocks it.
-- Password reset sends a standard Supabase recovery email to the user -- the admin does not see or set the new password.
-- User deletion cascades via the `ON DELETE CASCADE` foreign key on `profiles.id -> auth.users.id` (if configured), plus RLS-protected child tables.
+- **No DB migration needed** -- wizard_step_content already exists with data and RLS
+- The wizard saves each step to profiles immediately on "Next", so progress survives app close
+- `onboarding_completed` is NOT set by the wizard -- that happens after assessment + focus plan
+- The wizard is a standalone full-screen page (no sidebar) for a focused onboarding experience
+- Resume logic uses a `WizardGuard` wrapper rather than modifying `ProtectedRoute`, keeping concerns separated
+- Dollar formatting uses a simple `$` prefix pattern with input masking, preventing negative values
+- The stress questions in Step 4 use the values specified in the prompt (Never/Sometimes/Often/Always etc.), which differ slightly from the existing Profile page options -- the wizard will use the prompt-specified values
 
