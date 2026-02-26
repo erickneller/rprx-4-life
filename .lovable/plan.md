@@ -1,120 +1,107 @@
 
 
-# Add Full Name and Phone to Signup + Google OAuth Interstitial
+# Enhanced Admin User Management
 
 ## Overview
 
-Add two required fields (Full Name, Phone) to the email signup form, and handle the Google OAuth case where phone is missing with an interstitial screen. No database changes needed -- `profiles.full_name` and `profiles.phone` columns already exist.
+Upgrade the Admin Panel's Users tab from a basic list to a full user management system with detailed user profiles, password reset, account locking, and user deletion.
 
-## Changes
+## Current State
 
-### 1. Update Auth.tsx -- Add fields to the signup tab
+The Users tab currently shows: email, join date, admin role toggle, and tier toggle. The `admin_list_users()` SQL function only returns `id`, `email`, and `created_at` from `auth.users`.
 
-Add two new state variables: `fullName` and `phone`.
+## Changes Required
 
-Add a phone formatting helper that auto-formats input as `(555) 555-5555` while the user types.
+### 1. Database: Expand `admin_list_users` function
 
-Update the `authSchema` to a `signupSchema` variant that adds:
-- `fullName`: string, min 2 chars, regex to reject digits
-- `phone`: string, matches US phone pattern `(XXX) XXX-XXXX`
+Replace the existing function to return more user data:
+- `id`, `email`, `created_at`, `last_sign_in_at`, `email_confirmed_at`
+- `banned_until` (Supabase's built-in user banning field)
+- `raw_user_meta_data` (contains full_name from signup)
 
-Add the two new fields to the Sign Up tab content, ordered: Full Name, Phone, Email, Password, Create Account button. The Login tab stays unchanged.
+This stays as a `SECURITY DEFINER` function so only admins can call it, and it safely reads from `auth.users`.
 
-After successful `signUp()`, immediately update the profile with `full_name` and `phone`:
+### 2. Database: Create admin edge functions for privileged operations
+
+Three operations require the Supabase **service role key** (not the anon key), so they must be edge functions:
+
+**Edge Function: `admin-user-actions`**
+Handles three actions via a POST body `{ action, userId }`:
+
+- **`reset-password`**: Calls `supabase.auth.admin.generateLink({ type: 'recovery', email })` and returns the reset link, OR uses `resetPasswordForEmail` to send the email directly. The admin can then share the link or trigger the email.
+- **`ban-user`**: Calls `supabase.auth.admin.updateUserById(userId, { ban_duration: 'none' | '876000h' })` to lock/unlock accounts. Supabase uses `banned_until` internally.
+- **`delete-user`**: Calls `supabase.auth.admin.deleteUser(userId)`. This cascades to delete the profile and all related data.
+
+The edge function validates that the calling user is an admin using the `has_role` check before performing any action.
+
+### 3. Frontend: New `UsersTab` component
+
+Extract the Users tab into its own component file `src/components/admin/UsersTab.tsx` for cleanliness. Features:
+
+**User list table columns:**
+- Full Name (from profile or user metadata)
+- Email
+- Phone (from profile)
+- Joined date
+- Last sign-in
+- Status (Active / Locked / Unconfirmed)
+- Role (Admin badge)
+- Tier (Free/Paid toggle)
+- Actions dropdown
+
+**Expandable row or detail dialog:**
+Clicking a user row opens a detail dialog showing:
+- All profile fields: income, debt payments, housing, insurance, living expenses, emergency fund, filing status, insurance coverage, financial goals, stress indicators, scores, tier, gamification stats
+- Assessment count and last assessment date
+- Plan count
+
+**Actions dropdown per user:**
+- Toggle Admin role (existing)
+- Toggle Tier (existing)
+- Send Password Reset Email -- calls the edge function, shows confirmation toast
+- Lock/Unlock Account -- calls the edge function, toggles `banned_until`, shows confirmation
+- Delete User -- shows a destructive confirmation dialog ("This will permanently delete the user and all their data"), calls the edge function
+
+**Search/filter bar:**
+- Text search filtering by name or email
+- Filter by status (All / Active / Locked)
+- Filter by tier (All / Free / Paid)
+
+### 4. Update `admin_list_users` to include profile data via JOIN
+
+Instead of making separate queries, update the SQL function to JOIN profiles:
 
 ```text
-1. Call signUp(email, password)
-2. If success, call supabase.from('profiles').update({ full_name, phone }).eq('id', newUser.id)
-3. If profile update fails, show error -- don't clear the form
+SELECT au.id, au.email, au.created_at, au.last_sign_in_at,
+       au.banned_until, au.raw_user_meta_data,
+       p.full_name, p.phone, p.monthly_income, p.filing_status,
+       p.onboarding_completed, p.rprx_score_total, p.current_tier,
+       p.total_points_earned, p.current_streak
+FROM auth.users au
+LEFT JOIN public.profiles p ON p.id = au.id
+ORDER BY au.created_at DESC
 ```
-
-Since `useProfile` auto-creates the profile row on first query, and `signUp` returns the user object, we can update right after signup. However, Supabase email confirmation may be enabled -- if so, the user won't have a session yet. To handle this:
-- After `signUp`, use `supabase.auth.getUser()` or check if the returned `data.user` exists
-- If the user ID is available (even pre-confirmation), upsert `full_name` and `phone` into profiles
-- If not (email confirmation required), store `full_name` and `phone` in `signUp`'s `options.data` metadata, then write them to profiles on first login via the Google OAuth interstitial logic (or a similar check)
-
-Simpler approach: Use Supabase's `signUp` metadata option to store full_name and phone in `auth.users.raw_user_meta_data`, then when `useProfile` creates the profile row (on first fetch after email confirmation), pull those values from `user.user_metadata` and include them in the insert.
-
-### 2. Update useProfile.ts -- Populate profile from user metadata on creation
-
-In the `useProfile` hook where it creates a new profile (lines 86-95), pull `full_name` and `phone` from `user.user_metadata`:
-
-```text
-const metadata = user.user_metadata || {};
-const profileData = {
-  id: user.id,
-  full_name: metadata.full_name || metadata.name || null,
-  phone: metadata.phone || null,
-};
-// Insert with these values instead of bare { id: user.id }
-```
-
-This handles both email signup (where we stored them in metadata) and Google OAuth (where Google provides `name` / `full_name` automatically).
-
-### 3. Update useAuth.ts -- Pass metadata in signUp
-
-Modify the `signUp` function to accept `fullName` and `phone` parameters and include them in `options.data`:
-
-```text
-const signUp = async (email: string, password: string, fullName?: string, phone?: string) => {
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: redirectUrl,
-      data: { full_name: fullName, phone },
-    },
-  });
-  return { error };
-};
-```
-
-### 4. Create PhoneInterstitial component + route
-
-New file: `src/pages/CompletePhone.tsx`
-
-A simple single-field screen:
-- Heading: "One more thing..."
-- Subtext: "We need your phone number to complete your profile"
-- Phone input with auto-formatting (same helper as signup)
-- "Continue" button that writes phone to profiles and navigates to `/`
-- Cannot be skipped (no skip link, no other navigation)
-
-### 5. Add route in App.tsx
-
-Add `/complete-phone` as a protected route:
-```text
-<Route path="/complete-phone" element={<ProtectedRoute><CompletePhone /></ProtectedRoute>} />
-```
-
-### 6. Update Index.tsx -- Check for missing phone after Google OAuth
-
-In `Index.tsx`, after confirming user is authenticated and profile is loaded, add a check:
-- If `profile.phone` is null or empty, redirect to `/complete-phone` instead of `/profile` or `/dashboard`
-- This catches Google OAuth users who have `full_name` (from Google metadata) but no phone
-
-### 7. Phone formatting helper
-
-Create `src/lib/phoneFormat.ts` with:
-- `formatPhone(value: string): string` -- strips non-digits, formats as `(XXX) XXX-XXXX`
-- `isValidUSPhone(value: string): boolean` -- checks for 10 digits after stripping formatting
-
-Used by both the signup form and the phone interstitial.
 
 ## File Summary
 
 | File | Action |
 |------|--------|
-| `src/lib/phoneFormat.ts` | New -- phone formatting utility |
-| `src/hooks/useAuth.ts` | Edit -- add fullName/phone params to signUp |
-| `src/hooks/useProfile.ts` | Edit -- populate full_name/phone from user metadata on profile creation |
-| `src/pages/Auth.tsx` | Edit -- add Full Name + Phone fields to signup tab |
-| `src/pages/CompletePhone.tsx` | New -- phone interstitial for Google OAuth users |
-| `src/App.tsx` | Edit -- add /complete-phone route |
-| `src/pages/Index.tsx` | Edit -- redirect to /complete-phone if phone is missing |
+| Migration SQL | Alter -- replace `admin_list_users` function with expanded version |
+| `supabase/functions/admin-user-actions/index.ts` | New -- edge function for reset password, ban, delete |
+| `src/components/admin/UsersTab.tsx` | New -- extracted and expanded Users tab component |
+| `src/pages/AdminPanel.tsx` | Edit -- import `UsersTab`, replace inline users tab content |
 
-## Key Decisions
+## Security
 
-- **Metadata approach**: Store full_name and phone in `auth.users.raw_user_meta_data` during signup, then pull them when the profile row is first created. This avoids timing issues with email confirmation.
-- **Google OAuth**: Google provides `name` in metadata automatically. Phone is never provided by Google, so the interstitial is always shown for new Google users.
-- **No database migration needed**: Both columns already exist in the profiles table.
+- The edge function validates admin role server-side before any action
+- The `admin_list_users` function remains `SECURITY DEFINER` so it can read `auth.users`
+- Delete and ban operations use the service role key only inside the edge function
+- The admin cannot delete or ban themselves (guard in edge function)
+- Confirmation dialogs prevent accidental destructive actions
+
+## Technical Notes
+
+- Supabase's `banned_until` field is the built-in mechanism for locking users. Setting it to a far-future date effectively locks the account. Setting it to `null` unlocks it.
+- Password reset sends a standard Supabase recovery email to the user -- the admin does not see or set the new password.
+- User deletion cascades via the `ON DELETE CASCADE` foreign key on `profiles.id -> auth.users.id` (if configured), plus RLS-protected child tables.
+
