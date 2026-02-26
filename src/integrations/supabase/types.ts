@@ -1077,9 +1077,37 @@ export type Database = {
       admin_list_users: {
         Args: never
         Returns: {
+          banned_until: string
           created_at: string
+          current_streak: number
+          current_tier: string
+          disability_insurance: boolean
           email: string
+          email_confirmed_at: string
+          emergency_fund_balance: number
+          filing_status: string
+          financial_goals: string[]
+          full_name: string
+          health_insurance: boolean
           id: string
+          last_sign_in_at: string
+          life_insurance: boolean
+          long_term_care_insurance: boolean
+          monthly_debt_payments: number
+          monthly_housing: number
+          monthly_income: number
+          monthly_insurance: number
+          monthly_living_expenses: number
+          no_insurance: boolean
+          onboarding_completed: boolean
+          phone: string
+          raw_user_meta_data: Json
+          rprx_grade: string
+          rprx_score_total: number
+          stress_control_feeling: string
+          stress_emergency_confidence: string
+          stress_money_worry: string
+          total_points_earned: number
         }[]
       }
       get_subscription_tier: { Args: { _user_id: string }; Returns: string }
