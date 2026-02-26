@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import rprxLogo from '@/assets/rprx-logo.png';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ type AuthView = 'login' | 'forgot-password';
 const Auth = () => {
   const navigate = useNavigate();
   const { user, loading, signIn, signUp, signInWithGoogle, resetPasswordForEmail } = useAuth();
+  const justSignedUp = useRef(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -74,7 +76,7 @@ const Auth = () => {
   };
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && !justSignedUp.current) {
       navigate('/', { replace: true });
     }
   }, [user, loading, navigate]);
@@ -120,6 +122,13 @@ const Auth = () => {
             setError(error.message);
           }
         } else {
+          // Check if auto-login occurred (immediate_login_after_signup)
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            justSignedUp.current = true;
+            navigate('/wizard', { replace: true });
+            return;
+          }
           setSuccess('Account created! Please check your email to confirm your account.');
           setEmail('');
           setPassword('');
