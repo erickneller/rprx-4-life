@@ -43,6 +43,12 @@ export interface OnboardingProgress {
   reflections: Record<string, string>;
   status: string;
   completed_at: string | null;
+  last_completed_date: string | null;
+}
+
+export interface DayAvailability {
+  currentDay: number;
+  isLocked: boolean;
 }
 
 // ── Phase mapping ──────────────────────────────────────────────────
@@ -53,6 +59,33 @@ function getPhaseForDay(day: number): string {
   if (day <= 18) return 'second_win';
   if (day <= 25) return 'identity';
   return 'vision';
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
+
+function getLocalDateString(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+function mapContent(row: any): OnboardingContent {
+  return {
+    id: row.id,
+    day_number: row.day_number,
+    phase: row.phase,
+    horseman_type: row.horseman_type,
+    content_type: row.content_type,
+    title: row.title,
+    body: row.body,
+    action_text: row.action_text,
+    action_type: row.action_type,
+    action_target: row.action_target,
+    quiz_data: row.quiz_data as QuizData | null,
+    points_reward: row.points_reward,
+    estimated_minutes: row.estimated_minutes,
+    sort_order: row.sort_order,
+    is_active: row.is_active,
+  };
 }
 
 // ── Core Functions ─────────────────────────────────────────────────
@@ -86,6 +119,73 @@ export async function getOnboardingContent(
   return universal ? mapContent(universal) : null;
 }
 
+/**
+ * Fetch just the title of a given day's content for the locked teaser.
+ */
+export async function getNextDayTitle(
+  dayNumber: number,
+  primaryHorseman: string
+): Promise<string | null> {
+  if (dayNumber < 1 || dayNumber > 30) return null;
+
+  const { data: specific } = await (supabase as any)
+    .from('onboarding_content')
+    .select('title')
+    .eq('day_number', dayNumber)
+    .eq('horseman_type', primaryHorseman)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (specific) return specific.title;
+
+  const { data: universal } = await (supabase as any)
+    .from('onboarding_content')
+    .select('title')
+    .eq('day_number', dayNumber)
+    .eq('horseman_type', 'universal')
+    .eq('is_active', true)
+    .maybeSingle();
+
+  return universal?.title ?? null;
+}
+
+/**
+ * Determine what day the user should see and whether it's locked.
+ *
+ * Rules:
+ * - If no days completed → Day 1, unlocked
+ * - If last_completed_date is null → treat as today (locked)
+ * - If today > last_completed_date → next day unlocked
+ * - If today <= last_completed_date → locked (come back tomorrow)
+ */
+export function getAvailableDay(
+  progress: OnboardingProgress
+): DayAvailability {
+  const completedDays = progress.completed_days || [];
+
+  if (completedDays.length === 0) {
+    return { currentDay: 1, isLocked: false };
+  }
+
+  const lastCompleted = Math.max(...completedDays);
+  const today = getLocalDateString();
+  // Treat null as today per spec — existing users with null wait one calendar day
+  const lastDate = progress.last_completed_date || today;
+
+  if (lastCompleted >= 30) {
+    // Journey complete
+    return { currentDay: 30, isLocked: false };
+  }
+
+  if (today > lastDate) {
+    // New calendar day — unlock next
+    return { currentDay: lastCompleted + 1, isLocked: false };
+  }
+
+  // Same day or clock skew — locked
+  return { currentDay: lastCompleted, isLocked: true };
+}
+
 // Only call this from explicit user action — never from background events, plan generation, or page load.
 export async function completeDay(
   userId: string,
@@ -104,31 +204,29 @@ export async function completeDay(
 
   const completedDays = [...(progress.completed_days as number[])];
   if (completedDays.includes(dayNumber)) return; // Already completed — no-op
-  if (!completedDays.includes(dayNumber)) {
-    completedDays.push(dayNumber);
-  }
+  completedDays.push(dayNumber);
 
   const newPhase = getPhaseForDay(dayNumber);
   const nextDay = Math.min(dayNumber + 1, 30);
+  const today = getLocalDateString();
 
   // Calculate streak
-  const today = new Date().toISOString().slice(0, 10);
-  const startDate = new Date(progress.onboarding_start_date);
-  const todayDate = new Date(today);
-  const daysSinceStart = Math.floor((todayDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  
-  // Streak: if yesterday's day was also completed or this is the first day
+  const lastDate = progress.last_completed_date;
   let newStreak = progress.streak_count || 0;
   if (completedDays.length === 1) {
     newStreak = 1;
-  } else {
-    // Check if last completion was yesterday or today
-    const prevDay = dayNumber - 1;
-    if (completedDays.includes(prevDay) || daysSinceStart <= completedDays.length) {
+  } else if (lastDate) {
+    // Check if last completion was yesterday
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    if (lastDate === yesterdayStr || lastDate === today) {
       newStreak = (progress.streak_count || 0) + 1;
     } else {
       newStreak = 1;
     }
+  } else {
+    newStreak = 1;
   }
 
   // Build updates
@@ -138,6 +236,7 @@ export async function completeDay(
     current_phase: newPhase,
     streak_count: newStreak,
     total_points_earned: (progress.total_points_earned || 0) + content.points_reward,
+    last_completed_date: today,
   };
 
   // Save quiz answers
@@ -189,26 +288,8 @@ export async function completeDay(
   await checkOnboardingBadges(userId, dayNumber, completedDays);
 }
 
-export function getAvailableDay(
-  progress: OnboardingProgress
-): number {
-  const completedDays = progress.completed_days || [];
-  const startDate = new Date(progress.onboarding_start_date);
-  const today = new Date(new Date().toISOString().slice(0, 10));
-  const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  const maxAccessibleDay = Math.min(daysSinceStart, 30);
-
-  // Find lowest uncompleted day up to maxAccessibleDay
-  for (let d = 1; d <= maxAccessibleDay; d++) {
-    if (!completedDays.includes(d)) return d;
-  }
-
-  // All accessible days completed — return next day if available
-  return Math.min(maxAccessibleDay + 1, 30);
-}
-
 export async function startOnboarding(userId: string): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateString();
 
   // Upsert — skip if record already exists
   await (supabase as any)
@@ -280,26 +361,4 @@ async function awardBadge(
       points_earned: badge.points,
     }]);
   }
-}
-
-// ── Helpers ────────────────────────────────────────────────────────
-
-function mapContent(row: any): OnboardingContent {
-  return {
-    id: row.id,
-    day_number: row.day_number,
-    phase: row.phase,
-    horseman_type: row.horseman_type,
-    content_type: row.content_type,
-    title: row.title,
-    body: row.body,
-    action_text: row.action_text,
-    action_type: row.action_type,
-    action_target: row.action_target,
-    quiz_data: row.quiz_data as QuizData | null,
-    points_reward: row.points_reward,
-    estimated_minutes: row.estimated_minutes,
-    sort_order: row.sort_order,
-    is_active: row.is_active,
-  };
 }

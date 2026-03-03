@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Star, Flame, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, Star, Flame, Loader2, Lock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { OnboardingQuiz } from './OnboardingQuiz';
@@ -36,6 +36,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
     currentPhase, streak, totalPoints,
     isTodayCompleted, completeToday, isCompleting,
     reflections, quizAnswers,
+    isLocked, nextDayNumber, nextDayTitle,
   } = useOnboarding();
 
   const [localCompleted, setLocalCompleted] = useState(false);
@@ -46,7 +47,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
 
   if (isLoading || !isOnboarding || isCompleted || !todayContent) return null;
 
-  const isDone = isTodayCompleted || localCompleted;
+  const isDone = isTodayCompleted || localCompleted || isLocked;
   const phaseLabel = PHASE_LABELS[currentPhase] || currentPhase;
   const isMilestone = todayContent.content_type === 'milestone';
   const isQuiz = todayContent.content_type === 'quiz';
@@ -77,25 +78,45 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
 
   return (
     <Card className="relative overflow-hidden border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30">
-      {/* Done overlay */}
+      {/* Done / Locked overlay */}
       {isDone && (
-        <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center gap-2">
+        <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center gap-3 px-6">
           <CheckCircle2 className="h-10 w-10 text-green-500" />
           <p className="font-semibold text-green-700 dark:text-green-400">Day {currentDay} Complete!</p>
-          <p className="text-sm text-muted-foreground">Come back tomorrow for Day {Math.min(currentDay + 1, 30)}</p>
+
+          {/* Locked teaser for next day */}
+          {isLocked && nextDayNumber && nextDayNumber <= 30 && (
+            <div className="mt-2 w-full max-w-sm rounded-lg border border-muted bg-card/80 p-4 text-center space-y-2">
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Lock className="h-4 w-4" />
+                <span className="text-xs font-medium uppercase tracking-wide">Unlocks tomorrow</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-bold text-sm text-muted-foreground shrink-0">
+                  {nextDayNumber}
+                </div>
+                <p className="text-sm font-medium text-foreground">
+                  {nextDayTitle || `Day ${nextDayNumber}`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Already at day 30 and completed */}
+          {!isLocked && !nextDayNumber && (
+            <p className="text-sm text-muted-foreground">Come back tomorrow for Day {Math.min(currentDay + 1, 30)}</p>
+          )}
         </div>
       )}
 
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Day counter circle */}
             <div className="h-10 w-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
               {currentDay}
             </div>
             <div>
               <p className="font-semibold text-sm">Day {currentDay} of 30 — {phaseLabel}</p>
-              {/* Phase dots */}
               <div className="flex gap-1.5 mt-1">
                 {PHASE_ORDER.map((p) => (
                   <div
@@ -174,7 +195,6 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
               <Button
                 onClick={async () => {
                   await dayOneCTA.action();
-                  // Only mark Day 1 complete when user explicitly clicks "View My Money Leak"
                   if (dayOneCTA.state === 'view_leak') {
                     await completeToday();
                     setLocalCompleted(true);
