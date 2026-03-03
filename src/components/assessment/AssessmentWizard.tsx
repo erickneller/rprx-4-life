@@ -11,6 +11,8 @@ import { MultiSelectQuestion } from './MultiSelectQuestion';
 import { ExitAssessmentDialog } from './ExitAssessmentDialog';
 import { useAssessmentQuestions } from '@/hooks/useAssessmentQuestions';
 import { useAssessment } from '@/hooks/useAssessment';
+import { useSendMessage } from '@/hooks/useSendMessage';
+import { useCreatePlan } from '@/hooks/usePlans';
 import { getHorsemanLabel } from '@/lib/scoringEngine';
 
 interface AssessmentWizardProps {
