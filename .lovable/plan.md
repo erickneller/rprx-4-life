@@ -1,72 +1,78 @@
 
 
-# Fix: Migrate Stale Label Values in Existing Profiles
+# Calendar-Day Unlock Logic for Onboarding
 
-## Diagnosis
+## Summary
 
-The wizard code fix **did work correctly**. The constants already use `{ value, label }` pairs, and all Select/OptionCard components store `.value` (the snake_case key), not `.label`.
+Replace the current `onboarding_start_date`-based day gating with a `last_completed_date`-based calendar unlock system. The column already exists in the DB (no migration needed). Three files change.
 
-Evidence from the database:
-- **Newer profiles** (created after the fix) have correct values: `married_jointly`, `not_sure`, `never`, `very_confident`, `somewhat`
-- **One older profile** (`793102fe`) still has stale label strings: `"Married Filing Jointly"`, `"Not Applicable"`, `"Somewhat Confident"`, `"Not at All"`, `"Sometimes"`
+## Changes
 
-This is leftover data from before the fix was deployed. No code change is needed -- only a **data migration** to clean up existing rows.
+### 1. `src/lib/onboardingEngine.ts`
 
-## Fix: One-Time SQL Migration
+**A. Update `OnboardingProgress` type** — add `last_completed_date: string | null`
 
-Run a single SQL migration that updates all profiles where these fields contain display labels instead of snake_case keys:
+**B. Update `completeDay()`** — write `last_completed_date: today's local date` alongside existing updates
+
+**C. Replace `getAvailableDay()`** with new calendar-based logic:
 
 ```text
-UPDATE profiles SET
-  filing_status = CASE filing_status
-    WHEN 'Single' THEN 'single'
-    WHEN 'Married Filing Jointly' THEN 'married_jointly'
-    WHEN 'Married Filing Separately' THEN 'married_separately'
-    WHEN 'Head of Household' THEN 'head_of_household'
-    ELSE filing_status
-  END,
-  employer_match_captured = CASE employer_match_captured
-    WHEN 'Yes' THEN 'yes'
-    WHEN 'No' THEN 'no'
-    WHEN 'Not Applicable' THEN 'na'
-    WHEN 'Not Sure' THEN 'not_sure'
-    ELSE employer_match_captured
-  END,
-  stress_money_worry = CASE stress_money_worry
-    WHEN 'Never' THEN 'never'
-    WHEN 'Sometimes' THEN 'sometimes'
-    WHEN 'Often' THEN 'often'
-    WHEN 'Always' THEN 'always'
-    ELSE stress_money_worry
-  END,
-  stress_emergency_confidence = CASE stress_emergency_confidence
-    WHEN 'Not Confident' THEN 'not_confident'
-    WHEN 'Somewhat Confident' THEN 'somewhat_confident'
-    WHEN 'Very Confident' THEN 'very_confident'
-    WHEN 'Completely Confident' THEN 'completely_confident'
-    ELSE stress_emergency_confidence
-  END,
-  stress_control_feeling = CASE stress_control_feeling
-    WHEN 'Not at All' THEN 'not_at_all'
-    WHEN 'Somewhat' THEN 'somewhat'
-    WHEN 'Mostly' THEN 'mostly'
-    WHEN 'Completely' THEN 'completely'
-    ELSE stress_control_feeling
-  END
-WHERE
-  filing_status IN ('Single','Married Filing Jointly','Married Filing Separately','Head of Household')
-  OR employer_match_captured IN ('Yes','No','Not Applicable','Not Sure')
-  OR stress_money_worry IN ('Never','Sometimes','Often','Always')
-  OR stress_emergency_confidence IN ('Not Confident','Somewhat Confident','Very Confident','Completely Confident')
-  OR stress_control_feeling IN ('Not at All','Somewhat','Mostly','Completely');
+Input: progress (with completed_days, last_completed_date)
+Output: { currentDay: number, isLocked: boolean }
+
+lastCompleted = max(progress.completed_days) or 0
+lastDate = progress.last_completed_date (treat null as today's date)
+today = local date string (YYYY-MM-DD)
+
+if lastCompleted === 0 → return { currentDay: 1, isLocked: false }
+if today > lastDate → return { currentDay: lastCompleted + 1, isLocked: false }
+if today === lastDate → return { currentDay: lastCompleted, isLocked: true }
+// Edge case: today < lastDate (clock skew) → treat as locked
 ```
 
-## Changes Summary
+**D. Add `getNextDayContent()` helper** — fetches the title only of day N+1 for the locked teaser. Can reuse `getOnboardingContent()` but only return the title.
 
-| What | Action |
-|------|--------|
-| Wizard code (`ProfileWizard.tsx`) | No change needed -- already correct |
-| Profile page (`Profile.tsx`) | No change needed -- already correct |
-| Database migration | Run the UPDATE query above to fix stale rows |
+### 2. `src/hooks/useOnboarding.ts`
 
-This is safe because the `ELSE` clause preserves any values that are already correct. No code files change.
+**A. Update progress query** — include `last_completed_date` in the mapped type
+
+**B. Use new `getAvailableDay` return shape** — destructure `{ currentDay, isLocked }` instead of just a number
+
+**C. Fetch next day content** — when `isLocked === true`, also fetch day N+1 content title for the teaser card
+
+**D. Expose new fields** — add `isLocked`, `nextDayTitle`, `nextDayNumber` to the return object
+
+### 3. `src/components/onboarding/OnboardingCard.tsx`
+
+**A. Handle locked state** — when `isLocked && isDone`, show a different overlay:
+- Green checkmark + "Day N Complete!"
+- Below: locked card showing day N+1 number, title, and "🔒 Unlocks tomorrow"
+- No body text, no CTA button
+
+**B. When `isLocked && !isDone`** — this shouldn't happen (locked means today's day was already completed), but guard against it by showing the completed overlay
+
+**C. Remove the generic "Come back tomorrow for Day X" text** — replace with the structured teaser card described above
+
+## Data flow
+
+```text
+completeDay(n) → writes last_completed_date = today
+                                ↓
+Next app load → getAvailableDay reads last_completed_date
+                                ↓
+  today > last_completed_date? → unlock day n+1, render active
+  today === last_completed_date? → stay locked, show teaser
+```
+
+## Edge cases
+
+- `last_completed_date = null` (existing users): treat as today → locked state, which forces them to wait one calendar day. Per user's instruction: "treat null as today's date for unlock calculation."
+- Day 30 completed: journey status = 'completed', card doesn't render at all (existing behavior)
+- Multiple days missed: user catches up one day at a time (each completion locks until next calendar day)
+
+## Files Modified
+
+- `src/lib/onboardingEngine.ts` — new unlock logic, write `last_completed_date`
+- `src/hooks/useOnboarding.ts` — expose locked state and next-day teaser
+- `src/components/onboarding/OnboardingCard.tsx` — locked teaser UI
+
