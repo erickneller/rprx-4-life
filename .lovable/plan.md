@@ -1,72 +1,69 @@
 
 
-# Fix: Migrate Stale Label Values in Existing Profiles
+# Defensive Hardening for Onboarding Day Completion
 
-## Diagnosis
+## Assessment Summary
 
-The wizard code fix **did work correctly**. The constants already use `{ value, label }` pairs, and all Select/OptionCard components store `.value` (the snake_case key), not `.label`.
+After auditing all code paths, the three reported concerns are either already absent or already fixed:
 
-Evidence from the database:
-- **Newer profiles** (created after the fix) have correct values: `married_jointly`, `not_sure`, `never`, `very_confident`, `somewhat`
-- **One older profile** (`793102fe`) still has stale label strings: `"Married Filing Jointly"`, `"Not Applicable"`, `"Somewhat Confident"`, `"Not at All"`, `"Sometimes"`
+| Concern | Status | Details |
+|---------|--------|---------|
+| Plan generation triggering completeDay | Not present | `autoGenerateStrategy` and `useDayOneCTA` never call completion functions |
+| Day 2 auto-completing on arrival | Fixed previously | The `localCompleted` reset `useEffect` on `currentDay` change handles this |
+| Day 2 showing all horsemen | Not present | `getOnboardingContent()` already filters by horseman then falls back to universal |
 
-This is leftover data from before the fix was deployed. No code change is needed -- only a **data migration** to clean up existing rows.
+## Proposed Defensive Changes
 
-## Fix: One-Time SQL Migration
+Even though the bugs aren't currently present, the user's spec requests explicit safeguards and documentation to prevent future regressions. The following changes add guardrails without altering functionality.
 
-Run a single SQL migration that updates all profiles where these fields contain display labels instead of snake_case keys:
+### 1. Add protective comment to `completeDay()` in `onboardingEngine.ts`
 
-```text
-UPDATE profiles SET
-  filing_status = CASE filing_status
-    WHEN 'Single' THEN 'single'
-    WHEN 'Married Filing Jointly' THEN 'married_jointly'
-    WHEN 'Married Filing Separately' THEN 'married_separately'
-    WHEN 'Head of Household' THEN 'head_of_household'
-    ELSE filing_status
-  END,
-  employer_match_captured = CASE employer_match_captured
-    WHEN 'Yes' THEN 'yes'
-    WHEN 'No' THEN 'no'
-    WHEN 'Not Applicable' THEN 'na'
-    WHEN 'Not Sure' THEN 'not_sure'
-    ELSE employer_match_captured
-  END,
-  stress_money_worry = CASE stress_money_worry
-    WHEN 'Never' THEN 'never'
-    WHEN 'Sometimes' THEN 'sometimes'
-    WHEN 'Often' THEN 'often'
-    WHEN 'Always' THEN 'always'
-    ELSE stress_money_worry
-  END,
-  stress_emergency_confidence = CASE stress_emergency_confidence
-    WHEN 'Not Confident' THEN 'not_confident'
-    WHEN 'Somewhat Confident' THEN 'somewhat_confident'
-    WHEN 'Very Confident' THEN 'very_confident'
-    WHEN 'Completely Confident' THEN 'completely_confident'
-    ELSE stress_emergency_confidence
-  END,
-  stress_control_feeling = CASE stress_control_feeling
-    WHEN 'Not at All' THEN 'not_at_all'
-    WHEN 'Somewhat' THEN 'somewhat'
-    WHEN 'Mostly' THEN 'mostly'
-    WHEN 'Completely' THEN 'completely'
-    ELSE stress_control_feeling
-  END
-WHERE
-  filing_status IN ('Single','Married Filing Jointly','Married Filing Separately','Head of Household')
-  OR employer_match_captured IN ('Yes','No','Not Applicable','Not Sure')
-  OR stress_money_worry IN ('Never','Sometimes','Often','Always')
-  OR stress_emergency_confidence IN ('Not Confident','Somewhat Confident','Very Confident','Completely Confident')
-  OR stress_control_feeling IN ('Not at All','Somewhat','Mostly','Completely');
+Add the requested comment above the `completeDay` function:
+
+```typescript
+// Only call this from explicit user action -- never from background events, plan generation, or page load.
+export async function completeDay(...) { ... }
 ```
 
-## Changes Summary
+### 2. Add duplicate-completion guard in `completeDay()`
 
-| What | Action |
-|------|--------|
-| Wizard code (`ProfileWizard.tsx`) | No change needed -- already correct |
-| Profile page (`Profile.tsx`) | No change needed -- already correct |
-| Database migration | Run the UPDATE query above to fix stale rows |
+Early-return if the day is already in `completed_days`:
 
-This is safe because the `ELSE` clause preserves any values that are already correct. No code files change.
+```typescript
+const completedDays = [...(progress.completed_days as number[])];
+if (completedDays.includes(dayNumber)) return; // Already completed -- no-op
+```
+
+This prevents double-completion if the function is accidentally called twice for the same day.
+
+### 3. Add guard in `useOnboarding` mutation
+
+Add a check in the `completeToday` mutation to bail out if the day is already completed:
+
+```typescript
+mutationFn: async (response?: unknown) => {
+  if (!user || !availableDay || !todayContent) throw new Error('No content');
+  // Guard: never re-complete a day
+  if (progress?.completed_days.includes(availableDay)) return;
+  await completeDay(user.id, availableDay, todayContent, response);
+},
+```
+
+### 4. Confirm `autoGenerateStrategy` has no completion side effects
+
+Add a comment in `autoStrategyGenerator.ts` at the end of the function to make the boundary explicit:
+
+```typescript
+// NOTE: This function ONLY generates and saves the plan.
+// Day completion is handled separately by explicit user action in OnboardingCard.
+return plan;
+```
+
+### Files Modified
+
+- `src/lib/onboardingEngine.ts` -- add comment and duplicate guard
+- `src/hooks/useOnboarding.ts` -- add already-completed guard in mutation
+- `src/lib/autoStrategyGenerator.ts` -- add clarifying comment
+
+No functional behavior changes. These are purely defensive safeguards and documentation.
+
