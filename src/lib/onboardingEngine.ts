@@ -86,6 +86,7 @@ export async function getOnboardingContent(
   return universal ? mapContent(universal) : null;
 }
 
+// Only call this from explicit user action — never from background events, plan generation, or page load.
 export async function completeDay(
   userId: string,
   dayNumber: number,
