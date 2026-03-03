@@ -86,6 +86,7 @@ export async function getOnboardingContent(
   return universal ? mapContent(universal) : null;
 }
 
+// Only call this from explicit user action — never from background events, plan generation, or page load.
 export async function completeDay(
   userId: string,
   dayNumber: number,
@@ -102,6 +103,7 @@ export async function completeDay(
   if (!progress) return;
 
   const completedDays = [...(progress.completed_days as number[])];
+  if (completedDays.includes(dayNumber)) return; // Already completed — no-op
   if (!completedDays.includes(dayNumber)) {
     completedDays.push(dayNumber);
   }
