@@ -23,6 +23,8 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   const navigate = useNavigate();
   const [showExitDialog, setShowExitDialog] = useState(false);
   const { data: questions = [], isLoading: questionsLoading } = useAssessmentQuestions();
+  const { sendMessage } = useSendMessage();
+  const { mutateAsync: createPlan } = useCreatePlan();
 
   const {
     phase,
