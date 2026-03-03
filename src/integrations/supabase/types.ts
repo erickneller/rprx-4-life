@@ -978,6 +978,7 @@ export type Database = {
           current_day: number
           current_phase: string
           id: string
+          last_completed_date: string | null
           onboarding_start_date: string
           quiz_answers: Json
           reflections: Json
@@ -994,6 +995,7 @@ export type Database = {
           current_day?: number
           current_phase?: string
           id?: string
+          last_completed_date?: string | null
           onboarding_start_date: string
           quiz_answers?: Json
           reflections?: Json
@@ -1010,6 +1012,7 @@ export type Database = {
           current_day?: number
           current_phase?: string
           id?: string
+          last_completed_date?: string | null
           onboarding_start_date?: string
           quiz_answers?: Json
           reflections?: Json
