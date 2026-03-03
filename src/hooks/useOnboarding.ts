@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import {
   getOnboardingContent,
+  getNextDayTitle,
   getAvailableDay,
   startOnboarding,
   completeDay,
@@ -31,6 +32,7 @@ export function useOnboarding() {
         completed_days: (data.completed_days || []) as number[],
         quiz_answers: (data.quiz_answers || {}) as Record<string, unknown>,
         reflections: (data.reflections || {}) as Record<string, string>,
+        last_completed_date: data.last_completed_date as string | null,
       } as OnboardingProgress;
     },
     enabled: !!user,
@@ -75,16 +77,27 @@ export function useOnboarding() {
     }
   }, [user, hasAssessment, progress, progressLoading, qc]);
 
-  // Compute available day
-  const availableDay = progress && progress.status === 'active'
+  // Compute available day with lock status
+  const dayAvailability = progress && progress.status === 'active'
     ? getAvailableDay(progress)
     : null;
+
+  const availableDay = dayAvailability?.currentDay ?? null;
+  const isLocked = dayAvailability?.isLocked ?? false;
 
   // Fetch today's content
   const { data: todayContent } = useQuery({
     queryKey: ['onboarding-content', availableDay, primaryHorseman],
     queryFn: () => getOnboardingContent(availableDay!, primaryHorseman || 'universal'),
     enabled: !!availableDay && !!primaryHorseman,
+  });
+
+  // Fetch next day title when locked (for teaser)
+  const nextDayNumber = isLocked && availableDay ? Math.min(availableDay + 1, 30) : null;
+  const { data: nextDayTitle } = useQuery({
+    queryKey: ['onboarding-next-title', nextDayNumber, primaryHorseman],
+    queryFn: () => getNextDayTitle(nextDayNumber!, primaryHorseman || 'universal'),
+    enabled: !!nextDayNumber && !!primaryHorseman,
   });
 
   // Check if today is already completed
@@ -103,6 +116,7 @@ export function useOnboarding() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['onboarding-progress'] });
       qc.invalidateQueries({ queryKey: ['onboarding-content'] });
+      qc.invalidateQueries({ queryKey: ['onboarding-next-title'] });
       qc.invalidateQueries({ queryKey: ['profile'] });
       qc.invalidateQueries({ queryKey: ['user-badges'] });
     },
@@ -125,6 +139,9 @@ export function useOnboarding() {
     totalPoints: progress?.total_points_earned || 0,
     progress: progressPercent,
     isTodayCompleted,
+    isLocked,
+    nextDayNumber,
+    nextDayTitle: nextDayTitle || null,
     completeToday: (response?: unknown) => completeMutation.mutateAsync(response),
     isCompleting: completeMutation.isPending,
     reflections: progress?.reflections || {},
