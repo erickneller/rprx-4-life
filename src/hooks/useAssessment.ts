@@ -4,13 +4,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateHorsemanScores, determinePrimaryHorseman } from '@/lib/scoringEngine';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
+import { calculateInitialLeakEstimate } from '@/lib/moneyLeakEstimator';
 import { startOnboarding } from '@/lib/onboardingEngine';
+import { autoGenerateStrategy } from '@/lib/autoStrategyGenerator';
 import { useProfile } from '@/hooks/useProfile';
 import { useGamification } from '@/hooks/useGamification';
 import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
+import { toast } from '@/hooks/use-toast';
 import type { AssessmentQuestion, AssessmentState } from '@/lib/assessmentTypes';
 import type { HorsemanType } from '@/lib/scoringEngine';
 import type { CashFlowStatus } from '@/lib/cashFlowCalculator';
+import type { SavedPlan, CreatePlanInput } from '@/hooks/usePlans';
 
 export type AssessmentPhase = 'core' | 'transition' | 'deep_dive';
 
@@ -23,7 +27,12 @@ export interface DeepDiveQuestionItem {
   order_index: number;
 }
 
-export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?: string) {
+export interface AssessmentExternalDeps {
+  sendMessage: (params: { conversationId: string | null; userMessage: string }) => Promise<{ conversationId: string; assistantMessage: string } | null>;
+  createPlan: (input: CreatePlanInput) => Promise<SavedPlan>;
+}
+
+export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?: string, externalDeps?: AssessmentExternalDeps) {
   const { profile } = useProfile();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -195,8 +204,10 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
 
     setState((prev) => ({ ...prev, isSubmitting: true }));
 
+    let hadNonCriticalFailure = false;
+
     try {
-      // Build response objects for scoring
+      // === WRITE 1: Create assessment record (CRITICAL — stop if fails) ===
       const responseObjects = questions
         .filter((q) => state.responses[q.id])
         .map((q) => ({
@@ -210,7 +221,6 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
       const scores = calculateHorsemanScores(responseObjects);
       const primaryHorseman = determinePrimaryHorseman(scores);
 
-      // Get cash flow data from profile
       const cashFlowResult = profile
         ? calculateCashFlowFromNumbers(
             profile.monthly_income || 0,
@@ -221,7 +231,6 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
           )
         : null;
 
-      // Create assessment record
       const { data: assessment, error: assessmentError } = await supabase
         .from('user_assessments')
         .insert({
@@ -240,8 +249,9 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
         .single();
 
       if (assessmentError) throw assessmentError;
+      console.log('[Assessment] Write 1 success: assessment record created', assessment.id);
 
-      // Create core response records
+      // Save core responses
       const responseRecords = Object.entries(state.responses).map(
         ([questionId, value]) => ({
           assessment_id: assessment.id,
@@ -249,11 +259,9 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
           response_value: { value },
         })
       );
-
       const { error: responsesError } = await supabase
         .from('assessment_responses')
         .insert(responseRecords);
-
       if (responsesError) throw responsesError;
 
       // Save deep dive answers
@@ -266,32 +274,118 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
             horseman_type: primaryHorseman,
             answers: deepDiveAnswers,
           });
-
         if (deepDiveError) throw deepDiveError;
       }
 
-      // Log gamification activity
+      // === WRITE 2: Money leak estimate → profiles (non-critical) ===
+      try {
+        const leakEstimate = calculateInitialLeakEstimate(profile?.monthly_income, primaryHorseman);
+        const { error: leakError } = await supabase
+          .from('profiles')
+          .update({
+            estimated_annual_leak_low: leakEstimate.low,
+            estimated_annual_leak_high: leakEstimate.high,
+          })
+          .eq('id', user.id);
+        if (leakError) throw leakError;
+        console.log('[Assessment] Write 2 success: money leak estimate saved', leakEstimate);
+      } catch (err) {
+        console.error('[Assessment] Write 2 failed: money leak estimate', err);
+        hadNonCriticalFailure = true;
+      }
+
+      // === WRITE 3: Onboarding progress row (non-critical) ===
+      try {
+        await startOnboarding(user.id);
+        console.log('[Assessment] Write 3 success: onboarding progress row');
+      } catch (err) {
+        console.error('[Assessment] Write 3 failed: onboarding progress', err);
+        hadNonCriticalFailure = true;
+      }
+
+      // === WRITE 4: Auto-generate plan + activate strategy (non-critical) ===
+      if (externalDeps?.sendMessage && externalDeps?.createPlan) {
+        try {
+          // Check if focus plan already exists
+          const { data: existingFocus } = await supabase
+            .from('saved_plans')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('is_focus', true)
+            .maybeSingle();
+
+          if (!existingFocus) {
+            // Build response details for prompt
+            const responseDetails = questions
+              .filter((q) => state.responses[q.id])
+              .map((q) => ({
+                question_text: q.question_text,
+                category: q.category,
+                value: state.responses[q.id],
+              }));
+
+            const { data: existingPlans } = await supabase
+              .from('saved_plans')
+              .select('strategy_name')
+              .eq('user_id', user.id);
+
+            await autoGenerateStrategy({
+              userId: user.id,
+              profile: profile ?? null,
+              assessment: {
+                id: assessment.id,
+                user_id: user.id,
+                primary_horseman: primaryHorseman as HorsemanType,
+                interest_score: scores.interest,
+                taxes_score: scores.taxes,
+                insurance_score: scores.insurance,
+                education_score: scores.education,
+                cash_flow_status: (cashFlowResult?.status ?? null) as CashFlowStatus,
+                completed_at: assessment.completed_at,
+                created_at: assessment.created_at,
+                income_range: null,
+                expense_range: null,
+              },
+              responses: responseDetails,
+              existingPlanNames: (existingPlans || []).map((p) => p.strategy_name),
+              sendMessage: externalDeps.sendMessage,
+              createPlan: externalDeps.createPlan,
+            });
+            console.log('[Assessment] Write 4 success: auto-generated plan');
+          } else {
+            console.log('[Assessment] Write 4 skipped: focus plan already exists');
+          }
+        } catch (err) {
+          console.error('[Assessment] Write 4 failed: auto-generate plan', err);
+          hadNonCriticalFailure = true;
+        }
+      } else {
+        console.log('[Assessment] Write 4 skipped: sendMessage/createPlan not provided');
+      }
+
+      // Log gamification activity (fire-and-forget)
       logActivity('assessment_complete', { assessment_id: assessment.id }).then(({ awarded, xpEarned }) => {
         if (xpEarned > 0) showPointsEarnedToast(xpEarned, 'Assessment completed!');
         awarded.forEach((badge) => showAchievementToast(badge));
       });
-
-      // Also log deep dive completion
       logActivity('deep_dive_complete', { assessment_id: assessment.id, horseman_type: primaryHorseman }).then(({ awarded, xpEarned }) => {
         if (xpEarned > 0) showPointsEarnedToast(xpEarned, 'Deep Dive completed!');
         awarded.forEach((badge) => showAchievementToast(badge));
       });
 
-      // Fire-and-forget: start onboarding journey
-      startOnboarding(user.id).catch(() => {});
-
-      // Navigate to results
-      navigate(`/results/${assessment.id}`);
+      // === WRITE 5: Navigate to dashboard ===
+      if (hadNonCriticalFailure) {
+        toast({
+          title: "We're still setting up your plan",
+          description: "Check back in a moment — everything will be ready shortly.",
+        });
+      }
+      navigate('/dashboard');
     } catch (error) {
-      console.error('Error submitting assessment:', error);
+      console.error('[Assessment] Critical write failed:', error);
       setState((prev) => ({ ...prev, isSubmitting: false }));
     }
-  }, [user, questions, state.responses, deepDiveAnswers, calculatedHorseman, navigate, profile, logActivity]);
+  }, [user, questions, state.responses, deepDiveAnswers, calculatedHorseman, navigate, profile, logActivity, externalDeps]);
 
   return {
     // Phase

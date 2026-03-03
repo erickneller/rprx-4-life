@@ -28,6 +28,51 @@ export interface LeakItem {
 
 const DEFAULT_IMPACT = { low: 500, high: 2000 };
 
+const HORSEMAN_MULTIPLIERS: Record<string, number> = {
+  interest: 1.3,
+  taxes: 1.2,
+  insurance: 1.0,
+  education: 0.9,
+};
+
+function roundToNearest500(n: number): number {
+  return Math.round(n / 500) * 500;
+}
+
+/**
+ * Calculate initial money leak estimate from income bracket and primary horseman.
+ * Called once at assessment completion to seed profiles.estimated_annual_leak_low/high.
+ */
+export function calculateInitialLeakEstimate(
+  monthlyIncome: number | null | undefined,
+  primaryHorseman: string
+): { low: number; high: number } {
+  const income = monthlyIncome ?? 0;
+
+  let baseLow: number;
+  let baseHigh: number;
+
+  if (income < 3500) {
+    baseLow = 500; baseHigh = 1500;
+  } else if (income < 5000) {
+    baseLow = 1000; baseHigh = 3000;
+  } else if (income < 7500) {
+    baseLow = 1500; baseHigh = 4000;
+  } else if (income < 10000) {
+    baseLow = 2000; baseHigh = 5000;
+  } else {
+    baseLow = 3000; baseHigh = 8000;
+  }
+
+  const multiplier = HORSEMAN_MULTIPLIERS[primaryHorseman] ?? 1.0;
+  const adjustedHigh = baseHigh * multiplier;
+
+  return {
+    low: roundToNearest500(baseLow),
+    high: roundToNearest500(adjustedHigh),
+  };
+}
+
 export function parseEstimatedImpact(impact: string | null | undefined): { low: number; high: number } {
   if (!impact || typeof impact !== 'string') return { low: 250, high: 1000 };
 

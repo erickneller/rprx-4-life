@@ -11,6 +11,8 @@ import { MultiSelectQuestion } from './MultiSelectQuestion';
 import { ExitAssessmentDialog } from './ExitAssessmentDialog';
 import { useAssessmentQuestions } from '@/hooks/useAssessmentQuestions';
 import { useAssessment } from '@/hooks/useAssessment';
+import { useSendMessage } from '@/hooks/useSendMessage';
+import { useCreatePlan } from '@/hooks/usePlans';
 import { getHorsemanLabel } from '@/lib/scoringEngine';
 
 interface AssessmentWizardProps {
@@ -21,6 +23,8 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   const navigate = useNavigate();
   const [showExitDialog, setShowExitDialog] = useState(false);
   const { data: questions = [], isLoading: questionsLoading } = useAssessmentQuestions();
+  const { sendMessage } = useSendMessage();
+  const { mutateAsync: createPlan } = useCreatePlan();
 
   const {
     phase,
@@ -48,7 +52,7 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
     transitionToDeepDive,
     startDeepDive,
     submitAssessment,
-  } = useAssessment(questions, editAssessmentId);
+  } = useAssessment(questions, editAssessmentId, { sendMessage, createPlan });
 
   if (questionsLoading || isLoadingEdit) {
     return (

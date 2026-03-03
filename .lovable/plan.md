@@ -1,71 +1,72 @@
 
 
-# Assessment Completion — Analysis and Plan
+# Fix: Migrate Stale Label Values in Existing Profiles
 
-## Current State
+## Diagnosis
 
-After auditing the code, here is what `submitAssessment` in `useAssessment.ts` currently does and what's missing:
+The wizard code fix **did work correctly**. The constants already use `{ value, label }` pairs, and all Select/OptionCard components store `.value` (the snake_case key), not `.label`.
 
-| Write | Status | Details |
-|-------|--------|---------|
-| 1. completed_at + primary_horseman | Already correct | Set during `user_assessments.insert()` at line 225-240 |
-| 2. Money leak estimate → profiles | Missing | No code writes `estimated_annual_leak_low/high` after assessment |
-| 3. Onboarding progress row | Already correct | `startOnboarding(user.id)` at line 286 does upsert with `ignoreDuplicates` |
-| 4. Auto-generate plan + activate strategy | Missing | Only triggered later by Day 1 CTA button on dashboard |
-| 5. Navigate to dashboard | Partially wrong | Currently navigates to `/results/${assessment.id}`, not `/dashboard` |
-| Error handling | Missing | Currently throws on any failure, blocking everything |
-| Tie-breaking | Already correct | `determinePrimaryHorseman` iterates interest→taxes→insurance→education, uses strict `>`, so first-encountered max wins — matches requested order |
+Evidence from the database:
+- **Newer profiles** (created after the fix) have correct values: `married_jointly`, `not_sure`, `never`, `very_confident`, `somewhat`
+- **One older profile** (`793102fe`) still has stale label strings: `"Married Filing Jointly"`, `"Not Applicable"`, `"Somewhat Confident"`, `"Not at All"`, `"Sometimes"`
 
-## What Needs to Change
+This is leftover data from before the fix was deployed. No code change is needed -- only a **data migration** to clean up existing rows.
 
-### File: `src/hooks/useAssessment.ts`
+## Fix: One-Time SQL Migration
 
-**A. Add money leak calculation (Write 2)**
-
-After scoring, derive income bracket from `profile.monthly_income` and apply horseman multiplier per the spec. Round to nearest $500. Write to `profiles.estimated_annual_leak_low` and `profiles.estimated_annual_leak_high`. This is a simple Supabase update — no new tables or functions needed.
-
-**B. Wire auto-plan generation (Write 4)**
-
-The `autoGenerateStrategy` function requires `sendMessage` and `createPlan` — both come from React hooks (`useSendMessage`, `useCreatePlan`). The `useAssessment` hook must accept these as parameters.
-
-Update the hook signature to accept `sendMessage` and `createPlan` as optional deps. After writing the assessment + leak estimate + onboarding row, call `autoGenerateStrategy` with those deps. Skip if a focus plan already exists for the user. If the AI call fails, log and continue — do not block navigation.
-
-The `AssessmentWizard` component will need to pass these down from `useSendMessage()` and `useCreatePlan()`.
-
-**C. Change navigation target (Write 5)**
-
-Navigate to `/dashboard` instead of `/results/${assessment.id}`.
-
-**D. Sequential error handling with graceful degradation**
-
-Wrap each write in its own try/catch. Log step-by-step. If writes 1 (assessment record) fails, stop entirely. For writes 2-4, log errors but continue to next step. After all writes, navigate to dashboard. If any non-critical write failed, show a toast: "We're still setting up your plan — check back in a moment."
-
-### File: `src/components/assessment/AssessmentWizard.tsx`
-
-Add `useSendMessage()` and `useCreatePlan()` hooks, pass `sendMessage` and `createPlan` into `useAssessment()`.
-
-### New utility (inline in useAssessment or separate helper)
-
-Money leak bracket calculator:
+Run a single SQL migration that updates all profiles where these fields contain display labels instead of snake_case keys:
 
 ```text
-monthly_income < 3500       → low: 500,  high: 1500
-3500 ≤ income < 5000        → low: 1000, high: 3000
-5000 ≤ income < 7500        → low: 1500, high: 4000
-7500 ≤ income < 10000       → low: 2000, high: 5000
-income ≥ 10000              → low: 3000, high: 8000
-
-Horseman multipliers (applied to high):
-  interest: 1.3, taxes: 1.2, insurance: 1.0, education: 0.9
-
-Round both to nearest $500.
+UPDATE profiles SET
+  filing_status = CASE filing_status
+    WHEN 'Single' THEN 'single'
+    WHEN 'Married Filing Jointly' THEN 'married_jointly'
+    WHEN 'Married Filing Separately' THEN 'married_separately'
+    WHEN 'Head of Household' THEN 'head_of_household'
+    ELSE filing_status
+  END,
+  employer_match_captured = CASE employer_match_captured
+    WHEN 'Yes' THEN 'yes'
+    WHEN 'No' THEN 'no'
+    WHEN 'Not Applicable' THEN 'na'
+    WHEN 'Not Sure' THEN 'not_sure'
+    ELSE employer_match_captured
+  END,
+  stress_money_worry = CASE stress_money_worry
+    WHEN 'Never' THEN 'never'
+    WHEN 'Sometimes' THEN 'sometimes'
+    WHEN 'Often' THEN 'often'
+    WHEN 'Always' THEN 'always'
+    ELSE stress_money_worry
+  END,
+  stress_emergency_confidence = CASE stress_emergency_confidence
+    WHEN 'Not Confident' THEN 'not_confident'
+    WHEN 'Somewhat Confident' THEN 'somewhat_confident'
+    WHEN 'Very Confident' THEN 'very_confident'
+    WHEN 'Completely Confident' THEN 'completely_confident'
+    ELSE stress_emergency_confidence
+  END,
+  stress_control_feeling = CASE stress_control_feeling
+    WHEN 'Not at All' THEN 'not_at_all'
+    WHEN 'Somewhat' THEN 'somewhat'
+    WHEN 'Mostly' THEN 'mostly'
+    WHEN 'Completely' THEN 'completely'
+    ELSE stress_control_feeling
+  END
+WHERE
+  filing_status IN ('Single','Married Filing Jointly','Married Filing Separately','Head of Household')
+  OR employer_match_captured IN ('Yes','No','Not Applicable','Not Sure')
+  OR stress_money_worry IN ('Never','Sometimes','Often','Always')
+  OR stress_emergency_confidence IN ('Not Confident','Somewhat Confident','Very Confident','Completely Confident')
+  OR stress_control_feeling IN ('Not at All','Somewhat','Mostly','Completely');
 ```
 
-## Files Modified
+## Changes Summary
 
-- `src/hooks/useAssessment.ts` — add money leak calc, accept sendMessage/createPlan, sequential error handling, navigate to /dashboard
-- `src/components/assessment/AssessmentWizard.tsx` — wire new hook deps
-- `src/lib/moneyLeakEstimator.ts` — add `calculateInitialLeakEstimate()` helper (optional, could inline)
+| What | Action |
+|------|--------|
+| Wizard code (`ProfileWizard.tsx`) | No change needed -- already correct |
+| Profile page (`Profile.tsx`) | No change needed -- already correct |
+| Database migration | Run the UPDATE query above to fix stale rows |
 
-No database changes needed — all target columns already exist in the `profiles` and `user_onboarding_progress` tables.
-
+This is safe because the `ELSE` clause preserves any values that are already correct. No code files change.
