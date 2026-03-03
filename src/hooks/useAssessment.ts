@@ -27,7 +27,12 @@ export interface DeepDiveQuestionItem {
   order_index: number;
 }
 
-export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?: string) {
+export interface AssessmentExternalDeps {
+  sendMessage: (params: { conversationId: string | null; userMessage: string }) => Promise<{ conversationId: string; assistantMessage: string } | null>;
+  createPlan: (input: CreatePlanInput) => Promise<SavedPlan>;
+}
+
+export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?: string, externalDeps?: AssessmentExternalDeps) {
   const { profile } = useProfile();
   const { user } = useAuth();
   const navigate = useNavigate();
