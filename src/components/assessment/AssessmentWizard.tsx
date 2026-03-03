@@ -52,7 +52,7 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
     transitionToDeepDive,
     startDeepDive,
     submitAssessment,
-  } = useAssessment(questions, editAssessmentId);
+  } = useAssessment(questions, editAssessmentId, { sendMessage, createPlan });
 
   if (questionsLoading || isLoadingEdit) {
     return (
