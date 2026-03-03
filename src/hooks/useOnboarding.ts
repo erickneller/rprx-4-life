@@ -96,6 +96,8 @@ export function useOnboarding() {
   const completeMutation = useMutation({
     mutationFn: async (response?: unknown) => {
       if (!user || !availableDay || !todayContent) throw new Error('No content');
+      // Guard: never re-complete a day
+      if (progress?.completed_days.includes(availableDay)) return;
       await completeDay(user.id, availableDay, todayContent, response);
     },
     onSuccess: () => {

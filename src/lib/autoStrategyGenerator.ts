@@ -136,5 +136,7 @@ export async function autoGenerateStrategy(params: AutoGenerateParams): Promise<
       });
   }
 
+  // NOTE: This function ONLY generates and saves the plan.
+  // Day completion is handled separately by explicit user action in OnboardingCard.
   return plan;
 }

@@ -103,6 +103,7 @@ export async function completeDay(
   if (!progress) return;
 
   const completedDays = [...(progress.completed_days as number[])];
+  if (completedDays.includes(dayNumber)) return; // Already completed — no-op
   if (!completedDays.includes(dayNumber)) {
     completedDays.push(dayNumber);
   }
