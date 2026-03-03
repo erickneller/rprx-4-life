@@ -4,13 +4,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateHorsemanScores, determinePrimaryHorseman } from '@/lib/scoringEngine';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
+import { calculateInitialLeakEstimate } from '@/lib/moneyLeakEstimator';
 import { startOnboarding } from '@/lib/onboardingEngine';
+import { autoGenerateStrategy } from '@/lib/autoStrategyGenerator';
 import { useProfile } from '@/hooks/useProfile';
 import { useGamification } from '@/hooks/useGamification';
 import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
+import { toast } from '@/hooks/use-toast';
 import type { AssessmentQuestion, AssessmentState } from '@/lib/assessmentTypes';
 import type { HorsemanType } from '@/lib/scoringEngine';
 import type { CashFlowStatus } from '@/lib/cashFlowCalculator';
+import type { SavedPlan, CreatePlanInput } from '@/hooks/usePlans';
 
 export type AssessmentPhase = 'core' | 'transition' | 'deep_dive';
 
