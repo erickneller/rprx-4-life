@@ -321,9 +321,7 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
               .map((q) => ({
                 question_text: q.question_text,
                 category: q.category,
-                selected_value: state.responses[q.id],
-                horseman_type: Object.entries(q.horseman_weights as Record<string, number>)
-                  .sort(([, a], [, b]) => b - a)[0]?.[0] || 'interest',
+                value: state.responses[q.id],
               }));
 
             const { data: existingPlans } = await supabase
