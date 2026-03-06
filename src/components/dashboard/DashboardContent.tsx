@@ -32,6 +32,7 @@ export function DashboardContent() {
   const { data: focusPlan } = useFocusPlan();
   const { refreshScore } = useRPRxScore();
   const { cards, isLoading: cardsLoading } = useDashboardConfig();
+  const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
   const [showEditMotivation, setShowEditMotivation] = useState(false);
 
   // Background check: flip onboarding_completed if all conditions met
