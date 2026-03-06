@@ -56,9 +56,9 @@ export function DashboardCardRenderer({ cards, cardProps }: DashboardCardRendere
 
       if (card.default_size === 'full') {
         flushPartials();
-        elements.push(<div key={card.id}>{node}</div>);
+        elements.push(<div key={card.id} id={toKebab(card.component_key)}>{node}</div>);
       } else {
-        partialRow.push({ node, size: card.default_size, key: card.id });
+        partialRow.push({ node, size: card.default_size, key: card.id, id: toKebab(card.component_key) });
       }
     }
     flushPartials();
