@@ -1,29 +1,72 @@
 
 
-# Fix: "Check my RPRx Score" scroll_to action not finding the card
+# Fix: Migrate Stale Label Values in Existing Profiles
 
-## Problem
+## Diagnosis
 
-The onboarding day's "Check my RPRx Score" button uses `action_type: 'scroll_to'` with an `action_target` pointing to an element ID. However, the RPRx Score card rendered by `DashboardCardRenderer` has **no `id` attribute** on its wrapper `<div>`. So `document.getElementById(...)` returns `null` and nothing scrolls.
+The wizard code fix **did work correctly**. The constants already use `{ value, label }` pairs, and all Select/OptionCard components store `.value` (the snake_case key), not `.label`.
 
-For reference, the Money Leak card works because it has `id="money-leak-card"` directly on its `<Card>` element.
+Evidence from the database:
+- **Newer profiles** (created after the fix) have correct values: `married_jointly`, `not_sure`, `never`, `very_confident`, `somewhat`
+- **One older profile** (`793102fe`) still has stale label strings: `"Married Filing Jointly"`, `"Not Applicable"`, `"Somewhat Confident"`, `"Not at All"`, `"Sometimes"`
 
-## Fix
+This is leftover data from before the fix was deployed. No code change is needed -- only a **data migration** to clean up existing rows.
 
-**File: `src/components/dashboard/DashboardCardRenderer.tsx`**
+## Fix: One-Time SQL Migration
 
-Add `id` attributes to the wrapper divs for each card, using a consistent naming convention based on the `component_key`. This makes all dashboard cards targetable by `scroll_to` actions.
+Run a single SQL migration that updates all profiles where these fields contain display labels instead of snake_case keys:
 
-In the rendering logic, pass the card's `component_key` (converted to kebab-case) as the `id` on each wrapper div. For example:
-- `GamificationScoreCard` → `id="gamification-score-card"`
-- `CurrentFocusCard` → `id="current-focus-card"`
-- etc.
+```text
+UPDATE profiles SET
+  filing_status = CASE filing_status
+    WHEN 'Single' THEN 'single'
+    WHEN 'Married Filing Jointly' THEN 'married_jointly'
+    WHEN 'Married Filing Separately' THEN 'married_separately'
+    WHEN 'Head of Household' THEN 'head_of_household'
+    ELSE filing_status
+  END,
+  employer_match_captured = CASE employer_match_captured
+    WHEN 'Yes' THEN 'yes'
+    WHEN 'No' THEN 'no'
+    WHEN 'Not Applicable' THEN 'na'
+    WHEN 'Not Sure' THEN 'not_sure'
+    ELSE employer_match_captured
+  END,
+  stress_money_worry = CASE stress_money_worry
+    WHEN 'Never' THEN 'never'
+    WHEN 'Sometimes' THEN 'sometimes'
+    WHEN 'Often' THEN 'often'
+    WHEN 'Always' THEN 'always'
+    ELSE stress_money_worry
+  END,
+  stress_emergency_confidence = CASE stress_emergency_confidence
+    WHEN 'Not Confident' THEN 'not_confident'
+    WHEN 'Somewhat Confident' THEN 'somewhat_confident'
+    WHEN 'Very Confident' THEN 'very_confident'
+    WHEN 'Completely Confident' THEN 'completely_confident'
+    ELSE stress_emergency_confidence
+  END,
+  stress_control_feeling = CASE stress_control_feeling
+    WHEN 'Not at All' THEN 'not_at_all'
+    WHEN 'Somewhat' THEN 'somewhat'
+    WHEN 'Mostly' THEN 'mostly'
+    WHEN 'Completely' THEN 'completely'
+    ELSE stress_control_feeling
+  END
+WHERE
+  filing_status IN ('Single','Married Filing Jointly','Married Filing Separately','Head of Household')
+  OR employer_match_captured IN ('Yes','No','Not Applicable','Not Sure')
+  OR stress_money_worry IN ('Never','Sometimes','Often','Always')
+  OR stress_emergency_confidence IN ('Not Confident','Somewhat Confident','Very Confident','Completely Confident')
+  OR stress_control_feeling IN ('Not at All','Somewhat','Mostly','Completely');
+```
 
-This is a ~3-line change: add a helper to convert keys to kebab-case IDs, then apply `id={cardId}` to the wrapper divs in both the full-width and partial-width render paths.
+## Changes Summary
 
-The onboarding content's `action_target` in the database should match the generated ID (e.g., `gamification-score-card`). You may need to update the existing `action_target` value in the `onboarding_content` table to match.
+| What | Action |
+|------|--------|
+| Wizard code (`ProfileWizard.tsx`) | No change needed -- already correct |
+| Profile page (`Profile.tsx`) | No change needed -- already correct |
+| Database migration | Run the UPDATE query above to fix stale rows |
 
-## Files Modified
-
-- `src/components/dashboard/DashboardCardRenderer.tsx` — add `id` attributes to card wrappers
-
+This is safe because the `ELSE` clause preserves any values that are already correct. No code files change.

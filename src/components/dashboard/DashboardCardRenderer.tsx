@@ -23,20 +23,24 @@ interface DashboardCardRendererProps {
   };
 }
 
+function toKebab(key: string) {
+  return key.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+}
+
 export function DashboardCardRenderer({ cards, cardProps }: DashboardCardRendererProps) {
   const visibleCards = cards.filter(c => c.is_visible);
 
   // Group cards by size for flex layout
   const rendered = useMemo(() => {
     const elements: ReactNode[] = [];
-    let partialRow: { node: ReactNode; size: string; key: string }[] = [];
+    let partialRow: { node: ReactNode; size: string; key: string; id: string }[] = [];
 
     const flushPartials = () => {
       if (partialRow.length > 0) {
         elements.push(
           <div key={`row-${partialRow[0].key}`} className="flex flex-wrap gap-4">
-            {partialRow.map(p => (
-              <div key={p.key} className={p.size === 'half' ? 'w-full md:w-[calc(50%-0.5rem)]' : 'w-full md:w-[calc(33.333%-0.667rem)]'}>
+             {partialRow.map(p => (
+              <div key={p.key} id={p.id} className={p.size === 'half' ? 'w-full md:w-[calc(50%-0.5rem)]' : 'w-full md:w-[calc(33.333%-0.667rem)]'}>
                 {p.node}
               </div>
             ))}
@@ -52,9 +56,9 @@ export function DashboardCardRenderer({ cards, cardProps }: DashboardCardRendere
 
       if (card.default_size === 'full') {
         flushPartials();
-        elements.push(<div key={card.id}>{node}</div>);
+        elements.push(<div key={card.id} id={toKebab(card.component_key)}>{node}</div>);
       } else {
-        partialRow.push({ node, size: card.default_size, key: card.id });
+        partialRow.push({ node, size: card.default_size, key: card.id, id: toKebab(card.component_key) });
       }
     }
     flushPartials();
