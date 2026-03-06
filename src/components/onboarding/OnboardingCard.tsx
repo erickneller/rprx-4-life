@@ -31,6 +31,7 @@ interface OnboardingCardProps {
 export function OnboardingCard({ compact }: OnboardingCardProps) {
   const navigate = useNavigate();
   const dayOneCTA = useDayOneCTA();
+  const { logActivity } = useGamification();
   const {
     isOnboarding, isCompleted, isLoading,
     currentDay, todayContent, completedDays,
