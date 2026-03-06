@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Clock, Star, Flame, Loader2, Lock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useGamification } from '@/hooks/useGamification';
 import { OnboardingQuiz } from './OnboardingQuiz';
 import { OnboardingReflection } from './OnboardingReflection';
 import { OnboardingMilestone } from './OnboardingMilestone';
@@ -30,6 +31,7 @@ interface OnboardingCardProps {
 export function OnboardingCard({ compact }: OnboardingCardProps) {
   const navigate = useNavigate();
   const dayOneCTA = useDayOneCTA();
+  const { logActivity } = useGamification();
   const {
     isOnboarding, isCompleted, isLoading,
     currentDay, todayContent, completedDays,
@@ -62,17 +64,20 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
     }
     if (todayContent.action_type === 'complete_step') {
       await completeToday();
+      await logActivity('onboarding_day_complete', { day: currentDay });
       setLocalCompleted(true);
     }
   };
 
   const handleQuizComplete = async (answers: Record<string, string>) => {
     await completeToday(answers);
+    await logActivity('onboarding_day_complete', { day: currentDay });
     setLocalCompleted(true);
   };
 
   const handleReflectionComplete = async (text: string) => {
     await completeToday(text);
+    await logActivity('onboarding_day_complete', { day: currentDay });
     setLocalCompleted(true);
   };
 
@@ -197,6 +202,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
                   await dayOneCTA.action();
                   if (dayOneCTA.state === 'view_leak') {
                     await completeToday();
+                    await logActivity('onboarding_day_complete', { day: currentDay });
                     setLocalCompleted(true);
                   }
                 }}

@@ -1,45 +1,72 @@
 
 
-# Are Daily Onboarding Tasks Adding XP?
+# Fix: Migrate Stale Label Values in Existing Profiles
 
-## Current Behavior
+## Diagnosis
 
-**Partially.** The `completeDay()` function in `onboardingEngine.ts` does two things with XP:
+The wizard code fix **did work correctly**. The constants already use `{ value, label }` pairs, and all Select/OptionCard components store `.value` (the snake_case key), not `.label`.
 
-1. Increments `user_onboarding_progress.total_points_earned` (line 246) -- this is an onboarding-local counter
-2. Increments `profiles.total_points_earned` (lines 281-293) -- this is the global XP counter
+Evidence from the database:
+- **Newer profiles** (created after the fix) have correct values: `married_jointly`, `not_sure`, `never`, `very_confident`, `somewhat`
+- **One older profile** (`793102fe`) still has stale label strings: `"Married Filing Jointly"`, `"Not Applicable"`, `"Somewhat Confident"`, `"Not at All"`, `"Sometimes"`
 
-So the raw points number does go up. **However**, it has two gaps:
+This is leftover data from before the fix was deployed. No code change is needed -- only a **data migration** to clean up existing rows.
 
-### What's Missing
+## Fix: One-Time SQL Migration
 
-1. **No activity log entry** -- `completeDay` never inserts into `user_activity_log`, so the activity doesn't show up in any activity history and the admin analytics can't track it.
+Run a single SQL migration that updates all profiles where these fields contain display labels instead of snake_case keys:
 
-2. **No badge check via gamification** -- `completeDay` calls its own `checkOnboardingBadges()` for milestone badges, but it never calls `logActivity()` from the gamification hook. This means:
-   - No XP-earned toast appears (the `showPointsEarnedToast` is never triggered)
-   - No achievement toast for badges that might be triggered by an `onboarding_day_complete` activity type
-   - The RPRx score is never recalculated after completion (`recalculateAndPersistScore` is never called)
+```text
+UPDATE profiles SET
+  filing_status = CASE filing_status
+    WHEN 'Single' THEN 'single'
+    WHEN 'Married Filing Jointly' THEN 'married_jointly'
+    WHEN 'Married Filing Separately' THEN 'married_separately'
+    WHEN 'Head of Household' THEN 'head_of_household'
+    ELSE filing_status
+  END,
+  employer_match_captured = CASE employer_match_captured
+    WHEN 'Yes' THEN 'yes'
+    WHEN 'No' THEN 'no'
+    WHEN 'Not Applicable' THEN 'na'
+    WHEN 'Not Sure' THEN 'not_sure'
+    ELSE employer_match_captured
+  END,
+  stress_money_worry = CASE stress_money_worry
+    WHEN 'Never' THEN 'never'
+    WHEN 'Sometimes' THEN 'sometimes'
+    WHEN 'Often' THEN 'often'
+    WHEN 'Always' THEN 'always'
+    ELSE stress_money_worry
+  END,
+  stress_emergency_confidence = CASE stress_emergency_confidence
+    WHEN 'Not Confident' THEN 'not_confident'
+    WHEN 'Somewhat Confident' THEN 'somewhat_confident'
+    WHEN 'Very Confident' THEN 'very_confident'
+    WHEN 'Completely Confident' THEN 'completely_confident'
+    ELSE stress_emergency_confidence
+  END,
+  stress_control_feeling = CASE stress_control_feeling
+    WHEN 'Not at All' THEN 'not_at_all'
+    WHEN 'Somewhat' THEN 'somewhat'
+    WHEN 'Mostly' THEN 'mostly'
+    WHEN 'Completely' THEN 'completely'
+    ELSE stress_control_feeling
+  END
+WHERE
+  filing_status IN ('Single','Married Filing Jointly','Married Filing Separately','Head of Household')
+  OR employer_match_captured IN ('Yes','No','Not Applicable','Not Sure')
+  OR stress_money_worry IN ('Never','Sometimes','Often','Always')
+  OR stress_emergency_confidence IN ('Not Confident','Somewhat Confident','Very Confident','Completely Confident')
+  OR stress_control_feeling IN ('Not at All','Somewhat','Mostly','Completely');
+```
 
-3. **No XP config lookup** -- The XP awarded is the static `content.points_reward` value from the `onboarding_content` table, not from the `activity_xp_config` table. So if an admin changes the XP value for onboarding completions in the admin panel, it won't take effect.
+## Changes Summary
 
-### Summary
+| What | Action |
+|------|--------|
+| Wizard code (`ProfileWizard.tsx`) | No change needed -- already correct |
+| Profile page (`Profile.tsx`) | No change needed -- already correct |
+| Database migration | Run the UPDATE query above to fix stale rows |
 
-The points **do** accumulate on the profile, but silently -- no toasts, no activity log, no config-driven XP, and no RPRx score recalculation.
-
-## Recommended Fix
-
-Integrate the onboarding completion with the gamification system by calling `logActivity('onboarding_day_complete')` from the `OnboardingCard` component after `completeToday()` succeeds. This would:
-
-- Log the activity to `user_activity_log`
-- Use config-driven XP from `activity_xp_config`
-- Show XP-earned and badge toasts
-- Trigger RPRx score recalculation
-
-### Files to Modify
-
-1. **`src/components/onboarding/OnboardingCard.tsx`** -- Import `useGamification`, call `logActivity('onboarding_day_complete', { day: currentDay })` after each successful completion (in `handleAction`, `handleQuizComplete`, `handleReflectionComplete`, and the Day 1 CTA flow).
-
-2. **`src/lib/onboardingEngine.ts`** -- Remove the duplicate `profiles.total_points_earned` increment (lines 281-293) since `logActivity` already handles that. Keep the `user_onboarding_progress.total_points_earned` increment as the onboarding-local counter.
-
-3. **Database: `activity_xp_config`** -- Ensure an `onboarding_day_complete` row exists with the desired base XP (e.g., 5 or 10). Add via migration if missing.
-
+This is safe because the `ELSE` clause preserves any values that are already correct. No code files change.
