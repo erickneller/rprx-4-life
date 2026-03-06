@@ -6,6 +6,10 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+import { MessageCircle } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const STORAGE_KEY = 'help_hints_dismissed';
 const CLICKED_KEY = 'help_clicked_pages';
@@ -67,6 +71,8 @@ export function PageHelpButton() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hintDismissed, setHintDismissed] = useState(true);
   const [glowActive, setGlowActive] = useState(false);
+  const navigate = useNavigate();
+  const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
 
   useEffect(() => {
     if (pageId) {
@@ -158,6 +164,25 @@ export function PageHelpButton() {
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown>{helpContent.help_body}</ReactMarkdown>
             </div>
+
+            {/* Ask RPRx bridge */}
+            {chatEnabled && (
+              <div className="mt-6">
+                <Separator className="mb-4" />
+                <p className="text-sm text-muted-foreground mb-2">Still have questions?</p>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    navigate('/strategy-assistant');
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Ask RPRx Assistant
+                </Button>
+              </div>
+            )}
           </ScrollArea>
         </SheetContent>
       </Sheet>

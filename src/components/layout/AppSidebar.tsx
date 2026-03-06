@@ -4,6 +4,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
 import { StreakCounter } from "@/components/gamification/StreakCounter";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 
 import {
   Sidebar,
@@ -52,8 +53,8 @@ const sections: { label: string | null; items: NavItem[] }[] = [
   },
 ];
 
-const navItems = [
-  { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare },
+const chatItem: NavItem = { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare };
+const navItems: NavItem[] = [
   { title: "My Assessments", url: "/assessments", icon: ClipboardList },
   { title: "My Plans", url: "/plans", icon: FileText },
   { title: "My Profile", url: "/profile", icon: User },
@@ -63,6 +64,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const { isAdmin } = useAdmin();
+  const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
 
   return (
     <Sidebar collapsible="icon">
@@ -117,6 +119,20 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
+              {chatEnabled && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={chatItem.title}>
+                    <NavLink
+                      to={chatItem.url}
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <chatItem.icon className="h-5 w-5 shrink-0" />
+                      <span className={isCollapsed ? "sr-only" : ""}>{chatItem.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>

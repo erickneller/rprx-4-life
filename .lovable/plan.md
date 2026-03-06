@@ -1,66 +1,72 @@
 
 
-# Connect Help + Chat and Add Admin Chat Toggle
+# Fix: Migrate Stale Label Values in Existing Profiles
 
-## Overview
-Two changes: (1) Add an "Ask RPRx" CTA at the bottom of the help drawer that bridges to the AI chat, and (2) add a global admin switch to enable/disable the chat feature across the app.
+## Diagnosis
 
-## 1. Feature Flag Storage
+The wizard code fix **did work correctly**. The constants already use `{ value, label }` pairs, and all Select/OptionCard components store `.value` (the snake_case key), not `.label`.
 
-Add a new `feature_flags` table with a single row for now:
+Evidence from the database:
+- **Newer profiles** (created after the fix) have correct values: `married_jointly`, `not_sure`, `never`, `very_confident`, `somewhat`
+- **One older profile** (`793102fe`) still has stale label strings: `"Married Filing Jointly"`, `"Not Applicable"`, `"Somewhat Confident"`, `"Not at All"`, `"Sometimes"`
 
-```sql
-CREATE TABLE public.feature_flags (
-  id TEXT PRIMARY KEY,
-  enabled BOOLEAN NOT NULL DEFAULT true,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_by UUID REFERENCES auth.users(id)
-);
-ALTER TABLE public.feature_flags ENABLE ROW LEVEL SECURITY;
--- Everyone can read
-CREATE POLICY "Anyone can read flags" ON public.feature_flags FOR SELECT TO authenticated USING (true);
--- Only admins can update
-CREATE POLICY "Admins can update flags" ON public.feature_flags FOR UPDATE USING (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can insert flags" ON public.feature_flags FOR INSERT WITH CHECK (has_role(auth.uid(), 'admin'));
+This is leftover data from before the fix was deployed. No code change is needed -- only a **data migration** to clean up existing rows.
 
-INSERT INTO public.feature_flags (id, enabled) VALUES ('chat_enabled', true);
+## Fix: One-Time SQL Migration
+
+Run a single SQL migration that updates all profiles where these fields contain display labels instead of snake_case keys:
+
+```text
+UPDATE profiles SET
+  filing_status = CASE filing_status
+    WHEN 'Single' THEN 'single'
+    WHEN 'Married Filing Jointly' THEN 'married_jointly'
+    WHEN 'Married Filing Separately' THEN 'married_separately'
+    WHEN 'Head of Household' THEN 'head_of_household'
+    ELSE filing_status
+  END,
+  employer_match_captured = CASE employer_match_captured
+    WHEN 'Yes' THEN 'yes'
+    WHEN 'No' THEN 'no'
+    WHEN 'Not Applicable' THEN 'na'
+    WHEN 'Not Sure' THEN 'not_sure'
+    ELSE employer_match_captured
+  END,
+  stress_money_worry = CASE stress_money_worry
+    WHEN 'Never' THEN 'never'
+    WHEN 'Sometimes' THEN 'sometimes'
+    WHEN 'Often' THEN 'often'
+    WHEN 'Always' THEN 'always'
+    ELSE stress_money_worry
+  END,
+  stress_emergency_confidence = CASE stress_emergency_confidence
+    WHEN 'Not Confident' THEN 'not_confident'
+    WHEN 'Somewhat Confident' THEN 'somewhat_confident'
+    WHEN 'Very Confident' THEN 'very_confident'
+    WHEN 'Completely Confident' THEN 'completely_confident'
+    ELSE stress_emergency_confidence
+  END,
+  stress_control_feeling = CASE stress_control_feeling
+    WHEN 'Not at All' THEN 'not_at_all'
+    WHEN 'Somewhat' THEN 'somewhat'
+    WHEN 'Mostly' THEN 'mostly'
+    WHEN 'Completely' THEN 'completely'
+    ELSE stress_control_feeling
+  END
+WHERE
+  filing_status IN ('Single','Married Filing Jointly','Married Filing Separately','Head of Household')
+  OR employer_match_captured IN ('Yes','No','Not Applicable','Not Sure')
+  OR stress_money_worry IN ('Never','Sometimes','Often','Always')
+  OR stress_emergency_confidence IN ('Not Confident','Somewhat Confident','Very Confident','Completely Confident')
+  OR stress_control_feeling IN ('Not at All','Somewhat','Mostly','Completely');
 ```
 
-## 2. New Hook: `useFeatureFlag`
+## Changes Summary
 
-Create `src/hooks/useFeatureFlag.ts` — queries `feature_flags` by id, returns `{ enabled, isLoading }`. Cached via React Query with key `['feature-flag', id]`.
+| What | Action |
+|------|--------|
+| Wizard code (`ProfileWizard.tsx`) | No change needed -- already correct |
+| Profile page (`Profile.tsx`) | No change needed -- already correct |
+| Database migration | Run the UPDATE query above to fix stale rows |
 
-## 3. Admin Panel — New "Features" Tab
-
-Add a lightweight tab to `AdminPanel.tsx` with a single Switch for "AI Chat Assistant". Toggling it updates the `feature_flags` row. Uses the existing admin tab pattern.
-
-## 4. Consume the Flag
-
-Hide/show the chat feature in these locations when `chat_enabled = false`:
-
-- **Dashboard FAB** (`DashboardContent.tsx`): Conditionally render the floating chat button
-- **Sidebar link** (`AppSidebar.tsx`): Conditionally render the "Strategy Assistant" nav item
-- **Route** (`App.tsx`): When disabled, the `/strategy-assistant` route redirects to `/dashboard`
-- **Help drawer CTA** (new, see below): Only show the "Ask RPRx" button when chat is enabled
-
-## 5. Help Drawer — "Ask RPRx" Bridge
-
-At the bottom of the help drawer in `PageHelpButton.tsx`, add a divider and a button:
-
-```
-─────────────────────────
-Still have questions?
-[💬 Ask RPRx Assistant]
-```
-
-Clicking it closes the drawer and navigates to `/strategy-assistant`. Only shown when `chat_enabled` flag is true.
-
-## Files Modified
-- **New migration**: `feature_flags` table + seed row
-- **New**: `src/hooks/useFeatureFlag.ts`
-- **Edit**: `src/pages/AdminPanel.tsx` — add "Features" tab with chat toggle
-- **Edit**: `src/components/help/PageHelpButton.tsx` — add "Ask RPRx" CTA at bottom
-- **Edit**: `src/components/dashboard/DashboardContent.tsx` — conditionally render chat FAB
-- **Edit**: `src/components/layout/AppSidebar.tsx` — conditionally render Strategy Assistant link
-- **Edit**: `src/App.tsx` — wrap Strategy Assistant route with flag check
-
+This is safe because the `ELSE` clause preserves any values that are already correct. No code files change.

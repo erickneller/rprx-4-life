@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DailyCheckIn } from './DailyCheckIn';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 export function DashboardContent() {
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ export function DashboardContent() {
   const { data: focusPlan } = useFocusPlan();
   const { refreshScore } = useRPRxScore();
   const { cards, isLoading: cardsLoading } = useDashboardConfig();
+  const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
   const [showEditMotivation, setShowEditMotivation] = useState(false);
 
   // Background check: flip onboarding_completed if all conditions met
@@ -171,20 +173,22 @@ export function DashboardContent() {
       )}
 
       {/* Floating chat button */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            onClick={() => navigate('/assistant')}
-            size="icon"
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 bg-primary hover:bg-primary/90"
-          >
-            <MessageCircle className="h-6 w-6" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="left">
-          <p>Chat with RPRx Assistant</p>
-        </TooltipContent>
-      </Tooltip>
+      {chatEnabled && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={() => navigate('/strategy-assistant')}
+              size="icon"
+              className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 bg-primary hover:bg-primary/90"
+            >
+              <MessageCircle className="h-6 w-6" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p>Chat with RPRx Assistant</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 }
