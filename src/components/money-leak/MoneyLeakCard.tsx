@@ -169,15 +169,6 @@ export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
           </div>
         )}
 
-        {/* CTA — only show if no button was rendered above */}
-        {!focusedPlan && result.totalRecovered === 0 && (
-          <Button
-            variant="secondary"
-            onClick={() => navigate('/plans')}
-          >
-            View My Plans <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        )}
       </CardContent>
     </Card>
   );
