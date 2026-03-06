@@ -9,6 +9,7 @@ import { usePlans, useFocusPlan } from '@/hooks/usePlans';
 import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { checkAndFlipOnboardingComplete } from '@/lib/onboardingCompleteCheck';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
+import { DashboardStreakBar } from './DashboardStreakBar';
 import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/EditMotivationDialog';
 import { DashboardCardRenderer } from './DashboardCardRenderer';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
