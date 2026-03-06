@@ -69,6 +69,10 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
       await completeToday();
       await logActivity('onboarding_day_complete', { day: currentDay });
       setLocalCompleted(true);
+      // After Day 1 completion, check if onboarding is fully complete
+      if (currentDay === 1 && user?.id) {
+        checkAndFlipOnboardingComplete(user.id);
+      }
     }
   };
 
