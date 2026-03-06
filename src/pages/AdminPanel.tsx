@@ -600,6 +600,11 @@ export default function AdminPanel() {
           <TabsContent value="wizard-copy" className="space-y-4">
             <WizardCopyTab />
           </TabsContent>
+
+          {/* ===== FEATURES TAB ===== */}
+          <TabsContent value="features" className="space-y-4">
+            <FeaturesTab />
+          </TabsContent>
         </Tabs>
       </div>
 
