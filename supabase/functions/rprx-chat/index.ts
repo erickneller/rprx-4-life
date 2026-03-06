@@ -583,19 +583,23 @@ serve(async (req) => {
     const page = requestPage || 1;
     const strategiesPerPage = 10;
 
-    // Detect primary horseman from message or assessment
+    // Detect primary horseman from assessment DB result, then fall back to message parsing
     let primaryHorseman: string | null = null;
-    const horsemanMatch = user_message.match(/Primary financial pressure:\s*([\w\s]+)/i);
-    if (horsemanMatch) {
-      primaryHorseman = horsemanMatch[1].trim().toLowerCase().split(' ')[0]; // e.g. "debt" -> first word
-      // Map common phrases
-      if (primaryHorseman === 'debt') primaryHorseman = 'interest';
+    const latestAssessment = assessmentResult?.data?.[0];
+    if (latestAssessment?.primary_horseman) {
+      primaryHorseman = latestAssessment.primary_horseman;
     }
-    // Also check for horseman_type enum values directly
-    for (const h of ['interest', 'taxes', 'insurance', 'education']) {
-      if (user_message.toLowerCase().includes(`primary financial pressure: ${h}`)) {
-        primaryHorseman = h;
-        break;
+    if (!primaryHorseman) {
+      const horsemanMatch = user_message.match(/Primary financial pressure:\s*([\w\s]+)/i);
+      if (horsemanMatch) {
+        primaryHorseman = horsemanMatch[1].trim().toLowerCase().split(' ')[0];
+        if (primaryHorseman === 'debt') primaryHorseman = 'interest';
+      }
+      for (const h of ['interest', 'taxes', 'insurance', 'education']) {
+        if (user_message.toLowerCase().includes(`primary financial pressure: ${h}`)) {
+          primaryHorseman = h;
+          break;
+        }
       }
     }
 
