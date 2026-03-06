@@ -53,8 +53,8 @@ const sections: { label: string | null; items: NavItem[] }[] = [
   },
 ];
 
-const navItems = [
-  { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare },
+const chatItem: NavItem = { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare };
+const navItems: NavItem[] = [
   { title: "My Assessments", url: "/assessments", icon: ClipboardList },
   { title: "My Plans", url: "/plans", icon: FileText },
   { title: "My Profile", url: "/profile", icon: User },
