@@ -169,8 +169,16 @@ export function getAvailableDay(
 
   const lastCompleted = Math.max(...completedDays);
   const today = getLocalDateString();
-  // Treat null as today per spec — existing users with null wait one calendar day
-  const lastDate = progress.last_completed_date || today;
+  // Legacy users who completed days before last_completed_date existed
+  // have null here — treat as yesterday so they can advance immediately.
+  let lastDate: string;
+  if (progress.last_completed_date) {
+    lastDate = progress.last_completed_date;
+  } else {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    lastDate = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+  }
 
   if (lastCompleted >= 30) {
     // Journey complete
