@@ -64,17 +64,20 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
     }
     if (todayContent.action_type === 'complete_step') {
       await completeToday();
+      await logActivity('onboarding_day_complete', { day: currentDay });
       setLocalCompleted(true);
     }
   };
 
   const handleQuizComplete = async (answers: Record<string, string>) => {
     await completeToday(answers);
+    await logActivity('onboarding_day_complete', { day: currentDay });
     setLocalCompleted(true);
   };
 
   const handleReflectionComplete = async (text: string) => {
     await completeToday(text);
+    await logActivity('onboarding_day_complete', { day: currentDay });
     setLocalCompleted(true);
   };
 
