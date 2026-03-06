@@ -71,6 +71,8 @@ export function PageHelpButton() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hintDismissed, setHintDismissed] = useState(true);
   const [glowActive, setGlowActive] = useState(false);
+  const navigate = useNavigate();
+  const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
 
   useEffect(() => {
     if (pageId) {
