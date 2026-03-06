@@ -29,6 +29,7 @@ import { OnboardingTab } from '@/components/admin/OnboardingTab';
 import { PageHelpTab } from '@/components/admin/PageHelpTab';
 import { ActivityXpTab } from '@/components/admin/ActivityXpTab';
 import { WizardCopyTab } from '@/components/admin/WizardCopyTab';
+import { FeaturesTab } from '@/components/admin/FeaturesTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
