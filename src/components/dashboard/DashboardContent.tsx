@@ -9,6 +9,7 @@ import { usePlans, useFocusPlan } from '@/hooks/usePlans';
 import { useDashboardConfig } from '@/hooks/useDashboardConfig';
 import { checkAndFlipOnboardingComplete } from '@/lib/onboardingCompleteCheck';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
+import { DashboardStreakBar } from './DashboardStreakBar';
 import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/EditMotivationDialog';
 import { DashboardCardRenderer } from './DashboardCardRenderer';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
@@ -121,9 +122,13 @@ export function DashboardContent() {
       ) : (
         <>
           {hasNoHistory ? (
-            <StartAssessmentCTA isFirstTime />
+            <>
+              <DashboardStreakBar />
+              <StartAssessmentCTA isFirstTime />
+            </>
           ) : (
             <>
+              <DashboardStreakBar />
               {cardsLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}

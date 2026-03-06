@@ -96,6 +96,16 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
           <CheckCircle2 className="h-10 w-10 text-green-500" />
           <p className="font-semibold text-green-700 dark:text-green-400">Day {currentDay} Complete!</p>
 
+          {/* Streak increment */}
+          {streak > 0 && (
+            <div className="flex items-center gap-1.5 animate-scale-in">
+              <Flame className="h-5 w-5 text-orange-500 animate-pulse" />
+              <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
+                Streak: {streak} day{streak !== 1 ? 's' : ''}!
+              </span>
+            </div>
+          )}
+
           {/* Locked teaser for next day */}
           {isLocked && nextDayNumber && nextDayNumber <= 30 && (
             <div className="mt-2 w-full max-w-sm rounded-lg border border-muted bg-card/80 p-4 text-center space-y-2">
