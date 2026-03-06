@@ -211,6 +211,10 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
                     await completeToday();
                     await logActivity('onboarding_day_complete', { day: currentDay });
                     setLocalCompleted(true);
+                    // Day 1 complete via CTA — check onboarding flag
+                    if (user?.id) {
+                      checkAndFlipOnboardingComplete(user.id);
+                    }
                   }
                 }}
                 disabled={dayOneCTA.isGenerating || isCompleting}
