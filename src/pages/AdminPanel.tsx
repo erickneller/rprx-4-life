@@ -413,6 +413,9 @@ export default function AdminPanel() {
             <TabsTrigger value="wizard-copy" className="gap-1">
               <GraduationCap className="h-4 w-4" /> Wizard Copy
             </TabsTrigger>
+            <TabsTrigger value="features" className="gap-1">
+              <Zap className="h-4 w-4" /> Features
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}

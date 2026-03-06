@@ -164,6 +164,25 @@ export function PageHelpButton() {
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown>{helpContent.help_body}</ReactMarkdown>
             </div>
+
+            {/* Ask RPRx bridge */}
+            {chatEnabled && (
+              <div className="mt-6">
+                <Separator className="mb-4" />
+                <p className="text-sm text-muted-foreground mb-2">Still have questions?</p>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    navigate('/strategy-assistant');
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Ask RPRx Assistant
+                </Button>
+              </div>
+            )}
           </ScrollArea>
         </SheetContent>
       </Sheet>

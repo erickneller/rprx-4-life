@@ -119,6 +119,20 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
+              {chatEnabled && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={chatItem.title}>
+                    <NavLink
+                      to={chatItem.url}
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <chatItem.icon className="h-5 w-5 shrink-0" />
+                      <span className={isCollapsed ? "sr-only" : ""}>{chatItem.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
