@@ -202,6 +202,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
                   await dayOneCTA.action();
                   if (dayOneCTA.state === 'view_leak') {
                     await completeToday();
+                    await logActivity('onboarding_day_complete', { day: currentDay });
                     setLocalCompleted(true);
                   }
                 }}
