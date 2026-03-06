@@ -502,7 +502,7 @@ serve(async (req) => {
         .limit(20),
       supabase
         .from('profiles')
-        .select('full_name, monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses, profile_type, num_children, children_ages, financial_goals, filing_status, years_until_retirement, desired_retirement_income, retirement_balance_total, retirement_contribution_monthly, health_insurance, life_insurance, disability_insurance, long_term_care_insurance')
+        .select('full_name, monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses, profile_type, num_children, children_ages, financial_goals, filing_status, years_until_retirement, desired_retirement_income, retirement_balance_total, retirement_contribution_monthly, health_insurance, life_insurance, disability_insurance, long_term_care_insurance, rprx_score_total, rprx_grade, estimated_annual_leak_low, estimated_annual_leak_high, estimated_annual_leak_recovered')
         .eq('id', userId)
         .maybeSingle(),
       fetchStrategies(serviceClient),
