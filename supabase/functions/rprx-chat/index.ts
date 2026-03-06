@@ -534,6 +534,13 @@ serve(async (req) => {
       fetchPromptTemplate(serviceClient, 'system_prompt'),
       fetchPromptTemplate(serviceClient, 'auto_mode_instructions'),
       fetchPromptTemplate(serviceClient, 'manual_mode_instructions'),
+      supabase
+        .from('user_assessments')
+        .select('primary_horseman')
+        .eq('user_id', userId)
+        .not('completed_at', 'is', null)
+        .order('completed_at', { ascending: false })
+        .limit(1),
     ]);
 
     if (saveResult.error) {
