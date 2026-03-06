@@ -114,7 +114,7 @@ export function DashboardContent() {
   }, [focusPlan, focusPlanProgress, activeDebtFocus, focusDebt, focusProgress, navigate]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 relative">
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
