@@ -1,72 +1,38 @@
 
 
-# Fix: Migrate Stale Label Values in Existing Profiles
+# Fix `onboarding_completed` flag — flip at the right moment
 
-## Diagnosis
+## Problem
+`profiles.onboarding_completed` is `false` for all users. It controls whether `/profile` shows the wizard or the edit view, but it never gets set to `true` at the correct moment.
 
-The wizard code fix **did work correctly**. The constants already use `{ value, label }` pairs, and all Select/OptionCard components store `.value` (the snake_case key), not `.label`.
+## Trigger Condition
+Set `onboarding_completed = true` when ALL three are true:
+1. `user_assessments.completed_at IS NOT NULL` (assessment done)
+2. `saved_plans` row exists with `is_focus = true` (focus plan set)
+3. `user_onboarding_progress.current_day >= 2` (engaged past Day 1)
 
-Evidence from the database:
-- **Newer profiles** (created after the fix) have correct values: `married_jointly`, `not_sure`, `never`, `very_confident`, `somewhat`
-- **One older profile** (`793102fe`) still has stale label strings: `"Married Filing Jointly"`, `"Not Applicable"`, `"Somewhat Confident"`, `"Not at All"`, `"Sometimes"`
+## Changes
 
-This is leftover data from before the fix was deployed. No code change is needed -- only a **data migration** to clean up existing rows.
+### 1. New utility: `src/lib/onboardingCompleteCheck.ts`
+Create a standalone async function `checkAndFlipOnboardingComplete(userId)` that:
+- Queries the three conditions above
+- If all met and profile `onboarding_completed` is still `false`, updates it to `true`
+- Invalidates the `profile` query cache after flipping
+- Returns whether the flag was flipped
 
-## Fix: One-Time SQL Migration
+### 2. Place 1 — Dashboard load (`src/components/dashboard/DashboardContent.tsx`)
+- Import `checkAndFlipOnboardingComplete` and call it in a `useEffect` on mount when `profile` is loaded and `profile.onboarding_completed === false`
+- Fire-and-forget (no UI change), invalidate profile query on success
 
-Run a single SQL migration that updates all profiles where these fields contain display labels instead of snake_case keys:
+### 3. Place 2 — After Day 1 completion (`src/components/onboarding/OnboardingCard.tsx`)
+- After `completeToday()` succeeds for Day 1 (in the Day 1 CTA handler and any `complete_step` action on day 1), call `checkAndFlipOnboardingComplete`
+- This catches users who complete Day 1 after already having an assessment + focus plan
 
-```text
-UPDATE profiles SET
-  filing_status = CASE filing_status
-    WHEN 'Single' THEN 'single'
-    WHEN 'Married Filing Jointly' THEN 'married_jointly'
-    WHEN 'Married Filing Separately' THEN 'married_separately'
-    WHEN 'Head of Household' THEN 'head_of_household'
-    ELSE filing_status
-  END,
-  employer_match_captured = CASE employer_match_captured
-    WHEN 'Yes' THEN 'yes'
-    WHEN 'No' THEN 'no'
-    WHEN 'Not Applicable' THEN 'na'
-    WHEN 'Not Sure' THEN 'not_sure'
-    ELSE employer_match_captured
-  END,
-  stress_money_worry = CASE stress_money_worry
-    WHEN 'Never' THEN 'never'
-    WHEN 'Sometimes' THEN 'sometimes'
-    WHEN 'Often' THEN 'often'
-    WHEN 'Always' THEN 'always'
-    ELSE stress_money_worry
-  END,
-  stress_emergency_confidence = CASE stress_emergency_confidence
-    WHEN 'Not Confident' THEN 'not_confident'
-    WHEN 'Somewhat Confident' THEN 'somewhat_confident'
-    WHEN 'Very Confident' THEN 'very_confident'
-    WHEN 'Completely Confident' THEN 'completely_confident'
-    ELSE stress_emergency_confidence
-  END,
-  stress_control_feeling = CASE stress_control_feeling
-    WHEN 'Not at All' THEN 'not_at_all'
-    WHEN 'Somewhat' THEN 'somewhat'
-    WHEN 'Mostly' THEN 'mostly'
-    WHEN 'Completely' THEN 'completely'
-    ELSE stress_control_feeling
-  END
-WHERE
-  filing_status IN ('Single','Married Filing Jointly','Married Filing Separately','Head of Household')
-  OR employer_match_captured IN ('Yes','No','Not Applicable','Not Sure')
-  OR stress_money_worry IN ('Never','Sometimes','Often','Always')
-  OR stress_emergency_confidence IN ('Not Confident','Somewhat Confident','Very Confident','Completely Confident')
-  OR stress_control_feeling IN ('Not at All','Somewhat','Mostly','Completely');
-```
+### 4. Profile routing (`src/pages/Profile.tsx`)
+- The profile page already checks `profile.onboarding_completed` to decide wizard vs edit view. No routing change needed — the flag flip handles it. Confirm the existing logic in `Profile.tsx` and `WizardGuard.tsx` uses this flag correctly. Based on the memory notes, this is already the case.
 
-## Changes Summary
+## Files Modified
+- **New**: `src/lib/onboardingCompleteCheck.ts`
+- **Edit**: `src/components/dashboard/DashboardContent.tsx` — add useEffect to run check on mount
+- **Edit**: `src/components/onboarding/OnboardingCard.tsx` — call check after Day 1 completion
 
-| What | Action |
-|------|--------|
-| Wizard code (`ProfileWizard.tsx`) | No change needed -- already correct |
-| Profile page (`Profile.tsx`) | No change needed -- already correct |
-| Database migration | Run the UPDATE query above to fix stale rows |
-
-This is safe because the `ELSE` clause preserves any values that are already correct. No code files change.
