@@ -18,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function DashboardContent() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { data: assessments = [], isLoading } = useAssessmentHistory();
   const { profile, updateProfile } = useProfile();
   const { journey, debts, hasActiveJourney } = useDebtJourney();
