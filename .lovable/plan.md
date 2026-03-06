@@ -1,26 +1,72 @@
 
 
-# Always Show "Continue Your Plan" Button on Money Leak Card
+# Fix: Migrate Stale Label Values in Existing Profiles
 
-## Problem
+## Diagnosis
 
-The "Continue Your Plan" button is hidden whenever `totalRecovered > 0` because the recovery progress bar takes its place in an exclusive if/else branch. Once any plan has progress, the button disappears permanently.
+The wizard code fix **did work correctly**. The constants already use `{ value, label }` pairs, and all Select/OptionCard components store `.value` (the snake_case key), not `.label`.
 
-## Solution
+Evidence from the database:
+- **Newer profiles** (created after the fix) have correct values: `married_jointly`, `not_sure`, `never`, `very_confident`, `somewhat`
+- **One older profile** (`793102fe`) still has stale label strings: `"Married Filing Jointly"`, `"Not Applicable"`, `"Somewhat Confident"`, `"Not at All"`, `"Sometimes"`
 
-Show the "Continue Your Plan" button alongside the recovery progress bar when a focus plan exists and is not yet complete. This is a single-file change to `MoneyLeakCard.tsx`.
+This is leftover data from before the fix was deployed. No code change is needed -- only a **data migration** to clean up existing rows.
 
-### File: `src/components/money-leak/MoneyLeakCard.tsx`
+## Fix: One-Time SQL Migration
 
-Change the recovery/CTA section (lines 133-165) from an exclusive if/else to:
+Run a single SQL migration that updates all profiles where these fields contain display labels instead of snake_case keys:
 
-1. **Always show recovery progress** when `totalRecovered > 0`
-2. **Always show "Continue Your Plan" button** when a `focusedPlan` exists and its status is not `completed` -- rendered below the progress bar
-3. Keep the "View My Plans" fallback CTA only when there's no focused plan and no recovery
+```text
+UPDATE profiles SET
+  filing_status = CASE filing_status
+    WHEN 'Single' THEN 'single'
+    WHEN 'Married Filing Jointly' THEN 'married_jointly'
+    WHEN 'Married Filing Separately' THEN 'married_separately'
+    WHEN 'Head of Household' THEN 'head_of_household'
+    ELSE filing_status
+  END,
+  employer_match_captured = CASE employer_match_captured
+    WHEN 'Yes' THEN 'yes'
+    WHEN 'No' THEN 'no'
+    WHEN 'Not Applicable' THEN 'na'
+    WHEN 'Not Sure' THEN 'not_sure'
+    ELSE employer_match_captured
+  END,
+  stress_money_worry = CASE stress_money_worry
+    WHEN 'Never' THEN 'never'
+    WHEN 'Sometimes' THEN 'sometimes'
+    WHEN 'Often' THEN 'often'
+    WHEN 'Always' THEN 'always'
+    ELSE stress_money_worry
+  END,
+  stress_emergency_confidence = CASE stress_emergency_confidence
+    WHEN 'Not Confident' THEN 'not_confident'
+    WHEN 'Somewhat Confident' THEN 'somewhat_confident'
+    WHEN 'Very Confident' THEN 'very_confident'
+    WHEN 'Completely Confident' THEN 'completely_confident'
+    ELSE stress_emergency_confidence
+  END,
+  stress_control_feeling = CASE stress_control_feeling
+    WHEN 'Not at All' THEN 'not_at_all'
+    WHEN 'Somewhat' THEN 'somewhat'
+    WHEN 'Mostly' THEN 'mostly'
+    WHEN 'Completely' THEN 'completely'
+    ELSE stress_control_feeling
+  END
+WHERE
+  filing_status IN ('Single','Married Filing Jointly','Married Filing Separately','Head of Household')
+  OR employer_match_captured IN ('Yes','No','Not Applicable','Not Sure')
+  OR stress_money_worry IN ('Never','Sometimes','Often','Always')
+  OR stress_emergency_confidence IN ('Not Confident','Somewhat Confident','Very Confident','Completely Confident')
+  OR stress_control_feeling IN ('Not at All','Somewhat','Mostly','Completely');
+```
 
-This means the card will show both the progress bar AND the continue button simultaneously when applicable.
+## Changes Summary
 
-### Files Modified
+| What | Action |
+|------|--------|
+| Wizard code (`ProfileWizard.tsx`) | No change needed -- already correct |
+| Profile page (`Profile.tsx`) | No change needed -- already correct |
+| Database migration | Run the UPDATE query above to fix stale rows |
 
-- `src/components/money-leak/MoneyLeakCard.tsx` -- restructure conditional rendering
-
+This is safe because the `ELSE` clause preserves any values that are already correct. No code files change.
