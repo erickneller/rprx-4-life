@@ -29,6 +29,17 @@ export function DashboardContent() {
   const { cards, isLoading: cardsLoading } = useDashboardConfig();
   const [showEditMotivation, setShowEditMotivation] = useState(false);
 
+  // Background check: flip onboarding_completed if all conditions met
+  useEffect(() => {
+    if (user?.id && profile && !profile.onboarding_completed) {
+      checkAndFlipOnboardingComplete(user.id).then((flipped) => {
+        if (flipped) {
+          queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+        }
+      });
+    }
+  }, [user?.id, profile?.onboarding_completed]);
+
   const isFirstTime = assessments.length === 0;
   const hasNoHistory = assessments.length === 0 && plans.length === 0;
 
