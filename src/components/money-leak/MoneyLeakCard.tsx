@@ -131,7 +131,7 @@ export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
         )}
 
         {/* Recovery progress */}
-        {result.totalRecovered > 0 ? (
+        {result.totalRecovered > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1.5">
@@ -142,14 +142,20 @@ export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
             </div>
             <Progress value={result.percentRecovered} className="h-2 bg-white/20 [&>div]:bg-emerald-400" />
           </div>
-        ) : focusedPlan ? (
+        )}
+
+        {/* Continue plan CTA */}
+        {focusedPlan && focusedPlan.status !== 'completed' && (
           <Button
             variant="secondary"
             onClick={() => navigate(`/plans/${focusedPlan.id}`)}
           >
             Continue Your Plan <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
-        ) : (
+        )}
+
+        {/* Fallback when no focus plan and no recovery */}
+        {!focusedPlan && result.totalRecovered === 0 && (
           <p className="text-sm opacity-70">
             Start your first plan to begin recovering →
           </p>
