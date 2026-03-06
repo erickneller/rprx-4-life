@@ -4,6 +4,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
 import { StreakCounter } from "@/components/gamification/StreakCounter";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 
 import {
   Sidebar,
