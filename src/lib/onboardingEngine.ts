@@ -278,19 +278,8 @@ export async function completeDay(
     .update(updates)
     .eq('user_id', userId);
 
-  // Award points to profiles.total_points_earned (direct update)
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('total_points_earned')
-    .eq('id', userId)
-    .single();
-
-  if (profileData) {
-    await supabase
-      .from('profiles')
-      .update({ total_points_earned: (profileData.total_points_earned || 0) + content.points_reward })
-      .eq('id', userId);
-  }
+  // Note: XP is awarded via logActivity('onboarding_day_complete') in OnboardingCard.tsx
+  // to avoid double-counting and to integrate with toasts, activity log, and RPRx recalculation.
 
   // Check onboarding milestone badges
   await checkOnboardingBadges(userId, dayNumber, completedDays);

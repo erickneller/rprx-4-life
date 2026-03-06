@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Clock, Star, Flame, Loader2, Lock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { useGamification } from '@/hooks/useGamification';
 import { OnboardingQuiz } from './OnboardingQuiz';
 import { OnboardingReflection } from './OnboardingReflection';
 import { OnboardingMilestone } from './OnboardingMilestone';
