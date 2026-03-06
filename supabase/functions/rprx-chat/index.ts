@@ -383,6 +383,26 @@ function buildProfileContext(profile: any): { context: string; missingFields: st
     knownDataSections.push(`- **Missing Insurance:** ${missingInsurance.join(', ')}`);
   }
 
+  // RPRx Score & Grade
+  if (profile.rprx_score_total != null) {
+    knownDataSections.push(`- **RPRx Score:** ${Number(profile.rprx_score_total).toFixed(0)}/100`);
+  }
+  if (profile.rprx_grade) {
+    const gradeLabels: Record<string, string> = { at_risk: 'At Risk', emerging: 'Emerging', progressing: 'Progressing', optimized: 'Optimized' };
+    knownDataSections.push(`- **RPRx Grade:** ${gradeLabels[profile.rprx_grade] || profile.rprx_grade}`);
+  }
+
+  // Money Leak Estimate
+  const leakLow = Number(profile.estimated_annual_leak_low) || 0;
+  const leakHigh = Number(profile.estimated_annual_leak_high) || 0;
+  if (leakLow > 0 || leakHigh > 0) {
+    knownDataSections.push(`- **Estimated Annual Money Leak:** ${formatCurrency(leakLow)} – ${formatCurrency(leakHigh)}`);
+    const recovered = Number(profile.estimated_annual_leak_recovered) || 0;
+    if (recovered > 0) {
+      knownDataSections.push(`- **Money Leak Already Recovered:** ${formatCurrency(recovered)}`);
+    }
+  }
+
   // Build context string
   let context = '';
   if (knownDataSections.length > 0) {
@@ -488,7 +508,7 @@ serve(async (req) => {
     }
 
     // Parallel: save message, fetch history, fetch profile, fetch strategies, fetch completed strategies, fetch prompt templates
-    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, systemPromptResult, autoPromptResult, manualPromptResult] = await Promise.all([
+    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult] = await Promise.all([
       supabase.from('messages').insert({
         conversation_id: conversationId,
         role: 'user',
@@ -502,7 +522,7 @@ serve(async (req) => {
         .limit(20),
       supabase
         .from('profiles')
-        .select('full_name, monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses, profile_type, num_children, children_ages, financial_goals, filing_status, years_until_retirement, desired_retirement_income, retirement_balance_total, retirement_contribution_monthly, health_insurance, life_insurance, disability_insurance, long_term_care_insurance')
+        .select('full_name, monthly_income, monthly_debt_payments, monthly_housing, monthly_insurance, monthly_living_expenses, profile_type, num_children, children_ages, financial_goals, filing_status, years_until_retirement, desired_retirement_income, retirement_balance_total, retirement_contribution_monthly, health_insurance, life_insurance, disability_insurance, long_term_care_insurance, rprx_score_total, rprx_grade, estimated_annual_leak_low, estimated_annual_leak_high, estimated_annual_leak_recovered')
         .eq('id', userId)
         .maybeSingle(),
       fetchStrategies(serviceClient),
@@ -514,6 +534,13 @@ serve(async (req) => {
       fetchPromptTemplate(serviceClient, 'system_prompt'),
       fetchPromptTemplate(serviceClient, 'auto_mode_instructions'),
       fetchPromptTemplate(serviceClient, 'manual_mode_instructions'),
+      supabase
+        .from('user_assessments')
+        .select('primary_horseman')
+        .eq('user_id', userId)
+        .not('completed_at', 'is', null)
+        .order('completed_at', { ascending: false })
+        .limit(1),
     ]);
 
     if (saveResult.error) {
@@ -556,19 +583,23 @@ serve(async (req) => {
     const page = requestPage || 1;
     const strategiesPerPage = 10;
 
-    // Detect primary horseman from message or assessment
+    // Detect primary horseman from assessment DB result, then fall back to message parsing
     let primaryHorseman: string | null = null;
-    const horsemanMatch = user_message.match(/Primary financial pressure:\s*([\w\s]+)/i);
-    if (horsemanMatch) {
-      primaryHorseman = horsemanMatch[1].trim().toLowerCase().split(' ')[0]; // e.g. "debt" -> first word
-      // Map common phrases
-      if (primaryHorseman === 'debt') primaryHorseman = 'interest';
+    const latestAssessment = assessmentResult?.data?.[0];
+    if (latestAssessment?.primary_horseman) {
+      primaryHorseman = latestAssessment.primary_horseman;
     }
-    // Also check for horseman_type enum values directly
-    for (const h of ['interest', 'taxes', 'insurance', 'education']) {
-      if (user_message.toLowerCase().includes(`primary financial pressure: ${h}`)) {
-        primaryHorseman = h;
-        break;
+    if (!primaryHorseman) {
+      const horsemanMatch = user_message.match(/Primary financial pressure:\s*([\w\s]+)/i);
+      if (horsemanMatch) {
+        primaryHorseman = horsemanMatch[1].trim().toLowerCase().split(' ')[0];
+        if (primaryHorseman === 'debt') primaryHorseman = 'interest';
+      }
+      for (const h of ['interest', 'taxes', 'insurance', 'education']) {
+        if (user_message.toLowerCase().includes(`primary financial pressure: ${h}`)) {
+          primaryHorseman = h;
+          break;
+        }
       }
     }
 

@@ -14,8 +14,11 @@ import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/Edi
 import { DashboardCardRenderer } from './DashboardCardRenderer';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DailyCheckIn } from './DailyCheckIn';
 
 export function DashboardContent() {
   const navigate = useNavigate();
@@ -114,7 +117,7 @@ export function DashboardContent() {
   }, [focusPlan, focusPlanProgress, activeDebtFocus, focusDebt, focusProgress, navigate]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 relative">
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -129,6 +132,7 @@ export function DashboardContent() {
           ) : (
             <>
               <DashboardStreakBar />
+              <DailyCheckIn />
               {cardsLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
@@ -165,6 +169,22 @@ export function DashboardContent() {
           />
         </>
       )}
+
+      {/* Floating chat button */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={() => navigate('/assistant')}
+            size="icon"
+            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 bg-primary hover:bg-primary/90"
+          >
+            <MessageCircle className="h-6 w-6" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="left">
+          <p>Chat with RPRx Assistant</p>
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }
