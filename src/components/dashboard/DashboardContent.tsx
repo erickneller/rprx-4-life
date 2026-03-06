@@ -14,8 +14,11 @@ import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/Edi
 import { DashboardCardRenderer } from './DashboardCardRenderer';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DailyCheckIn } from './DailyCheckIn';
 
 export function DashboardContent() {
   const navigate = useNavigate();
