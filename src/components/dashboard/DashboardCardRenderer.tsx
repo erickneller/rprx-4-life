@@ -33,7 +33,7 @@ export function DashboardCardRenderer({ cards, cardProps }: DashboardCardRendere
   // Group cards by size for flex layout
   const rendered = useMemo(() => {
     const elements: ReactNode[] = [];
-    let partialRow: { node: ReactNode; size: string; key: string }[] = [];
+    let partialRow: { node: ReactNode; size: string; key: string; id: string }[] = [];
 
     const flushPartials = () => {
       if (partialRow.length > 0) {
