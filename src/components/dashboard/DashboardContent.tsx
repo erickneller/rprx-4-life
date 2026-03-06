@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/hooks/useAuth';
 import { useDebtJourney } from '@/hooks/useDebtJourney';
 import { usePlans, useFocusPlan } from '@/hooks/usePlans';
 import { useDashboardConfig } from '@/hooks/useDashboardConfig';
+import { checkAndFlipOnboardingComplete } from '@/lib/onboardingCompleteCheck';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
 import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/EditMotivationDialog';
 import { DashboardCardRenderer } from './DashboardCardRenderer';
@@ -15,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function DashboardContent() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { data: assessments = [], isLoading } = useAssessmentHistory();
   const { profile, updateProfile } = useProfile();
   const { journey, debts, hasActiveJourney } = useDebtJourney();
@@ -23,6 +28,17 @@ export function DashboardContent() {
   const { refreshScore } = useRPRxScore();
   const { cards, isLoading: cardsLoading } = useDashboardConfig();
   const [showEditMotivation, setShowEditMotivation] = useState(false);
+
+  // Background check: flip onboarding_completed if all conditions met
+  useEffect(() => {
+    if (user?.id && profile && !profile.onboarding_completed) {
+      checkAndFlipOnboardingComplete(user.id).then((flipped) => {
+        if (flipped) {
+          queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+        }
+      });
+    }
+  }, [user?.id, profile?.onboarding_completed]);
 
   const isFirstTime = assessments.length === 0;
   const hasNoHistory = assessments.length === 0 && plans.length === 0;
