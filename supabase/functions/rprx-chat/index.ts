@@ -383,6 +383,26 @@ function buildProfileContext(profile: any): { context: string; missingFields: st
     knownDataSections.push(`- **Missing Insurance:** ${missingInsurance.join(', ')}`);
   }
 
+  // RPRx Score & Grade
+  if (profile.rprx_score_total != null) {
+    knownDataSections.push(`- **RPRx Score:** ${Number(profile.rprx_score_total).toFixed(0)}/100`);
+  }
+  if (profile.rprx_grade) {
+    const gradeLabels: Record<string, string> = { at_risk: 'At Risk', emerging: 'Emerging', progressing: 'Progressing', optimized: 'Optimized' };
+    knownDataSections.push(`- **RPRx Grade:** ${gradeLabels[profile.rprx_grade] || profile.rprx_grade}`);
+  }
+
+  // Money Leak Estimate
+  const leakLow = Number(profile.estimated_annual_leak_low) || 0;
+  const leakHigh = Number(profile.estimated_annual_leak_high) || 0;
+  if (leakLow > 0 || leakHigh > 0) {
+    knownDataSections.push(`- **Estimated Annual Money Leak:** ${formatCurrency(leakLow)} – ${formatCurrency(leakHigh)}`);
+    const recovered = Number(profile.estimated_annual_leak_recovered) || 0;
+    if (recovered > 0) {
+      knownDataSections.push(`- **Money Leak Already Recovered:** ${formatCurrency(recovered)}`);
+    }
+  }
+
   // Build context string
   let context = '';
   if (knownDataSections.length > 0) {
