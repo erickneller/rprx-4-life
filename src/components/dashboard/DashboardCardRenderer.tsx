@@ -39,8 +39,8 @@ export function DashboardCardRenderer({ cards, cardProps }: DashboardCardRendere
       if (partialRow.length > 0) {
         elements.push(
           <div key={`row-${partialRow[0].key}`} className="flex flex-wrap gap-4">
-            {partialRow.map(p => (
-              <div key={p.key} className={p.size === 'half' ? 'w-full md:w-[calc(50%-0.5rem)]' : 'w-full md:w-[calc(33.333%-0.667rem)]'}>
+             {partialRow.map(p => (
+              <div key={p.key} id={p.id} className={p.size === 'half' ? 'w-full md:w-[calc(50%-0.5rem)]' : 'w-full md:w-[calc(33.333%-0.667rem)]'}>
                 {p.node}
               </div>
             ))}
