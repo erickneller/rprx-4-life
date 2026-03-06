@@ -6,6 +6,10 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
+import { useNavigate } from 'react-router-dom';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
+import { MessageCircle } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const STORAGE_KEY = 'help_hints_dismissed';
 const CLICKED_KEY = 'help_clicked_pages';
