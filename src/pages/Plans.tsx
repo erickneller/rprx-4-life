@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePlans, useDeletePlan } from '@/hooks/usePlans';
+import { usePlans, useDeletePlan, useUpdatePlan } from '@/hooks/usePlans';
 import { PlanCard } from '@/components/plans/PlanCard';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { Button } from '@/components/ui/button';
@@ -46,6 +46,14 @@ export default function Plans() {
   const navigate = useNavigate();
   const { data: plans = [], isLoading } = usePlans();
   const deletePlans = useDeletePlans();
+  const updatePlan = useUpdatePlan();
+
+  // Auto-enforce: if only one plan exists, it must be the focus plan
+  useEffect(() => {
+    if (plans.length === 1 && !plans[0].is_focus) {
+      updatePlan.mutate({ id: plans[0].id, is_focus: true });
+    }
+  }, [plans]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
