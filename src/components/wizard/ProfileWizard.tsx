@@ -157,6 +157,7 @@ export function ProfileWizard() {
     long_term_care_insurance: profile?.long_term_care_insurance ?? false,
     no_insurance: profile?.no_insurance ?? false,
     financial_goals: profile?.financial_goals ?? [] as string[],
+    profile_type: profile?.profile_type ?? [] as string[],
     years_until_retirement: profile?.years_until_retirement ?? null as number | null,
     desired_retirement_income: profile?.desired_retirement_income ?? null as number | null,
     retirement_balance_total: profile?.retirement_balance_total ?? null as number | null,
