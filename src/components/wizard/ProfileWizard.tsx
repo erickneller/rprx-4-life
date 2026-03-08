@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, ArrowRight, Loader2, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { PROFILE_TYPES } from '@/lib/profileTypes';
 
 const FILING_STATUSES = [
   { value: 'single', label: 'Single' },
@@ -156,6 +157,7 @@ export function ProfileWizard() {
     long_term_care_insurance: profile?.long_term_care_insurance ?? false,
     no_insurance: profile?.no_insurance ?? false,
     financial_goals: profile?.financial_goals ?? [] as string[],
+    profile_type: profile?.profile_type ?? [] as string[],
     years_until_retirement: profile?.years_until_retirement ?? null as number | null,
     desired_retirement_income: profile?.desired_retirement_income ?? null as number | null,
     retirement_balance_total: profile?.retirement_balance_total ?? null as number | null,
@@ -186,6 +188,7 @@ export function ProfileWizard() {
       const anyInsurance = form.health_insurance || form.life_insurance || form.disability_insurance || form.long_term_care_insurance || form.no_insurance;
       if (!anyInsurance) e.insurance = 'Select at least one';
       if (!form.financial_goals.length) e.financial_goals = 'Select at least one';
+      if (!form.profile_type.length) e.profile_type = 'Select at least one profile type';
     } else if (s === 3) {
       if (form.years_until_retirement === null) e.years_until_retirement = 'Required';
       if (form.desired_retirement_income === null || form.desired_retirement_income <= 0) e.desired_retirement_income = 'Required';
@@ -210,6 +213,7 @@ export function ProfileWizard() {
       num_children: form.num_children, health_insurance: form.health_insurance, life_insurance: form.life_insurance,
       disability_insurance: form.disability_insurance, long_term_care_insurance: form.long_term_care_insurance,
       no_insurance: form.no_insurance, financial_goals: form.financial_goals,
+      profile_type: form.profile_type.length > 0 ? form.profile_type : null,
     };
     if (s === 3) return {
       years_until_retirement: form.years_until_retirement, desired_retirement_income: form.desired_retirement_income,
@@ -310,6 +314,28 @@ export function ProfileWizard() {
 
         {step === 2 && (
           <div className="space-y-6">
+            {/* Profile Type */}
+            <div className="space-y-2">
+              <Label>I am a: <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <div className="space-y-2">
+                {PROFILE_TYPES.map((type) => (
+                  <label key={type.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
+                    <Checkbox
+                      checked={form.profile_type.includes(type.value)}
+                      onCheckedChange={(checked) => {
+                        set('profile_type', checked
+                          ? [...form.profile_type, type.value]
+                          : form.profile_type.filter(t => t !== type.value)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{type.label}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.profile_type && <p className="text-xs text-destructive">{errors.profile_type}</p>}
+            </div>
+
             <NumberInput label="Number of dependent children" value={form.num_children} onChange={v => set('num_children', v)} error={errors.num_children} />
 
             <div className="space-y-2">
