@@ -314,6 +314,28 @@ export function ProfileWizard() {
 
         {step === 2 && (
           <div className="space-y-6">
+            {/* Profile Type */}
+            <div className="space-y-2">
+              <Label>I am a: <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <div className="space-y-2">
+                {PROFILE_TYPES.map((type) => (
+                  <label key={type.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
+                    <Checkbox
+                      checked={form.profile_type.includes(type.value)}
+                      onCheckedChange={(checked) => {
+                        set('profile_type', checked
+                          ? [...form.profile_type, type.value]
+                          : form.profile_type.filter(t => t !== type.value)
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{type.label}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.profile_type && <p className="text-xs text-destructive">{errors.profile_type}</p>}
+            </div>
+
             <NumberInput label="Number of dependent children" value={form.num_children} onChange={v => set('num_children', v)} error={errors.num_children} />
 
             <div className="space-y-2">
