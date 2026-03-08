@@ -13,7 +13,15 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PROFILE_TYPES } from '@/lib/profileTypes';
 
-const FILING_STATUSES = [
+const TAX_ACCOUNT_OPTIONS = [
+  { value: '401k', label: '401(k)/403(b)' },
+  { value: 'ira', label: 'Traditional IRA' },
+  { value: 'roth_ira', label: 'Roth IRA' },
+  { value: 'hsa', label: 'HSA' },
+  { value: 'fsa', label: 'FSA' },
+  { value: '529', label: '529 Plan' },
+  { value: 'none', label: "I don't contribute to any of these" },
+] as const;
   { value: 'single', label: 'Single' },
   { value: 'married_jointly', label: 'Married Filing Jointly' },
   { value: 'married_separately', label: 'Married Filing Separately' },
