@@ -258,8 +258,6 @@ const Sidebar = React.forwardRef<
             className="absolute top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-20"
             style={{ [side === "left" ? "right" : "left"]: "-3px" }}
           />
-        )}
-        </div>
       </div>
     </div>
   );
