@@ -6,8 +6,9 @@ import { calculateHorsemanScores, determinePrimaryHorseman } from '@/lib/scoring
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
 import { calculateInitialLeakEstimate } from '@/lib/moneyLeakEstimator';
 import { startOnboarding } from '@/lib/onboardingEngine';
-import { autoGenerateStrategy } from '@/lib/autoStrategyGenerator';
-import { useProfile } from '@/hooks/useProfile';
+import { autoGenerateStrategy, generateFallbackPlan } from '@/lib/autoStrategyGenerator';
+import { calculateRPRxScore, type StrategyData } from '@/lib/rprxScoreEngine';
+import { useProfile, type Profile } from '@/hooks/useProfile';
 import { useGamification } from '@/hooks/useGamification';
 import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
 import { toast } from '@/hooks/use-toast';
@@ -207,7 +208,15 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
     let hadNonCriticalFailure = false;
 
     try {
-      // === WRITE 1: Create assessment record (CRITICAL — stop if fails) ===
+      // === STEP 0: Fetch fresh profile from DB (bypass React Query cache) ===
+      const { data: freshProfileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      const freshProfile = (freshProfileData ?? profile ?? null) as Profile | null;
+
+      // === STEP 1: Calculate horseman scores ===
       const responseObjects = questions
         .filter((q) => state.responses[q.id])
         .map((q) => ({
@@ -221,16 +230,17 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
       const scores = calculateHorsemanScores(responseObjects);
       const primaryHorseman = determinePrimaryHorseman(scores);
 
-      const cashFlowResult = profile
+      const cashFlowResult = freshProfile
         ? calculateCashFlowFromNumbers(
-            profile.monthly_income || 0,
-            profile.monthly_debt_payments || 0,
-            profile.monthly_housing || 0,
-            profile.monthly_insurance || 0,
-            profile.monthly_living_expenses || 0
+            freshProfile.monthly_income || 0,
+            freshProfile.monthly_debt_payments || 0,
+            freshProfile.monthly_housing || 0,
+            freshProfile.monthly_insurance || 0,
+            freshProfile.monthly_living_expenses || 0
           )
         : null;
 
+      // === WRITE 1: Create assessment record (CRITICAL — stop if fails) ===
       const { data: assessment, error: assessmentError } = await supabase
         .from('user_assessments')
         .insert({
@@ -277,24 +287,52 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
         if (deepDiveError) throw deepDiveError;
       }
 
-      // === WRITE 2: Money leak estimate → profiles (non-critical) ===
+      // === WRITE 2: RPRx score + 5 pillars + money leak → profiles ===
       try {
-        const leakEstimate = calculateInitialLeakEstimate(profile?.monthly_income, primaryHorseman);
-        const { error: leakError } = await supabase
+        // Build strategy data (minimal at assessment time — no strategies completed yet)
+        const deepDiveCompleted = Object.keys(deepDiveAnswers).length > 0;
+        const strategyData: StrategyData = {
+          activatedCount: 0,
+          completedCount: 0,
+          completedByHorseman: { interest: 0, taxes: 0, insurance: 0, education: 0 },
+          deepDiveCompleted,
+          taxDeepDiveAnswers: primaryHorseman === 'taxes' ? deepDiveAnswers : null,
+        };
+
+        // Calculate RPRx score from fresh profile data
+        let scoreResult = { total: 0, river: 0, lake: 0, rainbow: 0, tax: 0, stress: 0, grade: 'at_risk', gradeLabel: 'At Risk', gradeIcon: '🔴', insights: [] as string[] };
+        if (freshProfile) {
+          scoreResult = calculateRPRxScore(freshProfile, strategyData);
+        }
+
+        // Calculate money leak from fresh profile income
+        const leakEstimate = calculateInitialLeakEstimate(freshProfile?.monthly_income, primaryHorseman);
+
+        // Single profile update: RPRx score + pillars + grade + money leak
+        const { error: profileError } = await supabase
           .from('profiles')
           .update({
+            rprx_score: scoreResult.total,
+            rprx_score_river: scoreResult.river,
+            rprx_score_lake: scoreResult.lake,
+            rprx_score_rainbow: scoreResult.rainbow,
+            rprx_score_tax: scoreResult.tax,
+            rprx_score_stress: scoreResult.stress,
+            rprx_score_total: scoreResult.total,
+            rprx_grade: scoreResult.grade,
+            current_tier: scoreResult.grade,
             estimated_annual_leak_low: leakEstimate.low,
             estimated_annual_leak_high: leakEstimate.high,
           })
           .eq('id', user.id);
-        if (leakError) throw leakError;
-        console.log('[Assessment] Write 2 success: money leak estimate saved', leakEstimate);
+        if (profileError) throw profileError;
+        console.log('[Assessment] Write 2 success: RPRx score + money leak saved', { score: scoreResult.total, grade: scoreResult.grade, leak: leakEstimate });
       } catch (err) {
-        console.error('[Assessment] Write 2 failed: money leak estimate', err);
+        console.error('[Assessment] Write 2 failed: RPRx score + money leak', err);
         hadNonCriticalFailure = true;
       }
 
-      // === WRITE 3: Onboarding progress row (non-critical) ===
+      // === WRITE 3: Onboarding progress row ===
       try {
         await startOnboarding(user.id);
         console.log('[Assessment] Write 3 success: onboarding progress row');
@@ -303,64 +341,84 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
         hadNonCriticalFailure = true;
       }
 
-      // === WRITE 4: Auto-generate plan + activate strategy (non-critical) ===
-      if (externalDeps?.sendMessage && externalDeps?.createPlan) {
-        try {
-          // Check if focus plan already exists
-          const { data: existingFocus } = await supabase
-            .from('saved_plans')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('is_focus', true)
-            .maybeSingle();
+      // === WRITE 4: Auto-generate plan + activate strategy ===
+      try {
+        // Check if focus plan already exists
+        const { data: existingFocus } = await supabase
+          .from('saved_plans')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('is_focus', true)
+          .maybeSingle();
 
-          if (!existingFocus) {
-            // Build response details for prompt
-            const responseDetails = questions
-              .filter((q) => state.responses[q.id])
-              .map((q) => ({
-                question_text: q.question_text,
-                category: q.category,
-                value: state.responses[q.id],
-              }));
+        if (!existingFocus) {
+          let planGenerated = false;
 
-            const { data: existingPlans } = await supabase
-              .from('saved_plans')
-              .select('strategy_name')
-              .eq('user_id', user.id);
+          // Try AI-powered plan generation first
+          if (externalDeps?.sendMessage && externalDeps?.createPlan) {
+            try {
+              const responseDetails = questions
+                .filter((q) => state.responses[q.id])
+                .map((q) => ({
+                  question_text: q.question_text,
+                  category: q.category,
+                  value: state.responses[q.id],
+                }));
 
-            await autoGenerateStrategy({
-              userId: user.id,
-              profile: profile ?? null,
-              assessment: {
-                id: assessment.id,
-                user_id: user.id,
-                primary_horseman: primaryHorseman as HorsemanType,
-                interest_score: scores.interest,
-                taxes_score: scores.taxes,
-                insurance_score: scores.insurance,
-                education_score: scores.education,
-                cash_flow_status: (cashFlowResult?.status ?? null) as CashFlowStatus,
-                completed_at: assessment.completed_at,
-                created_at: assessment.created_at,
-                income_range: null,
-                expense_range: null,
-              },
-              responses: responseDetails,
-              existingPlanNames: (existingPlans || []).map((p) => p.strategy_name),
-              sendMessage: externalDeps.sendMessage,
-              createPlan: externalDeps.createPlan,
-            });
-            console.log('[Assessment] Write 4 success: auto-generated plan');
-          } else {
-            console.log('[Assessment] Write 4 skipped: focus plan already exists');
+              const { data: existingPlans } = await supabase
+                .from('saved_plans')
+                .select('strategy_name')
+                .eq('user_id', user.id);
+
+              await autoGenerateStrategy({
+                userId: user.id,
+                profile: freshProfile ?? null,
+                assessment: {
+                  id: assessment.id,
+                  user_id: user.id,
+                  primary_horseman: primaryHorseman as HorsemanType,
+                  interest_score: scores.interest,
+                  taxes_score: scores.taxes,
+                  insurance_score: scores.insurance,
+                  education_score: scores.education,
+                  cash_flow_status: (cashFlowResult?.status ?? null) as CashFlowStatus,
+                  completed_at: assessment.completed_at,
+                  created_at: assessment.created_at,
+                  income_range: null,
+                  expense_range: null,
+                },
+                responses: responseDetails,
+                existingPlanNames: (existingPlans || []).map((p) => p.strategy_name),
+                sendMessage: externalDeps.sendMessage,
+                createPlan: externalDeps.createPlan,
+              });
+              planGenerated = true;
+              console.log('[Assessment] Write 4 success: AI-generated plan');
+            } catch (aiErr) {
+              console.warn('[Assessment] AI plan generation failed, falling back to strategy definitions:', aiErr);
+            }
           }
-        } catch (err) {
-          console.error('[Assessment] Write 4 failed: auto-generate plan', err);
-          hadNonCriticalFailure = true;
+
+          // Fallback: generate plan from strategy_definitions if AI failed or deps unavailable
+          if (!planGenerated) {
+            try {
+              await generateFallbackPlan({
+                userId: user.id,
+                primaryHorseman,
+                createPlan: externalDeps?.createPlan,
+              });
+              console.log('[Assessment] Write 4 success: fallback plan generated from strategy definitions');
+            } catch (fallbackErr) {
+              console.error('[Assessment] Write 4 failed: fallback plan generation', fallbackErr);
+              hadNonCriticalFailure = true;
+            }
+          }
+        } else {
+          console.log('[Assessment] Write 4 skipped: focus plan already exists');
         }
-      } else {
-        console.log('[Assessment] Write 4 skipped: sendMessage/createPlan not provided');
+      } catch (err) {
+        console.error('[Assessment] Write 4 failed: plan generation', err);
+        hadNonCriticalFailure = true;
       }
 
       // Log gamification activity (fire-and-forget)
@@ -373,7 +431,7 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
         awarded.forEach((badge) => showAchievementToast(badge));
       });
 
-      // === WRITE 5: Navigate to dashboard ===
+      // Navigate to dashboard
       if (hadNonCriticalFailure) {
         toast({
           title: "We're still setting up your plan",

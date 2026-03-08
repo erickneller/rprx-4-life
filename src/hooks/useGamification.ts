@@ -60,7 +60,7 @@ export function useGamification() {
   const streak = {
     current: profile?.current_streak ?? 0,
     longest: profile?.longest_streak ?? 0,
-    isActive: profile?.last_active_date === new Date().toISOString().slice(0, 10),
+    isActive: (() => { const d = new Date(); return profile?.last_active_date === `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(),
   };
 
   // Track streak on mount (once per session)

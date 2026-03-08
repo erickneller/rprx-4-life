@@ -51,7 +51,8 @@ export function DailyCheckIn() {
     queryKey: ['daily-checkin-today', user?.id],
     queryFn: async () => {
       if (!user?.id) return true;
-      const today = new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const { data } = await supabase
         .from('user_activity_log')
         .select('id')

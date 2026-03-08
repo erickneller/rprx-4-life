@@ -90,7 +90,8 @@ export async function updateStreak(userId: string): Promise<{
 
   if (!profile) return { currentStreak: 0, isNewRecord: false, badgesEarned: [] };
 
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const lastActive = profile.last_active_date;
 
   let newStreak = profile.current_streak ?? 0;
