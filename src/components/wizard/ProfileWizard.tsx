@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, ArrowRight, Loader2, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { PROFILE_TYPES } from '@/lib/profileTypes';
 
 const FILING_STATUSES = [
   { value: 'single', label: 'Single' },
