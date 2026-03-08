@@ -632,11 +632,20 @@ export default function Profile() {
             {/* Financial Goals */}
             <div className="space-y-3">
               <Label>Financial Goals <span className="text-destructive">*</span> <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {FINANCIAL_GOALS.map((goal) => (
-                  <div key={goal.value} className="flex items-center space-x-3">
-                    <Checkbox id={goal.value} checked={financialGoals.includes(goal.value)} onCheckedChange={() => handleGoalToggle(goal.value)} />
-                    <Label htmlFor={goal.value} className="text-sm font-normal cursor-pointer">{goal.label}</Label>
+                  <div
+                    key={goal.value}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => handleGoalToggle(goal.value)}
+                  >
+                    <Checkbox
+                      id={goal.value}
+                      checked={financialGoals.includes(goal.value)}
+                      onCheckedChange={() => handleGoalToggle(goal.value)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="text-sm font-medium flex-1">{goal.label}</span>
                   </div>
                 ))}
               </div>
