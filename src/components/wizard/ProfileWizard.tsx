@@ -158,6 +158,7 @@ export function ProfileWizard() {
     emergency_fund_balance: profile?.emergency_fund_balance ?? null as number | null,
     filing_status: profile?.filing_status ?? '' as string,
     employer_match_captured: profile?.employer_match_captured ?? '' as string,
+    tax_advantaged_accounts: ((profile?.tax_advantaged_accounts as string[]) ?? []) as string[],
     num_children: profile?.num_children ?? null as number | null,
     health_insurance: profile?.health_insurance ?? false,
     life_insurance: profile?.life_insurance ?? false,
