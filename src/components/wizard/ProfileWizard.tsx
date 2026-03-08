@@ -22,6 +22,7 @@ const TAX_ACCOUNT_OPTIONS = [
   { value: '529', label: '529 Plan' },
   { value: 'none', label: "I don't contribute to any of these" },
 ] as const;
+const FILING_STATUSES = [
   { value: 'single', label: 'Single' },
   { value: 'married_jointly', label: 'Married Filing Jointly' },
   { value: 'married_separately', label: 'Married Filing Separately' },
