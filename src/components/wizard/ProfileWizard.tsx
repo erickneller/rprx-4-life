@@ -13,6 +13,15 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PROFILE_TYPES } from '@/lib/profileTypes';
 
+const TAX_ACCOUNT_OPTIONS = [
+  { value: '401k', label: '401(k)/403(b)' },
+  { value: 'ira', label: 'Traditional IRA' },
+  { value: 'roth_ira', label: 'Roth IRA' },
+  { value: 'hsa', label: 'HSA' },
+  { value: 'fsa', label: 'FSA' },
+  { value: '529', label: '529 Plan' },
+  { value: 'none', label: "I don't contribute to any of these" },
+] as const;
 const FILING_STATUSES = [
   { value: 'single', label: 'Single' },
   { value: 'married_jointly', label: 'Married Filing Jointly' },
@@ -150,6 +159,7 @@ export function ProfileWizard() {
     emergency_fund_balance: profile?.emergency_fund_balance ?? null as number | null,
     filing_status: profile?.filing_status ?? '' as string,
     employer_match_captured: profile?.employer_match_captured ?? '' as string,
+    tax_advantaged_accounts: ((profile?.tax_advantaged_accounts as string[]) ?? []) as string[],
     num_children: profile?.num_children ?? null as number | null,
     health_insurance: profile?.health_insurance ?? false,
     life_insurance: profile?.life_insurance ?? false,
@@ -183,6 +193,7 @@ export function ProfileWizard() {
       if (form.emergency_fund_balance === null) e.emergency_fund_balance = 'Required (0 is valid)';
       if (!form.filing_status) e.filing_status = 'Required';
       if (!form.employer_match_captured) e.employer_match_captured = 'Required';
+      if (!form.tax_advantaged_accounts.length) e.tax_advantaged_accounts = 'Select at least one account or indicate none';
     } else if (s === 2) {
       if (form.num_children === null) e.num_children = 'Required (0 is valid)';
       const anyInsurance = form.health_insurance || form.life_insurance || form.disability_insurance || form.long_term_care_insurance || form.no_insurance;
@@ -208,6 +219,7 @@ export function ProfileWizard() {
       monthly_housing: form.monthly_housing, monthly_insurance: form.monthly_insurance,
       monthly_living_expenses: form.monthly_living_expenses, emergency_fund_balance: form.emergency_fund_balance,
       filing_status: form.filing_status, employer_match_captured: form.employer_match_captured,
+      tax_advantaged_accounts: form.tax_advantaged_accounts.length > 0 ? form.tax_advantaged_accounts : [],
     };
     if (s === 2) return {
       num_children: form.num_children, health_insurance: form.health_insurance, life_insurance: form.life_insurance,
@@ -308,6 +320,31 @@ export function ProfileWizard() {
                 <SelectContent>{EMPLOYER_MATCH_OPTIONS.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
               </Select>
               {errors.employer_match_captured && <p className="text-xs text-destructive">{errors.employer_match_captured}</p>}
+            </div>
+
+            {/* Tax-Advantaged Accounts */}
+            <div className="space-y-2">
+              <Label>Tax-Advantaged Accounts <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <div className="space-y-2">
+                {TAX_ACCOUNT_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
+                    <Checkbox
+                      checked={form.tax_advantaged_accounts.includes(opt.value)}
+                      onCheckedChange={(checked) => {
+                        if (opt.value === 'none' && checked) {
+                          set('tax_advantaged_accounts', ['none']);
+                        } else if (opt.value !== 'none' && checked) {
+                          set('tax_advantaged_accounts', [...form.tax_advantaged_accounts.filter(v => v !== 'none'), opt.value]);
+                        } else {
+                          set('tax_advantaged_accounts', form.tax_advantaged_accounts.filter(v => v !== opt.value));
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.tax_advantaged_accounts && <p className="text-xs text-destructive">{errors.tax_advantaged_accounts}</p>}
             </div>
           </div>
         )}
