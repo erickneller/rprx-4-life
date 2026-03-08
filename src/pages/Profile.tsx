@@ -558,15 +558,20 @@ export default function Profile() {
               <Label>I am a: <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
               <div className="space-y-2">
                 {PROFILE_TYPES.map((type) => (
-                  <label key={type.value} className="flex items-center gap-2 cursor-pointer">
+                  <div
+                    key={type.value}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => setProfileTypes((prev) => prev.includes(type.value) ? prev.filter((v) => v !== type.value) : [...prev, type.value])}
+                  >
                     <Checkbox
                       checked={profileTypes.includes(type.value)}
                       onCheckedChange={(checked) => {
                         setProfileTypes((prev) => checked ? [...prev, type.value] : prev.filter((v) => v !== type.value));
                       }}
+                      onClick={(e) => e.stopPropagation()}
                     />
-                    <span className="text-sm">{type.label}</span>
-                  </label>
+                    <span className="text-sm font-medium flex-1">{type.label}</span>
+                  </div>
                 ))}
               </div>
               {validationErrors.profileTypes && <p className="text-xs text-destructive">{validationErrors.profileTypes}</p>}
