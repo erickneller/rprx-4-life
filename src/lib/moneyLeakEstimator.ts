@@ -42,6 +42,9 @@ function roundToNearest500(n: number): number {
 /**
  * Calculate initial money leak estimate from income bracket and primary horseman.
  * Called once at assessment completion to seed profiles.estimated_annual_leak_low/high.
+ *
+ * Guarantees non-zero results: minimum $500/$1500 even when income is unknown.
+ * When income IS known, uses bracket-based calculation with horseman multiplier.
  */
 export function calculateInitialLeakEstimate(
   monthlyIncome: number | null | undefined,
@@ -52,7 +55,8 @@ export function calculateInitialLeakEstimate(
   let baseLow: number;
   let baseHigh: number;
 
-  if (income < 3500) {
+  if (income <= 0 || income < 3500) {
+    // Unknown income or low income — use minimum floor
     baseLow = 500; baseHigh = 1500;
   } else if (income < 5000) {
     baseLow = 1000; baseHigh = 3000;
@@ -65,11 +69,16 @@ export function calculateInitialLeakEstimate(
   }
 
   const multiplier = HORSEMAN_MULTIPLIERS[primaryHorseman] ?? 1.0;
+  const adjustedLow = baseLow * multiplier;
   const adjustedHigh = baseHigh * multiplier;
 
+  const low = roundToNearest500(adjustedLow);
+  const high = roundToNearest500(adjustedHigh);
+
+  // Ensure minimum non-zero values (never return 0/0)
   return {
-    low: roundToNearest500(baseLow),
-    high: roundToNearest500(adjustedHigh),
+    low: Math.max(low, 500),
+    high: Math.max(high, 1500),
   };
 }
 

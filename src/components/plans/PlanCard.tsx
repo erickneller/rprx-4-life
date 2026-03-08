@@ -9,12 +9,13 @@ import { toast } from 'sonner';
 
 interface PlanCardProps {
   plan: SavedPlan;
+  totalPlans?: number;
   selectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
 }
 
-export function PlanCard({ plan, selectionMode, isSelected, onToggleSelect }: PlanCardProps) {
+export function PlanCard({ plan, totalPlans = 0, selectionMode, isSelected, onToggleSelect }: PlanCardProps) {
   const navigate = useNavigate();
   const updatePlan = useUpdatePlan();
   const content = plan.content;
@@ -35,8 +36,15 @@ export function PlanCard({ plan, selectionMode, isSelected, onToggleSelect }: Pl
     completed: 'Completed',
   };
 
+  // Don't allow removing focus if this is the only plan
+  const canToggleFocus = !(plan.is_focus && totalPlans <= 1);
+
   const handleSetFocus = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canToggleFocus) {
+      toast.info('You need at least one focus plan');
+      return;
+    }
     updatePlan.mutate(
       { id: plan.id, is_focus: !plan.is_focus },
       {
@@ -71,9 +79,9 @@ export function PlanCard({ plan, selectionMode, isSelected, onToggleSelect }: Pl
               <Button
                 variant="ghost"
                 size="icon"
-                className={`h-8 w-8 ${plan.is_focus ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+                className={`h-8 w-8 ${plan.is_focus ? 'text-primary' : 'text-muted-foreground hover:text-primary'} ${!canToggleFocus ? 'opacity-60 cursor-default' : ''}`}
                 onClick={handleSetFocus}
-                title={plan.is_focus ? 'Remove focus' : 'Set as focus'}
+                title={!canToggleFocus ? 'This is your only plan — it must stay focused' : plan.is_focus ? 'Remove focus' : 'Set as focus'}
               >
                 <Star className={`h-4 w-4 ${plan.is_focus ? 'fill-primary' : ''}`} />
               </Button>

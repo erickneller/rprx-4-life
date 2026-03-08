@@ -215,6 +215,7 @@ export default function Plans() {
               <PlanCard
                 key={plan.id}
                 plan={plan}
+                totalPlans={plans.length}
                 selectionMode={selectionMode}
                 isSelected={selectedIds.has(plan.id)}
                 onToggleSelect={toggleSelect}
