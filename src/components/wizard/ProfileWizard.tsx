@@ -188,6 +188,7 @@ export function ProfileWizard() {
       const anyInsurance = form.health_insurance || form.life_insurance || form.disability_insurance || form.long_term_care_insurance || form.no_insurance;
       if (!anyInsurance) e.insurance = 'Select at least one';
       if (!form.financial_goals.length) e.financial_goals = 'Select at least one';
+      if (!form.profile_type.length) e.profile_type = 'Select at least one profile type';
     } else if (s === 3) {
       if (form.years_until_retirement === null) e.years_until_retirement = 'Required';
       if (form.desired_retirement_income === null || form.desired_retirement_income <= 0) e.desired_retirement_income = 'Required';
