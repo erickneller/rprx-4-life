@@ -320,6 +320,31 @@ export function ProfileWizard() {
               </Select>
               {errors.employer_match_captured && <p className="text-xs text-destructive">{errors.employer_match_captured}</p>}
             </div>
+
+            {/* Tax-Advantaged Accounts */}
+            <div className="space-y-2">
+              <Label>Tax-Advantaged Accounts <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <div className="space-y-2">
+                {TAX_ACCOUNT_OPTIONS.map((opt) => (
+                  <label key={opt.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
+                    <Checkbox
+                      checked={form.tax_advantaged_accounts.includes(opt.value)}
+                      onCheckedChange={(checked) => {
+                        if (opt.value === 'none' && checked) {
+                          set('tax_advantaged_accounts', ['none']);
+                        } else if (opt.value !== 'none' && checked) {
+                          set('tax_advantaged_accounts', [...form.tax_advantaged_accounts.filter(v => v !== 'none'), opt.value]);
+                        } else {
+                          set('tax_advantaged_accounts', form.tax_advantaged_accounts.filter(v => v !== opt.value));
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.tax_advantaged_accounts && <p className="text-xs text-destructive">{errors.tax_advantaged_accounts}</p>}
+            </div>
           </div>
         )}
 
