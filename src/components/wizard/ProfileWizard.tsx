@@ -218,6 +218,7 @@ export function ProfileWizard() {
       monthly_housing: form.monthly_housing, monthly_insurance: form.monthly_insurance,
       monthly_living_expenses: form.monthly_living_expenses, emergency_fund_balance: form.emergency_fund_balance,
       filing_status: form.filing_status, employer_match_captured: form.employer_match_captured,
+      tax_advantaged_accounts: form.tax_advantaged_accounts.length > 0 ? form.tax_advantaged_accounts : [],
     };
     if (s === 2) return {
       num_children: form.num_children, health_insurance: form.health_insurance, life_insurance: form.life_insurance,
