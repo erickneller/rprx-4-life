@@ -213,6 +213,7 @@ export function ProfileWizard() {
       num_children: form.num_children, health_insurance: form.health_insurance, life_insurance: form.life_insurance,
       disability_insurance: form.disability_insurance, long_term_care_insurance: form.long_term_care_insurance,
       no_insurance: form.no_insurance, financial_goals: form.financial_goals,
+      profile_type: form.profile_type.length > 0 ? form.profile_type : null,
     };
     if (s === 3) return {
       years_until_retirement: form.years_until_retirement, desired_retirement_income: form.desired_retirement_income,
