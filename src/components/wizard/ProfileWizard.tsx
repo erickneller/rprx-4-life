@@ -192,6 +192,7 @@ export function ProfileWizard() {
       if (form.emergency_fund_balance === null) e.emergency_fund_balance = 'Required (0 is valid)';
       if (!form.filing_status) e.filing_status = 'Required';
       if (!form.employer_match_captured) e.employer_match_captured = 'Required';
+      if (!form.tax_advantaged_accounts.length) e.tax_advantaged_accounts = 'Select at least one account or indicate none';
     } else if (s === 2) {
       if (form.num_children === null) e.num_children = 'Required (0 is valid)';
       const anyInsurance = form.health_insurance || form.life_insurance || form.disability_insurance || form.long_term_care_insurance || form.no_insurance;
