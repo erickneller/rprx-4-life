@@ -204,7 +204,7 @@ export async function generateFallbackPlan(params: {
         strategy_id: topStrategy.id,
         strategy_name: (topStrategy as Record<string, unknown>).name as string || 'Recovery Strategy',
         content: planContent as unknown as Record<string, unknown>,
-      })
+      } as any)
       .select()
       .single();
     if (error) throw error;
