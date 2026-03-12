@@ -500,6 +500,7 @@ export type Database = {
           filing_status: string | null
           financial_goals: string[] | null
           full_name: string | null
+          ghl_contact_id: string | null
           health_insurance: boolean
           id: string
           last_active_date: string | null
@@ -553,6 +554,7 @@ export type Database = {
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
+          ghl_contact_id?: string | null
           health_insurance?: boolean
           id: string
           last_active_date?: string | null
@@ -606,6 +608,7 @@ export type Database = {
           filing_status?: string | null
           financial_goals?: string[] | null
           full_name?: string | null
+          ghl_contact_id?: string | null
           health_insurance?: boolean
           id?: string
           last_active_date?: string | null
