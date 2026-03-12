@@ -64,6 +64,7 @@ export interface Profile {
   estimated_annual_leak_high: number | null;
   estimated_annual_leak_recovered: number | null;
   onboarding_completed: boolean;
+  ghl_contact_id: string | null;
 }
 
 export function useProfile() {
