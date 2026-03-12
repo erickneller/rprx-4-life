@@ -272,7 +272,9 @@ export function calculateRPRxScore(profile: Profile, strategyData: StrategyData)
   const tax = calcTax(profile, strategyData);
   const stress = calcStress(profile);
 
-  const total = clamp(river + lake + rainbow + tax + stress, 0, 100);
+  // Ensure score is never zero after assessment — minimum floor of 5
+  const rawTotal = river + lake + rainbow + tax + stress;
+  const total = clamp(rawTotal > 0 ? rawTotal : 5, 5, 100);
   const gradeInfo = getGrade(total);
   const insights = generateInsights(river, lake, rainbow, tax, stress);
 
