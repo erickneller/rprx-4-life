@@ -119,8 +119,22 @@ export function useProfile() {
       if (error) throw error;
       return data as Profile;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
+
+      // Sync contact fields to GHL if name, phone, or email changed
+      const contactFields = ['full_name', 'phone'];
+      const hasContactChange = contactFields.some((f) => f in variables);
+      if (hasContactChange && data) {
+        supabase.functions.invoke('ghl-sync', {
+          body: {
+            full_name: data.full_name,
+            phone: data.phone,
+          },
+        }).catch((err) => {
+          console.warn('GHL sync failed (non-blocking):', err);
+        });
+      }
     },
   });
 
