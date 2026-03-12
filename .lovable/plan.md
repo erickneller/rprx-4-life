@@ -1,85 +1,22 @@
 
+# Live User Testing Readiness — Gaps Addressed
 
-# GoHighLevel (GHL) Contact Sync Integration
+## Verified (No Changes Needed)
 
-## Important Note on OAuth vs API Key
+| Gap | Result |
+|-----|--------|
+| Dashboard card order | ✅ Matches PRD exactly: Daily Journey (1) → Money Leak (2) → Current Focus (3) → RPRx Score (4) → Cash Flow (5) → My Strategies (6) → Recent Achievements (7) |
+| Day 1 CTA context-aware states | ✅ `useDayOneCTA` covers all 4 PRD states: build → activate → view_leak → see_results |
+| Money Leak never $0 | ✅ Already has `Math.max(low, 500)` / `Math.max(high, 1500)` floor in `calculateInitialLeakEstimate` |
 
-You selected OAuth, but GHL OAuth is designed for **marketplace apps** that serve many GHL accounts. Since you're syncing contacts to **your own single GHL location**, a **Location API key** is the correct and simpler approach. OAuth would add unnecessary complexity (token refresh, app registration, marketplace approval) with no benefit for a single-account use case.
+## Fixed
 
-## Architecture
+| Gap | Fix |
+|-----|-----|
+| RPRx Score never zero | Added minimum floor of 5 in `rprxScoreEngine.ts` — score clamps to [5, 100] instead of [0, 100] |
 
-```text
-┌──────────────┐       profile update        ┌─────────────────────┐
-│   RPRx App   │ ──────────────────────────▶  │  Supabase Edge Fn   │
-│  (Frontend)  │                              │  "ghl-sync"         │
-└──────────────┘                              │  ─ upsert contact   │
-                                              │    via GHL API      │
-                                              └─────────────────────┘
-                                                        │
-                                                        ▼
-                                              ┌─────────────────────┐
-                                              │   GoHighLevel CRM   │
-                                              │   (your location)   │
-                                              └─────────────────────┘
-                                                        │
-                                              GHL webhook on         
-                                              contact.update         
-                                                        │
-                                                        ▼
-                                              ┌─────────────────────┐
-                                              │  Supabase Edge Fn   │
-                                              │  "ghl-webhook"      │
-                                              │  ─ update profile   │
-                                              └─────────────────────┘
-```
+## Remaining Risks (Non-blocking for soft launch)
 
-## How to Get Your GHL Location API Key
-
-1. Log into your GoHighLevel account
-2. Go to **Settings** (gear icon) in your sub-account/location
-3. Click **Business Profile** or **Company** in the left sidebar
-4. Look for **API Key** section (sometimes under **Settings → Business Profile → API Keys**)
-5. Click **Generate** or copy the existing Location API key
-6. This key starts with something like `eyJhbGci...` — it's a long JWT-style token
-
-## Implementation Plan
-
-### 1. Store GHL API Key as a Secret
-- Add `GHL_API_KEY` as a Supabase edge function secret
-- Store your GHL Location ID as `GHL_LOCATION_ID`
-
-### 2. Create `ghl-sync` Edge Function (RPRx → GHL)
-- Triggered from the frontend after a successful profile update (name, email, phone)
-- Calls GHL API `POST /contacts/upsert` with email as the lookup key
-- Stores the returned GHL `contactId` on the profile table (new column: `ghl_contact_id`)
-- Prevents sync loops by skipping if the update originated from GHL webhook
-
-### 3. Create `ghl-webhook` Edge Function (GHL → RPRx)
-- Public endpoint (no JWT) secured by a shared webhook secret
-- Receives `contact.update` events from GHL
-- Looks up user by `ghl_contact_id` and updates `full_name`, `phone` in the profiles table
-- Sets a flag to prevent the profile update from re-triggering `ghl-sync`
-
-### 4. Add `ghl_contact_id` Column to Profiles
-- New nullable text column on `profiles` table to store the GHL contact ID for mapping
-
-### 5. Frontend Integration
-- After `updateProfile` succeeds for name/email/phone changes, call `supabase.functions.invoke('ghl-sync')` with the updated fields
-- No UI changes needed — sync happens silently in the background
-
-### 6. Register Webhook in GHL
-- In GHL Settings → Webhooks, add your edge function URL as the endpoint for `contact.update` events
-- The webhook URL will be: `https://wkzgjvnpnhyluxvclymh.supabase.co/functions/v1/ghl-webhook`
-
-## Secrets Needed
-- `GHL_API_KEY` — your Location API key from GHL
-- `GHL_LOCATION_ID` — your GHL location/sub-account ID
-- `GHL_WEBHOOK_SECRET` — a random string you set in both GHL and the edge function for webhook verification
-
-## Files to Create/Modify
-- **Create**: `supabase/functions/ghl-sync/index.ts`
-- **Create**: `supabase/functions/ghl-webhook/index.ts`
-- **Modify**: `supabase/config.toml` (add both functions)
-- **Migration**: Add `ghl_contact_id` text column to `profiles`
-- **Modify**: `src/hooks/useProfile.ts` (trigger sync after contact field updates)
-
+- **Assessment transaction atomicity**: Sequential writes with `hadNonCriticalFailure` flags. Acceptable for 5-10 testers; monitor for broken states.
+- **Mobile polish**: Sidebar resize handle, card layouts, and chat FAB positioning should be tested on small viewports.
+- **30-day journey Days 2-30**: Content needs to be seeded in `onboarding_content` table for all horseman types beyond Day 1.
