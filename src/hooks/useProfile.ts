@@ -98,6 +98,17 @@ export function useProfile() {
           .single();
 
         if (insertError) throw insertError;
+
+        // Sync new user to GHL (non-blocking)
+        supabase.functions.invoke('ghl-sync', {
+          body: {
+            full_name: newProfile.full_name,
+            phone: newProfile.phone,
+          },
+        }).catch((err) => {
+          console.warn('GHL sync on signup failed (non-blocking):', err);
+        });
+
         return newProfile as Profile;
       }
 
