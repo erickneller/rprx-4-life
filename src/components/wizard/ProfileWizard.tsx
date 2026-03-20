@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
+import { useCompany } from '@/hooks/useCompany';
 import { useWizardContent } from '@/hooks/useWizardContent';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, ArrowRight, Loader2, Rocket } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Rocket, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PROFILE_TYPES } from '@/lib/profileTypes';
@@ -144,10 +145,12 @@ function OptionCard({ label, selected, onClick }: { label: string; selected: boo
 export function ProfileWizard() {
   const navigate = useNavigate();
   const { profile, updateProfile } = useProfile();
+  const { createCompany, createCompanyPending } = useCompany();
   const { contentMap, isLoading: contentLoading } = useWizardContent();
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [companyName, setCompanyName] = useState('');
 
   // Local form state initialized from profile
   const [form, setForm] = useState(() => ({
@@ -209,6 +212,9 @@ export function ProfileWizard() {
       if (!form.stress_money_worry) e.stress_money_worry = 'Required';
       if (!form.stress_emergency_confidence) e.stress_emergency_confidence = 'Required';
       if (!form.stress_control_feeling) e.stress_control_feeling = 'Required';
+    } else if (s === 5) {
+      // Business owner company step — only shown when profile_type includes 'business_owner'
+      if (!companyName.trim()) e.companyName = 'Company name is required';
     }
     return e;
   };
@@ -237,6 +243,10 @@ export function ProfileWizard() {
     };
   };
 
+  // Whether the user selected 'business_owner' in step 2
+  const isBusinessOwner = form.profile_type.includes('business_owner');
+  const totalSteps = isBusinessOwner ? 5 : 4;
+
   const handleNext = async () => {
     const errs = validateStep(step);
     if (Object.keys(errs).length > 0) {
@@ -245,8 +255,20 @@ export function ProfileWizard() {
     }
     setSaving(true);
     try {
-      await updateProfile.mutateAsync(getStepData(step) as any);
-      setStep(step + 1);
+      if (step === 5) {
+        // Business owner company creation step
+        await createCompany(companyName.trim());
+        toast.success('Company created!');
+        setStep(step + 1);
+      } else {
+        await updateProfile.mutateAsync(getStepData(step) as any);
+        // After step 4 (stress), skip to completion if not a business owner
+        if (step === 4 && !isBusinessOwner) {
+          setStep(step + 1);
+        } else {
+          setStep(step + 1);
+        }
+      }
     } catch {
       toast.error('Failed to save. Please try again.');
     } finally {
@@ -264,10 +286,9 @@ export function ProfileWizard() {
 
   const stepKey = step <= 4 ? `wizard_step_${step}` : 'wizard_complete';
   const content = contentMap[stepKey];
-  const totalSteps = 4;
 
   // Completion screen
-  if (step > 4) {
+  if (step > totalSteps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-[480px] text-center space-y-6">
@@ -472,6 +493,42 @@ export function ProfileWizard() {
           </div>
         )}
 
+        {/* Step 5 — Business owner company setup (only shown if profile_type includes 'business_owner') */}
+        {step === 5 && isBusinessOwner && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-accent">
+              <Building2 className="h-5 w-5" />
+              <span className="font-medium text-sm">Company Setup</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Since you selected "Business Owner," let's set up your company. Employees who join via your invite link will be automatically linked to it.
+            </p>
+            {profile?.company_id ? (
+              <div className="rounded-lg border border-accent/30 bg-accent/10 p-4 text-sm">
+                <p className="font-medium text-accent-foreground">You're already linked to a company.</p>
+                <p className="text-muted-foreground mt-1">You can manage your company invite link from your profile settings.</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <Label htmlFor="companyName">Company Name</Label>
+                <Input
+                  id="companyName"
+                  placeholder="e.g. Acme Financial Group"
+                  value={companyName}
+                  onChange={e => {
+                    setCompanyName(e.target.value);
+                    setErrors(prev => { const n = { ...prev }; delete n.companyName; return n; });
+                  }}
+                />
+                {errors.companyName && <p className="text-xs text-destructive">{errors.companyName}</p>}
+                <p className="text-xs text-muted-foreground pt-1">
+                  Your company name is set by you — employees can't change it when joining.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Navigation */}
         <div className="flex gap-3 pt-2">
           {step > 1 && (
@@ -479,9 +536,9 @@ export function ProfileWizard() {
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
           )}
-          <Button className="flex-1 gap-1" onClick={handleNext} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-            {step === 4 ? 'Finish' : 'Next'}
+          <Button className="flex-1 gap-1" onClick={handleNext} disabled={saving || createCompanyPending}>
+            {(saving || createCompanyPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+            {step === totalSteps ? 'Finish' : 'Next'}
           </Button>
         </div>
       </div>
