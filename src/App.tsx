@@ -23,6 +23,7 @@ import AdminPanel from "./pages/AdminPanel";
 import CompletePhone from "./pages/CompletePhone";
 import Wizard from "./pages/Wizard";
 import NotFound from "./pages/NotFound";
+import Join from "./pages/Join";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,8 @@ const App = () => (
           <Route path="/complete-phone" element={<ProtectedRoute><CompletePhone /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+          {/* /join — no ProtectedRoute; handles auth inline */}
+          <Route path="/join" element={<Join />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

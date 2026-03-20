@@ -65,6 +65,9 @@ export interface Profile {
   estimated_annual_leak_recovered: number | null;
   onboarding_completed: boolean;
   ghl_contact_id: string | null;
+  // Corporate accounts
+  company_id: string | null;
+  company_role: 'owner' | 'admin' | 'member' | null;
 }
 
 export function useProfile() {
@@ -87,17 +90,46 @@ export function useProfile() {
       // If no profile exists, create one
       if (!data) {
         const metadata = user.user_metadata || {};
+
+        // Check for pending invite token (set by /join page before signup redirect)
+        let pendingCompanyId: string | null = null;
+        const pendingToken = localStorage.getItem('pending_invite_token');
+        if (pendingToken) {
+          const { data: inviteCompany } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('invite_token', pendingToken)
+            .maybeSingle();
+          if (inviteCompany) {
+            pendingCompanyId = inviteCompany.id;
+          }
+        }
+
         const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
           .insert({
             id: user.id,
             full_name: metadata.full_name || metadata.name || null,
             phone: metadata.phone || null,
+            ...(pendingCompanyId ? { company_id: pendingCompanyId, company_role: 'member' } : {}),
           })
           .select()
           .single();
 
         if (insertError) throw insertError;
+
+        // If we assigned a company, also create the company_members row
+        if (pendingCompanyId) {
+          await supabase
+            .from('company_members')
+            .upsert(
+              { company_id: pendingCompanyId, user_id: user.id, role: 'member' },
+              { onConflict: 'company_id,user_id', ignoreDuplicates: true }
+            )
+            .then(() => {
+              localStorage.removeItem('pending_invite_token');
+            });
+        }
 
         // Sync new user to GHL (non-blocking)
         supabase.functions.invoke('ghl-sync', {
