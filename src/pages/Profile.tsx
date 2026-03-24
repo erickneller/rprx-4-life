@@ -9,9 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Camera, Loader2, Info, DollarSign, Check, CloudUpload, Trash2 } from 'lucide-react';
+import { Camera, Loader2, Info, DollarSign, Check, CloudUpload, Trash2, Building2, Copy, Users } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany, buildInviteUrl } from '@/hooks/useCompany';
 import { toast } from '@/hooks/use-toast';
 import { CashFlowSection } from '@/components/profile/CashFlowSection';
 import { PROFILE_TYPES, FINANCIAL_GOALS, FILING_STATUSES } from '@/lib/profileTypes';
@@ -64,12 +65,40 @@ const STRESS_CONTROL_OPTIONS = [
   { value: 'not_at_all', label: 'Not in control' },
 ] as const;
 
+/** Small sub-component to show member count for a company */
+function CompanyMemberCount({ companyId }: { companyId: string }) {
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    import('@/integrations/supabase/client').then(({ supabase }) => {
+      supabase
+        .from('company_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .then(({ count: c }) => setCount(c ?? 0));
+    });
+  }, [companyId]);
+
+  if (count === null) return null;
+
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <Users className="h-4 w-4" />
+      <span>
+        <span className="font-semibold text-foreground">{count}</span>{' '}
+        {count === 1 ? 'member' : 'members'}
+      </span>
+    </div>
+  );
+}
+
 export default function Profile() {
   const { user } = useAuth();
   const { profile, updateProfile, uploadAvatar, deleteAvatar } = useProfile();
   const [isDeleting, setIsDeleting] = useState(false);
   const { logActivity } = useGamification();
   const { refreshScore } = useRPRxScore();
+  const { company: userCompany, membership: userMembership } = useCompany();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState('');
@@ -935,6 +964,53 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Company Card — shown only for business owners who own a company */}
+        {userCompany && userMembership?.role === 'owner' && (
+          <Card className="border-accent/30 bg-accent/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-accent" />
+                Your Company
+              </CardTitle>
+              <CardDescription>Share your invite link to add team members</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label className="text-sm font-semibold">Company Name</Label>
+                <p className="text-base font-medium">{userCompany.name}</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold">Invite Link</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    readOnly
+                    value={buildInviteUrl(userCompany.invite_token)}
+                    className="bg-muted text-xs font-mono flex-1 cursor-default"
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(buildInviteUrl(userCompany.invite_token));
+                      toast({ title: 'Copied!', description: 'Invite link copied to clipboard.' });
+                    }}
+                    title="Copy invite link"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Share this link with your team — they'll create an RPRX account linked to {userCompany.name}.
+                </p>
+              </div>
+
+              <CompanyMemberCount companyId={userCompany.id} />
+            </CardContent>
+          </Card>
+        )}
 
         {/* My Achievements */}
         <Card>
