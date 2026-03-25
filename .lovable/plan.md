@@ -1,26 +1,18 @@
 
 
-# Fix: Restrict Company Invite Token Visibility
+# Fix Money Leak Card Dark Mode Contrast
 
-## Status: ✅ Complete
+## Problem
+The card uses `text-primary-foreground` for text color. In dark mode, `--primary-foreground` is `222 47% 6%` (near-black), while `gradient-hero` is also very dark. Result: dark text on dark background = unreadable.
 
-## Changes Made
+The horseman legend labels, the "Money Leak Estimator" header, and the main headline text are all nearly invisible.
 
-### 1. Migration — `get_company_invite_token` RPC
-Created a `SECURITY DEFINER` function that returns the invite token only if the caller is:
-- The company owner (`owner_id`)
-- A company-level admin/owner (via `company_members`)
-- A platform admin (via `user_roles`)
+## Fix
+Replace `text-primary-foreground` with `text-white` on the card so it's always light text on the dark gradient background regardless of theme. The `gradient-hero` is always dark (navy) in both light and dark mode, so white text is always correct.
 
-### 2. `src/hooks/useCompany.ts`
-- Removed `invite_token` from the `Company` interface
-- Changed `select('*')` to explicit column list excluding `invite_token`
-- Added `useCompanyInviteToken(companyId)` hook that calls the new RPC
+**Modified: `src/components/money-leak/MoneyLeakCard.tsx`**
+- Line 89: Change `text-primary-foreground` → `text-white`
+- Line 66 (compact variant): Same fix
 
-### 3. `src/pages/Profile.tsx`
-- Company card now shown for both `owner` and `admin` roles (not just owner)
-- Invite link fetched via `useCompanyInviteToken` RPC instead of reading from company object
-- Extracted `CompanyInviteCard` sub-component for cleaner separation
+Single-line change in one file.
 
-### 4. Admin `CompaniesTab` — No change needed
-Already protected by "Admins have full access" RLS policy.
