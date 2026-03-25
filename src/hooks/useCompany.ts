@@ -9,7 +9,6 @@ export interface Company {
   owner_id: string | null;
   ghl_location_id: string | null;
   plan: string;
-  invite_token: string;
   created_at: string;
   updated_at: string;
 }

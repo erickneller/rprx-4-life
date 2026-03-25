@@ -1350,6 +1350,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_company_invite_token: {
+        Args: { _company_id: string }
+        Returns: string
+      }
       get_subscription_tier: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
