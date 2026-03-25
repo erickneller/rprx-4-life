@@ -548,16 +548,15 @@ Would you like a detailed implementation plan for any of these strategies? Just 
 
   // ----- HORSEMAN FILTER -----
   if (intent === 'horseman_filter') {
-    // Detect which horseman from the message
-    const msg = primaryHorseman || 'interest'; // fallback
-    let filterHorseman = msg;
-    const lower = ''; // intent already detected, use primaryHorseman or detect from ranked
-    for (const h of ['taxes', 'interest', 'insurance', 'education']) {
-      // Already filtered via ranked strategies sorting, pick top matching
-    }
+    const msgLower = userMessage.toLowerCase();
+    let filterHorseman = primaryHorseman || 'interest';
+    if (/\b(tax|taxes|taxation)\b/.test(msgLower)) filterHorseman = 'taxes';
+    else if (/\b(interest|debt)\b/.test(msgLower)) filterHorseman = 'interest';
+    else if (/\binsurance\b/.test(msgLower)) filterHorseman = 'insurance';
+    else if (/\beducation\b/.test(msgLower)) filterHorseman = 'education';
+
     const filtered = ranked.filter(s => s.strategy.horseman_type === filterHorseman).slice(0, 3);
     if (filtered.length === 0) {
-      // Try all
       const anyFiltered = ranked.slice(0, 3);
       return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}
 
