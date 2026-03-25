@@ -69,6 +69,13 @@ export function AppSidebar() {
   const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
   const { membership } = useCompany();
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
+  const { enabled: advisorEnabled, url: advisorUrl } = useAdvisorLink();
+
+  const resolveAdvisorHref = (url: string) => {
+    const digits = url.replace(/\D/g, '');
+    if (digits.length >= 10 && !/^https?:\/\//i.test(url)) return `tel:+1${digits.slice(-10)}`;
+    return url;
+  };
 
   return (
     <Sidebar collapsible="icon">
