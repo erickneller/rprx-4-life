@@ -379,7 +379,7 @@ export default function AdminPanel() {
         </div>
 
         <Tabs defaultValue="strategies">
-          <TabsList className="overflow-x-auto flex-wrap">
+          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto py-1">
             <TabsTrigger value="strategies" className="gap-1">
               <Shield className="h-4 w-4" /> Strategies
             </TabsTrigger>
