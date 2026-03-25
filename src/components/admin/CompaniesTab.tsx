@@ -40,6 +40,10 @@ export function CompaniesTab() {
   const [newName, setNewName] = useState('');
   const [newPlan, setNewPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingCompany, setEditingCompany] = useState<CompanyRow | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPlan, setEditPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
+  const [deleteTarget, setDeleteTarget] = useState<CompanyRow | null>(null);
 
   // ─── Fetch all companies with member counts ─────────────────────────────
   const { data: companies = [], isLoading } = useQuery<CompanyRow[]>({
