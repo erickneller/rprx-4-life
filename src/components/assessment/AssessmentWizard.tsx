@@ -108,6 +108,20 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   }, [cancelAutoAdvance, goToPrevious]);
 
   if (questionsLoading || isLoadingEdit) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (phase === 'core' && !currentQuestion) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">No questions available.</p>
+      </div>
+    );
+  }
 
   // Transition screen between core and deep dive
   if (phase === 'transition') {
