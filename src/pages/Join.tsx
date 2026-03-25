@@ -6,8 +6,9 @@ import { useCompany } from '@/hooks/useCompany';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Building2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import rprxLogo from '@/assets/rprx-logo.png';
 
 interface PendingCompany {
   id: string;
@@ -158,15 +159,15 @@ export default function Join() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
-        {/* Company badge */}
+        {/* Spinning logo */}
+        <div className="flex justify-center" style={{ perspective: '1000px' }}>
+          <img src={rprxLogo} alt="RPRx Logo" className="w-20 h-20 animate-spin-y" />
+        </div>
+
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent">
-            <Building2 className="h-4 w-4" />
-            {pendingCompany?.name}
-          </div>
           <h1 className="text-2xl font-bold">You've been invited</h1>
           <p className="text-muted-foreground text-sm">
-            Create your free account to join <span className="font-semibold">{pendingCompany?.name}</span> on RPRX.
+            Create your free account to join <span className="font-semibold text-foreground">{pendingCompany?.name}</span> on RPRx 4 Life.
           </p>
         </div>
 
@@ -230,7 +231,7 @@ export default function Join() {
             </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={submitting}>
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Create Account &amp; Join
           </Button>
