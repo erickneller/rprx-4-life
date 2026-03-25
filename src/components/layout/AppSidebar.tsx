@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, Shield, Building2, LucideIcon } from "lucide-react";
+import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, Shield, Building2, Phone, LucideIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
@@ -6,6 +6,7 @@ import { StreakCounter } from "@/components/gamification/StreakCounter";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useCompany } from "@/hooks/useCompany";
+import { useAdvisorLink } from "@/hooks/useAdvisorLink";
 
 import {
   Sidebar,
@@ -68,6 +69,13 @@ export function AppSidebar() {
   const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
   const { membership } = useCompany();
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
+  const { enabled: advisorEnabled, url: advisorUrl } = useAdvisorLink();
+
+  const resolveAdvisorHref = (url: string) => {
+    const digits = url.replace(/\D/g, '');
+    if (digits.length >= 10 && !/^https?:\/\//i.test(url)) return `tel:+1${digits.slice(-10)}`;
+    return url;
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -155,6 +163,29 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Advisor CTA */}
+        {advisorEnabled && advisorUrl && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton tooltip="Speak with an Advisor" asChild>
+                    <a
+                      href={resolveAdvisorHref(advisorUrl)}
+                      target={resolveAdvisorHref(advisorUrl).startsWith('tel:') ? undefined : '_blank'}
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-primary font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    >
+                      <Phone className="h-5 w-5 shrink-0" />
+                      <span className={isCollapsed ? "sr-only" : ""}>Speak with an Advisor</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Company dashboard - visible to company owners/admins */}
         {isCompanyAdmin && (

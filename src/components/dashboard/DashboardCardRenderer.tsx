@@ -31,6 +31,7 @@ import { CashFlowStatusCard } from '@/components/debt-eliminator/dashboard/CashF
 import { MyStrategiesCard } from './MyStrategiesCard';
 import { RecentBadges } from '@/components/gamification/RecentBadges';
 import { OnboardingCard } from '@/components/onboarding/OnboardingCard';
+import { AdvisorCTACard } from './AdvisorCTACard';
 
 interface DashboardCardRendererProps {
   cards: DashboardCardConfig[];
@@ -161,6 +162,8 @@ function renderCard(card: DashboardCardConfig, props: DashboardCardRendererProps
       return <RecentBadges />;
     case 'OnboardingCard':
       return <OnboardingCard />;
+    case 'AdvisorCTACard':
+      return <AdvisorCTACard />;
     default:
       return null;
   }

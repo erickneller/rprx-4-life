@@ -407,18 +407,21 @@ export type Database = {
           id: string
           updated_at: string
           updated_by: string | null
+          value: string | null
         }
         Insert: {
           enabled?: boolean
           id: string
           updated_at?: string
           updated_by?: string | null
+          value?: string | null
         }
         Update: {
           enabled?: boolean
           id?: string
           updated_at?: string
           updated_by?: string | null
+          value?: string | null
         }
         Relationships: []
       }
