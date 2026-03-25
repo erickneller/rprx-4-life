@@ -428,6 +428,215 @@ ${missingFields.map(f => `- ${f}`).join('\n')}
 }
 
 // =====================================================
+// FREE-TIER TEMPLATE RESPONSE ENGINE
+// =====================================================
+
+type ChatIntent = 'greeting' | 'recommend' | 'horseman_filter' | 'detail' | 'profile' | 'auto' | 'fallback';
+
+function detectIntent(message: string, history: Array<{role: string; content: string}>): ChatIntent {
+  const lower = message.toLowerCase();
+
+  // Auto-mode markers
+  if (lower.includes('## my assessment results') || lower.includes('## my profile') ||
+      lower.includes('top 3 financial strategies') || lower.includes('step-by-step implementation plan')) {
+    return 'auto';
+  }
+
+  // Greetings
+  if (/^(hi|hello|hey|help|start|good morning|good afternoon)\b/i.test(lower) && lower.length < 40) {
+    return 'greeting';
+  }
+
+  // Detail request — "tell me more", "how do I", "steps for", strategy IDs
+  if (/\b(how do i|how to|tell me more|steps|implement|details?|explain|plan for)\b/.test(lower) ||
+      /\b[TIE](?:N)?-\d+\b/i.test(lower)) {
+    return 'detail';
+  }
+
+  // Horseman-specific filter
+  if (/\b(tax|taxes|taxation)\b/.test(lower) && !/\b(interest|insurance|education)\b/.test(lower)) return 'horseman_filter';
+  if (/\b(interest|debt)\b/.test(lower) && !/\b(tax|insurance|education)\b/.test(lower)) return 'horseman_filter';
+  if (/\binsurance\b/.test(lower) && !/\b(tax|interest|education)\b/.test(lower)) return 'horseman_filter';
+  if (/\beducation\b/.test(lower) && !/\b(tax|interest|insurance)\b/.test(lower)) return 'horseman_filter';
+
+  // Profile inquiry
+  if (/\b(my situation|my score|my profile|my finances|my data)\b/.test(lower)) return 'profile';
+
+  // Recommendation request
+  if (/\b(recommend|suggest|strategy|strategies|what should|best|options?)\b/.test(lower)) return 'recommend';
+
+  return 'fallback';
+}
+
+const HORSEMAN_DISPLAY: Record<string, string> = {
+  interest: 'Interest & Debt',
+  taxes: 'Tax Efficiency',
+  insurance: 'Insurance & Protection',
+  education: 'Education Funding',
+};
+
+function generateTemplateResponse(
+  intent: ChatIntent,
+  ranked: ScoredStrategy[],
+  profile: any,
+  primaryHorseman: string | null,
+  mode: 'auto' | 'manual',
+  userMessage: string,
+): string {
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+  const profileName = profile?.full_name ? `, ${profile.full_name}` : '';
+  const horsemanLabel = HORSEMAN_DISPLAY[primaryHorseman || 'interest'] || 'Financial Strategy';
+  const disclaimer = '\n\n---\n*This is educational information only. Always consult a qualified professional before implementing any strategy. Visit [rprx4life.com](https://rprx4life.com) for guidance.*';
+
+  // Helper: format a single strategy as a numbered section
+  const formatStrategyBlock = (s: DBStrategy, idx: number) => {
+    const steps = Array.isArray(s.steps) ? s.steps : [];
+    const stepsStr = steps.length > 0
+      ? steps.map((step: any, i: number) => `${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
+      : '';
+    return `## ${idx}. ${s.name} (${s.id})
+**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${s.estimated_impact || 'Varies'} | **Difficulty:** ${s.difficulty}
+
+${s.description}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
+  };
+
+  // ----- AUTO mode: single best strategy with full steps -----
+  if (intent === 'auto' || mode === 'auto') {
+    const top = ranked[0];
+    if (!top) return `I don't have a matching strategy for your profile yet. Try completing the assessment first!${disclaimer}`;
+    return `# Your Recommended Strategy
+
+Based on your profile and assessment, here is your best-fit strategy for **${horsemanLabel}**:
+
+${formatStrategyBlock(top.strategy, 1)}
+
+Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}`;
+  }
+
+  // ----- GREETING -----
+  if (intent === 'greeting') {
+    const top = ranked[0];
+    const topTeaser = top ? `\n\nBased on your profile, your top recommended strategy is **${top.strategy.name}**. Would you like to see the details?` : '';
+    return `# Welcome to RPRx Strategy Assistant${profileName}! 👋
+
+I can help you explore strategies across the Four Horsemen of household finance — **Interest, Taxes, Insurance, and Education**.
+
+Here's what I can do:
+- 📋 **Recommend** personalized strategies based on your profile
+- 🔍 **Explain** any strategy in detail with implementation steps
+- 💡 **Filter** by a specific horseman (e.g., "show me tax strategies")
+- 📊 **Summarize** your financial profile${topTeaser}${disclaimer}`;
+  }
+
+  // ----- RECOMMEND: top 3 -----
+  if (intent === 'recommend') {
+    const top3 = ranked.slice(0, 3);
+    if (top3.length === 0) return `I don't have matching strategies for your profile yet. Please complete the assessment first.${disclaimer}`;
+
+    const profileLine = profile?.profile_type
+      ? `Based on your profile as a **${(Array.isArray(profile.profile_type) ? profile.profile_type : [profile.profile_type]).map((t: string) => profileTypeLabels[t] || t).join(', ')}** with a primary focus on **${horsemanLabel}**:\n\n`
+      : '';
+
+    return `# Your Top Recommended Strategies
+
+${profileLine}${top3.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}
+
+Would you like a detailed implementation plan for any of these strategies? Just ask about one by name or ID.${disclaimer}`;
+  }
+
+  // ----- HORSEMAN FILTER -----
+  if (intent === 'horseman_filter') {
+    const msgLower = userMessage.toLowerCase();
+    let filterHorseman = primaryHorseman || 'interest';
+    if (/\b(tax|taxes|taxation)\b/.test(msgLower)) filterHorseman = 'taxes';
+    else if (/\b(interest|debt)\b/.test(msgLower)) filterHorseman = 'interest';
+    else if (/\binsurance\b/.test(msgLower)) filterHorseman = 'insurance';
+    else if (/\beducation\b/.test(msgLower)) filterHorseman = 'education';
+
+    const filtered = ranked.filter(s => s.strategy.horseman_type === filterHorseman).slice(0, 3);
+    if (filtered.length === 0) {
+      const anyFiltered = ranked.slice(0, 3);
+      return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}
+
+I don't have specific ${filterHorseman} strategies matching your profile yet, but here are your top overall recommendations:
+
+${anyFiltered.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}${disclaimer}`;
+    }
+    return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}
+
+${filtered.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}
+
+Would you like implementation details for any of these?${disclaimer}`;
+  }
+
+  // ----- DETAIL: strategy deep-dive -----
+  if (intent === 'detail') {
+    // Try to match a strategy ID from the user message
+    const idMatch = userMessage.match(/\b([TIE](?:N)?-\d+)\b/i);
+    let target = ranked[0]; // default to top
+    if (idMatch) {
+      const found = ranked.find(s => s.strategy.id.toLowerCase() === idMatch[1].toLowerCase());
+      if (found) target = found;
+    } else {
+      // Try matching by strategy name substring
+      const msgLower = userMessage.toLowerCase();
+      const nameMatch = ranked.find(s => msgLower.includes(s.strategy.name.toLowerCase().substring(0, 20)));
+      if (nameMatch) target = nameMatch;
+    }
+    if (!target) return `I couldn't find a matching strategy. Try asking me to "recommend strategies" first.${disclaimer}`;
+
+    return `# Implementation Plan: ${target.strategy.name}
+
+${formatStrategyBlock(target.strategy, 1)}
+
+${target.strategy.tax_return_line_or_area ? `**Tax Return Reference:** ${target.strategy.tax_return_line_or_area}\n` : ''}
+Would you like to save this as your active implementation plan?${disclaimer}`;
+  }
+
+  // ----- PROFILE summary -----
+  if (intent === 'profile') {
+    if (!profile) return `I don't have your profile data yet. Please complete the Profile Wizard first.${disclaimer}`;
+
+    const sections: string[] = [];
+    if (profile.full_name) sections.push(`**Name:** ${profile.full_name}`);
+    if (profile.profile_type) {
+      const types = Array.isArray(profile.profile_type) ? profile.profile_type : [profile.profile_type];
+      sections.push(`**Profile Type:** ${types.map((t: string) => profileTypeLabels[t] || t).join(', ')}`);
+    }
+    if (profile.filing_status) sections.push(`**Filing Status:** ${filingStatusLabels[profile.filing_status] || profile.filing_status}`);
+    if (profile.monthly_income) sections.push(`**Monthly Income:** ${formatCurrency(Number(profile.monthly_income))}`);
+    if (profile.rprx_score_total != null) sections.push(`**RPRx Score:** ${Number(profile.rprx_score_total).toFixed(0)}/100`);
+    if (profile.rprx_grade) {
+      const gradeLabels: Record<string, string> = { at_risk: 'At Risk', emerging: 'Emerging', progressing: 'Progressing', optimized: 'Optimized' };
+      sections.push(`**RPRx Grade:** ${gradeLabels[profile.rprx_grade] || profile.rprx_grade}`);
+    }
+    const leakLow = Number(profile.estimated_annual_leak_low) || 0;
+    const leakHigh = Number(profile.estimated_annual_leak_high) || 0;
+    if (leakLow > 0 || leakHigh > 0) {
+      sections.push(`**Estimated Annual Money Leak:** ${formatCurrency(leakLow)} – ${formatCurrency(leakHigh)}`);
+    }
+
+    const top = ranked[0];
+    return `# Your Financial Profile Summary
+
+${sections.map(s => `- ${s}`).join('\n')}
+
+${primaryHorseman ? `**Primary Horseman:** ${HORSEMAN_DISPLAY[primaryHorseman]}` : ''}
+
+${top ? `**Top Recommended Strategy:** ${top.strategy.name} (${top.strategy.id})` : ''}
+
+Would you like to explore your recommended strategies?${disclaimer}`;
+  }
+
+  // ----- FALLBACK -----
+  const top = ranked[0];
+  const topHint = top ? `\n\nYour top recommended strategy is **${top.strategy.name}**. Would you like to see the details or get other recommendations?` : '';
+  return `I can help you with:\n- **Strategy recommendations** based on your profile\n- **Detailed implementation plans** for any strategy\n- **Horseman-specific** strategies (taxes, interest, insurance, education)\n- **Your profile summary** and RPRx score${topHint}${disclaimer}`;
+}
+
+// =====================================================
 // MAIN HANDLER
 // =====================================================
 
@@ -666,88 +875,100 @@ ${manualInstructions}`;
       console.log(`Manual mode - page ${page}, showing ${pageStrategies.length} strategies`);
     }
 
-    // Build OpenAI messages
-    const openaiMessages = [
-      { role: 'system', content: dynamicSystemPrompt },
-      ...messages.map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-    ];
+    let assistantMessage: string;
 
-    console.log('Calling OpenAI with', openaiMessages.length, 'messages');
+    if (isFreeUser) {
+      // =====================================================
+      // FREE TIER: Internal template-based response engine
+      // =====================================================
+      console.log('Free tier — generating template response');
+      const intent = detectIntent(user_message, messages);
+      assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
+    } else {
+      // =====================================================
+      // PAID TIER: OpenAI-powered conversational AI
+      // =====================================================
+      const openaiMessages = [
+        { role: 'system', content: dynamicSystemPrompt },
+        ...messages.map((m: { role: string; content: string }) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
+      ];
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      console.log('Paid tier — calling OpenAI with', openaiMessages.length, 'messages');
 
-    // Retry logic with exponential backoff
-    const maxRetries = 3;
-    let lastError: string | null = null;
-    let openaiData: any = null;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      if (attempt > 0) {
-        const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000);
-        console.log(`Retry attempt ${attempt + 1}, waiting ${waitTime}ms`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!openaiApiKey) {
+        return new Response(
+          JSON.stringify({ error: 'OpenAI API key not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: openaiMessages,
-          temperature: 0.7,
-          max_tokens: 2500,
-        }),
-      });
+      const maxRetries = 3;
+      let lastError: string | null = null;
+      let openaiData: any = null;
 
-      if (openaiResponse.ok) {
-        openaiData = await openaiResponse.json();
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        if (attempt > 0) {
+          const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000);
+          console.log(`Retry attempt ${attempt + 1}, waiting ${waitTime}ms`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+
+        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: openaiMessages,
+            temperature: 0.7,
+            max_tokens: 2500,
+          }),
+        });
+
+        if (openaiResponse.ok) {
+          openaiData = await openaiResponse.json();
+          break;
+        }
+
+        const errorText = await openaiResponse.text();
+        console.error(`OpenAI API error (attempt ${attempt + 1}):`, openaiResponse.status, errorText);
+
+        if (openaiResponse.status === 429) {
+          lastError = 'The AI is currently busy. Please wait a moment and try again.';
+          const retryAfter = openaiResponse.headers.get('retry-after');
+          if (retryAfter) {
+            await new Promise(resolve => setTimeout(resolve, Math.min(parseInt(retryAfter) * 1000, 15000)));
+          }
+          continue;
+        }
+
+        lastError = 'Failed to get AI response';
         break;
       }
 
-      const errorText = await openaiResponse.text();
-      console.error(`OpenAI API error (attempt ${attempt + 1}):`, openaiResponse.status, errorText);
-
-      if (openaiResponse.status === 429) {
-        lastError = 'The AI is currently busy. Please wait a moment and try again.';
-        const retryAfter = openaiResponse.headers.get('retry-after');
-        if (retryAfter) {
-          await new Promise(resolve => setTimeout(resolve, Math.min(parseInt(retryAfter) * 1000, 15000)));
-        }
-        continue;
+      if (!openaiData) {
+        return new Response(
+          JSON.stringify({ error: lastError || 'Failed to get AI response' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      lastError = 'Failed to get AI response';
-      break;
-    }
+      assistantMessage = openaiData.choices[0]?.message?.content;
+      if (!assistantMessage) {
+        return new Response(
+          JSON.stringify({ error: 'No response from AI' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    if (!openaiData) {
-      return new Response(
-        JSON.stringify({ error: lastError || 'Failed to get AI response' }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log('Received OpenAI response, length:', assistantMessage.length);
     }
-
-    const assistantMessage = openaiData.choices[0]?.message?.content;
-    if (!assistantMessage) {
-      return new Response(
-        JSON.stringify({ error: 'No response from AI' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Received OpenAI response, length:', assistantMessage.length);
 
     // Save assistant message (fire and forget)
     supabase.from('messages').insert({
