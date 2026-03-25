@@ -6,6 +6,7 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import rprxLogo from "@/assets/rprx-logo.png";
 import { PageHelpButton } from "@/components/help/PageHelpButton";
+import { PageFeedbackWidget } from "@/components/feedback/PageFeedbackWidget";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Breadcrumb,
