@@ -573,14 +573,18 @@ Would you like implementation details for any of these?${disclaimer}`;
 
   // ----- DETAIL: strategy deep-dive -----
   if (intent === 'detail') {
-    // Try to match a strategy ID from the message
-    const idMatch = ranked[0]; // Default to top strategy
-    // Check for specific ID reference
-    const specificId = ranked.find(s => {
-      const regex = new RegExp(`\\b${s.strategy.id}\\b`, 'i');
-      return regex.test(''); // We don't have the message here easily, use top
-    });
-    const target = specificId || idMatch;
+    // Try to match a strategy ID from the user message
+    const idMatch = userMessage.match(/\b([TIE](?:N)?-\d+)\b/i);
+    let target = ranked[0]; // default to top
+    if (idMatch) {
+      const found = ranked.find(s => s.strategy.id.toLowerCase() === idMatch[1].toLowerCase());
+      if (found) target = found;
+    } else {
+      // Try matching by strategy name substring
+      const msgLower = userMessage.toLowerCase();
+      const nameMatch = ranked.find(s => msgLower.includes(s.strategy.name.toLowerCase().substring(0, 20)));
+      if (nameMatch) target = nameMatch;
+    }
     if (!target) return `I couldn't find a matching strategy. Try asking me to "recommend strategies" first.${disclaimer}`;
 
     return `# Implementation Plan: ${target.strategy.name}
