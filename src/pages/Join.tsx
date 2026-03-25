@@ -231,7 +231,7 @@ export default function Join() {
             </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-white" disabled={submitting}>
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Create Account &amp; Join
           </Button>
