@@ -1,77 +1,54 @@
 
 
-# "Speak with an RPRx Advisor" — Admin-Configurable CTA
+# Fix: Remove Public Read Access on Companies Table
 
-## What We're Building
-A persistent "Speak with an RPRx Advisor" link that appears in the sidebar and as a dashboard card. The URL/phone number is admin-configurable from the Features tab. Supports both external URLs and `tel:` phone links.
+## The Problem
+The `companies_public_read` RLS policy uses `USING (true)` which exposes all company data (including `invite_token`, `ghl_location_id`, `owner_id`) to unauthenticated users. An attacker could enumerate all companies and their invite tokens.
 
-## Approach
+## Why Public Read Exists
+The `/join?token=...` page needs to look up a company by `invite_token` before the user has signed up. This is the only unauthenticated access needed.
 
-### 1. Store the advisor link in `feature_flags`
+## Solution
 
-Insert a new row into `feature_flags` with id `advisor_link` storing the URL in a new `value` column (text). We need to add a `value` text column to the `feature_flags` table so it can hold arbitrary config strings alongside the boolean `enabled` toggle.
+### 1. Create a Security Definer Function
+Create `lookup_company_by_invite_token(token uuid)` that returns only `id` and `name` — no sensitive fields. This runs with elevated privileges, bypassing RLS.
 
-**Migration:**
 ```sql
-ALTER TABLE public.feature_flags ADD COLUMN value text DEFAULT '';
-
-INSERT INTO public.feature_flags (id, enabled, value)
-VALUES ('advisor_link', true, 'https://calendly.com/your-link')
-ON CONFLICT (id) DO NOTHING;
+CREATE OR REPLACE FUNCTION public.lookup_company_by_invite_token(_token uuid)
+RETURNS TABLE(id uuid, name text)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT c.id, c.name
+  FROM public.companies c
+  WHERE c.invite_token = _token
+  LIMIT 1;
+$$;
 ```
 
-### 2. Create `useAdvisorLink` hook
+### 2. Drop the Dangerous Policy
 
-**New file: `src/hooks/useAdvisorLink.ts`**
+```sql
+DROP POLICY "companies_public_read" ON public.companies;
+```
 
-Fetches the `advisor_link` flag row, returns `{ enabled, url, isLoading }`. The hook reads both `enabled` (show/hide the CTA) and `value` (the URL or tel: number).
+The remaining policies already cover all legitimate access:
+- **Members** can view their company (via `company_members` join)
+- **Owners** can view their company (via `owner_id = auth.uid()`)
+- **Admins** have full access (via `user_roles`)
+- **Authenticated users** can create companies
 
-### 3. Add admin controls to FeaturesTab
+### 3. Update `Join.tsx`
+Replace the direct `supabase.from('companies').select(...)` call with `supabase.rpc('lookup_company_by_invite_token', { _token: token })`.
 
-**Modified: `src/components/admin/FeaturesTab.tsx`**
+### 4. Update `useProfile.ts`
+The pending invite token lookup also queries companies publicly — update it to use the same RPC function.
 
-Add a third Card section: "RPRx Advisor Link" with:
-- An enable/disable Switch (toggles visibility app-wide)
-- A text Input for the URL/phone number
-- A Save button that updates the `value` column
-- Helper text: "Enter a URL (e.g. Calendly link) or phone number (will auto-format as tel: link)"
-
-### 4. Add sidebar item
-
-**Modified: `src/components/layout/AppSidebar.tsx`**
-
-Below the nav items group (My Assessments / My Plans / My Profile) and above the Company/Admin sections, add a conditionally-rendered sidebar item:
-- Icon: `Phone` from lucide-react
-- Label: "Speak with an Advisor"
-- Opens `advisor_url` in a new tab (`window.open`)
-- Only shown when `advisor_link` flag is enabled and URL is non-empty
-- Styled with a subtle accent to stand out (e.g., `text-primary` coloring)
-
-### 5. Add dashboard card
-
-**New file: `src/components/dashboard/AdvisorCTACard.tsx`**
-
-A small card with:
-- Phone icon + "Speak with an RPRx Advisor" heading
-- Brief subtitle: "Get personalized guidance from a financial advisor"
-- Button that opens the configured link in a new tab
-- Only renders when advisor_link flag is enabled
-
-**Modified: `src/components/dashboard/DashboardCardRenderer.tsx`**
-
-Register the new card component in the card renderer map so it can be placed via the dashboard card config system.
-
-**Insert a row** into `dashboard_card_config` for the new advisor card.
-
-## Files Summary
+## Files
 
 | Action | File |
 |--------|------|
-| Migration | Add `value` column to `feature_flags`, seed `advisor_link` row |
-| Insert | New row in `dashboard_card_config` for advisor card |
-| New | `src/hooks/useAdvisorLink.ts` |
-| New | `src/components/dashboard/AdvisorCTACard.tsx` |
-| Modified | `src/components/admin/FeaturesTab.tsx` — add advisor link config card |
-| Modified | `src/components/layout/AppSidebar.tsx` — add sidebar item |
-| Modified | `src/components/dashboard/DashboardCardRenderer.tsx` — register card |
+| Migration | Create RPC function + drop `companies_public_read` policy |
+| Modified | `src/pages/Join.tsx` — use RPC instead of direct query |
+| Modified | `src/hooks/useProfile.ts` — use RPC for pending token lookup |
 
