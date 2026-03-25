@@ -51,15 +51,14 @@ export default function Join() {
 
     async function lookup() {
       const { data, error: err } = await supabase
-        .from('companies')
-        .select('id, name, invite_token')
-        .eq('invite_token', token)
-        .maybeSingle();
+        .rpc('lookup_company_by_invite_token', { _token: token });
 
-      if (err || !data) {
+      const match = Array.isArray(data) ? data[0] : data;
+
+      if (err || !match) {
         setError('This invite link is invalid or has expired.');
       } else {
-        setPendingCompany(data as PendingCompany);
+        setPendingCompany({ id: match.id, name: match.name, invite_token: token });
         // Persist token so useProfile can pick it up after Google OAuth
         localStorage.setItem('pending_invite_token', token);
       }
