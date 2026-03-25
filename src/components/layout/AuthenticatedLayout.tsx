@@ -6,6 +6,7 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import rprxLogo from "@/assets/rprx-logo.png";
 import { PageHelpButton } from "@/components/help/PageHelpButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -76,7 +77,10 @@ export function AuthenticatedLayout({ children, title, breadcrumbs }: Authentica
               </Breadcrumb>
             </div>
             
-            <ProfileAvatar />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <ProfileAvatar />
+            </div>
           </header>
 
           {/* Main content */}
