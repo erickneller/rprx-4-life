@@ -1,18 +1,27 @@
 
 
-# Redirect to Results Page After Assessment Completion
+# Fix Mobile Drag-and-Drop on Dashboard
 
 ## Problem
-After completing the assessment and deep dive, the user is always sent to `/dashboard` (line 441 in `useAssessment.ts`). They should land on the results page showing their assessment results.
+Two issues prevent mobile card reordering:
+
+1. **No touch sensor**: Only `PointerSensor` and `KeyboardSensor` are configured. On mobile, `TouchSensor` from `@dnd-kit/core` is needed for touch-based dragging.
+
+2. **Grip handle invisible on mobile**: The drag handle uses `opacity-0 group-hover:opacity-100`, but mobile has no hover state — the handle is permanently invisible.
 
 ## Fix
 
-### `src/hooks/useAssessment.ts`
-Change the navigation target from `/dashboard` to `/results/${assessment.id}` so the user sees their results immediately after submission.
+### `src/components/dashboard/DashboardCardRenderer.tsx`
 
-- Line 441: change `navigate('/dashboard')` to `navigate(`/results/${assessment.id}`)`
-- The `assessment.id` is already available at this point (created in Write 1, line 244-259)
-- The non-critical failure toast still shows if needed, but the user lands on results either way
+1. Import and add `TouchSensor` to the sensors array with a `delay` activation constraint (e.g., 250ms hold) to avoid conflicts with scrolling.
 
-One-line change.
+2. Change the grip handle visibility from `opacity-0 group-hover:opacity-100` to always visible on mobile: `opacity-100 md:opacity-0 md:group-hover:opacity-100`.
+
+```
+sensors = useSensors(
+  useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  useSensor(KeyboardSensor, { ... })
+)
+```
 
