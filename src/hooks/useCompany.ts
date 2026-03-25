@@ -62,8 +62,8 @@ export function useCompany() {
       if (!user?.id) return null;
 
       // Fetch membership first (profiles.company_id may not be populated yet)
-      const { data: membership, error: memErr } = await supabase
-        .from('company_members')
+      const { data: membership, error: memErr } = await (supabase
+        .from('company_members') as any)
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -71,8 +71,8 @@ export function useCompany() {
       if (memErr) throw memErr;
       if (!membership) return null;
 
-      const { data: company, error: compErr } = await supabase
-        .from('companies')
+      const { data: company, error: compErr } = await (supabase
+        .from('companies') as any)
         .select('*')
         .eq('id', membership.company_id)
         .single();
@@ -90,8 +90,8 @@ export function useCompany() {
       if (!user?.id) throw new Error('Not authenticated');
 
       // Look up company by invite_token
-      const { data: company, error: lookupErr } = await supabase
-        .from('companies')
+      const { data: company, error: lookupErr } = await (supabase
+        .from('companies') as any)
         .select('*')
         .eq('invite_token', token)
         .maybeSingle();
@@ -100,8 +100,8 @@ export function useCompany() {
       if (!company) throw new Error('Invalid or expired invite link.');
 
       // Insert company_members row (upsert so re-joining is safe)
-      const { error: memberErr } = await supabase
-        .from('company_members')
+      const { error: memberErr } = await (supabase
+        .from('company_members') as any)
         .upsert(
           { company_id: company.id, user_id: user.id, role: 'member' },
           { onConflict: 'company_id,user_id', ignoreDuplicates: true }
@@ -112,7 +112,7 @@ export function useCompany() {
       // Update profile.company_id + company_role
       const { error: profileErr } = await supabase
         .from('profiles')
-        .update({ company_id: company.id, company_role: 'member' })
+        .update({ company_id: company.id, company_role: 'member' } as any)
         .eq('id', user.id);
 
       if (profileErr) throw profileErr;
@@ -135,8 +135,8 @@ export function useCompany() {
       // Append a short random suffix to avoid slug collisions
       const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
 
-      const { data: company, error: createErr } = await supabase
-        .from('companies')
+      const { data: company, error: createErr } = await (supabase
+        .from('companies') as any)
         .insert({ name: name.trim(), slug, owner_id: user.id, plan: 'free' })
         .select()
         .single();
@@ -144,8 +144,8 @@ export function useCompany() {
       if (createErr) throw createErr;
 
       // Add owner as member
-      const { error: memberErr } = await supabase
-        .from('company_members')
+      const { error: memberErr } = await (supabase
+        .from('company_members') as any)
         .insert({ company_id: company.id, user_id: user.id, role: 'owner' });
 
       if (memberErr) throw memberErr;
@@ -153,7 +153,7 @@ export function useCompany() {
       // Update profile
       const { error: profileErr } = await supabase
         .from('profiles')
-        .update({ company_id: company.id, company_role: 'owner' })
+        .update({ company_id: company.id, company_role: 'owner' } as any)
         .eq('id', user.id);
 
       if (profileErr) throw profileErr;

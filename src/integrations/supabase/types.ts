@@ -161,6 +161,77 @@ export type Database = {
         }
         Relationships: []
       }
+      companies: {
+        Row: {
+          created_at: string
+          ghl_location_id: string | null
+          id: string
+          invite_token: string
+          name: string
+          owner_id: string | null
+          plan: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ghl_location_id?: string | null
+          id?: string
+          invite_token?: string
+          name: string
+          owner_id?: string | null
+          plan?: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ghl_location_id?: string | null
+          id?: string
+          invite_token?: string
+          name?: string
+          owner_id?: string | null
+          plan?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      company_members: {
+        Row: {
+          company_id: string
+          id: string
+          invited_by: string | null
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_members_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -487,6 +558,8 @@ export type Database = {
           avatar_url: string | null
           children_ages: number[] | null
           company: string | null
+          company_id: string | null
+          company_role: string | null
           created_at: string
           current_streak: number
           current_tier: string
@@ -541,6 +614,8 @@ export type Database = {
           avatar_url?: string | null
           children_ages?: number[] | null
           company?: string | null
+          company_id?: string | null
+          company_role?: string | null
           created_at?: string
           current_streak?: number
           current_tier?: string
@@ -595,6 +670,8 @@ export type Database = {
           avatar_url?: string | null
           children_ages?: number[] | null
           company?: string | null
+          company_id?: string | null
+          company_role?: string | null
           created_at?: string
           current_streak?: number
           current_tier?: string
@@ -645,7 +722,15 @@ export type Database = {
           updated_at?: string
           years_until_retirement?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       prompt_templates: {
         Row: {

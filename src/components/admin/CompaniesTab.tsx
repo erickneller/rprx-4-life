@@ -45,16 +45,16 @@ export function CompaniesTab() {
     queryKey: ['admin-companies'],
     queryFn: async () => {
       // Fetch companies
-      const { data: rows, error } = await supabase
-        .from('companies')
+      const { data: rows, error } = await (supabase
+        .from('companies') as any)
         .select('id, name, slug, plan, owner_id, invite_token, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       // Fetch member counts per company
-      const { data: memberCounts } = await supabase
-        .from('company_members')
+      const { data: memberCounts } = await (supabase
+        .from('company_members') as any)
         .select('company_id');
 
       const countMap: Record<string, number> = {};
@@ -77,8 +77,8 @@ export function CompaniesTab() {
 
       const slug = `${toSlug(name)}-${Math.random().toString(36).slice(2, 7)}`;
 
-      const { error } = await supabase
-        .from('companies')
+      const { error } = await (supabase
+        .from('companies') as any)
         .insert({ name, slug, plan: newPlan });
 
       if (error) throw error;
@@ -107,8 +107,8 @@ export function CompaniesTab() {
     mutationFn: async (companyId: string) => {
       // Generate a new UUID client-side (crypto.randomUUID is available in all modern browsers)
       const newToken = crypto.randomUUID();
-      const { error } = await supabase
-        .from('companies')
+      const { error } = await (supabase
+        .from('companies') as any)
         .update({ invite_token: newToken })
         .eq('id', companyId);
       if (error) throw error;

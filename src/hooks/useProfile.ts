@@ -95,11 +95,11 @@ export function useProfile() {
         let pendingCompanyId: string | null = null;
         const pendingToken = localStorage.getItem('pending_invite_token');
         if (pendingToken) {
-          const { data: inviteCompany } = await supabase
-            .from('companies')
+          const { data: inviteCompany } = await (supabase
+            .from('companies') as any)
             .select('id')
             .eq('invite_token', pendingToken)
-            .maybeSingle();
+            .maybeSingle() as { data: { id: string } | null };
           if (inviteCompany) {
             pendingCompanyId = inviteCompany.id;
           }
@@ -120,8 +120,8 @@ export function useProfile() {
 
         // If we assigned a company, also create the company_members row
         if (pendingCompanyId) {
-          await supabase
-            .from('company_members')
+          await (supabase
+            .from('company_members') as any)
             .upsert(
               { company_id: pendingCompanyId, user_id: user.id, role: 'member' },
               { onConflict: 'company_id,user_id', ignoreDuplicates: true }
