@@ -62,8 +62,8 @@ export function useCompany() {
       if (!user?.id) return null;
 
       // Fetch membership first (profiles.company_id may not be populated yet)
-      const { data: membership, error: memErr } = await supabase
-        .from('company_members')
+      const { data: membership, error: memErr } = await (supabase
+        .from('company_members') as any)
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -71,8 +71,8 @@ export function useCompany() {
       if (memErr) throw memErr;
       if (!membership) return null;
 
-      const { data: company, error: compErr } = await supabase
-        .from('companies')
+      const { data: company, error: compErr } = await (supabase
+        .from('companies') as any)
         .select('*')
         .eq('id', membership.company_id)
         .single();
