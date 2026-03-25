@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDebtJourney } from '@/hooks/useDebtJourney';
 import { usePlans, useFocusPlan } from '@/hooks/usePlans';
 import { useDashboardConfig } from '@/hooks/useDashboardConfig';
+import { useUserCardOrder, mergeOrder } from '@/hooks/useUserCardOrder';
 import { checkAndFlipOnboardingComplete } from '@/lib/onboardingCompleteCheck';
 import { StartAssessmentCTA } from './StartAssessmentCTA';
 import { DashboardStreakBar } from './DashboardStreakBar';
@@ -14,7 +15,7 @@ import { EditMotivationDialog } from '@/components/debt-eliminator/dashboard/Edi
 import { DashboardCardRenderer } from './DashboardCardRenderer';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
-import { Loader2, MessageCircle } from 'lucide-react';
+import { Loader2, MessageCircle, RotateCcw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -32,8 +33,12 @@ export function DashboardContent() {
   const { data: focusPlan } = useFocusPlan();
   const { refreshScore } = useRPRxScore();
   const { cards, isLoading: cardsLoading } = useDashboardConfig();
+  const { userOrder, saveOrder, resetOrder } = useUserCardOrder();
   const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
   const [showEditMotivation, setShowEditMotivation] = useState(false);
+
+  // Merge admin config with user's custom order
+  const mergedCards = useMemo(() => mergeOrder(cards, userOrder), [cards, userOrder]);
 
   // Background check: flip onboarding_completed if all conditions met
   useEffect(() => {
@@ -97,7 +102,6 @@ export function DashboardContent() {
     });
   };
 
-  // Build current focus props
   const currentFocusProps = useMemo(() => {
     if (focusPlan) {
       return {
@@ -117,6 +121,10 @@ export function DashboardContent() {
     }
     return null;
   }, [focusPlan, focusPlanProgress, activeDebtFocus, focusDebt, focusProgress, navigate]);
+
+  const handleReorder = (orderedIds: string[]) => {
+    saveOrder.mutate(orderedIds);
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8 relative">
@@ -141,8 +149,22 @@ export function DashboardContent() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {userOrder.length > 0 && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => resetOrder.mutate()}
+                        disabled={resetOrder.isPending}
+                        className="text-muted-foreground"
+                      >
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                        Reset layout
+                      </Button>
+                    </div>
+                  )}
                   <DashboardCardRenderer
-                    cards={cards}
+                    cards={mergedCards}
                     cardProps={{
                       motivation: {
                         motivation: profile?.motivation_text ?? null,
@@ -153,6 +175,7 @@ export function DashboardContent() {
                       currentFocus: currentFocusProps,
                       cashFlow: { surplus, status },
                     }}
+                    onReorder={handleReorder}
                   />
                 </div>
               )}
@@ -172,7 +195,6 @@ export function DashboardContent() {
         </>
       )}
 
-      {/* Floating chat button */}
       {chatEnabled && (
         <Tooltip>
           <TooltipTrigger asChild>

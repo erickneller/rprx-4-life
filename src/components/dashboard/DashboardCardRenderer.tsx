@@ -1,8 +1,24 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { DashboardCardConfig } from '@/hooks/useDashboardConfig';
 import type { ReactNode } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 
-// Lazy component registry — all components imported statically
 import { MotivationCard } from '@/components/debt-eliminator/dashboard/MotivationCard';
 import { MoneyLeakCard } from '@/components/money-leak/MoneyLeakCard';
 import { LeakBreakdownList } from '@/components/money-leak/LeakBreakdownList';
@@ -14,6 +30,7 @@ import { CashFlowStatusCard } from '@/components/debt-eliminator/dashboard/CashF
 import { MyStrategiesCard } from './MyStrategiesCard';
 import { RecentBadges } from '@/components/gamification/RecentBadges';
 import { OnboardingCard } from '@/components/onboarding/OnboardingCard';
+
 interface DashboardCardRendererProps {
   cards: DashboardCardConfig[];
   cardProps: {
@@ -21,52 +38,78 @@ interface DashboardCardRendererProps {
     currentFocus?: { focusName: string; description: string; progressPercent: number; onContinue: () => void } | null;
     cashFlow?: { surplus: number | null; status: string | null };
   };
+  onReorder?: (orderedIds: string[]) => void;
 }
 
 function toKebab(key: string) {
   return key.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 }
 
-export function DashboardCardRenderer({ cards, cardProps }: DashboardCardRendererProps) {
+function SortableCard({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative group">
+      <button
+        {...attributes}
+        {...listeners}
+        className="absolute top-2 right-2 z-10 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity bg-muted/80 hover:bg-muted text-muted-foreground cursor-grab active:cursor-grabbing"
+        aria-label="Drag to reorder"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      {children}
+    </div>
+  );
+}
+
+export function DashboardCardRenderer({ cards, cardProps, onReorder }: DashboardCardRendererProps) {
   const visibleCards = cards.filter(c => c.is_visible);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
-  // Group cards by size for flex layout
-  const rendered = useMemo(() => {
-    const elements: ReactNode[] = [];
-    let partialRow: { node: ReactNode; size: string; key: string; id: string }[] = [];
-
-    const flushPartials = () => {
-      if (partialRow.length > 0) {
-        elements.push(
-          <div key={`row-${partialRow[0].key}`} className="flex flex-wrap gap-4">
-             {partialRow.map(p => (
-              <div key={p.key} id={p.id} className={p.size === 'half' ? 'w-full md:w-[calc(50%-0.5rem)]' : 'w-full md:w-[calc(33.333%-0.667rem)]'}>
-                {p.node}
-              </div>
-            ))}
-          </div>
-        );
-        partialRow = [];
-      }
-    };
-
-    for (const card of visibleCards) {
-      const node = renderCard(card, cardProps);
-      if (!node) continue;
-
-      if (card.default_size === 'full') {
-        flushPartials();
-        elements.push(<div key={card.id} id={toKebab(card.component_key)}>{node}</div>);
-      } else {
-        partialRow.push({ node, size: card.default_size, key: card.id, id: toKebab(card.component_key) });
-      }
-    }
-    flushPartials();
-
-    return elements;
+  const cardNodes = useMemo(() => {
+    return visibleCards
+      .map(card => {
+        const node = renderCard(card, cardProps);
+        if (!node) return null;
+        return { card, node };
+      })
+      .filter(Boolean) as { card: DashboardCardConfig; node: ReactNode }[];
   }, [visibleCards, cardProps]);
 
-  return <>{rendered}</>;
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onReorder) return;
+
+    const oldIndex = cardNodes.findIndex(c => c.card.id === active.id);
+    const newIndex = cardNodes.findIndex(c => c.card.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = [...cardNodes];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    onReorder(reordered.map(c => c.card.id));
+  };
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={cardNodes.map(c => c.card.id)} strategy={verticalListSortingStrategy}>
+        {cardNodes.map(({ card, node }) => (
+          <SortableCard key={card.id} id={card.id}>
+            <div id={toKebab(card.component_key)}>{node}</div>
+          </SortableCard>
+        ))}
+      </SortableContext>
+    </DndContext>
+  );
 }
 
 function renderCard(card: DashboardCardConfig, props: DashboardCardRendererProps['cardProps']): ReactNode | null {
