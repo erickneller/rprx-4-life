@@ -883,7 +883,7 @@ ${manualInstructions}`;
       // =====================================================
       console.log('Free tier — generating template response');
       const intent = detectIntent(user_message, messages);
-      assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode);
+      assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
     } else {
       // =====================================================
       // PAID TIER: OpenAI-powered conversational AI
