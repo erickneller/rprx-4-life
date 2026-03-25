@@ -222,7 +222,7 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
                   <RangeSelectQuestion
                     options={currentDeepDiveQuestion.options}
                     value={deepDiveAnswers[currentDeepDiveQuestion.id] as string | undefined}
-                    onChange={(v) => setDeepDiveAnswer(currentDeepDiveQuestion.id, v)}
+                    onChange={(v) => handleDeepDiveResponse(currentDeepDiveQuestion.id, v)}
                   />
                 )}
                 {currentDeepDiveQuestion.question_type === 'multi_select' && (
