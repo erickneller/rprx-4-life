@@ -65,6 +65,7 @@ const App = () => (
         </NavigationBlockerProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

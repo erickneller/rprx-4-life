@@ -77,7 +77,10 @@ export function AuthenticatedLayout({ children, title, breadcrumbs }: Authentica
               </Breadcrumb>
             </div>
             
-            <ProfileAvatar />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <ProfileAvatar />
+            </div>
           </header>
 
           {/* Main content */}
