@@ -111,12 +111,12 @@ export function useCompany() {
       // Update profile.company_id + company_role
       const { error: profileErr } = await supabase
         .from('profiles')
-        .update({ company_id: company.id, company_role: 'member' } as any)
+        .update({ company_id: companyId, company_role: 'member' } as any)
         .eq('id', user.id);
 
       if (profileErr) throw profileErr;
 
-      return company as Company;
+      return { id: companyId, name: match.name } as Company;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company', user?.id] });
