@@ -55,6 +55,13 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   } = useAssessment(questions, editAssessmentId, { sendMessage, createPlan });
 
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipAutoAdvanceRef = useRef(false);
+
+  // Mark skip on step changes (prevents slider auto-select from advancing)
+  useEffect(() => {
+    skipAutoAdvanceRef.current = true;
+  }, [currentStep, deepDiveStep]);
+
   // Clear timer on unmount
   useEffect(() => {
     return () => {
@@ -92,14 +99,26 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   const handleCoreResponse = useCallback((questionId: string, value: string) => {
     setResponse(questionId, value);
     const q = currentQuestion;
-    if (q && !isLastCoreStep && ['single_choice', 'yes_no', 'range_select'].includes(q.question_type)) {
+    if (!q) return;
+    // Skip the auto-select on mount for sliders
+    if (q.question_type === 'slider' && skipAutoAdvanceRef.current) {
+      skipAutoAdvanceRef.current = false;
+      return;
+    }
+    // Core questions don't have multi_select, so always auto-advance (except last step)
+    if (!isLastCoreStep) {
       scheduleAutoAdvance();
     }
   }, [setResponse, currentQuestion, isLastCoreStep, scheduleAutoAdvance]);
 
   const handleDeepDiveResponse = useCallback((questionId: string, value: string | string[]) => {
     setDeepDiveAnswer(questionId, value);
-    if (currentDeepDiveQuestion && !isLastStep && ['single_choice', 'range_select'].includes(currentDeepDiveQuestion.question_type)) {
+    if (!currentDeepDiveQuestion) return;
+    if (currentDeepDiveQuestion.question_type === 'slider' && skipAutoAdvanceRef.current) {
+      skipAutoAdvanceRef.current = false;
+      return;
+    }
+    if (currentDeepDiveQuestion.question_type !== 'multi_select' && !isLastStep) {
       scheduleAutoAdvance();
     }
   }, [setDeepDiveAnswer, currentDeepDiveQuestion, isLastStep, scheduleAutoAdvance]);
@@ -262,25 +281,27 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
               <ChevronLeft className="h-4 w-4 mr-1" />
               Previous
             </Button>
-            <Button
-              onClick={handleNext}
-              disabled={!canGoNext() || isSubmitting}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : isLastStep ? (
-                'Complete Assessment'
-              ) : (
-                <>
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </>
-              )}
-            </Button>
+            {(isLastStep || currentDeepDiveQuestion.question_type === 'multi_select') && (
+              <Button
+                onClick={handleNext}
+                disabled={!canGoNext() || isSubmitting}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : isLastStep ? (
+                  'Complete Assessment'
+                ) : (
+                  <>
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </footer>
       </div>
@@ -332,20 +353,15 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
           </Button>
-          <Button
-            onClick={handleNext}
-            disabled={!canGoNext()}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground"
-          >
-            {isLastCoreStep ? (
-              'Continue →'
-            ) : (
-              <>
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </>
-            )}
-          </Button>
+          {isLastCoreStep && (
+            <Button
+              onClick={handleNext}
+              disabled={!canGoNext()}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
+              Continue →
+            </Button>
+          )}
         </div>
       </footer>
     </div>
