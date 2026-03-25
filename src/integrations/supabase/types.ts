@@ -1355,11 +1355,20 @@ export type Database = {
         Returns: string
       }
       get_subscription_tier: { Args: { _user_id: string }; Returns: string }
+      get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_company_admin: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_company_member: {
+        Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
       lookup_company_by_invite_token: {
