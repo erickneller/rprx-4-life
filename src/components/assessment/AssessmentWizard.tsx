@@ -55,7 +55,6 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   } = useAssessment(questions, editAssessmentId, { sendMessage, createPlan });
 
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Clear timer on unmount
   useEffect(() => {
     return () => {
@@ -73,6 +72,9 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
     }
   }, [phase, isLastCoreStep, isLastStep, transitionToDeepDive, submitAssessment, goToNext]);
 
+  const handleNextRef = useRef(handleNext);
+  useEffect(() => { handleNextRef.current = handleNext; });
+
   const cancelAutoAdvance = useCallback(() => {
     if (autoAdvanceTimer.current) {
       clearTimeout(autoAdvanceTimer.current);
@@ -83,9 +85,9 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   const scheduleAutoAdvance = useCallback(() => {
     cancelAutoAdvance();
     autoAdvanceTimer.current = setTimeout(() => {
-      handleNext();
+      handleNextRef.current();
     }, 400);
-  }, [cancelAutoAdvance, handleNext]);
+  }, [cancelAutoAdvance]);
 
   const handleCoreResponse = useCallback((questionId: string, value: string) => {
     setResponse(questionId, value);
