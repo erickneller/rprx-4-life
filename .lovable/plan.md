@@ -1,22 +1,39 @@
 
-# Live User Testing Readiness — Gaps Addressed
 
-## Verified (No Changes Needed)
+# Fix Build Errors
 
-| Gap | Result |
-|-----|--------|
-| Dashboard card order | ✅ Matches PRD exactly: Daily Journey (1) → Money Leak (2) → Current Focus (3) → RPRx Score (4) → Cash Flow (5) → My Strategies (6) → Recent Achievements (7) |
-| Day 1 CTA context-aware states | ✅ `useDayOneCTA` covers all 4 PRD states: build → activate → view_leak → see_results |
-| Money Leak never $0 | ✅ Already has `Math.max(low, 500)` / `Math.max(high, 1500)` floor in `calculateInitialLeakEstimate` |
+## Problem
+Three categories of build errors:
+1. **Edge functions** (`ghl-sync`, `ghl-webhook`, `admin-user-actions`): `err` is of type `unknown` — need to cast before accessing `.message`
+2. **`useCompany.ts` and `CompaniesTab.tsx`**: Reference `companies` and `company_members` tables that don't exist in the Supabase type definitions — these tables need a database migration first, then a types regeneration
+3. **`useProfile.ts`**: Type instantiation too deep when querying `companies`
 
-## Fixed
+## Plan
 
-| Gap | Fix |
-|-----|-----|
-| RPRx Score never zero | Added minimum floor of 5 in `rprxScoreEngine.ts` — score clamps to [5, 100] instead of [0, 100] |
+### 1. Fix edge function `err` typing (3 files)
+In the catch blocks of `ghl-sync/index.ts`, `ghl-webhook/index.ts`, and `admin-user-actions/index.ts`, change:
+```typescript
+err.message
+```
+to:
+```typescript
+(err as Error).message
+```
 
-## Remaining Risks (Non-blocking for soft launch)
+### 2. Create `companies` and `company_members` tables
+Add a migration creating both tables with the schemas matching the TypeScript interfaces already defined in `useCompany.ts`:
+- `companies`: id, name, slug, owner_id, ghl_location_id, plan, invite_token, created_at, updated_at
+- `company_members`: id, company_id, user_id, role, invited_by, joined_at
 
-- **Assessment transaction atomicity**: Sequential writes with `hadNonCriticalFailure` flags. Acceptable for 5-10 testers; monitor for broken states.
-- **Mobile polish**: Sidebar resize handle, card layouts, and chat FAB positioning should be tested on small viewports.
-- **30-day journey Days 2-30**: Content needs to be seeded in `onboarding_content` table for all horseman types beyond Day 1.
+Enable RLS on both tables with appropriate policies.
+
+### 3. Regenerate Supabase types
+After the migration deploys, regenerate `src/integrations/supabase/types.ts` so the new tables are recognized by the TypeScript client.
+
+## Files to Modify
+- `supabase/functions/ghl-sync/index.ts` — cast `err`
+- `supabase/functions/ghl-webhook/index.ts` — cast `err`
+- `supabase/functions/admin-user-actions/index.ts` — cast `err`
+- New migration for `companies` + `company_members` tables
+- `src/integrations/supabase/types.ts` — regenerate after migration
+
