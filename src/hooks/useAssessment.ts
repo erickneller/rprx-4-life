@@ -438,7 +438,7 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
           description: "Check back in a moment — everything will be ready shortly.",
         });
       }
-      navigate('/dashboard');
+      navigate(`/results/${assessment.id}`);
     } catch (error) {
       console.error('[Assessment] Critical write failed:', error);
       setState((prev) => ({ ...prev, isSubmitting: false }));
