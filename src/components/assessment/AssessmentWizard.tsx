@@ -351,20 +351,15 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
           </Button>
-          <Button
-            onClick={handleNext}
-            disabled={!canGoNext()}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground"
-          >
-            {isLastCoreStep ? (
-              'Continue →'
-            ) : (
-              <>
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </>
-            )}
-          </Button>
+          {isLastCoreStep && (
+            <Button
+              onClick={handleNext}
+              disabled={!canGoNext()}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
+              Continue →
+            </Button>
+          )}
         </div>
       </footer>
     </div>
