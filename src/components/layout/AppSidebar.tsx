@@ -1,10 +1,11 @@
-import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, Shield, LucideIcon } from "lucide-react";
+import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, Shield, Building2, LucideIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
 import { StreakCounter } from "@/components/gamification/StreakCounter";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { useCompany } from "@/hooks/useCompany";
 
 import {
   Sidebar,
