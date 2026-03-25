@@ -60,7 +60,7 @@ export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
 
   if (compact) {
     return (
-      <Card className="gradient-hero text-primary-foreground border-0">
+      <Card className="gradient-hero text-white border-0">
         <CardContent className="p-4 space-y-2">
           <div className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 opacity-80" />
@@ -86,7 +86,7 @@ export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
   );
 
   return (
-    <Card id="money-leak-card" className="gradient-hero text-primary-foreground border-0 overflow-hidden">
+    <Card id="money-leak-card" className="gradient-hero text-white border-0 overflow-hidden">
       <CardContent className="p-6 md:p-8 space-y-6">
         {/* Headline */}
         <div className="space-y-2">
