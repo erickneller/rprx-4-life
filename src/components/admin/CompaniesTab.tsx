@@ -125,6 +125,49 @@ export function CompaniesTab() {
     onError: (err: any) => toast.error(err.message ?? 'Failed to refresh token.'),
   });
 
+  // ─── Update company ─────────────────────────────────────────────────────
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingCompany) return;
+      const { error } = await (supabase.from('companies') as any)
+        .update({ name: editName.trim(), plan: editPlan })
+        .eq('id', editingCompany.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Company updated.');
+      setEditingCompany(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+    },
+    onError: (err: any) => toast.error(err.message ?? 'Failed to update company.'),
+  });
+
+  // ─── Delete company ─────────────────────────────────────────────────────
+  const deleteMutation = useMutation({
+    mutationFn: async (company: CompanyRow) => {
+      // Delete members first (no FK cascade)
+      await (supabase.from('company_members') as any)
+        .delete()
+        .eq('company_id', company.id);
+      const { error } = await (supabase.from('companies') as any)
+        .delete()
+        .eq('id', company.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Company deleted.');
+      setDeleteTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+    },
+    onError: (err: any) => toast.error(err.message ?? 'Failed to delete company.'),
+  });
+
+  const openEdit = (company: CompanyRow) => {
+    setEditName(company.name);
+    setEditPlan(company.plan as any);
+    setEditingCompany(company);
+  };
+
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
@@ -161,6 +204,7 @@ export function CompaniesTab() {
                 <TableHead className="text-center">Members</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Invite Link</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
