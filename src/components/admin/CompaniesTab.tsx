@@ -77,8 +77,8 @@ export function CompaniesTab() {
 
       const slug = `${toSlug(name)}-${Math.random().toString(36).slice(2, 7)}`;
 
-      const { error } = await supabase
-        .from('companies')
+      const { error } = await (supabase
+        .from('companies') as any)
         .insert({ name, slug, plan: newPlan });
 
       if (error) throw error;
