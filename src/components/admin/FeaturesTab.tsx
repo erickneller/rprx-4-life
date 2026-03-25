@@ -3,11 +3,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFeatureFlag, useToggleFeatureFlag } from '@/hooks/useFeatureFlag';
 import { toast } from 'sonner';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, FlaskConical } from 'lucide-react';
 
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');
   const toggle = useToggleFeatureFlag('chat_enabled');
+  const { enabled: testModeEnabled, isLoading: testModeLoading } = useFeatureFlag('test_mode');
+  const testModeToggle = useToggleFeatureFlag('test_mode');
 
   const handleToggle = async (checked: boolean) => {
     try {
@@ -40,6 +42,38 @@ export function FeaturesTab() {
             />
             <Label htmlFor="chat-toggle">
               {enabled ? 'Enabled' : 'Disabled'}
+            </Label>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FlaskConical className="h-5 w-5" />
+            Test Mode / Page Feedback
+          </CardTitle>
+          <CardDescription>
+            When enabled, a feedback widget appears on all pages for users to rate and comment. Use during testing or when rolling out new features.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Switch
+              id="test-mode-toggle"
+              checked={testModeEnabled}
+              onCheckedChange={async (checked) => {
+                try {
+                  await testModeToggle.mutateAsync(checked);
+                  toast.success(checked ? 'Test Mode enabled' : 'Test Mode disabled');
+                } catch {
+                  toast.error('Failed to update test mode');
+                }
+              }}
+              disabled={testModeLoading || testModeToggle.isPending}
+            />
+            <Label htmlFor="test-mode-toggle">
+              {testModeEnabled ? 'Enabled' : 'Disabled'}
             </Label>
           </div>
         </CardContent>

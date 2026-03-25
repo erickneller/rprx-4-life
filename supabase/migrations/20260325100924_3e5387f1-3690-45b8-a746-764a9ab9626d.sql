@@ -1,0 +1,1 @@
+INSERT INTO public.feature_flags (id, enabled) VALUES ('test_mode', false) ON CONFLICT (id) DO NOTHING;

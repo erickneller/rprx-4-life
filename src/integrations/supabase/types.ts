@@ -511,6 +511,36 @@ export type Database = {
         }
         Relationships: []
       }
+      page_feedback: {
+        Row: {
+          archived: boolean
+          comment: string | null
+          created_at: string
+          id: string
+          page_route: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          comment?: string | null
+          created_at?: string
+          id?: string
+          page_route: string
+          rating: number
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          comment?: string | null
+          created_at?: string
+          id?: string
+          page_route?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       page_help_content: {
         Row: {
           created_at: string
