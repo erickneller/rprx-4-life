@@ -32,6 +32,7 @@ import { WizardCopyTab } from '@/components/admin/WizardCopyTab';
 import { FeaturesTab } from '@/components/admin/FeaturesTab';
 import { CompaniesTab } from '@/components/admin/CompaniesTab';
 import { FeedbackTab } from '@/components/admin/FeedbackTab';
+import { UserGuideTab } from '@/components/admin/UserGuideTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -424,6 +425,9 @@ export default function AdminPanel() {
             <TabsTrigger value="feedback" className="gap-1">
               <Star className="h-4 w-4" /> Feedback
             </TabsTrigger>
+            <TabsTrigger value="user-guide" className="gap-1">
+              <HelpCircle className="h-4 w-4" /> User Guide
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
@@ -622,6 +626,11 @@ export default function AdminPanel() {
           {/* ===== FEEDBACK TAB ===== */}
           <TabsContent value="feedback" className="space-y-4">
             <FeedbackTab />
+          </TabsContent>
+
+          {/* ===== USER GUIDE TAB ===== */}
+          <TabsContent value="user-guide" className="space-y-4">
+            <UserGuideTab />
           </TabsContent>
         </Tabs>
       </div>
