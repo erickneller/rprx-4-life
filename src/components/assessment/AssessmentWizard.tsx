@@ -55,6 +55,8 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   } = useAssessment(questions, editAssessmentId, { sendMessage, createPlan });
 
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleNextRef = useRef(handleNext);
+  useEffect(() => { handleNextRef.current = handleNext; });
 
   // Clear timer on unmount
   useEffect(() => {
