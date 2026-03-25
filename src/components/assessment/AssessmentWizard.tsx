@@ -55,6 +55,13 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   } = useAssessment(questions, editAssessmentId, { sendMessage, createPlan });
 
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipAutoAdvanceRef = useRef(false);
+
+  // Mark skip on step changes (prevents slider auto-select from advancing)
+  useEffect(() => {
+    skipAutoAdvanceRef.current = true;
+  }, [currentStep, deepDiveStep]);
+
   // Clear timer on unmount
   useEffect(() => {
     return () => {
