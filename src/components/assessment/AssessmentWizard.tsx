@@ -105,8 +105,8 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
       skipAutoAdvanceRef.current = false;
       return;
     }
-    // Auto-advance all types except multi_select and the last core step
-    if (q.question_type !== 'multi_select' && !isLastCoreStep) {
+    // Core questions don't have multi_select, so always auto-advance (except last step)
+    if (!isLastCoreStep) {
       scheduleAutoAdvance();
     }
   }, [setResponse, currentQuestion, isLastCoreStep, scheduleAutoAdvance]);
