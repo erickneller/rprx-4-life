@@ -1,45 +1,69 @@
 
 
-# Hybrid Chat: Internal KB for Free, OpenAI for Paid
+# Page Feedback System with Test Mode
 
-## Concept
-Keep the current OpenAI-powered chat for paid users. Add a template-based response engine for free users. Same chat UI for both -- paid users get conversational AI responses, free users get structured responses from the internal knowledge base. Zero additional cost for free tier.
+## Overview
+Add a global "Test Mode" toggle in admin that, when enabled, shows a feedback widget on every authenticated page. Users rate 1-5 stars and leave a comment. Admins see all feedback grouped by page with archive, delete, and CSV export.
 
-## How It Works
+## Database
 
-In `supabase/functions/rprx-chat/index.ts`, after building the ranked strategies and user context (all the existing code stays), add a tier check before the OpenAI call:
+### New table: `page_feedback`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK, default gen_random_uuid() |
+| user_id | uuid | references auth.users |
+| page_route | text | e.g. "/dashboard", "/plans" |
+| rating | integer | 1-5 |
+| comment | text | nullable |
+| archived | boolean | default false |
+| created_at | timestamptz | default now() |
 
-1. **Check subscription tier** — query `get_subscription_tier()` for the authenticated user
-2. **If paid** — proceed with OpenAI call exactly as today (lines 669-748)
-3. **If free** — call a new `generateTemplateResponse()` function that builds a markdown response from the already-ranked strategies and profile context
+RLS: Users can INSERT their own feedback. Admins can SELECT/UPDATE/DELETE all.
 
-The template response generator handles these intents via keyword matching:
-- Strategy recommendations → top 3 ranked strategies with descriptions and impact
-- Horseman-specific questions → filtered strategies
-- Implementation details → full steps from strategy_definitions
-- Profile summary → reflect back their data
-- Greetings/fallback → welcome message + top recommendation
+### New feature flag row
+Insert `test_mode` into `feature_flags` table (enabled: false).
 
-## Changes
+## Components
 
-### File: `supabase/functions/rprx-chat/index.ts`
-- Add `detectIntent()` function (~30 lines) for keyword-based intent classification
-- Add `generateTemplateResponse()` function (~80 lines) that assembles markdown from ranked strategies
-- Add tier check before line 669: query `get_subscription_tier` using the service client
-- If free → use template response, skip OpenAI block
-- If paid → existing OpenAI flow unchanged
+### 1. Feedback Widget (`src/components/feedback/PageFeedbackWidget.tsx`)
+- Floating button (bottom-left) on all authenticated pages, visible only when `test_mode` flag is enabled
+- Click opens a small popover/dialog with:
+  - 5 clickable stars (highlight on hover/select)
+  - Textarea for comment (optional, max 500 chars)
+  - Submit button
+- Auto-detects current page route via `useLocation()`
+- On submit: inserts into `page_feedback`, shows success toast
+- Added to `AuthenticatedLayout` alongside the existing `PageHelpButton`
 
-### No other files change
-- Chat UI, message storage, conversation flow, auto-strategy generation all remain identical
-- `useSubscription` hook already exists on the frontend but the tier gate happens server-side in the edge function
+### 2. Admin Features Tab Update (`src/components/admin/FeaturesTab.tsx`)
+- Add a second card: "Test Mode / Page Feedback" with a switch for the `test_mode` feature flag
+- Description: "When enabled, a feedback widget appears on all pages for users to rate and comment."
 
-## User Experience
-- **Free users**: Instant responses, structured markdown, personalized to their profile and assessment. No API costs.
-- **Paid users**: Full conversational AI via GPT-4o-mini, same as today.
-- Both tiers use the same chat interface — no visible difference in UI.
+### 3. Admin Feedback Tab (`src/components/admin/FeedbackTab.tsx`)
+- New tab in AdminPanel: "Feedback" with a star icon
+- Groups feedback by `page_route` using collapsible/accordion sections
+- Each section header shows: page name, count, average rating
+- Each row shows: user name, rating (stars), comment, date, archived status
+- Action buttons per row: Archive/Unarchive, Delete
+- Top-level controls:
+  - Filter: All / Active / Archived
+  - Export CSV button (exports filtered results with columns: page, user, rating, comment, date, archived)
+  - Bulk delete archived
 
-## Future Flexibility
-- Switching all users to OpenAI later = remove the tier check (one `if` block)
-- Switching all users to internal = remove the OpenAI block
-- Adding a different AI provider = swap only the fetch call inside the paid branch
+### 4. Hook: `usePageFeedback.ts`
+- `useSubmitFeedback()` — mutation to insert feedback
+- `useAdminFeedback()` — query all feedback (admin only, joins profiles for user name)
+- `useArchiveFeedback()` — mutation to toggle archived
+- `useDeleteFeedback()` — mutation to delete
+
+## Files to Create
+- `src/components/feedback/PageFeedbackWidget.tsx`
+- `src/components/admin/FeedbackTab.tsx`
+- `src/hooks/usePageFeedback.ts`
+- New migration for `page_feedback` table + RLS
+
+## Files to Modify
+- `src/components/layout/AuthenticatedLayout.tsx` — add `PageFeedbackWidget`
+- `src/components/admin/FeaturesTab.tsx` — add Test Mode toggle card
+- `src/pages/AdminPanel.tsx` — add Feedback tab
 
