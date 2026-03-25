@@ -302,7 +302,7 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
           <QuestionCard
             question={currentQuestion}
             value={responses[currentQuestion.id]}
-            onChange={(value) => setResponse(currentQuestion.id, value)}
+            onChange={(value) => handleCoreResponse(currentQuestion.id, value)}
           />
         )}
       </main>
