@@ -1,28 +1,26 @@
 
 
-# Join Page: Spinning Logo, Branded Button, and Updated Copy
+# Fix: Restrict prompt_templates SELECT to admins only
 
-## Changes
+## Problem
+The `prompt_templates` table SELECT policy allows any authenticated user to read AI system prompts, exposing internal business logic.
 
-**Modified: `src/pages/Join.tsx`**
+## Fix
+Replace the current permissive SELECT policy with one restricted to admins:
 
-1. **Add spinning RPRX logo** at the top of the sign-up form, matching the Auth page:
-   - Import `rprxLogo` from `@/assets/rprx-logo.png`
-   - Add the logo with `perspective: 1000px` wrapper and `animate-spin-y` class (same as Auth page)
+**Migration SQL:**
+```sql
+DROP POLICY "Authenticated users can read prompt templates" ON public.prompt_templates;
 
-2. **Update subtitle copy** from:
-   > Create your free account to join **My Company ABC** on RPRX.
+CREATE POLICY "Admins can read prompt templates"
+ON public.prompt_templates
+FOR SELECT
+TO authenticated
+USING (has_role(auth.uid(), 'admin'::app_role));
+```
 
-   To:
-   > Create your free account to join **{company name}** on RPRx 4 Life.
-
-3. **Style the submit button** with the signature blue (`bg-accent hover:bg-accent/90 text-white`) to match the brand.
-
-4. Remove the `Building2` icon badge above the title since the logo now serves as the visual anchor. Keep the company name badge but simplify it.
-
-## Technical Details
-
-- Reuse `animate-spin-y` keyframe already defined in `tailwind.config.ts` (4s linear infinite rotateY)
-- Import the same logo asset used across the app: `@/assets/rprx-logo.png`
-- Apply `perspective: 1000px` on the wrapper div for 3D rotation effect, matching Auth page line 215
+## Impact
+- The edge function (`rprx-chat`) reads prompt_templates using the **service role client**, which bypasses RLS entirely -- no breakage.
+- The only client-side reader is the admin `PromptTemplatesTab`, which is already behind the `AdminRoute` guard and accessed by admins -- no breakage.
+- Single migration, no code changes needed.
 
