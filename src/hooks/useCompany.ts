@@ -90,8 +90,8 @@ export function useCompany() {
       if (!user?.id) throw new Error('Not authenticated');
 
       // Look up company by invite_token
-      const { data: company, error: lookupErr } = await supabase
-        .from('companies')
+      const { data: company, error: lookupErr } = await (supabase
+        .from('companies') as any)
         .select('*')
         .eq('invite_token', token)
         .maybeSingle();
@@ -100,8 +100,8 @@ export function useCompany() {
       if (!company) throw new Error('Invalid or expired invite link.');
 
       // Insert company_members row (upsert so re-joining is safe)
-      const { error: memberErr } = await supabase
-        .from('company_members')
+      const { error: memberErr } = await (supabase
+        .from('company_members') as any)
         .upsert(
           { company_id: company.id, user_id: user.id, role: 'member' },
           { onConflict: 'company_id,user_id', ignoreDuplicates: true }
@@ -112,7 +112,7 @@ export function useCompany() {
       // Update profile.company_id + company_role
       const { error: profileErr } = await supabase
         .from('profiles')
-        .update({ company_id: company.id, company_role: 'member' })
+        .update({ company_id: company.id, company_role: 'member' } as any)
         .eq('id', user.id);
 
       if (profileErr) throw profileErr;
