@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import {
   DndContext,
   closestCenter,
+  TouchSensor,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -58,7 +59,7 @@ function SortableCard({ id, children }: { id: string; children: ReactNode }) {
       <button
         {...attributes}
         {...listeners}
-        className="absolute top-2 right-2 z-10 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity bg-muted/80 hover:bg-muted text-muted-foreground cursor-grab active:cursor-grabbing"
+        className="absolute top-2 right-2 z-10 p-1.5 rounded-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-muted/80 hover:bg-muted text-muted-foreground cursor-grab active:cursor-grabbing"
         aria-label="Drag to reorder"
       >
         <GripVertical className="h-4 w-4" />
@@ -72,6 +73,7 @@ export function DashboardCardRenderer({ cards, cardProps, onReorder }: Dashboard
   const visibleCards = cards.filter(c => c.is_visible);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
