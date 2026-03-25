@@ -1,39 +1,51 @@
 
 
-# Fix Build Errors
+# Company-Specific Links + Company Dashboard
 
-## Problem
-Three categories of build errors:
-1. **Edge functions** (`ghl-sync`, `ghl-webhook`, `admin-user-actions`): `err` is of type `unknown` — need to cast before accessing `.message`
-2. **`useCompany.ts` and `CompaniesTab.tsx`**: Reference `companies` and `company_members` tables that don't exist in the Supabase type definitions — these tables need a database migration first, then a types regeneration
-3. **`useProfile.ts`**: Type instantiation too deep when querying `companies`
+## What's Already Built
+- `/join?token=<invite_token>` page with signup + auto-join flow
+- `companies` table with `invite_token` (auto-generated UUID per company)
+- `company_members` table linking users to companies
+- Admin `CompaniesTab` to create companies and copy invite links
+- `profiles.company_id` populated on join
 
-## Plan
+Each of the 10 companies already gets a unique invite link from the Admin panel. Employees who sign up via that link are automatically tagged as members of that company.
 
-### 1. Fix edge function `err` typing (3 files)
-In the catch blocks of `ghl-sync/index.ts`, `ghl-webhook/index.ts`, and `admin-user-actions/index.ts`, change:
-```typescript
-err.message
-```
-to:
-```typescript
-(err as Error).message
-```
+## What Needs to Be Built
 
-### 2. Create `companies` and `company_members` tables
-Add a migration creating both tables with the schemas matching the TypeScript interfaces already defined in `useCompany.ts`:
-- `companies`: id, name, slug, owner_id, ghl_location_id, plan, invite_token, created_at, updated_at
-- `company_members`: id, company_id, user_id, role, invited_by, joined_at
+### 1. Company Dashboard Page (`/company-dashboard`)
+A new page accessible to company owners/admins showing aggregated, non-sensitive usage stats for their company's members:
 
-Enable RLS on both tables with appropriate policies.
+- **Header**: Company name, member count, plan tier
+- **Stats cards**: Total members, active this week, assessments completed, avg RPRx score, total strategies activated
+- **Member activity table**: Name, join date, last active, assessment status (completed/not), current streak, tier — no financial data shown
+- **Engagement chart**: Signups over time or weekly active users (simple bar chart)
 
-### 3. Regenerate Supabase types
-After the migration deploys, regenerate `src/integrations/supabase/types.ts` so the new tables are recognized by the TypeScript client.
+### 2. Database: Company Dashboard RLS
+The existing `company_members` SELECT policy only allows `user_id = auth.uid()`. To let a company admin see all members, add a policy:
+- Company owners/admins can SELECT all `company_members` rows for their company
+- Create a `company_dashboard_stats` SQL function (security definer) that aggregates profile data (streaks, tiers, last_active) for members of a given company — returns only non-sensitive fields
 
-## Files to Modify
-- `supabase/functions/ghl-sync/index.ts` — cast `err`
-- `supabase/functions/ghl-webhook/index.ts` — cast `err`
-- `supabase/functions/admin-user-actions/index.ts` — cast `err`
-- New migration for `companies` + `company_members` tables
-- `src/integrations/supabase/types.ts` — regenerate after migration
+### 3. Hook: `useCompanyDashboard`
+- Takes the user's company_id from their membership
+- Calls the `company_dashboard_stats` RPC function
+- Returns aggregated stats + member list (non-sensitive fields only)
+
+### 4. Sidebar Navigation
+- Add "Company" link in the sidebar, visible only to users who have a `company_members` row with role `owner` or `admin`
+
+### 5. Route + Guard
+- Add `/company-dashboard` route in `App.tsx`
+- Protected route, only accessible if user has company owner/admin role
+
+## Files to Create/Modify
+- **New migration**: `company_dashboard_stats` RPC function + updated RLS policy on `company_members`
+- **New**: `src/pages/CompanyDashboard.tsx`
+- **New**: `src/hooks/useCompanyDashboard.ts`
+- **Modify**: `src/components/layout/AppSidebar.tsx` — add Company nav link
+- **Modify**: `src/App.tsx` — add route
+
+## Security
+- The RPC function uses `SECURITY DEFINER` and validates the caller is an owner/admin of the requested company
+- No financial data (income, debts, scores) exposed — only engagement metrics (streak, tier, last active, assessment completion status)
 
