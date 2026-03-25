@@ -618,6 +618,11 @@ export default function AdminPanel() {
           <TabsContent value="companies" className="space-y-4">
             <CompaniesTab />
           </TabsContent>
+
+          {/* ===== FEEDBACK TAB ===== */}
+          <TabsContent value="feedback" className="space-y-4">
+            <FeedbackTab />
+          </TabsContent>
         </Tabs>
       </div>
 
