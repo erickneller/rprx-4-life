@@ -965,51 +965,9 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {/* Company Card — shown only for business owners who own a company */}
-        {userCompany && userMembership?.role === 'owner' && (
-          <Card className="border-accent/30 bg-accent/5">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-accent" />
-                Your Company
-              </CardTitle>
-              <CardDescription>Share your invite link to add team members</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1">
-                <Label className="text-sm font-semibold">Company Name</Label>
-                <p className="text-base font-medium">{userCompany.name}</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-sm font-semibold">Invite Link</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    readOnly
-                    value={buildInviteUrl(userCompany.invite_token)}
-                    className="bg-muted text-xs font-mono flex-1 cursor-default"
-                    onClick={(e) => (e.target as HTMLInputElement).select()}
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {
-                      navigator.clipboard.writeText(buildInviteUrl(userCompany.invite_token));
-                      toast({ title: 'Copied!', description: 'Invite link copied to clipboard.' });
-                    }}
-                    title="Copy invite link"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Share this link with your team — they'll create an RPRX account linked to {userCompany.name}.
-                </p>
-              </div>
-
-              <CompanyMemberCount companyId={userCompany.id} />
-            </CardContent>
-          </Card>
+        {/* Company Card — shown only for owners/admins who have a company */}
+        {userCompany && (userMembership?.role === 'owner' || userMembership?.role === 'admin') && (
+          <CompanyInviteCard company={userCompany} companyId={userCompany.id} />
         )}
 
         {/* My Achievements */}

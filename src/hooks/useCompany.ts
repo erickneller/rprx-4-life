@@ -179,3 +179,23 @@ export function useCompany() {
     buildInviteUrl,
   };
 }
+
+/**
+ * useCompanyInviteToken — fetches the invite token for a company via RPC.
+ * Only returns a token if the caller is an owner/admin of the company or a platform admin.
+ */
+export function useCompanyInviteToken(companyId: string | null) {
+  const { user } = useAuth();
+
+  return useQuery<string | null>({
+    queryKey: ['company-invite-token', companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const { data, error } = await supabase
+        .rpc('get_company_invite_token', { _company_id: companyId });
+      if (error) throw error;
+      return data as string | null;
+    },
+    enabled: !!user?.id && !!companyId,
+  });
+}
