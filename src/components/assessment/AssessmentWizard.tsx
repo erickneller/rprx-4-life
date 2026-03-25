@@ -55,12 +55,6 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   } = useAssessment(questions, editAssessmentId, { sendMessage, createPlan });
 
   const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const skipAutoAdvanceRef = useRef(false);
-
-  // Mark skip on step changes (prevents slider auto-select from advancing)
-  useEffect(() => {
-    skipAutoAdvanceRef.current = true;
-  }, [currentStep, deepDiveStep]);
 
   // Clear timer on unmount
   useEffect(() => {
@@ -98,26 +92,14 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
 
   const handleCoreResponse = useCallback((questionId: string, value: string) => {
     setResponse(questionId, value);
-    const q = currentQuestion;
-    if (!q) return;
-    // Skip the auto-select on mount for sliders
-    if (q.question_type === 'slider' && skipAutoAdvanceRef.current) {
-      skipAutoAdvanceRef.current = false;
-      return;
-    }
-    // Core questions don't have multi_select, so always auto-advance (except last step)
     if (!isLastCoreStep) {
       scheduleAutoAdvance();
     }
-  }, [setResponse, currentQuestion, isLastCoreStep, scheduleAutoAdvance]);
+  }, [setResponse, isLastCoreStep, scheduleAutoAdvance]);
 
   const handleDeepDiveResponse = useCallback((questionId: string, value: string | string[]) => {
     setDeepDiveAnswer(questionId, value);
     if (!currentDeepDiveQuestion) return;
-    if (currentDeepDiveQuestion.question_type === 'slider' && skipAutoAdvanceRef.current) {
-      skipAutoAdvanceRef.current = false;
-      return;
-    }
     if (currentDeepDiveQuestion.question_type !== 'multi_select' && !isLastStep) {
       scheduleAutoAdvance();
     }
