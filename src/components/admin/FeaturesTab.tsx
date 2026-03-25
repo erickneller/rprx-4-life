@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFeatureFlag, useToggleFeatureFlag } from '@/hooks/useFeatureFlag';
 import { toast } from 'sonner';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, FlaskConical } from 'lucide-react';
 
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');
