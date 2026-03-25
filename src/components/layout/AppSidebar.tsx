@@ -1,10 +1,11 @@
-import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, Shield, LucideIcon } from "lucide-react";
+import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, Shield, Building2, LucideIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
 import { StreakCounter } from "@/components/gamification/StreakCounter";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { useCompany } from "@/hooks/useCompany";
 
 import {
   Sidebar,
@@ -65,6 +66,8 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed";
   const { isAdmin } = useAdmin();
   const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
+  const { membership } = useCompany();
+  const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
 
   return (
     <Sidebar collapsible="icon">
@@ -152,6 +155,28 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Company dashboard - visible to company owners/admins */}
+        {isCompanyAdmin && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Company Dashboard">
+                    <NavLink
+                      to="/company-dashboard"
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <Building2 className="h-5 w-5 shrink-0" />
+                      <span className={isCollapsed ? "sr-only" : ""}>Company</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Admin link - only visible to admins */}
         {isAdmin && (

@@ -1252,6 +1252,20 @@ export type Database = {
           total_points_earned: number
         }[]
       }
+      company_dashboard_stats: {
+        Args: { _company_id: string }
+        Returns: {
+          current_streak: number
+          current_tier: string
+          full_name: string
+          has_assessment: boolean
+          joined_at: string
+          last_active_date: string
+          onboarding_completed: boolean
+          total_points_earned: number
+          user_id: string
+        }[]
+      }
       get_subscription_tier: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
