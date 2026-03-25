@@ -666,88 +666,100 @@ ${manualInstructions}`;
       console.log(`Manual mode - page ${page}, showing ${pageStrategies.length} strategies`);
     }
 
-    // Build OpenAI messages
-    const openaiMessages = [
-      { role: 'system', content: dynamicSystemPrompt },
-      ...messages.map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-    ];
+    let assistantMessage: string;
 
-    console.log('Calling OpenAI with', openaiMessages.length, 'messages');
+    if (isFreeUser) {
+      // =====================================================
+      // FREE TIER: Internal template-based response engine
+      // =====================================================
+      console.log('Free tier — generating template response');
+      const intent = detectIntent(user_message, messages);
+      assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode);
+    } else {
+      // =====================================================
+      // PAID TIER: OpenAI-powered conversational AI
+      // =====================================================
+      const openaiMessages = [
+        { role: 'system', content: dynamicSystemPrompt },
+        ...messages.map((m: { role: string; content: string }) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
+      ];
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+      console.log('Paid tier — calling OpenAI with', openaiMessages.length, 'messages');
 
-    // Retry logic with exponential backoff
-    const maxRetries = 3;
-    let lastError: string | null = null;
-    let openaiData: any = null;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      if (attempt > 0) {
-        const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000);
-        console.log(`Retry attempt ${attempt + 1}, waiting ${waitTime}ms`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!openaiApiKey) {
+        return new Response(
+          JSON.stringify({ error: 'OpenAI API key not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: openaiMessages,
-          temperature: 0.7,
-          max_tokens: 2500,
-        }),
-      });
+      const maxRetries = 3;
+      let lastError: string | null = null;
+      let openaiData: any = null;
 
-      if (openaiResponse.ok) {
-        openaiData = await openaiResponse.json();
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        if (attempt > 0) {
+          const waitTime = Math.min(1000 * Math.pow(2, attempt), 10000);
+          console.log(`Retry attempt ${attempt + 1}, waiting ${waitTime}ms`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+
+        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: openaiMessages,
+            temperature: 0.7,
+            max_tokens: 2500,
+          }),
+        });
+
+        if (openaiResponse.ok) {
+          openaiData = await openaiResponse.json();
+          break;
+        }
+
+        const errorText = await openaiResponse.text();
+        console.error(`OpenAI API error (attempt ${attempt + 1}):`, openaiResponse.status, errorText);
+
+        if (openaiResponse.status === 429) {
+          lastError = 'The AI is currently busy. Please wait a moment and try again.';
+          const retryAfter = openaiResponse.headers.get('retry-after');
+          if (retryAfter) {
+            await new Promise(resolve => setTimeout(resolve, Math.min(parseInt(retryAfter) * 1000, 15000)));
+          }
+          continue;
+        }
+
+        lastError = 'Failed to get AI response';
         break;
       }
 
-      const errorText = await openaiResponse.text();
-      console.error(`OpenAI API error (attempt ${attempt + 1}):`, openaiResponse.status, errorText);
-
-      if (openaiResponse.status === 429) {
-        lastError = 'The AI is currently busy. Please wait a moment and try again.';
-        const retryAfter = openaiResponse.headers.get('retry-after');
-        if (retryAfter) {
-          await new Promise(resolve => setTimeout(resolve, Math.min(parseInt(retryAfter) * 1000, 15000)));
-        }
-        continue;
+      if (!openaiData) {
+        return new Response(
+          JSON.stringify({ error: lastError || 'Failed to get AI response' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      lastError = 'Failed to get AI response';
-      break;
-    }
+      assistantMessage = openaiData.choices[0]?.message?.content;
+      if (!assistantMessage) {
+        return new Response(
+          JSON.stringify({ error: 'No response from AI' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    if (!openaiData) {
-      return new Response(
-        JSON.stringify({ error: lastError || 'Failed to get AI response' }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log('Received OpenAI response, length:', assistantMessage.length);
     }
-
-    const assistantMessage = openaiData.choices[0]?.message?.content;
-    if (!assistantMessage) {
-      return new Response(
-        JSON.stringify({ error: 'No response from AI' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Received OpenAI response, length:', assistantMessage.length);
 
     // Save assistant message (fire and forget)
     supabase.from('messages').insert({
