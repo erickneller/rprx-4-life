@@ -1,106 +1,77 @@
 
 
-# User Guide System in Admin Panel
+# "Speak with an RPRx Advisor" — Admin-Configurable CTA
 
 ## What We're Building
-A new "User Guide" tab in the Admin Panel that manages a complete, multi-section user manual. Each section corresponds to an app page/feature, is pre-populated with default content, and is editable by admins. Users (and admins) can download the entire guide as a PDF.
+A persistent "Speak with an RPRx Advisor" link that appears in the sidebar and as a dashboard card. The URL/phone number is admin-configurable from the Features tab. Supports both external URLs and `tel:` phone links.
 
 ## Approach
 
-This is a **client-side feature** -- no new database tables needed. The guide content will be stored in a new `user_guide_sections` table so admins can edit it persistently.
+### 1. Store the advisor link in `feature_flags`
 
-### 1. Create Database Table: `user_guide_sections`
+Insert a new row into `feature_flags` with id `advisor_link` storing the URL in a new `value` column (text). We need to add a `value` text column to the `feature_flags` table so it can hold arbitrary config strings alongside the boolean `enabled` toggle.
 
-New migration:
+**Migration:**
 ```sql
-CREATE TABLE public.user_guide_sections (
-  id text PRIMARY KEY,
-  title text NOT NULL,
-  body text NOT NULL DEFAULT '',
-  sort_order integer NOT NULL DEFAULT 0,
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+ALTER TABLE public.feature_flags ADD COLUMN value text DEFAULT '';
 
-ALTER TABLE public.user_guide_sections ENABLE ROW LEVEL SECURITY;
-
--- Admins full CRUD
-CREATE POLICY "Admins can manage guide sections" ON public.user_guide_sections
-  FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
-
--- All authenticated users can read (for PDF download)
-CREATE POLICY "Authenticated can read guide" ON public.user_guide_sections
-  FOR SELECT TO authenticated USING (true);
+INSERT INTO public.feature_flags (id, enabled, value)
+VALUES ('advisor_link', true, 'https://calendly.com/your-link')
+ON CONFLICT (id) DO NOTHING;
 ```
 
-Then seed with default content covering all app sections: Welcome/Overview, Dashboard, Profile/Wizard, Assessment, Results, Strategy Assistant, Plans, Debt Eliminator, Onboarding Journey, and Company Dashboard. Each section gets a markdown body describing the page's purpose, features, and how to use it.
+### 2. Create `useAdvisorLink` hook
 
-### 2. Create `UserGuideTab` Admin Component
+**New file: `src/hooks/useAdvisorLink.ts`**
 
-**File: `src/components/admin/UserGuideTab.tsx`**
+Fetches the `advisor_link` flag row, returns `{ enabled, url, isLoading }`. The hook reads both `enabled` (show/hide the CTA) and `value` (the URL or tel: number).
 
-- Fetches all sections from `user_guide_sections` ordered by `sort_order`
-- Displays an accordion-style list of sections, each with:
-  - Title (editable Input)
-  - Body (editable Textarea with markdown)
-  - Active toggle (Switch)
-  - Save button per section
-- "Add Section" button for custom sections
-- Delete button per section
-- **"Download PDF" button** at the top that generates a PDF of all active sections using jsPDF (already a project dependency from `planExport.ts`)
+### 3. Add admin controls to FeaturesTab
 
-### 3. Create `useUserGuide` Hook
+**Modified: `src/components/admin/FeaturesTab.tsx`**
 
-**File: `src/hooks/useUserGuide.ts`**
+Add a third Card section: "RPRx Advisor Link" with:
+- An enable/disable Switch (toggles visibility app-wide)
+- A text Input for the URL/phone number
+- A Save button that updates the `value` column
+- Helper text: "Enter a URL (e.g. Calendly link) or phone number (will auto-format as tel: link)"
 
-- `useQuery` to fetch all active sections ordered by `sort_order`
-- Used by both the admin tab (all sections) and the PDF generator (active only)
+### 4. Add sidebar item
 
-### 4. Create PDF Export Utility
+**Modified: `src/components/layout/AppSidebar.tsx`**
 
-**File: `src/lib/userGuideExport.ts`**
+Below the nav items group (My Assessments / My Plans / My Profile) and above the Company/Admin sections, add a conditionally-rendered sidebar item:
+- Icon: `Phone` from lucide-react
+- Label: "Speak with an Advisor"
+- Opens `advisor_url` in a new tab (`window.open`)
+- Only shown when `advisor_link` flag is enabled and URL is non-empty
+- Styled with a subtle accent to stand out (e.g., `text-primary` coloring)
 
-- Uses jsPDF (already installed) to generate a multi-page PDF
-- Title page: "RPRx User Guide" with date
-- Table of contents
-- Each section rendered as a heading + body text with page breaks
-- Handles markdown-to-plain-text conversion for the PDF
+### 5. Add dashboard card
 
-### 5. Wire Into Admin Panel
+**New file: `src/components/dashboard/AdvisorCTACard.tsx`**
 
-**File: `src/pages/AdminPanel.tsx`**
+A small card with:
+- Phone icon + "Speak with an RPRx Advisor" heading
+- Brief subtitle: "Get personalized guidance from a financial advisor"
+- Button that opens the configured link in a new tab
+- Only renders when advisor_link flag is enabled
 
-- Add new tab trigger: `<TabsTrigger value="user-guide">User Guide</TabsTrigger>`
-- Add `<TabsContent value="user-guide"><UserGuideTab /></TabsContent>`
-- Import the new component
+**Modified: `src/components/dashboard/DashboardCardRenderer.tsx`**
 
-### Default Content Sections (seeded via migration INSERT)
+Register the new card component in the card renderer map so it can be placed via the dashboard card config system.
 
-| ID | Title |
-|----|-------|
-| welcome | Welcome to RPRx |
-| dashboard | Your Dashboard |
-| wizard | Profile Setup Wizard |
-| assessment | Financial Assessment |
-| results | Understanding Your Results |
-| strategies | Strategy Assistant |
-| plans | Your Plans |
-| debt-eliminator | Debt Eliminator |
-| onboarding | 30-Day Onboarding Journey |
-| profile | Managing Your Profile |
-| company | Company Dashboard |
-| gamification | Points, Badges & Streaks |
+**Insert a row** into `dashboard_card_config` for the new advisor card.
 
-Each body will contain 3-5 paragraphs of helpful default content in markdown format describing how to use that feature.
-
-## Summary of Files
+## Files Summary
 
 | Action | File |
 |--------|------|
-| Migration | `supabase/migrations/` -- new table + seed data |
-| New | `src/hooks/useUserGuide.ts` |
-| New | `src/components/admin/UserGuideTab.tsx` |
-| New | `src/lib/userGuideExport.ts` |
-| Modified | `src/pages/AdminPanel.tsx` -- add tab |
+| Migration | Add `value` column to `feature_flags`, seed `advisor_link` row |
+| Insert | New row in `dashboard_card_config` for advisor card |
+| New | `src/hooks/useAdvisorLink.ts` |
+| New | `src/components/dashboard/AdvisorCTACard.tsx` |
+| Modified | `src/components/admin/FeaturesTab.tsx` — add advisor link config card |
+| Modified | `src/components/layout/AppSidebar.tsx` — add sidebar item |
+| Modified | `src/components/dashboard/DashboardCardRenderer.tsx` — register card |
 
