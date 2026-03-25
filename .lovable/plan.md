@@ -1,48 +1,26 @@
 
 
-# User Dashboard Card Reordering via Drag & Drop
+# Auto-Advance on Answer Selection
 
-## Approach
-Store per-user card order in a new `user_dashboard_card_order` table. On the dashboard, wrap cards in a drag-and-drop container. Users can reorder but not hide cards. If no custom order exists, fall back to the admin-defined `dashboard_card_config.sort_order`.
+## Concept
+When a user selects an answer for single-choice, yes/no, or range-select questions, automatically advance to the next question after a brief 400ms delay. This gives visual feedback (the selected option highlights) before moving on. Multi-select and slider questions are excluded since they require multiple interactions before the user is done.
 
-## Database
+The "Previous" button still works as normal so users can go back and change answers.
 
-### New table: `user_dashboard_card_order`
-| Column | Type |
-|--------|------|
-| id | uuid PK |
-| user_id | uuid references auth.users |
-| card_id | text (matches dashboard_card_config.id) |
-| sort_order | integer |
-| unique(user_id, card_id) |
+## Changes
 
-RLS: Users can SELECT/INSERT/UPDATE/DELETE their own rows only.
+### `src/components/assessment/AssessmentWizard.tsx`
+- Create an `autoAdvance()` callback that calls `handleNext()` after a 400ms `setTimeout`
+- For **core phase**: wrap `setResponse` so that for `single_choice`, `yes_no`, and `range_select` question types, it triggers `autoAdvance()` after setting the value
+- For **deep dive phase**: same pattern — after `setDeepDiveAnswer`, auto-advance for `single_choice` and `range_select` types
+- Use a `useRef` for the timeout so it can be cleared on unmount or if the user navigates manually
+- Skip auto-advance on the last core step (transition screen) and last deep dive step (submit) — those require explicit button clicks
 
-## Frontend Changes
+### No changes to question components
+`SingleChoiceQuestion`, `YesNoQuestion`, `RangeSelectQuestion` already call `onChange` on selection. The auto-advance logic lives entirely in `AssessmentWizard.tsx`.
 
-### 1. Hook: `useUserCardOrder` (new file `src/hooks/useUserCardOrder.ts`)
-- Fetches user's custom order from `user_dashboard_card_order`
-- Provides a `saveOrder(orderedCardIds: string[])` mutation that upserts all rows
-- Exports a `mergeOrder(adminCards, userOrder)` function that applies user sort on top of admin config
-
-### 2. `DashboardCardRenderer.tsx` — add drag-and-drop
-- Install `@dnd-kit/core` and `@dnd-kit/sortable` (lightweight, accessible drag-and-drop)
-- Wrap visible cards in `DndContext` + `SortableContext`
-- Each card gets a drag handle (grip icon, top-right corner)
-- On drag end, call `saveOrder()` and optimistically reorder
-- No visibility toggles — users only reorder
-
-### 3. `DashboardContent.tsx` — merge user order
-- Call `useUserCardOrder()` alongside existing `useDashboardConfig()`
-- Pass merged/sorted cards to `DashboardCardRenderer`
-- Add a "Reset to Default" button that deletes the user's custom order
-
-## Files to Create
-- `src/hooks/useUserCardOrder.ts`
-- Migration for `user_dashboard_card_order` table + RLS
-
-## Files to Modify
-- `src/components/dashboard/DashboardCardRenderer.tsx` — add dnd-kit drag-and-drop
-- `src/components/dashboard/DashboardContent.tsx` — integrate user order hook
-- `package.json` — add `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`
+## UX Details
+- 400ms delay provides enough time to see the selection highlight
+- If user clicks "Previous" during the delay, the timeout is cancelled
+- Last question of each phase always requires manual "Continue" / "Complete" click to avoid accidental submission
 
