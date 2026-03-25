@@ -1,51 +1,45 @@
 
 
-# Company-Specific Links + Company Dashboard
+# Hybrid Chat: Internal KB for Free, OpenAI for Paid
 
-## What's Already Built
-- `/join?token=<invite_token>` page with signup + auto-join flow
-- `companies` table with `invite_token` (auto-generated UUID per company)
-- `company_members` table linking users to companies
-- Admin `CompaniesTab` to create companies and copy invite links
-- `profiles.company_id` populated on join
+## Concept
+Keep the current OpenAI-powered chat for paid users. Add a template-based response engine for free users. Same chat UI for both -- paid users get conversational AI responses, free users get structured responses from the internal knowledge base. Zero additional cost for free tier.
 
-Each of the 10 companies already gets a unique invite link from the Admin panel. Employees who sign up via that link are automatically tagged as members of that company.
+## How It Works
 
-## What Needs to Be Built
+In `supabase/functions/rprx-chat/index.ts`, after building the ranked strategies and user context (all the existing code stays), add a tier check before the OpenAI call:
 
-### 1. Company Dashboard Page (`/company-dashboard`)
-A new page accessible to company owners/admins showing aggregated, non-sensitive usage stats for their company's members:
+1. **Check subscription tier** — query `get_subscription_tier()` for the authenticated user
+2. **If paid** — proceed with OpenAI call exactly as today (lines 669-748)
+3. **If free** — call a new `generateTemplateResponse()` function that builds a markdown response from the already-ranked strategies and profile context
 
-- **Header**: Company name, member count, plan tier
-- **Stats cards**: Total members, active this week, assessments completed, avg RPRx score, total strategies activated
-- **Member activity table**: Name, join date, last active, assessment status (completed/not), current streak, tier — no financial data shown
-- **Engagement chart**: Signups over time or weekly active users (simple bar chart)
+The template response generator handles these intents via keyword matching:
+- Strategy recommendations → top 3 ranked strategies with descriptions and impact
+- Horseman-specific questions → filtered strategies
+- Implementation details → full steps from strategy_definitions
+- Profile summary → reflect back their data
+- Greetings/fallback → welcome message + top recommendation
 
-### 2. Database: Company Dashboard RLS
-The existing `company_members` SELECT policy only allows `user_id = auth.uid()`. To let a company admin see all members, add a policy:
-- Company owners/admins can SELECT all `company_members` rows for their company
-- Create a `company_dashboard_stats` SQL function (security definer) that aggregates profile data (streaks, tiers, last_active) for members of a given company — returns only non-sensitive fields
+## Changes
 
-### 3. Hook: `useCompanyDashboard`
-- Takes the user's company_id from their membership
-- Calls the `company_dashboard_stats` RPC function
-- Returns aggregated stats + member list (non-sensitive fields only)
+### File: `supabase/functions/rprx-chat/index.ts`
+- Add `detectIntent()` function (~30 lines) for keyword-based intent classification
+- Add `generateTemplateResponse()` function (~80 lines) that assembles markdown from ranked strategies
+- Add tier check before line 669: query `get_subscription_tier` using the service client
+- If free → use template response, skip OpenAI block
+- If paid → existing OpenAI flow unchanged
 
-### 4. Sidebar Navigation
-- Add "Company" link in the sidebar, visible only to users who have a `company_members` row with role `owner` or `admin`
+### No other files change
+- Chat UI, message storage, conversation flow, auto-strategy generation all remain identical
+- `useSubscription` hook already exists on the frontend but the tier gate happens server-side in the edge function
 
-### 5. Route + Guard
-- Add `/company-dashboard` route in `App.tsx`
-- Protected route, only accessible if user has company owner/admin role
+## User Experience
+- **Free users**: Instant responses, structured markdown, personalized to their profile and assessment. No API costs.
+- **Paid users**: Full conversational AI via GPT-4o-mini, same as today.
+- Both tiers use the same chat interface — no visible difference in UI.
 
-## Files to Create/Modify
-- **New migration**: `company_dashboard_stats` RPC function + updated RLS policy on `company_members`
-- **New**: `src/pages/CompanyDashboard.tsx`
-- **New**: `src/hooks/useCompanyDashboard.ts`
-- **Modify**: `src/components/layout/AppSidebar.tsx` — add Company nav link
-- **Modify**: `src/App.tsx` — add route
-
-## Security
-- The RPC function uses `SECURITY DEFINER` and validates the caller is an owner/admin of the requested company
-- No financial data (income, debts, scores) exposed — only engagement metrics (streak, tier, last active, assessment completion status)
+## Future Flexibility
+- Switching all users to OpenAI later = remove the tier check (one `if` block)
+- Switching all users to internal = remove the OpenAI block
+- Adding a different AI provider = swap only the fetch call inside the paid branch
 
