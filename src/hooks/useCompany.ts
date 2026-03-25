@@ -72,7 +72,7 @@ export function useCompany() {
 
       const { data: company, error: compErr } = await (supabase
         .from('companies') as any)
-        .select('*')
+        .select('id, name, slug, owner_id, ghl_location_id, plan, created_at, updated_at')
         .eq('id', membership.company_id)
         .single();
 

@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Camera, Loader2, Info, DollarSign, Check, CloudUpload, Trash2, Building2, Copy, Users } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
-import { useCompany, buildInviteUrl } from '@/hooks/useCompany';
+import { useCompany, buildInviteUrl, useCompanyInviteToken } from '@/hooks/useCompany';
 import { toast } from '@/hooks/use-toast';
 import { CashFlowSection } from '@/components/profile/CashFlowSection';
 import { PROFILE_TYPES, FINANCIAL_GOALS, FILING_STATUSES } from '@/lib/profileTypes';
