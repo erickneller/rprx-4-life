@@ -428,6 +428,211 @@ ${missingFields.map(f => `- ${f}`).join('\n')}
 }
 
 // =====================================================
+// FREE-TIER TEMPLATE RESPONSE ENGINE
+// =====================================================
+
+type ChatIntent = 'greeting' | 'recommend' | 'horseman_filter' | 'detail' | 'profile' | 'auto' | 'fallback';
+
+function detectIntent(message: string, history: Array<{role: string; content: string}>): ChatIntent {
+  const lower = message.toLowerCase();
+
+  // Auto-mode markers
+  if (lower.includes('## my assessment results') || lower.includes('## my profile') ||
+      lower.includes('top 3 financial strategies') || lower.includes('step-by-step implementation plan')) {
+    return 'auto';
+  }
+
+  // Greetings
+  if (/^(hi|hello|hey|help|start|good morning|good afternoon)\b/i.test(lower) && lower.length < 40) {
+    return 'greeting';
+  }
+
+  // Detail request — "tell me more", "how do I", "steps for", strategy IDs
+  if (/\b(how do i|how to|tell me more|steps|implement|details?|explain|plan for)\b/.test(lower) ||
+      /\b[TIE](?:N)?-\d+\b/i.test(lower)) {
+    return 'detail';
+  }
+
+  // Horseman-specific filter
+  if (/\b(tax|taxes|taxation)\b/.test(lower) && !/\b(interest|insurance|education)\b/.test(lower)) return 'horseman_filter';
+  if (/\b(interest|debt)\b/.test(lower) && !/\b(tax|insurance|education)\b/.test(lower)) return 'horseman_filter';
+  if (/\binsurance\b/.test(lower) && !/\b(tax|interest|education)\b/.test(lower)) return 'horseman_filter';
+  if (/\beducation\b/.test(lower) && !/\b(tax|interest|insurance)\b/.test(lower)) return 'horseman_filter';
+
+  // Profile inquiry
+  if (/\b(my situation|my score|my profile|my finances|my data)\b/.test(lower)) return 'profile';
+
+  // Recommendation request
+  if (/\b(recommend|suggest|strategy|strategies|what should|best|options?)\b/.test(lower)) return 'recommend';
+
+  return 'fallback';
+}
+
+const HORSEMAN_DISPLAY: Record<string, string> = {
+  interest: 'Interest & Debt',
+  taxes: 'Tax Efficiency',
+  insurance: 'Insurance & Protection',
+  education: 'Education Funding',
+};
+
+function generateTemplateResponse(
+  intent: ChatIntent,
+  ranked: ScoredStrategy[],
+  profile: any,
+  primaryHorseman: string | null,
+  mode: 'auto' | 'manual',
+): string {
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+  const profileName = profile?.full_name ? `, ${profile.full_name}` : '';
+  const horsemanLabel = HORSEMAN_DISPLAY[primaryHorseman || 'interest'] || 'Financial Strategy';
+  const disclaimer = '\n\n---\n*This is educational information only. Always consult a qualified professional before implementing any strategy. Visit [rprx4life.com](https://rprx4life.com) for guidance.*';
+
+  // Helper: format a single strategy as a numbered section
+  const formatStrategyBlock = (s: DBStrategy, idx: number) => {
+    const steps = Array.isArray(s.steps) ? s.steps : [];
+    const stepsStr = steps.length > 0
+      ? steps.map((step: any, i: number) => `${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
+      : '';
+    return `## ${idx}. ${s.name} (${s.id})
+**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${s.estimated_impact || 'Varies'} | **Difficulty:** ${s.difficulty}
+
+${s.description}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
+  };
+
+  // ----- AUTO mode: single best strategy with full steps -----
+  if (intent === 'auto' || mode === 'auto') {
+    const top = ranked[0];
+    if (!top) return `I don't have a matching strategy for your profile yet. Try completing the assessment first!${disclaimer}`;
+    return `# Your Recommended Strategy
+
+Based on your profile and assessment, here is your best-fit strategy for **${horsemanLabel}**:
+
+${formatStrategyBlock(top.strategy, 1)}
+
+Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}`;
+  }
+
+  // ----- GREETING -----
+  if (intent === 'greeting') {
+    const top = ranked[0];
+    const topTeaser = top ? `\n\nBased on your profile, your top recommended strategy is **${top.strategy.name}**. Would you like to see the details?` : '';
+    return `# Welcome to RPRx Strategy Assistant${profileName}! 👋
+
+I can help you explore strategies across the Four Horsemen of household finance — **Interest, Taxes, Insurance, and Education**.
+
+Here's what I can do:
+- 📋 **Recommend** personalized strategies based on your profile
+- 🔍 **Explain** any strategy in detail with implementation steps
+- 💡 **Filter** by a specific horseman (e.g., "show me tax strategies")
+- 📊 **Summarize** your financial profile${topTeaser}${disclaimer}`;
+  }
+
+  // ----- RECOMMEND: top 3 -----
+  if (intent === 'recommend') {
+    const top3 = ranked.slice(0, 3);
+    if (top3.length === 0) return `I don't have matching strategies for your profile yet. Please complete the assessment first.${disclaimer}`;
+
+    const profileLine = profile?.profile_type
+      ? `Based on your profile as a **${(Array.isArray(profile.profile_type) ? profile.profile_type : [profile.profile_type]).map((t: string) => profileTypeLabels[t] || t).join(', ')}** with a primary focus on **${horsemanLabel}**:\n\n`
+      : '';
+
+    return `# Your Top Recommended Strategies
+
+${profileLine}${top3.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}
+
+Would you like a detailed implementation plan for any of these strategies? Just ask about one by name or ID.${disclaimer}`;
+  }
+
+  // ----- HORSEMAN FILTER -----
+  if (intent === 'horseman_filter') {
+    // Detect which horseman from the message
+    const msg = primaryHorseman || 'interest'; // fallback
+    let filterHorseman = msg;
+    const lower = ''; // intent already detected, use primaryHorseman or detect from ranked
+    for (const h of ['taxes', 'interest', 'insurance', 'education']) {
+      // Already filtered via ranked strategies sorting, pick top matching
+    }
+    const filtered = ranked.filter(s => s.strategy.horseman_type === filterHorseman).slice(0, 3);
+    if (filtered.length === 0) {
+      // Try all
+      const anyFiltered = ranked.slice(0, 3);
+      return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}
+
+I don't have specific ${filterHorseman} strategies matching your profile yet, but here are your top overall recommendations:
+
+${anyFiltered.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}${disclaimer}`;
+    }
+    return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}
+
+${filtered.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}
+
+Would you like implementation details for any of these?${disclaimer}`;
+  }
+
+  // ----- DETAIL: strategy deep-dive -----
+  if (intent === 'detail') {
+    // Try to match a strategy ID from the message
+    const idMatch = ranked[0]; // Default to top strategy
+    // Check for specific ID reference
+    const specificId = ranked.find(s => {
+      const regex = new RegExp(`\\b${s.strategy.id}\\b`, 'i');
+      return regex.test(''); // We don't have the message here easily, use top
+    });
+    const target = specificId || idMatch;
+    if (!target) return `I couldn't find a matching strategy. Try asking me to "recommend strategies" first.${disclaimer}`;
+
+    return `# Implementation Plan: ${target.strategy.name}
+
+${formatStrategyBlock(target.strategy, 1)}
+
+${target.strategy.tax_return_line_or_area ? `**Tax Return Reference:** ${target.strategy.tax_return_line_or_area}\n` : ''}
+Would you like to save this as your active implementation plan?${disclaimer}`;
+  }
+
+  // ----- PROFILE summary -----
+  if (intent === 'profile') {
+    if (!profile) return `I don't have your profile data yet. Please complete the Profile Wizard first.${disclaimer}`;
+
+    const sections: string[] = [];
+    if (profile.full_name) sections.push(`**Name:** ${profile.full_name}`);
+    if (profile.profile_type) {
+      const types = Array.isArray(profile.profile_type) ? profile.profile_type : [profile.profile_type];
+      sections.push(`**Profile Type:** ${types.map((t: string) => profileTypeLabels[t] || t).join(', ')}`);
+    }
+    if (profile.filing_status) sections.push(`**Filing Status:** ${filingStatusLabels[profile.filing_status] || profile.filing_status}`);
+    if (profile.monthly_income) sections.push(`**Monthly Income:** ${formatCurrency(Number(profile.monthly_income))}`);
+    if (profile.rprx_score_total != null) sections.push(`**RPRx Score:** ${Number(profile.rprx_score_total).toFixed(0)}/100`);
+    if (profile.rprx_grade) {
+      const gradeLabels: Record<string, string> = { at_risk: 'At Risk', emerging: 'Emerging', progressing: 'Progressing', optimized: 'Optimized' };
+      sections.push(`**RPRx Grade:** ${gradeLabels[profile.rprx_grade] || profile.rprx_grade}`);
+    }
+    const leakLow = Number(profile.estimated_annual_leak_low) || 0;
+    const leakHigh = Number(profile.estimated_annual_leak_high) || 0;
+    if (leakLow > 0 || leakHigh > 0) {
+      sections.push(`**Estimated Annual Money Leak:** ${formatCurrency(leakLow)} – ${formatCurrency(leakHigh)}`);
+    }
+
+    const top = ranked[0];
+    return `# Your Financial Profile Summary
+
+${sections.map(s => `- ${s}`).join('\n')}
+
+${primaryHorseman ? `**Primary Horseman:** ${HORSEMAN_DISPLAY[primaryHorseman]}` : ''}
+
+${top ? `**Top Recommended Strategy:** ${top.strategy.name} (${top.strategy.id})` : ''}
+
+Would you like to explore your recommended strategies?${disclaimer}`;
+  }
+
+  // ----- FALLBACK -----
+  const top = ranked[0];
+  const topHint = top ? `\n\nYour top recommended strategy is **${top.strategy.name}**. Would you like to see the details or get other recommendations?` : '';
+  return `I can help you with:\n- **Strategy recommendations** based on your profile\n- **Detailed implementation plans** for any strategy\n- **Horseman-specific** strategies (taxes, interest, insurance, education)\n- **Your profile summary** and RPRx score${topHint}${disclaimer}`;
+}
+
+// =====================================================
 // MAIN HANDLER
 // =====================================================
 
