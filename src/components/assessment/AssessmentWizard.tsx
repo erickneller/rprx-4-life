@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -54,6 +54,59 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
     submitAssessment,
   } = useAssessment(questions, editAssessmentId, { sendMessage, createPlan });
 
+  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+    };
+  }, []);
+
+  const handleNext = useCallback(() => {
+    if (phase === 'core' && isLastCoreStep) {
+      transitionToDeepDive();
+    } else if (phase === 'deep_dive' && isLastStep) {
+      submitAssessment();
+    } else {
+      goToNext();
+    }
+  }, [phase, isLastCoreStep, isLastStep, transitionToDeepDive, submitAssessment, goToNext]);
+
+  const cancelAutoAdvance = useCallback(() => {
+    if (autoAdvanceTimer.current) {
+      clearTimeout(autoAdvanceTimer.current);
+      autoAdvanceTimer.current = null;
+    }
+  }, []);
+
+  const scheduleAutoAdvance = useCallback(() => {
+    cancelAutoAdvance();
+    autoAdvanceTimer.current = setTimeout(() => {
+      handleNext();
+    }, 400);
+  }, [cancelAutoAdvance, handleNext]);
+
+  const handleCoreResponse = useCallback((questionId: string, value: string) => {
+    setResponse(questionId, value);
+    const q = currentQuestion;
+    if (q && !isLastCoreStep && ['single_choice', 'yes_no', 'range_select'].includes(q.question_type)) {
+      scheduleAutoAdvance();
+    }
+  }, [setResponse, currentQuestion, isLastCoreStep, scheduleAutoAdvance]);
+
+  const handleDeepDiveResponse = useCallback((questionId: string, value: string | string[]) => {
+    setDeepDiveAnswer(questionId, value);
+    if (currentDeepDiveQuestion && !isLastStep && ['single_choice', 'range_select'].includes(currentDeepDiveQuestion.question_type)) {
+      scheduleAutoAdvance();
+    }
+  }, [setDeepDiveAnswer, currentDeepDiveQuestion, isLastStep, scheduleAutoAdvance]);
+
+  const handlePrevious = useCallback(() => {
+    cancelAutoAdvance();
+    goToPrevious();
+  }, [cancelAutoAdvance, goToPrevious]);
+
   if (questionsLoading || isLoadingEdit) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -69,16 +122,6 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
       </div>
     );
   }
-
-  const handleNext = () => {
-    if (phase === 'core' && isLastCoreStep) {
-      transitionToDeepDive();
-    } else if (phase === 'deep_dive' && isLastStep) {
-      submitAssessment();
-    } else {
-      goToNext();
-    }
-  };
 
   // Transition screen between core and deep dive
   if (phase === 'transition') {
@@ -186,21 +229,21 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
                   <SingleChoiceQuestion
                     options={currentDeepDiveQuestion.options}
                     value={deepDiveAnswers[currentDeepDiveQuestion.id] as string | undefined}
-                    onChange={(v) => setDeepDiveAnswer(currentDeepDiveQuestion.id, v)}
+                    onChange={(v) => handleDeepDiveResponse(currentDeepDiveQuestion.id, v)}
                   />
                 )}
                 {currentDeepDiveQuestion.question_type === 'range_select' && (
                   <RangeSelectQuestion
                     options={currentDeepDiveQuestion.options}
                     value={deepDiveAnswers[currentDeepDiveQuestion.id] as string | undefined}
-                    onChange={(v) => setDeepDiveAnswer(currentDeepDiveQuestion.id, v)}
+                    onChange={(v) => handleDeepDiveResponse(currentDeepDiveQuestion.id, v)}
                   />
                 )}
                 {currentDeepDiveQuestion.question_type === 'multi_select' && (
                   <MultiSelectQuestion
                     options={currentDeepDiveQuestion.options}
                     value={deepDiveAnswers[currentDeepDiveQuestion.id] as string[] | undefined}
-                    onChange={(v) => setDeepDiveAnswer(currentDeepDiveQuestion.id, v)}
+                    onChange={(v) => handleDeepDiveResponse(currentDeepDiveQuestion.id, v)}
                   />
                 )}
               </CardContent>
@@ -211,7 +254,7 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
           <div className="max-w-4xl mx-auto flex justify-between">
             <Button
               variant="outline"
-              onClick={goToPrevious}
+              onClick={handlePrevious}
               disabled={deepDiveStep === 0}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
@@ -273,16 +316,16 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
           <QuestionCard
             question={currentQuestion}
             value={responses[currentQuestion.id]}
-            onChange={(value) => setResponse(currentQuestion.id, value)}
+            onChange={(value) => handleCoreResponse(currentQuestion.id, value)}
           />
         )}
       </main>
       <footer className="border-t border-border px-4 py-4">
         <div className="max-w-4xl mx-auto flex justify-between">
-          <Button
-            variant="outline"
-            onClick={goToPrevious}
-            disabled={currentStep === 0}
+           <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 0}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
