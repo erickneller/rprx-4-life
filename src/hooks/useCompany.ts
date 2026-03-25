@@ -135,8 +135,8 @@ export function useCompany() {
       // Append a short random suffix to avoid slug collisions
       const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
 
-      const { data: company, error: createErr } = await supabase
-        .from('companies')
+      const { data: company, error: createErr } = await (supabase
+        .from('companies') as any)
         .insert({ name: name.trim(), slug, owner_id: user.id, plan: 'free' })
         .select()
         .single();
@@ -144,8 +144,8 @@ export function useCompany() {
       if (createErr) throw createErr;
 
       // Add owner as member
-      const { error: memberErr } = await supabase
-        .from('company_members')
+      const { error: memberErr } = await (supabase
+        .from('company_members') as any)
         .insert({ company_id: company.id, user_id: user.id, role: 'owner' });
 
       if (memberErr) throw memberErr;
@@ -153,7 +153,7 @@ export function useCompany() {
       // Update profile
       const { error: profileErr } = await supabase
         .from('profiles')
-        .update({ company_id: company.id, company_role: 'owner' })
+        .update({ company_id: company.id, company_role: 'owner' } as any)
         .eq('id', user.id);
 
       if (profileErr) throw profileErr;
