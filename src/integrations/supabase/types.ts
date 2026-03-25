@@ -1358,6 +1358,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      lookup_company_by_invite_token: {
+        Args: { _token: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
