@@ -162,6 +162,8 @@ function renderCard(card: DashboardCardConfig, props: DashboardCardRendererProps
       return <RecentBadges />;
     case 'OnboardingCard':
       return <OnboardingCard />;
+    case 'AdvisorCTACard':
+      return <AdvisorCTACard />;
     default:
       return null;
   }
