@@ -87,7 +87,7 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
     }, 400);
   }, [cancelAutoAdvance, handleNext]);
 
-  const handleCoreResponse = useCallback((questionId: string, value: string | string[]) => {
+  const handleCoreResponse = useCallback((questionId: string, value: string) => {
     setResponse(questionId, value);
     const q = currentQuestion;
     if (q && !isLastCoreStep && ['single_choice', 'yes_no', 'range_select'].includes(q.question_type)) {
