@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import {
   DndContext,
   closestCenter,
+  TouchSensor,
   KeyboardSensor,
   PointerSensor,
   useSensor,
