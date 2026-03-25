@@ -281,25 +281,27 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
               <ChevronLeft className="h-4 w-4 mr-1" />
               Previous
             </Button>
-            <Button
-              onClick={handleNext}
-              disabled={!canGoNext() || isSubmitting}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : isLastStep ? (
-                'Complete Assessment'
-              ) : (
-                <>
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </>
-              )}
-            </Button>
+            {(isLastStep || currentDeepDiveQuestion.question_type === 'multi_select') && (
+              <Button
+                onClick={handleNext}
+                disabled={!canGoNext() || isSubmitting}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : isLastStep ? (
+                  'Complete Assessment'
+                ) : (
+                  <>
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </footer>
       </div>
