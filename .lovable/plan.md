@@ -1,24 +1,18 @@
 
 
-# Convert Slider Questions to Single-Choice Radio Buttons
+# Redirect to Results Page After Assessment Completion
 
-## What
-Render all `slider` type questions using the same `SingleChoiceQuestion` radio button component instead of the `SliderQuestion` slider component. This fixes the usability and auto-advance issues with sliders.
+## Problem
+After completing the assessment and deep dive, the user is always sent to `/dashboard` (line 441 in `useAssessment.ts`). They should land on the results page showing their assessment results.
 
-## Changes
+## Fix
 
-### `src/components/assessment/QuestionCard.tsx`
-- In the `switch` statement, make the `'slider'` case render `<SingleChoiceQuestion>` instead of `<SliderQuestion>`
-- Remove the `useEffect` that auto-selects the first slider option on mount (no longer needed since radio buttons start unselected, matching single-choice behavior)
-- Remove the `SliderQuestion` import
+### `src/hooks/useAssessment.ts`
+Change the navigation target from `/dashboard` to `/results/${assessment.id}` so the user sees their results immediately after submission.
 
-### `src/components/assessment/AssessmentWizard.tsx`
-- Remove the `skipAutoAdvanceRef` logic that was specifically added to handle slider mount auto-select. Since sliders now behave like single-choice (no auto-select on mount), this guard is unnecessary
-- Slider questions will auto-advance naturally on selection, just like single-choice and yes/no
+- Line 441: change `navigate('/dashboard')` to `navigate(`/results/${assessment.id}`)`
+- The `assessment.id` is already available at this point (created in Write 1, line 244-259)
+- The non-critical failure toast still shows if needed, but the user lands on results either way
 
-### Cleanup
-- `SliderQuestion.tsx` can be left in place (no harm) or deleted as dead code
-
-## Result
-All question types use tap-to-select UI. Auto-advance works consistently since there's no mount-triggered `onChange` to guard against.
+One-line change.
 
