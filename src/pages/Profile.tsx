@@ -92,6 +92,63 @@ function CompanyMemberCount({ companyId }: { companyId: string }) {
   );
 }
 
+/** Sub-component for company invite card — fetches token via secure RPC */
+function CompanyInviteCard({ company, companyId }: { company: { name: string }; companyId: string }) {
+  const { data: inviteToken, isLoading } = useCompanyInviteToken(companyId);
+
+  return (
+    <Card className="border-accent/30 bg-accent/5">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-accent" />
+          Your Company
+        </CardTitle>
+        <CardDescription>Share your invite link to add team members</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-1">
+          <Label className="text-sm font-semibold">Company Name</Label>
+          <p className="text-base font-medium">{company.name}</p>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading invite link…
+          </div>
+        ) : inviteToken ? (
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold">Invite Link</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={buildInviteUrl(inviteToken)}
+                className="bg-muted text-xs font-mono flex-1 cursor-default"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  navigator.clipboard.writeText(buildInviteUrl(inviteToken));
+                  toast({ title: 'Copied!', description: 'Invite link copied to clipboard.' });
+                }}
+                title="Copy invite link"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Share this link with your team — they'll create an RPRX account linked to {company.name}.
+            </p>
+          </div>
+        ) : null}
+
+        <CompanyMemberCount companyId={companyId} />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Profile() {
   const { user } = useAuth();
   const { profile, updateProfile, uploadAvatar, deleteAvatar } = useProfile();
