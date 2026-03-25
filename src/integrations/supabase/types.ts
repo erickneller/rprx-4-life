@@ -1024,6 +1024,27 @@ export type Database = {
           },
         ]
       }
+      user_dashboard_card_order: {
+        Row: {
+          card_id: string
+          id: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          id?: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          id?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_debts: {
         Row: {
           created_at: string
