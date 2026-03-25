@@ -95,13 +95,11 @@ export function useProfile() {
         let pendingCompanyId: string | null = null;
         const pendingToken = localStorage.getItem('pending_invite_token');
         if (pendingToken) {
-          const { data: inviteCompany } = await (supabase
-            .from('companies') as any)
-            .select('id')
-            .eq('invite_token', pendingToken)
-            .maybeSingle() as { data: { id: string } | null };
-          if (inviteCompany) {
-            pendingCompanyId = inviteCompany.id;
+          const { data: rpcResult } = await supabase
+            .rpc('lookup_company_by_invite_token', { _token: pendingToken });
+          const match = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
+          if (match) {
+            pendingCompanyId = match.id;
           }
         }
 
