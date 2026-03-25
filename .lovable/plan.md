@@ -1,36 +1,24 @@
 
 
-# Fix Auto-Advance + Apply to All Question Types
+# Convert Slider Questions to Single-Choice Radio Buttons
 
-## Why It's Not Working
-Question 1 is a **slider** type, and sliders were explicitly excluded from auto-advance. The user wants auto-advance on ALL question types.
+## What
+Render all `slider` type questions using the same `SingleChoiceQuestion` radio button component instead of the `SliderQuestion` slider component. This fixes the usability and auto-advance issues with sliders.
 
-There's also a subtle issue: `QuestionCard` auto-selects the first slider option on mount (line 17-20), which calls `onChange` immediately. Without protection, this would auto-advance before the user even reads the question.
+## Changes
 
-## Plan
+### `src/components/assessment/QuestionCard.tsx`
+- In the `switch` statement, make the `'slider'` case render `<SingleChoiceQuestion>` instead of `<SliderQuestion>`
+- Remove the `useEffect` that auto-selects the first slider option on mount (no longer needed since radio buttons start unselected, matching single-choice behavior)
+- Remove the `SliderQuestion` import
 
-### 1. `src/components/assessment/AssessmentWizard.tsx`
+### `src/components/assessment/AssessmentWizard.tsx`
+- Remove the `skipAutoAdvanceRef` logic that was specifically added to handle slider mount auto-select. Since sliders now behave like single-choice (no auto-select on mount), this guard is unnecessary
+- Slider questions will auto-advance naturally on selection, just like single-choice and yes/no
 
-**Enable auto-advance for all question types:**
-- Remove the `question_type` filter from `handleCoreResponse` and `handleDeepDiveResponse` — auto-advance triggers for every type except multi-select (since the user may want to select multiple items)
-- For multi-select: keep a visible "Continue" / "Next" button since we can't know when the user is done selecting
+### Cleanup
+- `SliderQuestion.tsx` can be left in place (no harm) or deleted as dead code
 
-**Prevent auto-advance on slider auto-select (mount):**
-- Add a `skipAutoAdvanceRef = useRef(false)` that gets set to `true` whenever `currentStep` or `deepDiveStep` changes
-- In `handleCoreResponse` / `handleDeepDiveResponse`: if the question is a slider AND `skipAutoAdvanceRef.current` is true, clear the flag but skip auto-advance. This prevents the initial auto-select from advancing. The next user interaction will auto-advance normally.
-
-**Hide Next button when auto-advance is active:**
-- For core phase: hide the Next button on non-final steps unless the current question is multi-select (or slider where the user might want to confirm). Show only "Previous" on the left.
-- Keep "Continue →" on the last core step and "Complete Assessment" on the last deep dive step
-- For deep dive: same logic — hide Next except on multi-select questions and the final step
-
-### 2. No changes to question components
-All `onChange` callbacks remain the same. The logic stays in AssessmentWizard.
-
-## UX Summary
-- User selects any option → 400ms delay → auto-advances
-- Slider: first render auto-selects (no advance); user drags → advances
-- Multi-select: user picks options, then taps a visible "Continue" button
-- Last step of each phase: always shows explicit button
-- Previous button always visible (clears any pending auto-advance)
+## Result
+All question types use tap-to-select UI. Auto-advance works consistently since there's no mount-triggered `onChange` to guard against.
 
