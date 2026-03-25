@@ -99,7 +99,14 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
   const handleCoreResponse = useCallback((questionId: string, value: string) => {
     setResponse(questionId, value);
     const q = currentQuestion;
-    if (q && !isLastCoreStep && ['single_choice', 'yes_no', 'range_select'].includes(q.question_type)) {
+    if (!q) return;
+    // Skip the auto-select on mount for sliders
+    if (q.question_type === 'slider' && skipAutoAdvanceRef.current) {
+      skipAutoAdvanceRef.current = false;
+      return;
+    }
+    // Auto-advance all types except multi_select and the last core step
+    if (q.question_type !== 'multi_select' && !isLastCoreStep) {
       scheduleAutoAdvance();
     }
   }, [setResponse, currentQuestion, isLastCoreStep, scheduleAutoAdvance]);
