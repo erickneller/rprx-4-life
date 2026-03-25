@@ -86,7 +86,7 @@ export function MoneyLeakCard({ compact = false }: MoneyLeakCardProps) {
   );
 
   return (
-    <Card id="money-leak-card" className="gradient-hero text-primary-foreground border-0 overflow-hidden">
+    <Card id="money-leak-card" className="gradient-hero text-white border-0 overflow-hidden">
       <CardContent className="p-6 md:p-8 space-y-6">
         {/* Headline */}
         <div className="space-y-2">
