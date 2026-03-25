@@ -627,6 +627,11 @@ export default function AdminPanel() {
           <TabsContent value="feedback" className="space-y-4">
             <FeedbackTab />
           </TabsContent>
+
+          {/* ===== USER GUIDE TAB ===== */}
+          <TabsContent value="user-guide" className="space-y-4">
+            <UserGuideTab />
+          </TabsContent>
         </Tabs>
       </div>
 
