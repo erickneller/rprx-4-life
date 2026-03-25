@@ -308,10 +308,10 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
       </main>
       <footer className="border-t border-border px-4 py-4">
         <div className="max-w-4xl mx-auto flex justify-between">
-          <Button
-            variant="outline"
-            onClick={goToPrevious}
-            disabled={currentStep === 0}
+           <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 0}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
