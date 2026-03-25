@@ -54,23 +54,16 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
     submitAssessment,
   } = useAssessment(questions, editAssessmentId, { sendMessage, createPlan });
 
-  if (questionsLoading || isLoadingEdit) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  if (phase === 'core' && !currentQuestion) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">No questions available.</p>
-      </div>
-    );
-  }
+  // Clear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimer.current) clearTimeout(autoAdvanceTimer.current);
+    };
+  }, []);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (phase === 'core' && isLastCoreStep) {
       transitionToDeepDive();
     } else if (phase === 'deep_dive' && isLastStep) {
@@ -78,7 +71,43 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
     } else {
       goToNext();
     }
-  };
+  }, [phase, isLastCoreStep, isLastStep, transitionToDeepDive, submitAssessment, goToNext]);
+
+  const cancelAutoAdvance = useCallback(() => {
+    if (autoAdvanceTimer.current) {
+      clearTimeout(autoAdvanceTimer.current);
+      autoAdvanceTimer.current = null;
+    }
+  }, []);
+
+  const scheduleAutoAdvance = useCallback(() => {
+    cancelAutoAdvance();
+    autoAdvanceTimer.current = setTimeout(() => {
+      handleNext();
+    }, 400);
+  }, [cancelAutoAdvance, handleNext]);
+
+  const handleCoreResponse = useCallback((questionId: string, value: string | string[]) => {
+    setResponse(questionId, value);
+    const q = currentQuestion;
+    if (q && !isLastCoreStep && ['single_choice', 'yes_no', 'range_select'].includes(q.question_type)) {
+      scheduleAutoAdvance();
+    }
+  }, [setResponse, currentQuestion, isLastCoreStep, scheduleAutoAdvance]);
+
+  const handleDeepDiveResponse = useCallback((questionId: string, value: string | string[]) => {
+    setDeepDiveAnswer(questionId, value);
+    if (currentDeepDiveQuestion && !isLastStep && ['single_choice', 'range_select'].includes(currentDeepDiveQuestion.question_type)) {
+      scheduleAutoAdvance();
+    }
+  }, [setDeepDiveAnswer, currentDeepDiveQuestion, isLastStep, scheduleAutoAdvance]);
+
+  const handlePrevious = useCallback(() => {
+    cancelAutoAdvance();
+    goToPrevious();
+  }, [cancelAutoAdvance, goToPrevious]);
+
+  if (questionsLoading || isLoadingEdit) {
 
   // Transition screen between core and deep dive
   if (phase === 'transition') {
