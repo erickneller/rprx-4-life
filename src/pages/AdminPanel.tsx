@@ -421,6 +421,9 @@ export default function AdminPanel() {
             <TabsTrigger value="companies" className="gap-1">
               <Building2 className="h-4 w-4" /> Companies
             </TabsTrigger>
+            <TabsTrigger value="feedback" className="gap-1">
+              <Star className="h-4 w-4" /> Feedback
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}

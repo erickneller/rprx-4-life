@@ -90,6 +90,7 @@ export function AuthenticatedLayout({ children, title, breadcrumbs }: Authentica
           </main>
 
           <PageHelpButton />
+          <PageFeedbackWidget />
         </div>
       </div>
     </SidebarProvider>
