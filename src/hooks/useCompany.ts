@@ -9,7 +9,6 @@ export interface Company {
   owner_id: string | null;
   ghl_location_id: string | null;
   plan: string;
-  invite_token: string;
   created_at: string;
   updated_at: string;
 }
@@ -73,7 +72,7 @@ export function useCompany() {
 
       const { data: company, error: compErr } = await (supabase
         .from('companies') as any)
-        .select('*')
+        .select('id, name, slug, owner_id, ghl_location_id, plan, created_at, updated_at')
         .eq('id', membership.company_id)
         .single();
 
@@ -179,4 +178,24 @@ export function useCompany() {
     createCompanyError: createCompanyMutation.error,
     buildInviteUrl,
   };
+}
+
+/**
+ * useCompanyInviteToken — fetches the invite token for a company via RPC.
+ * Only returns a token if the caller is an owner/admin of the company or a platform admin.
+ */
+export function useCompanyInviteToken(companyId: string | null) {
+  const { user } = useAuth();
+
+  return useQuery<string | null>({
+    queryKey: ['company-invite-token', companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const { data, error } = await supabase
+        .rpc('get_company_invite_token', { _company_id: companyId });
+      if (error) throw error;
+      return data as string | null;
+    },
+    enabled: !!user?.id && !!companyId,
+  });
 }
