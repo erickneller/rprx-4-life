@@ -66,6 +66,8 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed";
   const { isAdmin } = useAdmin();
   const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
+  const { membership } = useCompany();
+  const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
 
   return (
     <Sidebar collapsible="icon">
