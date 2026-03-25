@@ -1,29 +1,28 @@
 
 
-# Add Edit and Delete for Companies
-
-## Overview
-Add inline edit and delete actions to each company row in the admin Companies tab.
+# Join Page: Spinning Logo, Branded Button, and Updated Copy
 
 ## Changes
 
-**Modified: `src/components/admin/CompaniesTab.tsx`**
+**Modified: `src/pages/Join.tsx`**
 
-1. **Add an "Actions" column** with Edit (Pencil icon) and Delete (Trash icon) buttons per row.
+1. **Add spinning RPRX logo** at the top of the sign-up form, matching the Auth page:
+   - Import `rprxLogo` from `@/assets/rprx-logo.png`
+   - Add the logo with `perspective: 1000px` wrapper and `animate-spin-y` class (same as Auth page)
 
-2. **Edit Dialog** -- reuse a dialog similar to the create dialog, pre-populated with the selected company's name and plan. On save, runs an `update` mutation against the `companies` table for that row's `id`.
+2. **Update subtitle copy** from:
+   > Create your free account to join **My Company ABC** on RPRX.
 
-3. **Delete with confirmation** -- `confirm()` prompt, then runs a `delete` mutation against the `companies` table. Also deletes associated `company_members` rows first (or relies on cascade if configured). Since there's no FK cascade set up, the mutation will delete `company_members` for that company first, then delete the company.
+   To:
+   > Create your free account to join **{company name}** on RPRx 4 Life.
 
-4. **New state**: `editingCompany: CompanyRow | null` to track which company is being edited.
+3. **Style the submit button** with the signature blue (`bg-accent hover:bg-accent/90 text-white`) to match the brand.
 
-5. **New mutations**:
-   - `updateMutation`: updates `name` and `plan` on `companies` table by `id`
-   - `deleteMutation`: deletes from `company_members` where `company_id`, then deletes from `companies` where `id`
+4. Remove the `Building2` icon badge above the title since the logo now serves as the visual anchor. Keep the company name badge but simplify it.
 
-## Database
-No migration needed -- the existing "Admins have full access to companies" and "Admins have full access to company_members" ALL policies already grant DELETE and UPDATE to platform admins.
+## Technical Details
 
-## UI Layout
-Each row gets two small icon buttons (Pencil, Trash) in a new "Actions" column at the end of the table, keeping the existing invite link column intact.
+- Reuse `animate-spin-y` keyframe already defined in `tailwind.config.ts` (4s linear infinite rotateY)
+- Import the same logo asset used across the app: `@/assets/rprx-logo.png`
+- Apply `perspective: 1000px` on the wrapper div for 3D rotation effect, matching Auth page line 215
 
