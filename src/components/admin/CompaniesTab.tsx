@@ -45,16 +45,16 @@ export function CompaniesTab() {
     queryKey: ['admin-companies'],
     queryFn: async () => {
       // Fetch companies
-      const { data: rows, error } = await supabase
-        .from('companies')
+      const { data: rows, error } = await (supabase
+        .from('companies') as any)
         .select('id, name, slug, plan, owner_id, invite_token, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       // Fetch member counts per company
-      const { data: memberCounts } = await supabase
-        .from('company_members')
+      const { data: memberCounts } = await (supabase
+        .from('company_members') as any)
         .select('company_id');
 
       const countMap: Record<string, number> = {};
