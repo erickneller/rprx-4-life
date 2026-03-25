@@ -120,8 +120,8 @@ export function useProfile() {
 
         // If we assigned a company, also create the company_members row
         if (pendingCompanyId) {
-          await supabase
-            .from('company_members')
+          await (supabase
+            .from('company_members') as any)
             .upsert(
               { company_id: pendingCompanyId, user_id: user.id, role: 'member' },
               { onConflict: 'company_id,user_id', ignoreDuplicates: true }
