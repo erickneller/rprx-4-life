@@ -1,54 +1,72 @@
 
 
-# Fix: Remove Public Read Access on Companies Table
+# Fix: Restrict Company Invite Token Visibility
 
 ## The Problem
-The `companies_public_read` RLS policy uses `USING (true)` which exposes all company data (including `invite_token`, `ghl_location_id`, `owner_id`) to unauthenticated users. An attacker could enumerate all companies and their invite tokens.
-
-## Why Public Read Exists
-The `/join?token=...` page needs to look up a company by `invite_token` before the user has signed up. This is the only unauthenticated access needed.
+RLS operates at the row level, not column level. The "Members can view their company" SELECT policy returns all columns including `invite_token` to every member. Regular members can extract the token and share it without owner/admin approval.
 
 ## Solution
 
-### 1. Create a Security Definer Function
-Create `lookup_company_by_invite_token(token uuid)` that returns only `id` and `name` — no sensitive fields. This runs with elevated privileges, bypassing RLS.
+Since Postgres RLS cannot mask individual columns, we need a two-part fix:
+
+### 1. Create a Security Definer RPC for Invite Token Access
+
+**Migration:** Create `get_company_invite_token(_company_id uuid)` that returns the token only if the caller is an owner/admin of that company (or a platform admin).
 
 ```sql
-CREATE OR REPLACE FUNCTION public.lookup_company_by_invite_token(_token uuid)
-RETURNS TABLE(id uuid, name text)
+CREATE OR REPLACE FUNCTION public.get_company_invite_token(_company_id uuid)
+RETURNS text
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT c.id, c.name
+  SELECT c.invite_token::text
   FROM public.companies c
-  WHERE c.invite_token = _token
+  WHERE c.id = _company_id
+    AND (
+      c.owner_id = auth.uid()
+      OR EXISTS (
+        SELECT 1 FROM public.company_members cm
+        WHERE cm.company_id = _company_id
+          AND cm.user_id = auth.uid()
+          AND cm.role IN ('owner', 'admin')
+      )
+      OR EXISTS (
+        SELECT 1 FROM public.user_roles ur
+        WHERE ur.user_id = auth.uid()
+          AND ur.role = 'admin'
+      )
+    )
   LIMIT 1;
 $$;
 ```
 
-### 2. Drop the Dangerous Policy
+### 2. Stop Selecting invite_token in useCompany Hook
 
-```sql
-DROP POLICY "companies_public_read" ON public.companies;
+**Modified: `src/hooks/useCompany.ts`**
+
+Change `select('*')` on the companies table to explicitly list columns **without** `invite_token`:
+```
+.select('id, name, slug, owner_id, ghl_location_id, plan, created_at, updated_at')
 ```
 
-The remaining policies already cover all legitimate access:
-- **Members** can view their company (via `company_members` join)
-- **Owners** can view their company (via `owner_id = auth.uid()`)
-- **Admins** have full access (via `user_roles`)
-- **Authenticated users** can create companies
+Remove `invite_token` from the `Company` interface (or make it optional). Add a separate `useCompanyInviteToken(companyId)` query that calls the RPC.
 
-### 3. Update `Join.tsx`
-Replace the direct `supabase.from('companies').select(...)` call with `supabase.rpc('lookup_company_by_invite_token', { _token: token })`.
+### 3. Update Profile Page — Only Show Invite Link for Owners/Admins
 
-### 4. Update `useProfile.ts`
-The pending invite token lookup also queries companies publicly — update it to use the same RPC function.
+**Modified: `src/pages/Profile.tsx`**
+
+- Check `membership.role` — only render the invite link section when role is `'owner'` or `'admin'`
+- Fetch the token via the new RPC instead of reading it from the company object
+
+### 4. Admin CompaniesTab Already Safe
+
+The admin panel's `CompaniesTab` selects `invite_token` directly, but it's protected by the "Admins have full access" RLS policy which only applies to platform admins. No change needed.
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Migration | Create RPC function + drop `companies_public_read` policy |
-| Modified | `src/pages/Join.tsx` — use RPC instead of direct query |
-| Modified | `src/hooks/useProfile.ts` — use RPC for pending token lookup |
+| Migration | Create `get_company_invite_token` RPC |
+| Modified | `src/hooks/useCompany.ts` — stop selecting invite_token, add invite token hook |
+| Modified | `src/pages/Profile.tsx` — gate invite link to owner/admin, use RPC |
 
