@@ -113,7 +113,12 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
 
   const handleDeepDiveResponse = useCallback((questionId: string, value: string | string[]) => {
     setDeepDiveAnswer(questionId, value);
-    if (currentDeepDiveQuestion && !isLastStep && ['single_choice', 'range_select'].includes(currentDeepDiveQuestion.question_type)) {
+    if (!currentDeepDiveQuestion) return;
+    if (currentDeepDiveQuestion.question_type === 'slider' && skipAutoAdvanceRef.current) {
+      skipAutoAdvanceRef.current = false;
+      return;
+    }
+    if (currentDeepDiveQuestion.question_type !== 'multi_select' && !isLastStep) {
       scheduleAutoAdvance();
     }
   }, [setDeepDiveAnswer, currentDeepDiveQuestion, isLastStep, scheduleAutoAdvance]);
