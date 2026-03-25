@@ -13,6 +13,16 @@ import { useMemo } from 'react';
 export default function CompanyDashboard() {
   const { company, isCompanyAdmin, members, stats, isLoading } = useCompanyDashboard();
 
+  // Build signup-over-time chart data (by month) — must be before any early returns
+  const signupData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    members.forEach(m => {
+      const month = format(new Date(m.joined_at), 'MMM yyyy');
+      counts[month] = (counts[month] || 0) + 1;
+    });
+    return Object.entries(counts).map(([month, count]) => ({ month, count }));
+  }, [members]);
+
   if (isLoading) {
     return (
       <AuthenticatedLayout>
@@ -26,16 +36,6 @@ export default function CompanyDashboard() {
   if (!isCompanyAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
-
-  // Build signup-over-time chart data (by month)
-  const signupData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    members.forEach(m => {
-      const month = format(new Date(m.joined_at), 'MMM yyyy');
-      counts[month] = (counts[month] || 0) + 1;
-    });
-    return Object.entries(counts).map(([month, count]) => ({ month, count }));
-  }, [members]);
 
   const statCards = [
     { label: 'Total Members', value: stats.totalMembers, icon: Users },
