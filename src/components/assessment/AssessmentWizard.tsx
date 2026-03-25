@@ -240,7 +240,7 @@ export function AssessmentWizard({ editAssessmentId }: AssessmentWizardProps) {
           <div className="max-w-4xl mx-auto flex justify-between">
             <Button
               variant="outline"
-              onClick={goToPrevious}
+              onClick={handlePrevious}
               disabled={deepDiveStep === 0}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
