@@ -8,6 +8,8 @@ import { MessageSquare } from 'lucide-react';
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');
   const toggle = useToggleFeatureFlag('chat_enabled');
+  const { enabled: testModeEnabled, isLoading: testModeLoading } = useFeatureFlag('test_mode');
+  const testModeToggle = useToggleFeatureFlag('test_mode');
 
   const handleToggle = async (checked: boolean) => {
     try {
