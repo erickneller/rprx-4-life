@@ -95,11 +95,11 @@ export function useProfile() {
         let pendingCompanyId: string | null = null;
         const pendingToken = localStorage.getItem('pending_invite_token');
         if (pendingToken) {
-          const { data: inviteCompany } = await supabase
-            .from('companies')
+          const { data: inviteCompany } = await (supabase
+            .from('companies') as any)
             .select('id')
             .eq('invite_token', pendingToken)
-            .maybeSingle();
+            .maybeSingle() as { data: { id: string } | null };
           if (inviteCompany) {
             pendingCompanyId = inviteCompany.id;
           }

@@ -107,8 +107,8 @@ export function CompaniesTab() {
     mutationFn: async (companyId: string) => {
       // Generate a new UUID client-side (crypto.randomUUID is available in all modern browsers)
       const newToken = crypto.randomUUID();
-      const { error } = await supabase
-        .from('companies')
+      const { error } = await (supabase
+        .from('companies') as any)
         .update({ invite_token: newToken })
         .eq('id', companyId);
       if (error) throw error;
