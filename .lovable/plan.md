@@ -1,54 +1,26 @@
 
 
-# Fix: Remove Public Read Access on Companies Table
+# Fix: Restrict Company Invite Token Visibility
 
-## The Problem
-The `companies_public_read` RLS policy uses `USING (true)` which exposes all company data (including `invite_token`, `ghl_location_id`, `owner_id`) to unauthenticated users. An attacker could enumerate all companies and their invite tokens.
+## Status: ✅ Complete
 
-## Why Public Read Exists
-The `/join?token=...` page needs to look up a company by `invite_token` before the user has signed up. This is the only unauthenticated access needed.
+## Changes Made
 
-## Solution
+### 1. Migration — `get_company_invite_token` RPC
+Created a `SECURITY DEFINER` function that returns the invite token only if the caller is:
+- The company owner (`owner_id`)
+- A company-level admin/owner (via `company_members`)
+- A platform admin (via `user_roles`)
 
-### 1. Create a Security Definer Function
-Create `lookup_company_by_invite_token(token uuid)` that returns only `id` and `name` — no sensitive fields. This runs with elevated privileges, bypassing RLS.
+### 2. `src/hooks/useCompany.ts`
+- Removed `invite_token` from the `Company` interface
+- Changed `select('*')` to explicit column list excluding `invite_token`
+- Added `useCompanyInviteToken(companyId)` hook that calls the new RPC
 
-```sql
-CREATE OR REPLACE FUNCTION public.lookup_company_by_invite_token(_token uuid)
-RETURNS TABLE(id uuid, name text)
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT c.id, c.name
-  FROM public.companies c
-  WHERE c.invite_token = _token
-  LIMIT 1;
-$$;
-```
+### 3. `src/pages/Profile.tsx`
+- Company card now shown for both `owner` and `admin` roles (not just owner)
+- Invite link fetched via `useCompanyInviteToken` RPC instead of reading from company object
+- Extracted `CompanyInviteCard` sub-component for cleaner separation
 
-### 2. Drop the Dangerous Policy
-
-```sql
-DROP POLICY "companies_public_read" ON public.companies;
-```
-
-The remaining policies already cover all legitimate access:
-- **Members** can view their company (via `company_members` join)
-- **Owners** can view their company (via `owner_id = auth.uid()`)
-- **Admins** have full access (via `user_roles`)
-- **Authenticated users** can create companies
-
-### 3. Update `Join.tsx`
-Replace the direct `supabase.from('companies').select(...)` call with `supabase.rpc('lookup_company_by_invite_token', { _token: token })`.
-
-### 4. Update `useProfile.ts`
-The pending invite token lookup also queries companies publicly — update it to use the same RPC function.
-
-## Files
-
-| Action | File |
-|--------|------|
-| Migration | Create RPC function + drop `companies_public_read` policy |
-| Modified | `src/pages/Join.tsx` — use RPC instead of direct query |
-| Modified | `src/hooks/useProfile.ts` — use RPC for pending token lookup |
-
+### 4. Admin `CompaniesTab` — No change needed
+Already protected by "Admins have full access" RLS policy.
