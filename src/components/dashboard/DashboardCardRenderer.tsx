@@ -73,6 +73,7 @@ export function DashboardCardRenderer({ cards, cardProps, onReorder }: Dashboard
   const visibleCards = cards.filter(c => c.is_visible);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
