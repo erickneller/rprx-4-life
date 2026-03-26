@@ -888,6 +888,7 @@ ${autoInstructions}`;
       dynamicSystemPrompt = `${baseSystemPrompt}
 ${profileContext}
 ${strategiesContext}
+${knowledgeBaseContext}
 
 ${hasMore ? `There are ${totalAvailable - endIdx} more strategies available. If the user wants more, they can request the next page.` : 'This is the last page of strategies.'}
 
