@@ -1,59 +1,49 @@
 
 
-# Fix Four Security Warnings
+# Admin Knowledge Base Sync Tab
 
 ## Overview
-A single migration addresses all four findings. One item (leaked password protection) requires a manual toggle in the Supabase dashboard.
+Add a new "Knowledge Base" tab to the Admin Panel where each row represents a document source (Google Doc, etc.) with a name, description, Google link, and a "Sync" button. When clicked, the sync button fetches the doc content via an edge function and stores it in a new `knowledge_base` Supabase table. The `rprx-chat` edge function can then inject this content as context.
 
-## Migration (one file, four changes)
+## Changes
 
-### 1. Add DELETE policy on `profiles`
-Allow users to delete their own profile row (`auth.uid() = id`).
-
-### 2. Restrict `onboarding_content` SELECT to authenticated
-Drop the current public SELECT policy and recreate it scoped to the `authenticated` role.
-
-### 3. Fix mutable search_path on two functions
-`CREATE OR REPLACE` for `update_updated_at_column()` and `set_companies_updated_at()` adding `SET search_path = public`.
-
-### 4. Leaked Password Protection (manual)
-This is a Supabase Auth setting, not controllable via migrations. You'll need to enable it in the Supabase dashboard under **Authentication > Settings > Password Protection**.
-
-## SQL
-
+### 1. New Supabase table: `knowledge_base`
 ```sql
--- 1. profiles DELETE policy
-CREATE POLICY "Users can delete their own profile"
-ON public.profiles FOR DELETE TO public
-USING (auth.uid() = id);
+CREATE TABLE public.knowledge_base (
+  id text PRIMARY KEY,
+  name text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  source_url text NOT NULL DEFAULT '',
+  content text NOT NULL DEFAULT '',
+  last_synced_at timestamptz,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
--- 2. onboarding_content: restrict SELECT to authenticated
-DROP POLICY "Authenticated users can read onboarding content" ON public.onboarding_content;
-CREATE POLICY "Authenticated users can read onboarding content"
-ON public.onboarding_content FOR SELECT TO authenticated
-USING (true);
+ALTER TABLE public.knowledge_base ENABLE ROW LEVEL SECURITY;
 
--- 3a. Fix search_path on update_updated_at_column
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$;
-
--- 3b. Fix search_path on set_companies_updated_at
-CREATE OR REPLACE FUNCTION public.set_companies_updated_at()
-RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$;
+-- Admin-only CRUD
+CREATE POLICY "Admins can manage knowledge base" ON public.knowledge_base
+  FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
 ```
 
-## Impact
-- No code changes needed; all client queries remain the same.
-- The `onboarding_content` table is only read by authenticated users in the app, so restricting the role has no effect on functionality.
-- The leaked password protection toggle must be done manually in the Supabase dashboard.
+### 2. New edge function: `sync-knowledge-base`
+- Accepts `{ id, source_url }` from the admin client
+- Fetches the Google Doc as plain text using the published-to-web export URL (`/export?format=txt`)
+- Upserts the `content` and `last_synced_at` into the `knowledge_base` table
+- Returns success/failure
 
+### 3. New admin component: `KnowledgeBaseTab.tsx`
+- Lists all rows from `knowledge_base` with columns: Name, Description, Google Link (editable input), Last Synced, Active toggle
+- "Add Document" button to create new entries
+- "Sync" button per row that calls the edge function and shows a loading spinner
+- "Sync All" button in the toolbar
+- Edit/delete capabilities for each entry
+
+### 4. New hook: `useKnowledgeBase.ts`
+- CRUD queries and mutations for the `knowledge_base` table
+- `useSyncKnowledgeBase` mutation that invokes the edge function
+
+### 5. Wire into AdminPanel.tsx
+- Import `KnowledgeBaseTab` and add a new tab trigger with a `BookOpen` icon labeled "Knowledge Base"
