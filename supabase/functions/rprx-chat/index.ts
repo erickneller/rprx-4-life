@@ -217,6 +217,25 @@ async function fetchPromptTemplate(serviceClient: any, templateId: string): Prom
 }
 
 // =====================================================
+// KNOWLEDGE BASE FETCHING
+// =====================================================
+
+async function fetchKnowledgeBase(serviceClient: any): Promise<string> {
+  try {
+    const { data, error } = await serviceClient
+      .from('knowledge_base')
+      .select('name, content')
+      .eq('is_active', true)
+      .not('content', 'eq', '');
+    if (error || !data || data.length === 0) return '';
+    return '\n## KNOWLEDGE BASE\n' +
+      data.map((d: any) => `### ${d.name}\n${d.content}`).join('\n\n');
+  } catch {
+    return '';
+  }
+}
+
+// =====================================================
 // INTAKE PHASE DETECTION
 // =====================================================
 
@@ -717,7 +736,7 @@ serve(async (req) => {
     }
 
     // Parallel: save message, fetch history, fetch profile, fetch strategies, fetch completed strategies, fetch prompt templates
-    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult] = await Promise.all([
+    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult, knowledgeBaseContext] = await Promise.all([
       supabase.from('messages').insert({
         conversation_id: conversationId,
         role: 'user',
@@ -750,6 +769,7 @@ serve(async (req) => {
         .not('completed_at', 'is', null)
         .order('completed_at', { ascending: false })
         .limit(1),
+      fetchKnowledgeBase(serviceClient),
     ]);
 
     if (saveResult.error) {
@@ -836,7 +856,7 @@ serve(async (req) => {
 
     if (inIntake && effectiveMode !== 'auto') {
       // Intake phase: No strategy context needed
-      dynamicSystemPrompt = baseSystemPrompt + profileContext;
+      dynamicSystemPrompt = baseSystemPrompt + profileContext + knowledgeBaseContext;
       console.log('Intake phase - skipping strategy context');
     } else if (effectiveMode === 'auto') {
       // Auto mode: provide the single best strategy with full details
@@ -848,6 +868,7 @@ serve(async (req) => {
       dynamicSystemPrompt = `${baseSystemPrompt}
 ${profileContext}
 ${strategyContext}
+${knowledgeBaseContext}
 
 ## MODE: AUTO (Single Best Strategy)
 ${autoInstructions}`;
@@ -867,6 +888,7 @@ ${autoInstructions}`;
       dynamicSystemPrompt = `${baseSystemPrompt}
 ${profileContext}
 ${strategiesContext}
+${knowledgeBaseContext}
 
 ${hasMore ? `There are ${totalAvailable - endIdx} more strategies available. If the user wants more, they can request the next page.` : 'This is the last page of strategies.'}
 
