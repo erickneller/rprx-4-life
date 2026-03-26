@@ -856,7 +856,7 @@ serve(async (req) => {
 
     if (inIntake && effectiveMode !== 'auto') {
       // Intake phase: No strategy context needed
-      dynamicSystemPrompt = baseSystemPrompt + profileContext;
+      dynamicSystemPrompt = baseSystemPrompt + profileContext + knowledgeBaseContext;
       console.log('Intake phase - skipping strategy context');
     } else if (effectiveMode === 'auto') {
       // Auto mode: provide the single best strategy with full details
