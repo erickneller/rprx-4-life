@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.ghl-webhook]
 verify_jwt = false
+
+[functions.sync-knowledge-base]
+verify_jwt = false
