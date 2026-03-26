@@ -868,6 +868,7 @@ serve(async (req) => {
       dynamicSystemPrompt = `${baseSystemPrompt}
 ${profileContext}
 ${strategyContext}
+${knowledgeBaseContext}
 
 ## MODE: AUTO (Single Best Strategy)
 ${autoInstructions}`;
