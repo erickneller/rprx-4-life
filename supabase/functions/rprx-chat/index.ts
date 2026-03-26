@@ -217,6 +217,25 @@ async function fetchPromptTemplate(serviceClient: any, templateId: string): Prom
 }
 
 // =====================================================
+// KNOWLEDGE BASE FETCHING
+// =====================================================
+
+async function fetchKnowledgeBase(serviceClient: any): Promise<string> {
+  try {
+    const { data, error } = await serviceClient
+      .from('knowledge_base')
+      .select('name, content')
+      .eq('is_active', true)
+      .not('content', 'eq', '');
+    if (error || !data || data.length === 0) return '';
+    return '\n## KNOWLEDGE BASE\n' +
+      data.map((d: any) => `### ${d.name}\n${d.content}`).join('\n\n');
+  } catch {
+    return '';
+  }
+}
+
+// =====================================================
 // INTAKE PHASE DETECTION
 // =====================================================
 
