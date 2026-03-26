@@ -736,7 +736,7 @@ serve(async (req) => {
     }
 
     // Parallel: save message, fetch history, fetch profile, fetch strategies, fetch completed strategies, fetch prompt templates
-    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult] = await Promise.all([
+    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult, knowledgeBaseContext] = await Promise.all([
       supabase.from('messages').insert({
         conversation_id: conversationId,
         role: 'user',
@@ -769,6 +769,7 @@ serve(async (req) => {
         .not('completed_at', 'is', null)
         .order('completed_at', { ascending: false })
         .limit(1),
+      fetchKnowledgeBase(serviceClient),
     ]);
 
     if (saveResult.error) {
