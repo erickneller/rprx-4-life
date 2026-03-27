@@ -76,6 +76,7 @@ export function AppSidebar() {
   const { membership } = useCompany();
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
   const { enabled: advisorEnabled, url: advisorUrl } = useAdvisorLink();
+  const { isVisible } = useSidebarConfig();
 
   const resolveAdvisorHref = (url: string) => {
     const digits = url.replace(/\D/g, '');
