@@ -35,6 +35,7 @@ import { FeedbackTab } from '@/components/admin/FeedbackTab';
 import { UserGuideTab } from '@/components/admin/UserGuideTab';
 import { KnowledgeBaseTab } from '@/components/admin/KnowledgeBaseTab';
 import { NavigationTab } from '@/components/admin/NavigationTab';
+import { PartnersTab } from '@/components/admin/PartnersTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -436,6 +437,9 @@ export default function AdminPanel() {
             <TabsTrigger value="navigation" className="gap-1">
               <PanelLeft className="h-4 w-4" /> Navigation
             </TabsTrigger>
+            <TabsTrigger value="partners" className="gap-1">
+              <Building2 className="h-4 w-4" /> Partners
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
@@ -644,6 +648,11 @@ export default function AdminPanel() {
           {/* ===== NAVIGATION TAB ===== */}
           <TabsContent value="navigation" className="space-y-4">
             <NavigationTab />
+          </TabsContent>
+
+          {/* ===== PARTNERS TAB ===== */}
+          <TabsContent value="partners" className="space-y-4">
+            <PartnersTab />
           </TabsContent>
 
           {/* ===== KNOWLEDGE BASE TAB ===== */}

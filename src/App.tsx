@@ -26,6 +26,7 @@ import Wizard from "./pages/Wizard";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import NotFound from "./pages/NotFound";
 import Join from "./pages/Join";
+import Partners from "./pages/Partners";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
           <Route path="/debt-eliminator" element={<ProtectedRoute><WizardGuard><DebtEliminator /></WizardGuard></ProtectedRoute>} />
           <Route path="/complete-phone" element={<ProtectedRoute><CompletePhone /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/partners" element={<ProtectedRoute><WizardGuard><Partners /></WizardGuard></ProtectedRoute>} />
           <Route path="/company-dashboard" element={<ProtectedRoute><WizardGuard><CompanyDashboard /></WizardGuard></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
           {/* /join — no ProtectedRoute; handles auth inline */}

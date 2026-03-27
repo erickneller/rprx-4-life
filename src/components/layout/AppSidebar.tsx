@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, Shield, Building2, Phone, LucideIcon } from "lucide-react";
+import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, Shield, Building2, Phone, Handshake, LucideIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
@@ -63,6 +63,7 @@ const chatItem: NavItem = { title: "Strategy Assistant", url: "/strategy-assista
 const navItems: NavItem[] = [
   { title: "My Assessments", url: "/assessments", icon: ClipboardList, configId: "item:my_assessments" },
   { title: "My Plans", url: "/plans", icon: FileText, configId: "item:my_plans" },
+  { title: "RPRx Partners", url: "/partners", icon: Handshake, configId: "item:rprx_partners" },
   { title: "My Profile", url: "/profile", icon: User, configId: "item:my_profile" },
 ];
 
