@@ -232,6 +232,42 @@ export type Database = {
           },
         ]
       }
+      company_partner_visibility: {
+        Row: {
+          company_id: string
+          id: string
+          partner_id: string
+          visible: boolean
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          partner_id: string
+          visible?: boolean
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          partner_id?: string
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_partner_visibility_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_partner_visibility_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -621,6 +657,83 @@ export type Database = {
           video_url?: string | null
         }
         Relationships: []
+      }
+      partner_categories: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      partners: {
+        Row: {
+          category_id: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          partner_url: string
+          sort_order: number
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          partner_url?: string
+          sort_order?: number
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          partner_url?: string
+          sort_order?: number
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partners_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "partner_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
