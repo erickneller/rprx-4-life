@@ -143,7 +143,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {chatEnabled && (
+              {chatEnabled && isVisible('item:strategy_assistant') && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip={chatItem.title}>
                     <NavLink
