@@ -7,6 +7,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useCompany } from "@/hooks/useCompany";
 import { useAdvisorLink } from "@/hooks/useAdvisorLink";
+import { useSidebarConfig } from "@/hooks/useSidebarConfig";
 
 import {
   Sidebar,
