@@ -178,7 +178,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Advisor CTA */}
-        {advisorEnabled && advisorUrl && (
+        {advisorEnabled && advisorUrl && isVisible('item:advisor_link') && (
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
