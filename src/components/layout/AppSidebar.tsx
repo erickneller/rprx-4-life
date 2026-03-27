@@ -63,6 +63,7 @@ const chatItem: NavItem = { title: "Strategy Assistant", url: "/strategy-assista
 const navItems: NavItem[] = [
   { title: "My Assessments", url: "/assessments", icon: ClipboardList, configId: "item:my_assessments" },
   { title: "My Plans", url: "/plans", icon: FileText, configId: "item:my_plans" },
+  { title: "RPRx Partners", url: "/partners", icon: Handshake, configId: "item:rprx_partners" },
   { title: "My Profile", url: "/profile", icon: User, configId: "item:my_profile" },
 ];
 
