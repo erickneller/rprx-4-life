@@ -66,12 +66,7 @@ const navItems: NavItem[] = [
   { title: "My Profile", url: "/profile", icon: User, configId: "item:my_profile" },
 ];
 
-const chatItem: NavItem = { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare };
-const navItems: NavItem[] = [
-  { title: "My Assessments", url: "/assessments", icon: ClipboardList },
-  { title: "My Plans", url: "/plans", icon: FileText },
-  { title: "My Profile", url: "/profile", icon: User },
-];
+
 
 export function AppSidebar() {
   const { state } = useSidebar();
