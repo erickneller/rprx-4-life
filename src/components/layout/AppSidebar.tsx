@@ -20,40 +20,50 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-type NavItem = { title: string; url: string; icon: LucideIcon; comingSoon?: boolean };
+type NavItem = { title: string; url: string; icon: LucideIcon; comingSoon?: boolean; configId?: string };
 
-const sections: { label: string | null; items: NavItem[] }[] = [
+const sections: { label: string | null; configId?: string; items: NavItem[] }[] = [
   {
     label: null,
-    items: [{ title: "Dashboard", url: "/dashboard", icon: LayoutDashboard }],
+    items: [{ title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, configId: "item:dashboard" }],
   },
   {
     label: "Financial Stability",
+    configId: "section:financial_stability",
     items: [
-      { title: "Debt Elimination System", url: "/debt-eliminator", icon: Target },
-      { title: "Cash Flow Control System", url: "#", icon: Wallet, comingSoon: true },
-      { title: "Tax Efficiency System", url: "#", icon: Receipt, comingSoon: true },
-      { title: "Income Optimization Strategy", url: "#", icon: BadgeDollarSign, comingSoon: true },
+      { title: "Debt Elimination System", url: "/debt-eliminator", icon: Target, configId: "item:debt_eliminator" },
+      { title: "Cash Flow Control System", url: "#", icon: Wallet, comingSoon: true, configId: "item:cash_flow_control" },
+      { title: "Tax Efficiency System", url: "#", icon: Receipt, comingSoon: true, configId: "item:tax_efficiency" },
+      { title: "Income Optimization Strategy", url: "#", icon: BadgeDollarSign, comingSoon: true, configId: "item:income_optimization" },
     ],
   },
   {
     label: "Financial Growth",
+    configId: "section:financial_growth",
     items: [
-      { title: "Financial Freedom Strategy", url: "#", icon: TrendingUp, comingSoon: true },
-      { title: "Education Advantage Framework", url: "#", icon: GraduationCap, comingSoon: true },
-      { title: "Strategic Wealth Moves", url: "#", icon: Rocket, comingSoon: true },
-      { title: "Income Expansion Strategy", url: "#", icon: DollarSign, comingSoon: true },
+      { title: "Financial Freedom Strategy", url: "#", icon: TrendingUp, comingSoon: true, configId: "item:financial_freedom" },
+      { title: "Education Advantage Framework", url: "#", icon: GraduationCap, comingSoon: true, configId: "item:education_advantage" },
+      { title: "Strategic Wealth Moves", url: "#", icon: Rocket, comingSoon: true, configId: "item:strategic_wealth" },
+      { title: "Income Expansion Strategy", url: "#", icon: DollarSign, comingSoon: true, configId: "item:income_expansion" },
     ],
   },
   {
     label: "Financial Protection",
+    configId: "section:financial_protection",
     items: [
-      { title: "Protection Alignment Strategy", url: "#", icon: ShieldCheck, comingSoon: true },
-      { title: "Health Cost Strategy", url: "#", icon: HeartPulse, comingSoon: true },
-      { title: "Legacy Continuity System", url: "#", icon: Landmark, comingSoon: true },
-      { title: "Life Transition Strategy", url: "#", icon: RefreshCw, comingSoon: true },
+      { title: "Protection Alignment Strategy", url: "#", icon: ShieldCheck, comingSoon: true, configId: "item:protection_alignment" },
+      { title: "Health Cost Strategy", url: "#", icon: HeartPulse, comingSoon: true, configId: "item:health_cost" },
+      { title: "Legacy Continuity System", url: "#", icon: Landmark, comingSoon: true, configId: "item:legacy_continuity" },
+      { title: "Life Transition Strategy", url: "#", icon: RefreshCw, comingSoon: true, configId: "item:life_transition" },
     ],
   },
+];
+
+const chatItem: NavItem = { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare, configId: "item:strategy_assistant" };
+const navItems: NavItem[] = [
+  { title: "My Assessments", url: "/assessments", icon: ClipboardList, configId: "item:my_assessments" },
+  { title: "My Plans", url: "/plans", icon: FileText, configId: "item:my_plans" },
+  { title: "My Profile", url: "/profile", icon: User, configId: "item:my_profile" },
 ];
 
 const chatItem: NavItem = { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare };
