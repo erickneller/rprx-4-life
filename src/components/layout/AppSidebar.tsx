@@ -94,44 +94,50 @@ export function AppSidebar() {
             <StreakCounter compact />
           </div>
         )}
-        {sections.map((section, idx) => (
-          <SidebarGroup key={idx}>
-            {section.label && (
-              <SidebarGroupLabel className={isCollapsed ? "sr-only" : "text-sm font-bold text-foreground"}>
-                {section.label}
-              </SidebarGroupLabel>
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {section.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    {item.comingSoon ? (
-                      <SidebarMenuButton tooltip={item.title} className="flex items-center gap-3 rounded-md px-3 py-2 text-foreground cursor-default hover:bg-foreground hover:text-background transition-colors">
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        <span className={isCollapsed ? "sr-only" : "text-sm"}>
-                          {item.title} <span className="text-xs opacity-60">(Coming Soon)</span>
-                        </span>
-                      </SidebarMenuButton>
-                    ) : (
-                      <SidebarMenuButton asChild tooltip={item.title}>
-                        <NavLink
-                          to={item.url}
-                          className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                        >
+        {sections.map((section, idx) => {
+          const sectionHidden = section.configId && !isVisible(section.configId);
+          if (sectionHidden) return null;
+          const visibleItems = section.items.filter(item => !item.configId || isVisible(item.configId));
+          if (visibleItems.length === 0 && section.label) return null;
+          return (
+            <SidebarGroup key={idx}>
+              {section.label && (
+                <SidebarGroupLabel className={isCollapsed ? "sr-only" : "text-sm font-bold text-foreground"}>
+                  {section.label}
+                </SidebarGroupLabel>
+              )}
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {visibleItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      {item.comingSoon ? (
+                        <SidebarMenuButton tooltip={item.title} className="flex items-center gap-3 rounded-md px-3 py-2 text-foreground cursor-default hover:bg-foreground hover:text-background transition-colors">
                           <item.icon className="h-5 w-5 shrink-0" />
-                          <span className={isCollapsed ? "sr-only" : ""}>
-                            {item.title}
+                          <span className={isCollapsed ? "sr-only" : "text-sm"}>
+                            {item.title} <span className="text-xs opacity-60">(Coming Soon)</span>
                           </span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    )}
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+                        </SidebarMenuButton>
+                      ) : (
+                        <SidebarMenuButton asChild tooltip={item.title}>
+                          <NavLink
+                            to={item.url}
+                            className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                          >
+                            <item.icon className="h-5 w-5 shrink-0" />
+                            <span className={isCollapsed ? "sr-only" : ""}>
+                              {item.title}
+                            </span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      )}
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
 
         {/* Remaining nav items (to be organized in next step) */}
         <SidebarGroup>
