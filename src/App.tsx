@@ -26,6 +26,7 @@ import Wizard from "./pages/Wizard";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import NotFound from "./pages/NotFound";
 import Join from "./pages/Join";
+import Partners from "./pages/Partners";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 
 const queryClient = new QueryClient();
