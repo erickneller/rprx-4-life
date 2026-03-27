@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Loader2, Shield, Users, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard, GraduationCap, Zap, Building2, Star, BookOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, Users, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard, GraduationCap, Zap, Building2, Star, BookOpen, PanelLeft } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -34,6 +34,7 @@ import { CompaniesTab } from '@/components/admin/CompaniesTab';
 import { FeedbackTab } from '@/components/admin/FeedbackTab';
 import { UserGuideTab } from '@/components/admin/UserGuideTab';
 import { KnowledgeBaseTab } from '@/components/admin/KnowledgeBaseTab';
+import { NavigationTab } from '@/components/admin/NavigationTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -432,6 +433,9 @@ export default function AdminPanel() {
             <TabsTrigger value="knowledge-base" className="gap-1">
               <BookOpen className="h-4 w-4" /> Knowledge Base
             </TabsTrigger>
+            <TabsTrigger value="navigation" className="gap-1">
+              <PanelLeft className="h-4 w-4" /> Navigation
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
@@ -635,6 +639,11 @@ export default function AdminPanel() {
           {/* ===== USER GUIDE TAB ===== */}
           <TabsContent value="user-guide" className="space-y-4">
             <UserGuideTab />
+          </TabsContent>
+
+          {/* ===== NAVIGATION TAB ===== */}
+          <TabsContent value="navigation" className="space-y-4">
+            <NavigationTab />
           </TabsContent>
 
           {/* ===== KNOWLEDGE BASE TAB ===== */}
