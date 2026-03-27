@@ -870,6 +870,30 @@ export type Database = {
         }
         Relationships: []
       }
+      sidebar_nav_config: {
+        Row: {
+          id: string
+          label: string
+          sort_order: number
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          id: string
+          label: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          id?: string
+          label?: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Relationships: []
+      }
       strategy_definitions: {
         Row: {
           created_at: string
