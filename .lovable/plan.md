@@ -1,49 +1,52 @@
 
 
-# Admin Knowledge Base Sync Tab
+# Admin-Controlled Sidebar Item Visibility
 
 ## Overview
-Add a new "Knowledge Base" tab to the Admin Panel where each row represents a document source (Google Doc, etc.) with a name, description, Google link, and a "Sync" button. When clicked, the sync button fetches the doc content via an edge function and stores it in a new `knowledge_base` Supabase table. The `rprx-chat` edge function can then inject this content as context.
+Add a new section to the existing **Features** admin tab (or a dedicated "Navigation" tab) that lets admins show/hide each sidebar nav item and section heading. Uses the existing `feature_flags` table pattern.
 
-## Changes
+## Approach
 
-### 1. New Supabase table: `knowledge_base`
+### 1. Database: New `sidebar_nav_config` table
 ```sql
-CREATE TABLE public.knowledge_base (
-  id text PRIMARY KEY,
-  name text NOT NULL,
-  description text NOT NULL DEFAULT '',
-  source_url text NOT NULL DEFAULT '',
-  content text NOT NULL DEFAULT '',
-  last_synced_at timestamptz,
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+CREATE TABLE public.sidebar_nav_config (
+  id text PRIMARY KEY,          -- e.g. 'section:financial_stability', 'item:debt_eliminator'
+  label text NOT NULL,
+  visible boolean NOT NULL DEFAULT true,
+  sort_order int NOT NULL DEFAULT 0,
+  updated_at timestamptz DEFAULT now()
 );
-
-ALTER TABLE public.knowledge_base ENABLE ROW LEVEL SECURITY;
-
--- Admin-only CRUD
-CREATE POLICY "Admins can manage knowledge base" ON public.knowledge_base
-  FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
+ALTER TABLE public.sidebar_nav_config ENABLE ROW LEVEL SECURITY;
+-- Admins can manage, all authenticated can read
+CREATE POLICY "Anyone can read nav config" ON public.sidebar_nav_config FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Admins can manage nav config" ON public.sidebar_nav_config FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
 ```
 
-### 2. New edge function: `sync-knowledge-base`
-- Accepts `{ id, source_url }` from the admin client
-- Fetches the Google Doc as plain text using the published-to-web export URL (`/export?format=txt`)
-- Upserts the `content` and `last_synced_at` into the `knowledge_base` table
-- Returns success/failure
+Seed rows for every current section heading and nav item (Dashboard, Financial Stability header, Debt Elimination System, Cash Flow Control System, etc.).
 
-### 3. New admin component: `KnowledgeBaseTab.tsx`
-- Lists all rows from `knowledge_base` with columns: Name, Description, Google Link (editable input), Last Synced, Active toggle
-- "Add Document" button to create new entries
-- "Sync" button per row that calls the edge function and shows a loading spinner
-- "Sync All" button in the toolbar
-- Edit/delete capabilities for each entry
+### 2. New hook: `useSidebarConfig.ts`
+- Fetches all rows from `sidebar_nav_config` (cached via react-query)
+- Exports a `useUpdateNavVisibility` mutation for the admin toggle
+- Exports a helper `isVisible(id: string): boolean`
 
-### 4. New hook: `useKnowledgeBase.ts`
-- CRUD queries and mutations for the `knowledge_base` table
-- `useSyncKnowledgeBase` mutation that invokes the edge function
+### 3. Update `AppSidebar.tsx`
+- Call `useSidebarConfig()` to get visibility map
+- Filter `sections` and their `items` arrays based on visibility
+- Hide section headers when their `section:*` flag is false
+- Always show Dashboard (non-hideable) as a safeguard
 
-### 5. Wire into AdminPanel.tsx
-- Import `KnowledgeBaseTab` and add a new tab trigger with a `BookOpen` icon labeled "Knowledge Base"
+### 4. New admin component: `NavigationTab.tsx`
+- Lists all sidebar sections and items in a structured list
+- Each row has: label (read-only), visible toggle (Switch)
+- Grouped by section with section-level toggles that also toggle all children
+- Add this as a new tab in `AdminPanel.tsx` with a `Navigation` icon
+
+### 5. Wire into `AdminPanel.tsx`
+- Import `NavigationTab`, add tab trigger with `PanelLeft` icon labeled "Navigation"
+
+## Technical Details
+- Section IDs follow pattern `section:financial_stability`, item IDs follow `item:debt_eliminator`
+- The sidebar hook uses a simple `Map<string, boolean>` for O(1) lookups
+- Items marked `comingSoon` can also be hidden entirely via this system
+- Core items (Dashboard, Profile) can be marked as non-hideable in the admin UI
+
