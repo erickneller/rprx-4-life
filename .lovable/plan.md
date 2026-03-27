@@ -1,52 +1,83 @@
 
 
-# Admin-Controlled Sidebar Item Visibility
+# RPRx Partners Section
 
 ## Overview
-Add a new section to the existing **Features** admin tab (or a dedicated "Navigation" tab) that lets admins show/hide each sidebar nav item and section heading. Uses the existing `feature_flags` table pattern.
+A new page (`/partners`) with dynamic categories and partner cards sourced from the database. Partners can be toggled on/off per company. The page is accessible from the sidebar (controlled by the existing nav visibility system).
 
-## Approach
+## Database
 
-### 1. Database: New `sidebar_nav_config` table
-```sql
-CREATE TABLE public.sidebar_nav_config (
-  id text PRIMARY KEY,          -- e.g. 'section:financial_stability', 'item:debt_eliminator'
-  label text NOT NULL,
-  visible boolean NOT NULL DEFAULT true,
-  sort_order int NOT NULL DEFAULT 0,
-  updated_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.sidebar_nav_config ENABLE ROW LEVEL SECURITY;
--- Admins can manage, all authenticated can read
-CREATE POLICY "Anyone can read nav config" ON public.sidebar_nav_config FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins can manage nav config" ON public.sidebar_nav_config FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
-```
+### 1. `partner_categories` table
+| Column | Type | Notes |
+|--------|------|-------|
+| id | text PK | e.g. `insurance`, `tax-prep` |
+| name | text | Display name |
+| description | text | Optional subtitle |
+| sort_order | int | Ordering |
+| is_active | boolean | Global toggle |
+| created_at | timestamptz | Default now() |
 
-Seed rows for every current section heading and nav item (Dashboard, Financial Stability header, Debt Elimination System, Cash Flow Control System, etc.).
+RLS: authenticated can read; admins can manage.
 
-### 2. New hook: `useSidebarConfig.ts`
-- Fetches all rows from `sidebar_nav_config` (cached via react-query)
-- Exports a `useUpdateNavVisibility` mutation for the admin toggle
-- Exports a helper `isVisible(id: string): boolean`
+### 2. `partners` table
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| category_id | text FK → partner_categories | |
+| name | text | Partner name |
+| description | text | Short summary |
+| logo_url | text | Optional logo |
+| video_url | text | YouTube embed link |
+| partner_url | text | Affiliate/partner link |
+| sort_order | int | |
+| is_active | boolean | Global toggle |
+| created_at / updated_at | timestamptz | |
 
-### 3. Update `AppSidebar.tsx`
-- Call `useSidebarConfig()` to get visibility map
-- Filter `sections` and their `items` arrays based on visibility
-- Hide section headers when their `section:*` flag is false
-- Always show Dashboard (non-hideable) as a safeguard
+RLS: authenticated can read; admins can manage.
 
-### 4. New admin component: `NavigationTab.tsx`
-- Lists all sidebar sections and items in a structured list
-- Each row has: label (read-only), visible toggle (Switch)
-- Grouped by section with section-level toggles that also toggle all children
-- Add this as a new tab in `AdminPanel.tsx` with a `Navigation` icon
+### 3. `company_partner_visibility` table
+Per-company toggle to hide specific partners.
 
-### 5. Wire into `AdminPanel.tsx`
-- Import `NavigationTab`, add tab trigger with `PanelLeft` icon labeled "Navigation"
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| company_id | uuid FK → companies | |
+| partner_id | uuid FK → partners | |
+| visible | boolean | Default true |
 
-## Technical Details
-- Section IDs follow pattern `section:financial_stability`, item IDs follow `item:debt_eliminator`
-- The sidebar hook uses a simple `Map<string, boolean>` for O(1) lookups
-- Items marked `comingSoon` can also be hidden entirely via this system
-- Core items (Dashboard, Profile) can be marked as non-hideable in the admin UI
+Unique constraint on `(company_id, partner_id)`.
+RLS: company admins can manage their rows; members can read their company's rows.
+
+## Frontend
+
+### 4. New page: `src/pages/Partners.tsx`
+- Fetches categories + partners
+- Filters partners by user's company visibility settings (if they belong to a company)
+- Groups partners by category, renders cards with:
+  - Name, description, optional logo
+  - Embedded YouTube video (if video_url provided)
+  - "Visit Partner" button linking to partner_url
+- Responsive grid layout
+
+### 5. New hook: `src/hooks/usePartners.ts`
+- `usePartnerCategories()` — fetches active categories
+- `usePartners()` — fetches active partners, joined with company visibility if user has a company
+- `useCompanyPartnerVisibility()` — admin mutation to toggle per-company
+
+### 6. Sidebar entry
+- Add `{ title: "RPRx Partners", url: "/partners", icon: Handshake, configId: "item:rprx_partners" }` to the nav items in `AppSidebar.tsx`
+- Seed `sidebar_nav_config` with the new item
+
+### 7. Route in `App.tsx`
+- Add `/partners` as a protected + wizard-guarded route
+
+### 8. Admin tab: `PartnersTab.tsx`
+- CRUD for categories and partners
+- Per-company visibility toggles (select a company, then toggle partners on/off)
+- Add as new tab in `AdminPanel.tsx` with a `Handshake` icon
+
+## Technical Notes
+- Company visibility uses a "whitelist-by-default" pattern: if no row exists in `company_partner_visibility`, the partner is visible. Only explicit `visible = false` rows hide partners.
+- Categories are flexible — admins create/edit/delete them at will, no hardcoded list.
+- YouTube URLs will be converted to embed format (`youtube.com/embed/VIDEO_ID`) client-side.
 
