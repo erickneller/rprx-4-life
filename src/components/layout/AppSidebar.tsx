@@ -157,7 +157,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-              {navItems.map((item) => (
+              {navItems.filter(item => !item.configId || isVisible(item.configId)).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink
