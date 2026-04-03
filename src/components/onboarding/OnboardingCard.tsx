@@ -230,10 +230,22 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
           )}
         </div>
 
+        {/* Admin preview: show content read-only, no actions */}
+        {isAdminPreview && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <Clock className="h-3 w-3" /> ~{todayContent.estimated_minutes} min
+            </Badge>
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <Star className="h-3 w-3" /> +{todayContent.points_reward} XP
+            </Badge>
+          </div>
+        )}
+
         {/* Milestone celebration */}
-        {isMilestone && !isDone && (
+        {isMilestone && !isDone && !isAdminPreview && (
           <OnboardingMilestone
-            dayNumber={currentDay}
+            dayNumber={displayDay}
             completedDays={completedDays.length}
             totalPoints={totalPoints}
             streak={streak}
@@ -241,7 +253,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
         )}
 
         {/* Quiz */}
-        {isQuiz && todayContent.quiz_data && !isDone && (
+        {isQuiz && todayContent.quiz_data && !isDone && !isAdminPreview && (
           <OnboardingQuiz
             quizData={todayContent.quiz_data as QuizData}
             onComplete={handleQuizComplete}
@@ -251,7 +263,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
         )}
 
         {/* Reflection */}
-        {isReflection && !isDone && (
+        {isReflection && !isDone && !isAdminPreview && (
           <OnboardingReflection
             onComplete={handleReflectionComplete}
             isSubmitting={isCompleting}
@@ -260,7 +272,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
         )}
 
         {/* Action button for non-quiz/reflection */}
-        {!isQuiz && !isReflection && !isDone && (
+        {!isQuiz && !isReflection && !isDone && !isAdminPreview && (
           <div className="flex items-center gap-3">
             {currentDay === 1 ? (
               <Button
@@ -270,7 +282,6 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
                     await completeToday();
                     await logActivity('onboarding_day_complete', { day: currentDay });
                     setLocalCompleted(true);
-                    // Day 1 complete via CTA — check onboarding flag
                     if (user?.id) {
                       checkAndFlipOnboardingComplete(user.id);
                     }
