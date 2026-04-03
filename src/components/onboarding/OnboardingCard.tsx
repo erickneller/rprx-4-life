@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Star, Flame, Loader2, Lock } from 'lucide-react';
+import { CheckCircle2, Clock, Star, Flame, Loader2, Lock, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useGamification } from '@/hooks/useGamification';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { OnboardingQuiz } from './OnboardingQuiz';
 import { OnboardingReflection } from './OnboardingReflection';
 import { OnboardingMilestone } from './OnboardingMilestone';
@@ -33,8 +34,12 @@ interface OnboardingCardProps {
 export function OnboardingCard({ compact }: OnboardingCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const dayOneCTA = useDayOneCTA();
   const { logActivity } = useGamification();
+
+  const [adminDayOverride, setAdminDayOverride] = useState<number | null>(null);
+
   const {
     isOnboarding, isCompleted, isLoading,
     currentDay, todayContent, completedDays,
@@ -42,13 +47,16 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
     isTodayCompleted, completeToday, isCompleting,
     reflections, quizAnswers,
     isLocked, nextDayNumber, nextDayTitle,
-  } = useOnboarding();
+  } = useOnboarding(adminDayOverride);
 
   const [localCompleted, setLocalCompleted] = useState(false);
 
   useEffect(() => {
     setLocalCompleted(false);
-  }, [currentDay]);
+  }, [currentDay, adminDayOverride]);
+
+  const isAdminPreview = isAdmin && adminDayOverride !== null;
+  const displayDay = adminDayOverride ?? currentDay;
 
   if (isLoading || !isOnboarding || isCompleted || !todayContent) return null;
 
