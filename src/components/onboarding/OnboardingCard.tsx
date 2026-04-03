@@ -212,7 +212,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
 
         {!compact && (
           <div className="mt-2">
-            <OnboardingProgressBar completedDays={completedDays} currentDay={currentDay} />
+            <OnboardingProgressBar completedDays={completedDays} currentDay={displayDay} />
           </div>
         )}
       </CardHeader>
