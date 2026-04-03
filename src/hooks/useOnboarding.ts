@@ -7,6 +7,7 @@ import {
   getAvailableDay,
   startOnboarding,
   completeDay,
+  unlockDay,
   type OnboardingContent,
   type OnboardingProgress,
 } from '@/lib/onboardingEngine';
