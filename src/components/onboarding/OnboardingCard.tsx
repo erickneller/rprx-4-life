@@ -142,11 +142,35 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {/* Admin back arrow */}
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                disabled={displayDay <= 1}
+                onClick={() => setAdminDayOverride((adminDayOverride ?? currentDay) - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
             <div className="h-10 w-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
-              {currentDay}
+              {displayDay}
             </div>
+            {/* Admin forward arrow */}
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                disabled={displayDay >= 30}
+                onClick={() => setAdminDayOverride((adminDayOverride ?? currentDay) + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
             <div>
-              <p className="font-semibold text-sm">Day {currentDay} of 30 — {phaseLabel}</p>
+              <p className="font-semibold text-sm">Day {displayDay} of 30 — {phaseLabel}</p>
               <div className="flex gap-1.5 mt-1">
                 {PHASE_ORDER.map((p) => (
                   <div
@@ -162,11 +186,28 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
               </div>
             </div>
           </div>
-          {streak > 1 && (
-            <div className="flex items-center gap-1 text-orange-500 text-sm font-medium">
-              <Flame className="h-4 w-4" /> {streak}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {isAdminPreview && (
+              <Badge variant="outline" className="gap-1 text-xs border-amber-400 text-amber-600">
+                <Eye className="h-3 w-3" /> Admin Preview
+              </Badge>
+            )}
+            {isAdmin && adminDayOverride !== null && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => setAdminDayOverride(null)}
+              >
+                Reset
+              </Button>
+            )}
+            {streak > 1 && !isAdminPreview && (
+              <div className="flex items-center gap-1 text-orange-500 text-sm font-medium">
+                <Flame className="h-4 w-4" /> {streak}
+              </div>
+            )}
+          </div>
         </div>
 
         {!compact && (
