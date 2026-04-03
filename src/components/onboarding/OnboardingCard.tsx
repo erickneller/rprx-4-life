@@ -47,6 +47,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
     isTodayCompleted, completeToday, isCompleting,
     reflections, quizAnswers,
     isLocked, nextDayNumber, nextDayTitle,
+    unlockDay: unlockDayFn, isUnlocking,
   } = useOnboarding(adminDayOverride);
 
   const [localCompleted, setLocalCompleted] = useState(false);
