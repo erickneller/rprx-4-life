@@ -159,6 +159,8 @@ export function useOnboarding(previewDay?: number | null) {
     nextDayTitle: nextDayTitle || null,
     completeToday: (response?: unknown) => completeMutation.mutateAsync(response),
     isCompleting: completeMutation.isPending,
+    unlockDay: (day: number) => unlockMutation.mutateAsync(day),
+    isUnlocking: unlockMutation.isPending,
     reflections: progress?.reflections || {},
     quizAnswers: progress?.quiz_answers || {},
   };
