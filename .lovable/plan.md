@@ -1,83 +1,89 @@
 
 
-# RPRx Partners Section
+# Universal Data Export System
 
 ## Overview
-A new page (`/partners`) with dynamic categories and partner cards sourced from the database. Partners can be toggled on/off per company. The page is accessible from the sidebar (controlled by the existing nav visibility system).
+Add a dedicated **Data Export** tab to the Admin Panel that lets admins download any database table as CSV with one click. Also add individual CSV export buttons to admin tabs that don't already have them.
 
-## Database
+## Approach
 
-### 1. `partner_categories` table
-| Column | Type | Notes |
-|--------|------|-------|
-| id | text PK | e.g. `insurance`, `tax-prep` |
-| name | text | Display name |
-| description | text | Optional subtitle |
-| sort_order | int | Ordering |
-| is_active | boolean | Global toggle |
-| created_at | timestamptz | Default now() |
+### 1. New admin component: `DataExportTab.tsx`
+A single page listing all exportable tables, each with a "Download CSV" button. Tables grouped into two sections:
 
-RLS: authenticated can read; admins can manage.
+**Back Office / Configuration Data:**
+- `strategy_definitions`
+- `assessment_questions`
+- `deep_dive_questions`
+- `badge_definitions`
+- `onboarding_content`
+- `prompt_templates`
+- `feature_flags`
+- `page_help_content`
+- `knowledge_base`
+- `dashboard_card_config`
+- `sidebar_nav_config`
+- `activity_xp_config`
+- `user_guide_sections`
+- `partner_categories`
+- `partners`
+- `company_partner_visibility`
 
-### 2. `partners` table
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| category_id | text FK → partner_categories | |
-| name | text | Partner name |
-| description | text | Short summary |
-| logo_url | text | Optional logo |
-| video_url | text | YouTube embed link |
-| partner_url | text | Affiliate/partner link |
-| sort_order | int | |
-| is_active | boolean | Global toggle |
-| created_at / updated_at | timestamptz | |
+**User Data:**
+- `profiles` (via `admin_list_users` RPC for full data)
+- `user_assessments`
+- `assessment_responses`
+- `user_deep_dives`
+- `user_active_strategies`
+- `saved_plans`
+- `user_badges`
+- `user_activity_log`
+- `user_onboarding_progress`
+- `conversations` + `messages`
+- `companies` + `company_members`
+- `debt_journeys` + `user_debts` + `debt_payments`
+- `page_feedback`
+- `user_subscriptions`
+- `user_roles`
 
-RLS: authenticated can read; admins can manage.
+Each table gets a row with: table name, description, record count, and a download button.
 
-### 3. `company_partner_visibility` table
-Per-company toggle to hide specific partners.
+A **"Download All"** button at the top exports every table as individual CSVs bundled in sequence (one after another download, or as a ZIP if we add JSZip).
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| company_id | uuid FK → companies | |
-| partner_id | uuid FK → partners | |
-| visible | boolean | Default true |
+### 2. Shared CSV utility: `src/lib/csvExport.ts`
+Reusable functions:
+- `exportTableAsCSV(tableName, data, filename)` — converts array of objects to CSV and triggers browser download
+- `fetchFullTable(tableName)` — fetches all rows from a Supabase table (handles pagination beyond 1000-row limit by using range queries)
 
-Unique constraint on `(company_id, partner_id)`.
-RLS: company admins can manage their rows; members can read their company's rows.
+### 3. RLS consideration
+Most back-office tables already allow authenticated SELECT for all users, but user data tables are restricted to own data. For admin export, we need a **Supabase Edge Function** (`admin-export`) that uses the service role key to fetch any table's full data. The admin panel calls this function with the table name, and it returns the full dataset.
 
-## Frontend
+Alternatively, since many config tables are already readable by authenticated users, we can:
+- Export config tables directly from the client
+- Export user data tables via a new `admin_export_table` RPC (SECURITY DEFINER) that checks admin role before returning data
 
-### 4. New page: `src/pages/Partners.tsx`
-- Fetches categories + partners
-- Filters partners by user's company visibility settings (if they belong to a company)
-- Groups partners by category, renders cards with:
-  - Name, description, optional logo
-  - Embedded YouTube video (if video_url provided)
-  - "Visit Partner" button linking to partner_url
-- Responsive grid layout
+**Chosen approach:** New Edge Function `admin-data-export` that:
+- Accepts `{ table: string }` in the request body
+- Validates the table name against an allowlist
+- Checks the caller is an admin (via JWT)
+- Returns all rows as JSON
 
-### 5. New hook: `src/hooks/usePartners.ts`
-- `usePartnerCategories()` — fetches active categories
-- `usePartners()` — fetches active partners, joined with company visibility if user has a company
-- `useCompanyPartnerVisibility()` — admin mutation to toggle per-company
+### 4. Wire into AdminPanel
+- Add `DataExportTab` as a new tab with `Database` icon
+- Place it near the end of the tab list (after existing management tabs)
 
-### 6. Sidebar entry
-- Add `{ title: "RPRx Partners", url: "/partners", icon: Handshake, configId: "item:rprx_partners" }` to the nav items in `AppSidebar.tsx`
-- Seed `sidebar_nav_config` with the new item
+### 5. Files
 
-### 7. Route in `App.tsx`
-- Add `/partners` as a protected + wizard-guarded route
-
-### 8. Admin tab: `PartnersTab.tsx`
-- CRUD for categories and partners
-- Per-company visibility toggles (select a company, then toggle partners on/off)
-- Add as new tab in `AdminPanel.tsx` with a `Handshake` icon
+| File | Action |
+|------|--------|
+| `src/lib/csvExport.ts` | Create — shared CSV download utility |
+| `src/components/admin/DataExportTab.tsx` | Create — export UI with table list and download buttons |
+| `supabase/functions/admin-data-export/index.ts` | Create — Edge Function for full-table export with admin check |
+| `src/pages/AdminPanel.tsx` | Edit — add DataExport tab |
 
 ## Technical Notes
-- Company visibility uses a "whitelist-by-default" pattern: if no row exists in `company_partner_visibility`, the partner is visible. Only explicit `visible = false` rows hide partners.
-- Categories are flexible — admins create/edit/delete them at will, no hardcoded list.
-- YouTube URLs will be converted to embed format (`youtube.com/embed/VIDEO_ID`) client-side.
+- The Edge Function uses an allowlist of table names to prevent arbitrary SQL injection
+- Pagination: fetches in batches of 1000 using `.range()` until all rows are retrieved
+- CSV escaping handles commas, quotes, and newlines
+- JSONB columns are serialized as JSON strings in CSV cells
+- The exported CSVs are ready to feed directly into external LLMs for prompt generation
 
