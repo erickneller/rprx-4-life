@@ -46,7 +46,7 @@ export async function fetchFullTable(tableName: string): Promise<Record<string, 
 
     if (error) throw error;
     if (!data || data.length === 0) break;
-    all.push(...(data as Record<string, unknown>[]));
+    all.push(...(data as unknown as Record<string, unknown>[]));
     if (data.length < batchSize) break;
     from += batchSize;
   }
