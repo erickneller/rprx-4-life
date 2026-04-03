@@ -441,6 +441,9 @@ import { DataExportTab } from '@/components/admin/DataExportTab';
             <TabsTrigger value="partners" className="gap-1">
               <Building2 className="h-4 w-4" /> Partners
             </TabsTrigger>
+            <TabsTrigger value="data-export" className="gap-1">
+              <Database className="h-4 w-4" /> Data Export
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
