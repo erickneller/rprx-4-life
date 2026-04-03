@@ -137,6 +137,23 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
           {!isLocked && !nextDayNumber && (
             <p className="text-sm text-muted-foreground">Come back tomorrow for Day {Math.min(currentDay + 1, 30)}</p>
           )}
+
+          {/* Admin unlock button */}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 mt-2 border-amber-400 text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
+              onClick={async () => {
+                await unlockDayFn(currentDay);
+                setLocalCompleted(false);
+              }}
+              disabled={isUnlocking}
+            >
+              {isUnlocking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
+              Unlock Day {currentDay}
+            </Button>
+          )}
         </div>
       )}
 
