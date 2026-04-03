@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Star, Flame, Loader2, Lock } from 'lucide-react';
+import { CheckCircle2, Clock, Star, Flame, Loader2, Lock, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useGamification } from '@/hooks/useGamification';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 import { OnboardingQuiz } from './OnboardingQuiz';
 import { OnboardingReflection } from './OnboardingReflection';
 import { OnboardingMilestone } from './OnboardingMilestone';
@@ -33,8 +34,12 @@ interface OnboardingCardProps {
 export function OnboardingCard({ compact }: OnboardingCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const dayOneCTA = useDayOneCTA();
   const { logActivity } = useGamification();
+
+  const [adminDayOverride, setAdminDayOverride] = useState<number | null>(null);
+
   const {
     isOnboarding, isCompleted, isLoading,
     currentDay, todayContent, completedDays,
@@ -42,17 +47,20 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
     isTodayCompleted, completeToday, isCompleting,
     reflections, quizAnswers,
     isLocked, nextDayNumber, nextDayTitle,
-  } = useOnboarding();
+  } = useOnboarding(adminDayOverride);
 
   const [localCompleted, setLocalCompleted] = useState(false);
 
   useEffect(() => {
     setLocalCompleted(false);
-  }, [currentDay]);
+  }, [currentDay, adminDayOverride]);
+
+  const isAdminPreview = isAdmin && adminDayOverride !== null;
+  const displayDay = adminDayOverride ?? currentDay;
 
   if (isLoading || !isOnboarding || isCompleted || !todayContent) return null;
 
-  const isDone = isTodayCompleted || localCompleted || isLocked;
+  const isDone = !isAdminPreview && (isTodayCompleted || localCompleted || isLocked);
   const phaseLabel = PHASE_LABELS[currentPhase] || currentPhase;
   const isMilestone = todayContent.content_type === 'milestone';
   const isQuiz = todayContent.content_type === 'quiz';
@@ -134,11 +142,35 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {/* Admin back arrow */}
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                disabled={displayDay <= 1}
+                onClick={() => setAdminDayOverride((adminDayOverride ?? currentDay) - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
             <div className="h-10 w-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
-              {currentDay}
+              {displayDay}
             </div>
+            {/* Admin forward arrow */}
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                disabled={displayDay >= 30}
+                onClick={() => setAdminDayOverride((adminDayOverride ?? currentDay) + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
             <div>
-              <p className="font-semibold text-sm">Day {currentDay} of 30 — {phaseLabel}</p>
+              <p className="font-semibold text-sm">Day {displayDay} of 30 — {phaseLabel}</p>
               <div className="flex gap-1.5 mt-1">
                 {PHASE_ORDER.map((p) => (
                   <div
@@ -154,16 +186,33 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
               </div>
             </div>
           </div>
-          {streak > 1 && (
-            <div className="flex items-center gap-1 text-orange-500 text-sm font-medium">
-              <Flame className="h-4 w-4" /> {streak}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {isAdminPreview && (
+              <Badge variant="outline" className="gap-1 text-xs border-amber-400 text-amber-600">
+                <Eye className="h-3 w-3" /> Admin Preview
+              </Badge>
+            )}
+            {isAdmin && adminDayOverride !== null && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => setAdminDayOverride(null)}
+              >
+                Reset
+              </Button>
+            )}
+            {streak > 1 && !isAdminPreview && (
+              <div className="flex items-center gap-1 text-orange-500 text-sm font-medium">
+                <Flame className="h-4 w-4" /> {streak}
+              </div>
+            )}
+          </div>
         </div>
 
         {!compact && (
           <div className="mt-2">
-            <OnboardingProgressBar completedDays={completedDays} currentDay={currentDay} />
+            <OnboardingProgressBar completedDays={completedDays} currentDay={displayDay} />
           </div>
         )}
       </CardHeader>
@@ -181,10 +230,22 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
           )}
         </div>
 
+        {/* Admin preview: show content read-only, no actions */}
+        {isAdminPreview && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <Clock className="h-3 w-3" /> ~{todayContent.estimated_minutes} min
+            </Badge>
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <Star className="h-3 w-3" /> +{todayContent.points_reward} XP
+            </Badge>
+          </div>
+        )}
+
         {/* Milestone celebration */}
-        {isMilestone && !isDone && (
+        {isMilestone && !isDone && !isAdminPreview && (
           <OnboardingMilestone
-            dayNumber={currentDay}
+            dayNumber={displayDay}
             completedDays={completedDays.length}
             totalPoints={totalPoints}
             streak={streak}
@@ -192,7 +253,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
         )}
 
         {/* Quiz */}
-        {isQuiz && todayContent.quiz_data && !isDone && (
+        {isQuiz && todayContent.quiz_data && !isDone && !isAdminPreview && (
           <OnboardingQuiz
             quizData={todayContent.quiz_data as QuizData}
             onComplete={handleQuizComplete}
@@ -202,7 +263,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
         )}
 
         {/* Reflection */}
-        {isReflection && !isDone && (
+        {isReflection && !isDone && !isAdminPreview && (
           <OnboardingReflection
             onComplete={handleReflectionComplete}
             isSubmitting={isCompleting}
@@ -211,7 +272,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
         )}
 
         {/* Action button for non-quiz/reflection */}
-        {!isQuiz && !isReflection && !isDone && (
+        {!isQuiz && !isReflection && !isDone && !isAdminPreview && (
           <div className="flex items-center gap-3">
             {currentDay === 1 ? (
               <Button
@@ -221,7 +282,6 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
                     await completeToday();
                     await logActivity('onboarding_day_complete', { day: currentDay });
                     setLocalCompleted(true);
-                    // Day 1 complete via CTA — check onboarding flag
                     if (user?.id) {
                       checkAndFlipOnboardingComplete(user.id);
                     }
