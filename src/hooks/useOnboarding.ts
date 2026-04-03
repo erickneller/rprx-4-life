@@ -112,7 +112,6 @@ export function useOnboarding(previewDay?: number | null) {
   const completeMutation = useMutation({
     mutationFn: async (response?: unknown) => {
       if (!user || !availableDay || !todayContent) throw new Error('No content');
-      // Guard: never re-complete a day
       if (progress?.completed_days.includes(availableDay)) return;
       await completeDay(user.id, availableDay, todayContent, response);
     },
@@ -122,6 +121,19 @@ export function useOnboarding(previewDay?: number | null) {
       qc.invalidateQueries({ queryKey: ['onboarding-next-title'] });
       qc.invalidateQueries({ queryKey: ['profile'] });
       qc.invalidateQueries({ queryKey: ['user-badges'] });
+    },
+  });
+
+  // Admin: unlock (un-complete) a specific day
+  const unlockMutation = useMutation({
+    mutationFn: async (day: number) => {
+      if (!user) throw new Error('No user');
+      await unlockDay(user.id, day);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['onboarding-progress'] });
+      qc.invalidateQueries({ queryKey: ['onboarding-content'] });
+      qc.invalidateQueries({ queryKey: ['onboarding-next-title'] });
     },
   });
 
