@@ -659,6 +659,11 @@ import { DataExportTab } from '@/components/admin/DataExportTab';
             <PartnersTab />
           </TabsContent>
 
+          {/* ===== DATA EXPORT TAB ===== */}
+          <TabsContent value="data-export" className="space-y-4">
+            <DataExportTab />
+          </TabsContent>
+
           {/* ===== KNOWLEDGE BASE TAB ===== */}
           <TabsContent value="knowledge-base" className="space-y-4">
             <KnowledgeBaseTab />
