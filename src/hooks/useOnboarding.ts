@@ -85,11 +85,13 @@ export function useOnboarding(previewDay?: number | null) {
   const availableDay = dayAvailability?.currentDay ?? null;
   const isLocked = dayAvailability?.isLocked ?? false;
 
-  // Fetch today's content
+  const contentDay = previewDay ?? availableDay;
+
+  // Fetch content for the active day (or admin preview day)
   const { data: todayContent } = useQuery({
-    queryKey: ['onboarding-content', availableDay, primaryHorseman],
-    queryFn: () => getOnboardingContent(availableDay!, primaryHorseman || 'universal'),
-    enabled: !!availableDay && !!primaryHorseman,
+    queryKey: ['onboarding-content', contentDay, primaryHorseman],
+    queryFn: () => getOnboardingContent(contentDay!, primaryHorseman || 'universal'),
+    enabled: !!contentDay && !!primaryHorseman,
   });
 
   // Fetch next day title when locked (for teaser)
