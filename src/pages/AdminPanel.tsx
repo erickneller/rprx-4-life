@@ -361,6 +361,7 @@ export default function AdminPanel() {
       toast.error((err as Error).message || 'Failed to toggle');
     }
   };
+import { DataExportTab } from '@/components/admin/DataExportTab';
 
 
   const horsemanColor = (h: string) => {
