@@ -12,7 +12,7 @@ import {
 } from '@/lib/onboardingEngine';
 import { useEffect } from 'react';
 
-export function useOnboarding() {
+export function useOnboarding(previewDay?: number | null) {
   const { user } = useAuth();
   const qc = useQueryClient();
 
