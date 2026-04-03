@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Star, Flame, Loader2, Lock, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { CheckCircle2, Clock, Star, Flame, Loader2, Lock, ChevronLeft, ChevronRight, Eye, Unlock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useGamification } from '@/hooks/useGamification';
