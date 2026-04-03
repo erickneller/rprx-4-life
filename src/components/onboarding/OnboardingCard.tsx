@@ -60,7 +60,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
 
   if (isLoading || !isOnboarding || isCompleted || !todayContent) return null;
 
-  const isDone = isTodayCompleted || localCompleted || isLocked;
+  const isDone = !isAdminPreview && (isTodayCompleted || localCompleted || isLocked);
   const phaseLabel = PHASE_LABELS[currentPhase] || currentPhase;
   const isMilestone = todayContent.content_type === 'milestone';
   const isQuiz = todayContent.content_type === 'quiz';
