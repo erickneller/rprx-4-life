@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Loader2, Shield, Users, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard, GraduationCap, Zap, Building2, Star, BookOpen, PanelLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, Users, Award, HelpCircle, Layers, BarChart3, Download, Upload, ArrowUpDown, ArrowUp, ArrowDown, MessageSquare, LayoutDashboard, GraduationCap, Zap, Building2, Star, BookOpen, PanelLeft, Database } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -36,6 +36,7 @@ import { UserGuideTab } from '@/components/admin/UserGuideTab';
 import { KnowledgeBaseTab } from '@/components/admin/KnowledgeBaseTab';
 import { NavigationTab } from '@/components/admin/NavigationTab';
 import { PartnersTab } from '@/components/admin/PartnersTab';
+import { DataExportTab } from '@/components/admin/DataExportTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -363,6 +364,7 @@ export default function AdminPanel() {
   };
 
 
+
   const horsemanColor = (h: string) => {
     const map: Record<string, string> = {
       interest: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
@@ -439,6 +441,9 @@ export default function AdminPanel() {
             </TabsTrigger>
             <TabsTrigger value="partners" className="gap-1">
               <Building2 className="h-4 w-4" /> Partners
+            </TabsTrigger>
+            <TabsTrigger value="data-export" className="gap-1">
+              <Database className="h-4 w-4" /> Data Export
             </TabsTrigger>
           </TabsList>
 
@@ -653,6 +658,11 @@ export default function AdminPanel() {
           {/* ===== PARTNERS TAB ===== */}
           <TabsContent value="partners" className="space-y-4">
             <PartnersTab />
+          </TabsContent>
+
+          {/* ===== DATA EXPORT TAB ===== */}
+          <TabsContent value="data-export" className="space-y-4">
+            <DataExportTab />
           </TabsContent>
 
           {/* ===== KNOWLEDGE BASE TAB ===== */}

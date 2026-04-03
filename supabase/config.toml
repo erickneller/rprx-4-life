@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.sync-knowledge-base]
 verify_jwt = false
+
+[functions.admin-data-export]
+verify_jwt = false
