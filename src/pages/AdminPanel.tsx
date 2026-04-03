@@ -36,6 +36,7 @@ import { UserGuideTab } from '@/components/admin/UserGuideTab';
 import { KnowledgeBaseTab } from '@/components/admin/KnowledgeBaseTab';
 import { NavigationTab } from '@/components/admin/NavigationTab';
 import { PartnersTab } from '@/components/admin/PartnersTab';
+import { DataExportTab } from '@/components/admin/DataExportTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
