@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Star, Flame, Loader2, Lock, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { CheckCircle2, Clock, Star, Flame, Loader2, Lock, ChevronLeft, ChevronRight, Eye, Unlock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useGamification } from '@/hooks/useGamification';
@@ -47,6 +47,7 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
     isTodayCompleted, completeToday, isCompleting,
     reflections, quizAnswers,
     isLocked, nextDayNumber, nextDayTitle,
+    unlockDay: unlockDayFn, isUnlocking,
   } = useOnboarding(adminDayOverride);
 
   const [localCompleted, setLocalCompleted] = useState(false);
@@ -135,6 +136,23 @@ export function OnboardingCard({ compact }: OnboardingCardProps) {
           {/* Already at day 30 and completed */}
           {!isLocked && !nextDayNumber && (
             <p className="text-sm text-muted-foreground">Come back tomorrow for Day {Math.min(currentDay + 1, 30)}</p>
+          )}
+
+          {/* Admin unlock button */}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1 mt-2 border-amber-400 text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
+              onClick={async () => {
+                await unlockDayFn(currentDay);
+                setLocalCompleted(false);
+              }}
+              disabled={isUnlocking}
+            >
+              {isUnlocking ? <Loader2 className="h-3 w-3 animate-spin" /> : <Unlock className="h-3 w-3" />}
+              Unlock Day {currentDay}
+            </Button>
           )}
         </div>
       )}

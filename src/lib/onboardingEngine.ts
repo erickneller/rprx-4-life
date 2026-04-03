@@ -308,6 +308,43 @@ export async function startOnboarding(userId: string): Promise<void> {
     );
 }
 
+// ── Admin: Unlock (un-complete) a day ──────────────────────────────
+
+export async function unlockDay(userId: string, dayNumber: number): Promise<void> {
+  const { data: progress } = await (supabase as any)
+    .from('user_onboarding_progress')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (!progress) return;
+
+  const completedDays = ((progress.completed_days as number[]) || []).filter(
+    (d: number) => d !== dayNumber
+  );
+
+  const updates: Record<string, unknown> = {
+    completed_days: completedDays,
+    current_day: dayNumber,
+    current_phase: getPhaseForDay(dayNumber),
+    // Reset last_completed_date to allow immediate re-completion
+    last_completed_date: completedDays.length > 0
+      ? progress.last_completed_date // keep as-is so lock logic works naturally
+      : null,
+  };
+
+  // If we had marked the journey completed and we're unlocking day 30, revert
+  if (dayNumber === 30 && progress.status === 'completed') {
+    updates.status = 'active';
+    updates.completed_at = null;
+  }
+
+  await (supabase as any)
+    .from('user_onboarding_progress')
+    .update(updates)
+    .eq('user_id', userId);
+}
+
 // ── Badge checking ─────────────────────────────────────────────────
 
 async function checkOnboardingBadges(
