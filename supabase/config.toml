@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.admin-data-export]
 verify_jwt = false
+
+[functions.admin-data-import]
+verify_jwt = false
