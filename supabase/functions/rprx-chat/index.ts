@@ -480,12 +480,26 @@ ${missingFields.map(f => `- ${f}`).join('\n')}
 type ChatIntent = 'greeting' | 'recommend' | 'horseman_filter' | 'detail' | 'profile' | 'auto' | 'fallback';
 
 function detectIntent(message: string, history: Array<{role: string; content: string}>): ChatIntent {
-  const lower = message.toLowerCase();
+  const lower = message.toLowerCase().trim();
 
   // Auto-mode markers
   if (lower.includes('## my assessment results') || lower.includes('## my profile') ||
       lower.includes('top 3 financial strategies') || lower.includes('step-by-step implementation plan')) {
     return 'auto';
+  }
+
+  // "Show more" — inherit prior intent/filter from last assistant message
+  if (/^(show\s+more|more|next( page)?|see more|continue)\b/.test(lower) && lower.length < 30) {
+    const lastAssistant = [...history].reverse().find(m => m.role === 'assistant');
+    if (lastAssistant) {
+      const ac = lastAssistant.content.toLowerCase();
+      if (ac.includes('strategies for tax') || ac.includes('strategies for interest') ||
+          ac.includes('strategies for debt') || ac.includes('strategies for insurance') ||
+          ac.includes('strategies for education')) {
+        return 'horseman_filter';
+      }
+    }
+    return 'recommend';
   }
 
   // Greetings
@@ -528,6 +542,7 @@ function generateTemplateResponse(
   primaryHorseman: string | null,
   mode: 'auto' | 'manual',
   userMessage: string,
+  pageNum: number = 1,
 ): string {
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
@@ -576,23 +591,35 @@ Here's what I can do:
 - 📊 **Summarize** your financial profile${topTeaser}${disclaimer}`;
   }
 
-  // ----- RECOMMEND: top 3 -----
+  // ----- RECOMMEND: top 5 (paginated) -----
   if (intent === 'recommend') {
-    const top3 = ranked.slice(0, 3);
-    if (top3.length === 0) return `I don't have matching strategies for your profile yet. Please complete the assessment first.${disclaimer}`;
+    const startIdx = (pageNum - 1) * 5;
+    const endIdx = startIdx + 5;
+    const pageItems = ranked.slice(startIdx, endIdx);
+    if (pageItems.length === 0) {
+      return pageNum === 1
+        ? `I don't have matching strategies for your profile yet. Please complete the assessment first.${disclaimer}`
+        : `No more strategies to show — you've reached the end of the list.${disclaimer}`;
+    }
+    const hasMore = endIdx < ranked.length;
+    const startNum = startIdx + 1;
 
-    const profileLine = profile?.profile_type
+    const profileLine = pageNum === 1 && profile?.profile_type
       ? `Based on your profile as a **${(Array.isArray(profile.profile_type) ? profile.profile_type : [profile.profile_type]).map((t: string) => profileTypeLabels[t] || t).join(', ')}** with a primary focus on **${horsemanLabel}**:\n\n`
       : '';
 
-    return `# Your Top Recommended Strategies
+    const moreHint = hasMore
+      ? `\n\n_Showing ${startNum}–${startIdx + pageItems.length} of ${ranked.length}. **Type "show more" to see additional strategies.**_`
+      : `\n\n_Showing ${startNum}–${startIdx + pageItems.length} of ${ranked.length}. End of list._`;
 
-${profileLine}${top3.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}
+    return `# Your Top Recommended Strategies${pageNum > 1 ? ` (Page ${pageNum})` : ''}
+
+${profileLine}${pageItems.map((s, i) => formatStrategyBlock(s.strategy, startNum + i)).join('\n\n')}${moreHint}
 
 Would you like a detailed implementation plan for any of these strategies? Just ask about one by name or ID.${disclaimer}`;
   }
 
-  // ----- HORSEMAN FILTER -----
+  // ----- HORSEMAN FILTER (top 5, paginated) -----
   if (intent === 'horseman_filter') {
     const msgLower = userMessage.toLowerCase();
     let filterHorseman = primaryHorseman || 'interest';
@@ -601,18 +628,31 @@ Would you like a detailed implementation plan for any of these strategies? Just 
     else if (/\binsurance\b/.test(msgLower)) filterHorseman = 'insurance';
     else if (/\beducation\b/.test(msgLower)) filterHorseman = 'education';
 
-    const filtered = ranked.filter(s => s.strategy.horseman_type === filterHorseman).slice(0, 3);
-    if (filtered.length === 0) {
-      const anyFiltered = ranked.slice(0, 3);
+    const filteredAll = ranked.filter(s => s.strategy.horseman_type === filterHorseman);
+    const startIdx = (pageNum - 1) * 5;
+    const endIdx = startIdx + 5;
+    const pageItems = filteredAll.slice(startIdx, endIdx);
+
+    if (filteredAll.length === 0) {
+      const anyFiltered = ranked.slice(0, 5);
       return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}
 
 I don't have specific ${filterHorseman} strategies matching your profile yet, but here are your top overall recommendations:
 
 ${anyFiltered.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}${disclaimer}`;
     }
-    return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}
+    if (pageItems.length === 0) {
+      return `No more ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman} strategies to show — you've reached the end of the list.${disclaimer}`;
+    }
+    const hasMore = endIdx < filteredAll.length;
+    const startNum = startIdx + 1;
+    const moreHint = hasMore
+      ? `\n\n_Showing ${startNum}–${startIdx + pageItems.length} of ${filteredAll.length}. **Type "show more" to see additional strategies.**_`
+      : `\n\n_Showing ${startNum}–${startIdx + pageItems.length} of ${filteredAll.length}. End of list._`;
 
-${filtered.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}
+    return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}${pageNum > 1 ? ` (Page ${pageNum})` : ''}
+
+${pageItems.map((s, i) => formatStrategyBlock(s.strategy, startNum + i)).join('\n\n')}${moreHint}
 
 Would you like implementation details for any of these?${disclaimer}`;
   }
@@ -843,41 +883,64 @@ serve(async (req) => {
     const isFreeUser = (userTier || 'free') === 'free';
     console.log('User subscription tier:', userTier || 'free');
 
+    // Detect "show more" / pagination continuation — inherit horseman filter from prior assistant message
+    const trimmedLower = user_message.toLowerCase().trim();
+    const isShowMore = /^(show\s+more|more|next( page)?|see more|continue)\b/.test(trimmedLower) && trimmedLower.length < 30;
+    let inheritedHorseman: string | null = null;
+    let inheritedPage = 1;
+    if (isShowMore) {
+      const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+      if (lastAssistant) {
+        const ac = lastAssistant.content.toLowerCase();
+        if (ac.includes('strategies for tax')) inheritedHorseman = 'taxes';
+        else if (ac.includes('strategies for interest') || ac.includes('strategies for debt')) inheritedHorseman = 'interest';
+        else if (ac.includes('strategies for insurance')) inheritedHorseman = 'insurance';
+        else if (ac.includes('strategies for education')) inheritedHorseman = 'education';
+        // Parse current page from prior "Showing X–Y of Z" footer
+        const pageMatch = lastAssistant.content.match(/Showing\s+\d+[–-](\d+)\s+of\s+\d+/i);
+        if (pageMatch) {
+          const lastShown = parseInt(pageMatch[1], 10);
+          inheritedPage = Math.floor(lastShown / 5) + 1;
+        }
+      }
+    }
+
     // Detect explicit horseman-filter intent in the user message
     // (e.g. "show me tax strategies", "list insurance options", "education strategies")
     const msgLowerForFilter = user_message.toLowerCase();
-    let requestedHorsemanFilter: string | null = null;
-    if (/\b(tax|taxes|taxation)\b/.test(msgLowerForFilter) && !/\b(interest|debt|insurance|education)\b/.test(msgLowerForFilter)) {
-      requestedHorsemanFilter = 'taxes';
-    } else if (/\binsurance\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|education)\b/.test(msgLowerForFilter)) {
-      requestedHorsemanFilter = 'insurance';
-    } else if (/\beducation\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|insurance)\b/.test(msgLowerForFilter)) {
-      requestedHorsemanFilter = 'education';
-    } else if (/\b(interest|debt)\b/.test(msgLowerForFilter) && !/\b(tax|insurance|education)\b/.test(msgLowerForFilter)) {
-      requestedHorsemanFilter = 'interest';
-    }
-    // Only treat as filter when user is asking to see/show/list strategies
-    const looksLikeStrategyList = /\b(show|list|see|view|give|browse|explore|what|which)\b.*\bstrateg/i.test(user_message)
-      || /\bstrategies?\b/i.test(user_message);
-    if (requestedHorsemanFilter && !looksLikeStrategyList) {
-      requestedHorsemanFilter = null;
+    let requestedHorsemanFilter: string | null = inheritedHorseman;
+    if (!requestedHorsemanFilter) {
+      if (/\b(tax|taxes|taxation)\b/.test(msgLowerForFilter) && !/\b(interest|debt|insurance|education)\b/.test(msgLowerForFilter)) {
+        requestedHorsemanFilter = 'taxes';
+      } else if (/\binsurance\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|education)\b/.test(msgLowerForFilter)) {
+        requestedHorsemanFilter = 'insurance';
+      } else if (/\beducation\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|insurance)\b/.test(msgLowerForFilter)) {
+        requestedHorsemanFilter = 'education';
+      } else if (/\b(interest|debt)\b/.test(msgLowerForFilter) && !/\b(tax|insurance|education)\b/.test(msgLowerForFilter)) {
+        requestedHorsemanFilter = 'interest';
+      }
+      const looksLikeStrategyList = /\b(show|list|see|view|give|browse|explore|what|which)\b.*\bstrateg/i.test(user_message)
+        || /\bstrategies?\b/i.test(user_message);
+      if (requestedHorsemanFilter && !looksLikeStrategyList) {
+        requestedHorsemanFilter = null;
+      }
     }
 
     // Determine mode — free users always get auto mode, EXCEPT when the user
-    // explicitly asks for a horseman-filtered strategy list (force manual).
+    // explicitly asks for a horseman-filtered strategy list or paginates with "show more".
     const isAutoMode =
-      !requestedHorsemanFilter &&
+      !requestedHorsemanFilter && !isShowMore &&
       (isFreeUser || requestMode === 'auto' ||
         user_message.includes('## My Assessment Results') ||
         user_message.includes('## My Profile'));
 
-    const effectiveMode: 'auto' | 'manual' = requestedHorsemanFilter
+    const effectiveMode: 'auto' | 'manual' = (requestedHorsemanFilter || isShowMore)
       ? 'manual'
       : (isAutoMode ? 'auto' : (requestMode || 'manual'));
-    const page = requestPage || 1;
-    const strategiesPerPage = 10;
+    const page = requestPage || inheritedPage || 1;
+    const strategiesPerPage = 5;
     if (requestedHorsemanFilter) {
-      console.log(`Horseman filter requested: ${requestedHorsemanFilter} → forcing mode=manual`);
+      console.log(`Horseman filter: ${requestedHorsemanFilter} (inherited=${!!inheritedHorseman}) → mode=manual, page=${page}`);
     }
 
     // Detect primary horseman from assessment DB result, then fall back to message parsing
@@ -991,8 +1054,7 @@ ${manualInstructions}`;
       // =====================================================
       console.log(forceTemplateEngine ? 'Forced template engine — generating response' : 'Free tier — generating template response');
       const intent = detectIntent(user_message, messages);
-      assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
-    } else {
+      assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message, page);
       // =====================================================
       // PAID TIER: OpenAI-powered conversational AI
       // =====================================================
@@ -1010,7 +1072,7 @@ ${manualInstructions}`;
       if (!openaiApiKey) {
         console.log('OPENAI_API_KEY missing, falling back to template engine');
         const intent = detectIntent(user_message, messages);
-        assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
+        assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message, page);
       } else {
 
       const maxRetries = 3;
@@ -1091,7 +1153,7 @@ ${manualInstructions}`;
       JSON.stringify({
         conversation_id: conversationId,
         assistant_message: assistantMessage,
-        has_more_strategies: effectiveMode === 'manual' && rankedStrategies.length > (requestPage || 1) * 10,
+        has_more_strategies: effectiveMode === 'manual' && rankedStrategies.length > page * strategiesPerPage,
         total_strategies: rankedStrategies.length,
         current_page: page,
       }),
