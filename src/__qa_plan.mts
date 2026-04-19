@@ -1,8 +1,8 @@
 import { writeFileSync } from 'fs';
-import { jsPDF } from 'jspdf';
+const { jsPDF } = await import('jspdf');
 (jsPDF.prototype as any).save = function(){
   writeFileSync('/tmp/preview.pdf', Buffer.from(this.output('arraybuffer')));
-  console.log('SAVED');
+  console.log('SAVED bytes=', this.output('arraybuffer').byteLength);
   return this;
 };
 const mod = await import('./lib/planExport');
