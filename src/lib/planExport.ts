@@ -334,7 +334,7 @@ function stepsBlock(doc: jsPDF, content: PlanContent, y: number, plan: SavedPlan
 }
 
 // ---------- Main PDF export ----------
-export function exportPlanAsPDF(plan: SavedPlan): void {
+export function buildPlanPDF(plan: SavedPlan): jsPDF {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const content = plan.content;
   const w = doc.internal.pageSize.getWidth();
