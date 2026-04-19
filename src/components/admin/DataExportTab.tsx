@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Download, Loader2, Database, Users } from 'lucide-react';
+import { Download, Loader2, Database, Users, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { downloadCSV, fetchFullTable, fetchFullTableViaEdge } from '@/lib/csvExport';
 import { supabase } from '@/integrations/supabase/client';
+import { DataImportDialog } from './DataImportDialog';
 
 interface TableDef {
   name: string;
@@ -60,6 +61,7 @@ const USER_TABLES: TableDef[] = [
 export function DataExportTab() {
   const [loading, setLoading] = useState<string | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const [importTable, setImportTable] = useState<TableDef | null>(null);
 
   const handleExport = async (table: TableDef) => {
     setLoading(table.name);
@@ -128,7 +130,7 @@ export function DataExportTab() {
     }
   };
 
-  const renderTableRow = (table: TableDef) => (
+  const renderTableRow = (table: TableDef, allowImport: boolean) => (
     <div key={table.name} className="flex items-center justify-between py-2 px-3 rounded-md border">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
@@ -138,20 +140,34 @@ export function DataExportTab() {
         </div>
         <p className="text-xs text-muted-foreground">{table.description}</p>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => handleExport(table)}
-        disabled={loading === table.name || downloadingAll}
-        className="gap-1 shrink-0 ml-2"
-      >
-        {loading === table.name ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Download className="h-3.5 w-3.5" />
+      <div className="flex items-center gap-2 shrink-0 ml-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleExport(table)}
+          disabled={loading === table.name || downloadingAll}
+          className="gap-1"
+        >
+          {loading === table.name ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          )}
+          CSV
+        </Button>
+        {allowImport && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setImportTable(table)}
+            disabled={loading === table.name || downloadingAll}
+            className="gap-1"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Upload
+          </Button>
         )}
-        CSV
-      </Button>
+      </div>
     </div>
   );
 
@@ -183,7 +199,7 @@ export function DataExportTab() {
           <CardDescription>Strategy definitions, questions, prompts, and system config</CardDescription>
         </CardHeader>
         <CardContent className="space-y-1.5">
-          {CONFIG_TABLES.map(renderTableRow)}
+          {CONFIG_TABLES.map((t) => renderTableRow(t, true))}
         </CardContent>
       </Card>
 
@@ -192,12 +208,21 @@ export function DataExportTab() {
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-4 w-4" /> User Data
           </CardTitle>
-          <CardDescription>Profiles, assessments, strategies, chat history, and more</CardDescription>
+          <CardDescription>Profiles, assessments, strategies, chat history, and more (export only)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-1.5">
-          {USER_TABLES.map(renderTableRow)}
+          {USER_TABLES.map((t) => renderTableRow(t, false))}
         </CardContent>
       </Card>
+
+      {importTable && (
+        <DataImportDialog
+          open={!!importTable}
+          onOpenChange={(open) => !open && setImportTable(null)}
+          tableName={importTable.name}
+          tableLabel={importTable.label}
+        />
+      )}
     </div>
   );
 }
