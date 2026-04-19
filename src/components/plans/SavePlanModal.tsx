@@ -27,9 +27,9 @@ export function SavePlanModal({ open, onOpenChange, initialData }: SavePlanModal
   const createPlan = useCreatePlan();
   const { data: existingPlans = [] } = usePlans();
   const { toast } = useToast();
+  const { isFree } = useSubscription();
 
-  // Free tier: max 1 plan
-  const isFree = true; // swap to subscription check later
+  // Free tier: max 1 plan (admins/paid: unlimited)
   const atLimit = isFree && existingPlans.length >= 1;
 
   const handleSave = async () => {
