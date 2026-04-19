@@ -1,31 +1,6 @@
 
+The user wants to upload updated CSVs back into the admin panel. Currently the Data Export tab is download-only. Need to add import functionality.
 
-# Admin Day Navigation for Onboarding Card
+Scope: import CSV → upsert rows into the matching table. Most useful for config tables (prompt_templates, strategy_definitions, assessment_questions, etc.) since that's the prompt-refinement workflow they've been describing. User-data tables are risky to bulk-overwrite.
 
-## Overview
-Add forward/backward arrow buttons to the OnboardingCard that only appear for admins, allowing them to browse all 30 days of content without calendar-day restrictions.
-
-## Approach
-
-### 1. `OnboardingCard.tsx`
-- Import `useAdmin` hook
-- Add local state `adminDayOverride: number | null` (default `null`)
-- When `isAdmin && adminDayOverride !== null`, fetch content for that day instead of `currentDay`
-- Render `ChevronLeft` / `ChevronRight` buttons flanking the day number badge (only when `isAdmin`)
-  - Left disabled at day 1, right disabled at day 30
-  - Clicking updates `adminDayOverride`
-- Add a small "Admin Preview" badge so it's clear this is a browse mode
-- When in admin override mode, hide the completion button (or make it view-only) to prevent accidentally completing days out of order
-
-### 2. `useOnboarding.ts`
-- Export `getOnboardingContent` call parameters so the card can fetch arbitrary day content
-- Alternative (simpler): add an optional `previewDay` parameter to the hook that overrides `availableDay` for content fetching only (without affecting completion logic)
-
-### Files Changed
-| File | Change |
-|------|--------|
-| `src/hooks/useOnboarding.ts` | Add optional `previewDay` param that overrides content fetch day |
-| `src/components/onboarding/OnboardingCard.tsx` | Add admin nav arrows + preview state |
-
-This is a small change — two files, no database work.
-
+Approach: add import UI alongside each config table, plus a secure edge function that validates admin + table allowlist + upserts by primary key.
