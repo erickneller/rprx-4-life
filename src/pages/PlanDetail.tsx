@@ -278,10 +278,10 @@ export default function PlanDetail() {
           )}
         </div>
 
-        {/* Summary */}
-        {content.summary && (
-          <div className="text-sm text-muted-foreground leading-relaxed border-l-2 border-primary/30 pl-4">
-            {content.summary}
+        {/* Summary (strategy-specific only) */}
+        {displaySummary && (
+          <div className="text-sm text-foreground leading-relaxed border-l-2 border-primary/30 pl-4">
+            {displaySummary}
           </div>
         )}
 
