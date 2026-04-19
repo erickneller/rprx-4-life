@@ -9,6 +9,7 @@ import { Loader2, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseEstimatedImpact } from '@/lib/moneyLeakEstimator';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface SavePlanModalProps {
   open: boolean;
