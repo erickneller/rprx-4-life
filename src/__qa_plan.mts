@@ -1,11 +1,12 @@
 import { writeFileSync } from 'fs';
 import { jsPDF } from 'jspdf';
-jsPDF.prototype.save = function(){
+(jsPDF.prototype as any).save = function(){
   writeFileSync('/tmp/preview.pdf', Buffer.from(this.output('arraybuffer')));
-  return this as any;
+  console.log('SAVED');
+  return this;
 };
-import { exportPlanAsPDF } from './lib/planExport';
-exportPlanAsPDF({
+const mod = await import('./lib/planExport');
+mod.exportPlanAsPDF({
   id:'1', user_id:'u', title:'Implementation Plan demo1',
   strategy_id:'s1', strategy_name:'RPRx Rate Crusher — Highest-Interest Debt First',
   status:'in_progress', notes:'test 1\nanother personal note line', is_focus:true,
@@ -28,4 +29,3 @@ exportPlanAsPDF({
     completedSteps:[0,1],
   }
 } as any);
-console.log('done');
