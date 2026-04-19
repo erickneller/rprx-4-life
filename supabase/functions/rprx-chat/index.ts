@@ -1072,7 +1072,7 @@ ${manualInstructions}`;
       if (!openaiApiKey) {
         console.log('OPENAI_API_KEY missing, falling back to template engine');
         const intent = detectIntent(user_message, messages);
-        assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
+        assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message, page);
       } else {
 
       const maxRetries = 3;
