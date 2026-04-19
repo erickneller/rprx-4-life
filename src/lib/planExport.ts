@@ -50,11 +50,14 @@ export function exportPlanAsMarkdown(plan: SavedPlan): string {
     const completedSteps = content.completedSteps || [];
     content.steps.forEach((step, index) => {
       const isCompleted = completedSteps.includes(index);
-      lines.push(`- [${isCompleted ? 'x' : ' '}] ${step}`);
+      const text = typeof step === 'string'
+        ? step
+        : `${step.title} — ${step.instruction}${step.time_estimate ? ` (${step.time_estimate})` : ''}`;
+      lines.push(`- [${isCompleted ? 'x' : ' '}] ${text}`);
     });
     lines.push('');
   }
-  
+
   if (plan.notes) {
     lines.push('## Personal Notes');
     lines.push('');
@@ -159,11 +162,14 @@ export function exportPlanAsPDF(plan: SavedPlan): void {
       y = checkPageBreak(doc, y, 10);
       const isCompleted = completedSteps.includes(index);
       const checkbox = isCompleted ? '☑' : '☐';
-      const lines = doc.splitTextToSize(`${checkbox} ${step}`, maxWidth - 5);
+      const text = typeof step === 'string'
+        ? step
+        : `${step.title} — ${step.instruction}${step.time_estimate ? ` (${step.time_estimate})` : ''}`;
+      const lines = doc.splitTextToSize(`${checkbox} ${text}`, maxWidth - 5);
       doc.text(lines, margin + 5, y);
       y += lines.length * 5 + 2;
     });
-    
+
     y += 5;
   }
   

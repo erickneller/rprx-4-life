@@ -14,11 +14,40 @@ const PLAN_MARKER_PHRASE = "Here are the step-by-step implementation plans";
  * Returns parsed strategy data if found, null otherwise.
  */
 export function parseStrategyFromMessage(messageContent: string, lenient = false): ParsedStrategy | null {
-  // Only show Save Plan button if marker phrase is present (skip check in lenient/auto mode)
+  // 1) Preferred path: structured plan v1 embedded as a JSON code block.
+  const jsonBlockMatch = messageContent.match(/```json\s*\n([\s\S]*?)\n```/);
+  if (jsonBlockMatch) {
+    try {
+      const parsed = JSON.parse(jsonBlockMatch[1]);
+      if (parsed && parsed.plan_schema === 'v1' && Array.isArray(parsed.steps)) {
+        return {
+          strategyId: typeof parsed.strategy_id === 'string' ? parsed.strategy_id : undefined,
+          strategyName: typeof parsed.strategy_name === 'string' ? parsed.strategy_name : 'Implementation Plan',
+          content: {
+            steps: parsed.steps,
+            summary: parsed.summary,
+            horseman: parsed.horseman ? [String(parsed.horseman)] : undefined,
+            disclaimer: parsed.disclaimer,
+            completedSteps: [],
+            plan_schema: 'v1',
+            expected_result: parsed.expected_result,
+            before_you_start: Array.isArray(parsed.before_you_start) ? parsed.before_you_start : undefined,
+            risks_and_mistakes_to_avoid: Array.isArray(parsed.risks_and_mistakes_to_avoid) ? parsed.risks_and_mistakes_to_avoid : undefined,
+            advisor_packet: Array.isArray(parsed.advisor_packet) ? parsed.advisor_packet : undefined,
+            savings: parsed.expected_result?.impact_range,
+          },
+        };
+      }
+    } catch {
+      // Fall through to legacy parsing
+    }
+  }
+
+  // 2) Legacy path: only show Save Plan button if marker phrase is present.
   if (!lenient && !messageContent.includes(PLAN_MARKER_PHRASE)) {
     return null;
   }
-  
+
   // Look for strategy IDs like T-1, I-3, IN-2, E-5
   const strategyIdMatch = messageContent.match(/\b([TIE](?:N)?-\d+)\b/i);
   

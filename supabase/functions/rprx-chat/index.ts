@@ -175,6 +175,249 @@ function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredS
 // STRATEGY FORMATTING
 // =====================================================
 
+/** Strip markdown bold, redundant section labels, and filler phrases. */
+function cleanStrategyText(text: string | null | undefined): string {
+  if (!text) return '';
+  return String(text)
+    .replace(/\*\*/g, '')
+    .replace(/^#+\s+/gm, '')
+    .replace(/^\s*(Strategy Topic|Strategy Details|Example|Potential Savings\/Benefits|Potential Savings|Benefits)\s*:\s*/gim, '')
+    .replace(/^\s*(certainly|sure|of course|absolutely|great question|happy to help)[,!\s][^\n]*\n+/gi, '')
+    .trim();
+}
+
+/** Normalize implementation_steps to array of plain step strings. */
+function normalizeSteps(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((step: any) => {
+      if (typeof step === 'string') return step;
+      if (step && typeof step === 'object') {
+        return step.text || step.step || step.instruction || step.title || JSON.stringify(step);
+      }
+      return String(step);
+    })
+    .map(s => cleanStrategyText(s))
+    .filter(s => s.length > 0);
+}
+
+// =====================================================
+// STRUCTURED PLAN BUILDER (strict schema v1)
+// =====================================================
+
+interface StructuredPlanStep {
+  title: string;
+  instruction: string;
+  time_estimate: string;
+  done_definition: string;
+}
+
+interface StructuredPlan {
+  plan_schema: 'v1';
+  strategy_id: string;
+  strategy_name: string;
+  horseman: string;
+  summary: string;
+  expected_result: {
+    impact_range: string;
+    first_win_timeline: string;
+    confidence_note: string;
+  };
+  before_you_start: string[];
+  steps: StructuredPlanStep[];
+  risks_and_mistakes_to_avoid: string[];
+  advisor_packet: string[];
+  disclaimer: string;
+}
+
+const HORSEMAN_PRESETS: Record<string, {
+  before: string[];
+  risks: string[];
+  packet: string[];
+  firstWin: string;
+  confidence: string;
+}> = {
+  taxes: {
+    before: [
+      'Most recent federal tax return (Form 1040 + all schedules)',
+      'Last 2 pay stubs and current W-4 on file with employer',
+      'List of all retirement / HSA / FSA accounts with balances',
+      'Filing status and dependents confirmed for current year',
+    ],
+    risks: [
+      'Acting on rules from a prior tax year — IRS limits change annually',
+      'Skipping the qualified-plan paperwork and losing the deduction',
+      'Forgetting to update withholding after the change',
+      'Treating educational guidance as filed tax advice',
+    ],
+    packet: [
+      'Most recent Form 1040 + state return',
+      'Year-to-date pay stub showing gross wages and withholding',
+      'List of any side-income / 1099 sources with totals',
+      'Account statements for IRA, 401(k), HSA, 529',
+      'Specific question(s) you want answered in writing',
+    ],
+    firstWin: '7-21 days',
+    confidence: 'Estimates assume current-year IRS limits and an accurate filing status; actual savings depend on your full return.',
+  },
+  interest: {
+    before: [
+      'Current statements for every revolving and installment debt',
+      'APR, minimum payment, and balance for each account',
+      'Latest credit report (free at AnnualCreditReport.com)',
+      'Monthly cash-flow snapshot (income vs. fixed expenses)',
+    ],
+    risks: [
+      'Closing paid-off cards and dropping your credit score',
+      'Stretching unsecured debt into a secured loan against your home',
+      'Restarting the clock by refinancing without a payoff plan',
+      'Missing a teaser-rate expiration on a balance transfer',
+    ],
+    packet: [
+      'List of all debts with balance, APR, and min payment',
+      'Current credit score and last credit report',
+      'Monthly take-home pay and required fixed expenses',
+      'Target payoff date or monthly payment cap',
+    ],
+    firstWin: '7-14 days',
+    confidence: 'Interest savings shown assume you keep paying at least the current monthly amount and stop adding new balances.',
+  },
+  insurance: {
+    before: [
+      'Declarations pages for every active policy (auto, home, life, health, disability)',
+      'Current premium amounts and renewal dates',
+      'List of named insureds, beneficiaries, and coverage limits',
+      'Recent claims history (last 3-5 years)',
+    ],
+    risks: [
+      'Lowering coverage to a level that leaves a major gap',
+      'Cancelling old coverage before new coverage is in force',
+      'Replacing permanent life policies without a 1035 exchange review',
+      'Choosing the cheapest premium and ignoring claims-paying ratings',
+    ],
+    packet: [
+      'Declarations pages for each policy',
+      'Most recent premium statements / renewal notices',
+      'Current beneficiary designations',
+      'Health questionnaire answers (for life/disability quotes)',
+    ],
+    firstWin: '14-30 days',
+    confidence: 'Premium and coverage outcomes depend on underwriting; quotes can vary materially carrier to carrier.',
+  },
+  education: {
+    before: [
+      'Current 529 / education savings balances and contribution history',
+      'Estimated number of years until first tuition payment',
+      'State of residence (for state tax deduction eligibility)',
+      'Beneficiary information and Social Security number(s)',
+    ],
+    risks: [
+      'Over-funding a 529 with no flexible exit plan',
+      'Missing the state tax deduction by using an out-of-state plan',
+      'Withdrawing for non-qualified expenses and triggering tax + 10% penalty',
+      'Naming the wrong account owner and disrupting financial-aid calculations',
+    ],
+    packet: [
+      'Current 529 statements and contribution history',
+      'List of beneficiaries with ages and SSNs',
+      'State of residence and any state-plan enrollment forms',
+      'Target college funding goal in today\'s dollars',
+    ],
+    firstWin: '14-30 days',
+    confidence: 'Projected balances depend on contribution consistency and market returns; tax treatment depends on qualified use.',
+  },
+};
+
+function buildStructuredPlan(
+  s: DBStrategy,
+  profile: any,
+  primaryHorseman: string | null,
+): StructuredPlan {
+  const horseman = (s.horseman_type || primaryHorseman || 'taxes').toLowerCase();
+  const preset = HORSEMAN_PRESETS[horseman] || HORSEMAN_PRESETS.taxes;
+
+  const cleanedDetails = cleanStrategyText(s.strategy_details);
+  const cleanedExample = cleanStrategyText(s.example);
+  const cleanedSavings = cleanStrategyText(s.potential_savings_benefits);
+
+  const impactRange = s.estimated_impact_display
+    ? cleanStrategyText(s.estimated_impact_display)
+    : (s.estimated_impact_min != null && s.estimated_impact_max != null
+        ? `$${Number(s.estimated_impact_min).toLocaleString()} - $${Number(s.estimated_impact_max).toLocaleString()} / year`
+        : (cleanedSavings || 'Varies by profile'));
+
+  // Summary: strategy-specific, 2-4 sentences, no filler.
+  const summaryParts: string[] = [];
+  const headline = cleanedDetails.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ').trim();
+  if (headline) summaryParts.push(headline);
+  if (cleanedExample) summaryParts.push(`Example: ${cleanedExample.split(/(?<=[.!?])\s+/)[0]}`);
+  if (cleanedSavings && summaryParts.length < 3) summaryParts.push(`Why it matters: ${cleanedSavings.split(/(?<=[.!?])\s+/)[0]}`);
+  const summary = summaryParts.join(' ').slice(0, 700) || `Apply the ${s.title} strategy to reduce the impact of the ${horseman} horseman on your finances.`;
+
+  // Steps: prefer DB steps; pad/transform into structured form.
+  const rawSteps = normalizeSteps(s.implementation_steps);
+  const baseSteps = rawSteps.length >= 5 ? rawSteps : [
+    ...rawSteps,
+    `Schedule a 30-minute review with a qualified ${horseman === 'taxes' ? 'CPA or EA' : horseman === 'insurance' ? 'licensed insurance broker' : 'financial professional'}`,
+    'Document the change in writing (email or signed form) and store with your records',
+    'Set a 90-day calendar reminder to confirm the change took effect',
+    'Re-run your RPRx assessment after 6 months to measure impact',
+    'Capture lessons learned in your RPRx plan notes',
+  ].slice(0, Math.max(0, 5 - rawSteps.length) + rawSteps.length);
+
+  const trimmedSteps = baseSteps.slice(0, 7);
+  const lastIdx = trimmedSteps.length - 1;
+  const structuredSteps: StructuredPlanStep[] = trimmedSteps.map((stepText, i) => {
+    const text = cleanStrategyText(stepText);
+    const titleSource = text.split(/[:.\-–]/)[0].trim();
+    const title = (titleSource.length > 4 && titleSource.length <= 70 ? titleSource : `Step ${i + 1}`)
+      .replace(/^\d+\.\s*/, '');
+    return {
+      title,
+      instruction: text,
+      time_estimate: i === 0 ? '15-20 min' : i < 3 ? '20-45 min' : '15-30 min',
+      done_definition: i === 0
+        ? 'You have the documents listed in "Before You Start" gathered in one folder.'
+        : i === lastIdx
+          ? 'Change is confirmed in writing and stored with your records.'
+          : 'Action is completed and the result is captured in your plan notes.',
+    };
+  });
+  // Ensure at least 5 steps
+  while (structuredSteps.length < 5) {
+    const idx = structuredSteps.length;
+    structuredSteps.push({
+      title: `Follow-up ${idx + 1}`,
+      instruction: 'Review progress with the documents gathered above and capture next action in your plan notes.',
+      time_estimate: '15 min',
+      done_definition: 'Notes updated with the result and date.',
+    });
+  }
+
+  return {
+    plan_schema: 'v1',
+    strategy_id: s.strategy_id,
+    strategy_name: s.title,
+    horseman,
+    summary,
+    expected_result: {
+      impact_range: impactRange,
+      first_win_timeline: preset.firstWin,
+      confidence_note: preset.confidence,
+    },
+    before_you_start: preset.before,
+    steps: structuredSteps,
+    risks_and_mistakes_to_avoid: preset.risks,
+    advisor_packet: preset.packet,
+    disclaimer: 'Educational information only. Consult a qualified professional before implementation.',
+  };
+}
+
+/** Embed structured plan as a hidden JSON code block the frontend can parse. */
+function embedPlanJson(plan: StructuredPlan): string {
+  return `\n\n\`\`\`json\n${JSON.stringify(plan, null, 2)}\n\`\`\``;
+}
+
 function formatStrategiesCondensed(strategies: DBStrategy[]): string {
   if (strategies.length === 0) return "No strategies matched.";
   return strategies.map(s =>
@@ -553,27 +796,28 @@ function generateTemplateResponse(
 
   // Helper: format a single strategy as a numbered section
   const formatStrategyBlock = (s: DBStrategy, idx: number) => {
-    const steps = Array.isArray(s.implementation_steps) ? s.implementation_steps : [];
-    const stepsStr = steps.length > 0
-      ? steps.map((step: any, i: number) => `${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
+    const cleanedSteps = normalizeSteps(s.implementation_steps);
+    const stepsStr = cleanedSteps.length > 0
+      ? cleanedSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')
       : '';
     return `## ${idx}. ${s.title} (${s.strategy_id})
-**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${s.estimated_impact_display || 'Varies'} | **Difficulty:** ${s.difficulty}
+**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${cleanStrategyText(s.estimated_impact_display) || 'Varies'} | **Difficulty:** ${s.difficulty}
 
-${s.strategy_details}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
+${cleanStrategyText(s.strategy_details)}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
   };
 
   // ----- AUTO mode: single best strategy with full steps -----
   if (intent === 'auto' || mode === 'auto') {
     const top = ranked[0];
     if (!top) return `I don't have a matching strategy for your profile yet. Try completing the assessment first!${disclaimer}`;
+    const structured = buildStructuredPlan(top.strategy, profile, primaryHorseman);
     return `# Your Recommended Strategy
 
-Based on your profile and assessment, here is your best-fit strategy for **${horsemanLabel}**:
+Based on your profile and assessment, here is your best-fit strategy for ${horsemanLabel}:
 
 ${formatStrategyBlock(top.strategy, 1)}
 
-Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}`;
+Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}${embedPlanJson(structured)}`;
   }
 
   // ----- GREETING -----
@@ -673,12 +917,13 @@ Would you like implementation details for any of these?${disclaimer}`;
     }
     if (!target) return `I couldn't find a matching strategy. Try asking me to "recommend strategies" first.${disclaimer}`;
 
+    const structuredDetail = buildStructuredPlan(target.strategy, profile, primaryHorseman);
     return `# Implementation Plan: ${target.strategy.title}
 
 ${formatStrategyBlock(target.strategy, 1)}
 
 ${target.strategy.tax_return_line_or_area ? `**Tax Return Reference:** ${target.strategy.tax_return_line_or_area}\n` : ''}
-Would you like to save this as your active implementation plan?${disclaimer}`;
+Would you like to save this as your active implementation plan?${disclaimer}${embedPlanJson(structuredDetail)}`;
   }
 
   // ----- PROFILE summary -----
