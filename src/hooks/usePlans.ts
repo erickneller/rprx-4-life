@@ -50,8 +50,26 @@ export interface UpdatePlanInput {
 function parsePlanContent(json: Json): PlanContent {
   if (typeof json === 'object' && json !== null && !Array.isArray(json)) {
     const obj = json as Record<string, unknown>;
+    const rawSteps = Array.isArray(obj.steps) ? obj.steps : [];
+    const steps: Array<string | StructuredPlanStep> = rawSteps.map((s) => {
+      if (typeof s === 'string') return s;
+      if (s && typeof s === 'object') {
+        const o = s as Record<string, unknown>;
+        if (typeof o.title === 'string' && typeof o.instruction === 'string') {
+          return {
+            title: String(o.title),
+            instruction: String(o.instruction),
+            time_estimate: String(o.time_estimate ?? ''),
+            done_definition: String(o.done_definition ?? ''),
+          };
+        }
+        return String(o.text ?? o.step ?? JSON.stringify(o));
+      }
+      return String(s);
+    });
+    const expected = obj.expected_result;
     return {
-      steps: Array.isArray(obj.steps) ? obj.steps.map(s => String(s)) : [],
+      steps,
       summary: typeof obj.summary === 'string' ? obj.summary : undefined,
       horseman: Array.isArray(obj.horseman) ? obj.horseman.map(h => String(h)) : undefined,
       savings: typeof obj.savings === 'string' ? obj.savings : undefined,
@@ -63,6 +81,17 @@ function parsePlanContent(json: Json): PlanContent {
       estimated_impact: typeof obj.estimated_impact === 'object' && obj.estimated_impact !== null
         ? obj.estimated_impact as { low: number; high: number; source: string }
         : undefined,
+      plan_schema: obj.plan_schema === 'v1' ? 'v1' : undefined,
+      expected_result: expected && typeof expected === 'object' && !Array.isArray(expected)
+        ? {
+            impact_range: String((expected as any).impact_range ?? ''),
+            first_win_timeline: String((expected as any).first_win_timeline ?? ''),
+            confidence_note: String((expected as any).confidence_note ?? ''),
+          }
+        : undefined,
+      before_you_start: Array.isArray(obj.before_you_start) ? obj.before_you_start.map(String) : undefined,
+      risks_and_mistakes_to_avoid: Array.isArray(obj.risks_and_mistakes_to_avoid) ? obj.risks_and_mistakes_to_avoid.map(String) : undefined,
+      advisor_packet: Array.isArray(obj.advisor_packet) ? obj.advisor_packet.map(String) : undefined,
     };
   }
   return { steps: [] };
