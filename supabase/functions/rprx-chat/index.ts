@@ -1153,7 +1153,7 @@ ${manualInstructions}`;
       JSON.stringify({
         conversation_id: conversationId,
         assistant_message: assistantMessage,
-        has_more_strategies: effectiveMode === 'manual' && rankedStrategies.length > (requestPage || 1) * 10,
+        has_more_strategies: effectiveMode === 'manual' && rankedStrategies.length > page * strategiesPerPage,
         total_strategies: rankedStrategies.length,
         current_page: page,
       }),
