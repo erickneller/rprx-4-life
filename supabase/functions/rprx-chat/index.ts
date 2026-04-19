@@ -564,17 +564,28 @@ function generateTemplateResponse(
 ${s.description}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
   };
 
-  // ----- AUTO mode: single best strategy with full steps -----
+  // ----- AUTO mode: single best strategy with full steps (Engine V2 format) -----
   if (intent === 'auto' || mode === 'auto') {
     const top = ranked[0];
     if (!top) return `I don't have a matching strategy for your profile yet. Try completing the assessment first!${disclaimer}`;
+    const s = top.strategy;
+    const steps = Array.isArray(s.steps) ? s.steps : [];
+    const stepsStr = steps.length > 0
+      ? steps.map((step: any, i: number) => `${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
+      : '1. Review this strategy with a qualified advisor for next steps.';
+    const savingsLine = s.estimated_impact ? `\n**Potential benefit:** ${s.estimated_impact}` : '';
     return `# Your Recommended Strategy
 
 Based on your profile and assessment, here is your best-fit strategy for **${horsemanLabel}**:
 
-${formatStrategyBlock(top.strategy, 1)}
+## ${s.name}
+${s.description}${savingsLine}
 
-Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}`;
+Here are the step-by-step implementation plans for this strategy:
+
+${stepsStr}
+
+Would you like to save this as your active plan?${disclaimer}`;
   }
 
   // ----- GREETING -----
