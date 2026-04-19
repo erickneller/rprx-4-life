@@ -241,10 +241,10 @@ export default function PlanDetail() {
                 {plan.strategy_id}
               </Badge>
             )}
-            {content.horseman && content.horseman.length > 0 && (
+            {primaryHorseman && (
               <Badge variant="secondary" className="gap-1">
                 <Shield className="h-3 w-3" />
-                {content.horseman.join(', ')}
+                {primaryHorseman}
               </Badge>
             )}
             {content.complexity && (
