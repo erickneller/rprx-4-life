@@ -480,12 +480,26 @@ ${missingFields.map(f => `- ${f}`).join('\n')}
 type ChatIntent = 'greeting' | 'recommend' | 'horseman_filter' | 'detail' | 'profile' | 'auto' | 'fallback';
 
 function detectIntent(message: string, history: Array<{role: string; content: string}>): ChatIntent {
-  const lower = message.toLowerCase();
+  const lower = message.toLowerCase().trim();
 
   // Auto-mode markers
   if (lower.includes('## my assessment results') || lower.includes('## my profile') ||
       lower.includes('top 3 financial strategies') || lower.includes('step-by-step implementation plan')) {
     return 'auto';
+  }
+
+  // "Show more" — inherit prior intent/filter from last assistant message
+  if (/^(show\s+more|more|next( page)?|see more|continue)\b/.test(lower) && lower.length < 30) {
+    const lastAssistant = [...history].reverse().find(m => m.role === 'assistant');
+    if (lastAssistant) {
+      const ac = lastAssistant.content.toLowerCase();
+      if (ac.includes('strategies for tax') || ac.includes('strategies for interest') ||
+          ac.includes('strategies for debt') || ac.includes('strategies for insurance') ||
+          ac.includes('strategies for education')) {
+        return 'horseman_filter';
+      }
+    }
+    return 'recommend';
   }
 
   // Greetings
