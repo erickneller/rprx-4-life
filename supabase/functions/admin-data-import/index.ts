@@ -140,10 +140,22 @@ Deno.serve(async (req) => {
       const { error: insErr } = await serviceClient.from(table).insert(cleaned);
       if (insErr) throw insErr;
     } else {
-      // Upsert by primary key `id`
+      // Upsert by table-specific conflict key (defaults to id)
+      const conflictKey = UPSERT_CONFLICT_KEYS[table] || "id";
+
+      // For strategy_catalog_v2 specifically: if rows lack `id` but have `strategy_id`,
+      // mirror strategy_id into id so the PK is populated on insert.
+      if (table === "strategy_catalog_v2") {
+        for (const r of cleaned) {
+          if ((!r.id || r.id === null || r.id === "") && r.strategy_id) {
+            r.id = r.strategy_id;
+          }
+        }
+      }
+
       const { error: upErr } = await serviceClient
         .from(table)
-        .upsert(cleaned, { onConflict: "id" });
+        .upsert(cleaned, { onConflict: conflictKey });
       if (upErr) throw upErr;
     }
 
