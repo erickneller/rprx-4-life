@@ -921,9 +921,14 @@ serve(async (req) => {
       mode: effectiveMode,
     };
 
+    // Apply horseman pre-filter (when user explicitly requested a horseman) BEFORE ranking
+    const strategiesForRanking = requestedHorsemanFilter
+      ? allStrategies.filter(s => s.horseman_type === requestedHorsemanFilter)
+      : allStrategies;
+
     // Rank strategies
-    const rankedStrategies = rankStrategies(allStrategies, userContext);
-    console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}`);
+    const rankedStrategies = rankStrategies(strategiesForRanking, userContext);
+    console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}`);
 
     // Get prompt templates (with fallbacks)
     const baseSystemPrompt = systemPromptResult || FALLBACK_SYSTEM_PROMPT;
