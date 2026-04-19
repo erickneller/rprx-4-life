@@ -914,6 +914,36 @@ export type Database = {
           },
         ]
       }
+      prompt_engine_config: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config: Json
+          created_at?: string
+          id: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       prompt_templates: {
         Row: {
           content: string
@@ -1004,6 +1034,93 @@ export type Database = {
           sort_order?: number
           updated_at?: string
           visible?: boolean
+        }
+        Relationships: []
+      }
+      strategy_catalog_v2: {
+        Row: {
+          canonical_strategy_id: string | null
+          created_at: string
+          dedupe_status: string
+          difficulty: string
+          effort_level: string | null
+          estimated_impact_display: string | null
+          estimated_impact_max: number | null
+          estimated_impact_min: number | null
+          example: string | null
+          goal_tags: Json
+          horseman_type: string
+          id: string
+          implementation_steps: Json
+          is_active: boolean
+          legacy_id: string | null
+          potential_savings_benefits: string | null
+          requires_advisor: boolean
+          sort_order: number
+          source_description: string | null
+          strategy_details: string
+          strategy_id: string
+          tax_return_line_or_area: string | null
+          time_to_impact: string | null
+          title: string
+          updated_at: string
+          who_best_for: Json
+        }
+        Insert: {
+          canonical_strategy_id?: string | null
+          created_at?: string
+          dedupe_status?: string
+          difficulty?: string
+          effort_level?: string | null
+          estimated_impact_display?: string | null
+          estimated_impact_max?: number | null
+          estimated_impact_min?: number | null
+          example?: string | null
+          goal_tags?: Json
+          horseman_type: string
+          id: string
+          implementation_steps?: Json
+          is_active?: boolean
+          legacy_id?: string | null
+          potential_savings_benefits?: string | null
+          requires_advisor?: boolean
+          sort_order?: number
+          source_description?: string | null
+          strategy_details: string
+          strategy_id: string
+          tax_return_line_or_area?: string | null
+          time_to_impact?: string | null
+          title: string
+          updated_at?: string
+          who_best_for?: Json
+        }
+        Update: {
+          canonical_strategy_id?: string | null
+          created_at?: string
+          dedupe_status?: string
+          difficulty?: string
+          effort_level?: string | null
+          estimated_impact_display?: string | null
+          estimated_impact_max?: number | null
+          estimated_impact_min?: number | null
+          example?: string | null
+          goal_tags?: Json
+          horseman_type?: string
+          id?: string
+          implementation_steps?: Json
+          is_active?: boolean
+          legacy_id?: string | null
+          potential_savings_benefits?: string | null
+          requires_advisor?: boolean
+          sort_order?: number
+          source_description?: string | null
+          strategy_details?: string
+          strategy_id?: string
+          tax_return_line_or_area?: string | null
+          time_to_impact?: string | null
+          title?: string
+          updated_at?: string
+          who_best_for?: Json
         }
         Relationships: []
       }
