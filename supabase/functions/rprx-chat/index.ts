@@ -796,27 +796,28 @@ function generateTemplateResponse(
 
   // Helper: format a single strategy as a numbered section
   const formatStrategyBlock = (s: DBStrategy, idx: number) => {
-    const steps = Array.isArray(s.implementation_steps) ? s.implementation_steps : [];
-    const stepsStr = steps.length > 0
-      ? steps.map((step: any, i: number) => `${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
+    const cleanedSteps = normalizeSteps(s.implementation_steps);
+    const stepsStr = cleanedSteps.length > 0
+      ? cleanedSteps.map((step, i) => `${i + 1}. ${step}`).join('\n')
       : '';
     return `## ${idx}. ${s.title} (${s.strategy_id})
-**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${s.estimated_impact_display || 'Varies'} | **Difficulty:** ${s.difficulty}
+**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${cleanStrategyText(s.estimated_impact_display) || 'Varies'} | **Difficulty:** ${s.difficulty}
 
-${s.strategy_details}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
+${cleanStrategyText(s.strategy_details)}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
   };
 
   // ----- AUTO mode: single best strategy with full steps -----
   if (intent === 'auto' || mode === 'auto') {
     const top = ranked[0];
     if (!top) return `I don't have a matching strategy for your profile yet. Try completing the assessment first!${disclaimer}`;
+    const structured = buildStructuredPlan(top.strategy, profile, primaryHorseman);
     return `# Your Recommended Strategy
 
-Based on your profile and assessment, here is your best-fit strategy for **${horsemanLabel}**:
+Based on your profile and assessment, here is your best-fit strategy for ${horsemanLabel}:
 
 ${formatStrategyBlock(top.strategy, 1)}
 
-Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}`;
+Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}${embedPlanJson(structured)}`;
   }
 
   // ----- GREETING -----
@@ -916,12 +917,13 @@ Would you like implementation details for any of these?${disclaimer}`;
     }
     if (!target) return `I couldn't find a matching strategy. Try asking me to "recommend strategies" first.${disclaimer}`;
 
+    const structuredDetail = buildStructuredPlan(target.strategy, profile, primaryHorseman);
     return `# Implementation Plan: ${target.strategy.title}
 
 ${formatStrategyBlock(target.strategy, 1)}
 
 ${target.strategy.tax_return_line_or_area ? `**Tax Return Reference:** ${target.strategy.tax_return_line_or_area}\n` : ''}
-Would you like to save this as your active implementation plan?${disclaimer}`;
+Would you like to save this as your active implementation plan?${disclaimer}${embedPlanJson(structuredDetail)}`;
   }
 
   // ----- PROFILE summary -----
