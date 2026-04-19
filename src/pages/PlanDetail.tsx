@@ -72,6 +72,21 @@ export default function PlanDetail() {
     ? plan.strategy_name
     : plan.title;
 
+  // Single primary horseman label (strict template compliance)
+  const primaryHorseman = Array.isArray(content.horseman) && content.horseman.length > 0
+    ? content.horseman[0]
+    : null;
+
+  // Strip generic AI filler openings from summary
+  const FILLER_RE = /^(certainly|sure|of course|absolutely|great question|happy to help|here(?:'s| is)|let me)[^.!?]*[.!?]\s*/i;
+  const cleanedSummary = content.summary
+    ? content.summary.replace(FILLER_RE, '').replace(/\*\*/g, '').trim()
+    : null;
+  const isGenericSummary = cleanedSummary
+    ? /^(this (plan|strategy) (will help|helps|is designed)|implementation plan for)/i.test(cleanedSummary) && cleanedSummary.length < 80
+    : true;
+  const displaySummary = cleanedSummary && !isGenericSummary ? cleanedSummary : null;
+
   const handleToggleStep = async (stepIndex: number) => {
     const currentCompleted = content.completedSteps || [];
     const newCompleted = currentCompleted.includes(stepIndex)
