@@ -25,14 +25,19 @@ const requestSchema = z.object({
 
 interface DBStrategy {
   id: string;
-  name: string;
-  description: string;
+  strategy_id: string;
+  title: string;
+  strategy_details: string;
+  example: string | null;
+  potential_savings_benefits: string | null;
   horseman_type: string;
   difficulty: string;
-  estimated_impact: string | null;
+  estimated_impact_min: number | null;
+  estimated_impact_max: number | null;
+  estimated_impact_display: string | null;
   tax_return_line_or_area: string | null;
-  financial_goals: string[] | null;
-  steps: unknown;
+  goal_tags: string[] | null;
+  implementation_steps: unknown;
   is_active: boolean;
   sort_order: number;
 }
@@ -60,16 +65,43 @@ interface UserContext {
 
 async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
   const { data, error } = await serviceClient
-    .from('strategy_definitions')
-    .select('id, name, description, horseman_type, difficulty, estimated_impact, tax_return_line_or_area, financial_goals, steps, is_active, sort_order')
+    .from('strategy_catalog_v2')
+    .select('id, strategy_id, title, strategy_details, example, potential_savings_benefits, horseman_type, difficulty, estimated_impact_min, estimated_impact_max, estimated_impact_display, tax_return_line_or_area, goal_tags, implementation_steps, is_active, sort_order')
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching strategies:', error);
+  if (!error && data && data.length > 0) return data;
+
+  console.warn('strategy_catalog_v2 unavailable/empty, using legacy strategy_definitions fallback');
+  const { data: legacy, error: legacyError } = await serviceClient
+    .from('strategy_definitions')
+    .select('id, horseman_type, name, description, difficulty, estimated_impact, tax_return_line_or_area, financial_goals, steps, is_active, sort_order')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  if (legacyError || !legacy) {
+    console.error('Error fetching fallback strategies:', legacyError || error);
     return [];
   }
-  return data || [];
+
+  return legacy.map((s: any) => ({
+    id: s.id,
+    strategy_id: s.id,
+    title: s.name,
+    strategy_details: s.description,
+    example: null,
+    potential_savings_benefits: null,
+    horseman_type: s.horseman_type,
+    difficulty: s.difficulty,
+    estimated_impact_min: null,
+    estimated_impact_max: null,
+    estimated_impact_display: s.estimated_impact,
+    tax_return_line_or_area: s.tax_return_line_or_area,
+    goal_tags: Array.isArray(s.financial_goals) ? s.financial_goals : [],
+    implementation_steps: s.steps,
+    is_active: s.is_active,
+    sort_order: s.sort_order ?? 0,
+  }));
 }
 
 // =====================================================
@@ -88,9 +120,9 @@ function scoreStrategy(strategy: DBStrategy, context: UserContext): number {
   else if (context.thirdHorseman && strategy.horseman_type === context.thirdHorseman) score += 10;
 
   // 2) Goal fit (max 20)
-  if (context.financialGoals.length > 0 && strategy.financial_goals && strategy.financial_goals.length > 0) {
-    const overlap = strategy.financial_goals.filter(g => context.financialGoals.includes(g)).length;
-    const ratio = overlap / Math.max(1, Math.min(context.financialGoals.length, strategy.financial_goals.length));
+  if (context.financialGoals.length > 0 && strategy.goal_tags && strategy.goal_tags.length > 0) {
+    const overlap = strategy.goal_tags.filter(g => context.financialGoals.includes(g)).length;
+    const ratio = overlap / Math.max(1, Math.min(context.financialGoals.length, strategy.goal_tags.length));
     if (ratio >= 0.7) score += 20;
     else if (ratio > 0) score += 10;
   }
@@ -120,7 +152,7 @@ function scoreStrategy(strategy: DBStrategy, context: UserContext): number {
   }
 
   // 5) Impact fit (max 10)
-  const impact = (strategy.estimated_impact || '').toLowerCase();
+  const impact = (strategy.estimated_impact_display || '').toLowerCase();
   if (impact.includes('50,000') || impact.includes('100,000') || impact.includes('high')) score += 10;
   else if (impact.includes('10,000') || impact.includes('5,000')) score += 8;
   else if (impact.trim()) score += 6;
@@ -146,28 +178,29 @@ function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredS
 function formatStrategiesCondensed(strategies: DBStrategy[]): string {
   if (strategies.length === 0) return "No strategies matched.";
   return strategies.map(s =>
-    `### ${s.id}: ${s.name}
+    `### ${s.strategy_id}: ${s.title}
 - Horseman: ${s.horseman_type}
-- Summary: ${s.description}
-- Impact: ${s.estimated_impact || 'Varies'}
+- Summary: ${s.strategy_details}
+- Impact: ${s.estimated_impact_display || 'Varies'}
 - Difficulty: ${s.difficulty}
-- Best For: ${(s.financial_goals || []).join(', ') || 'General'}`
+- Best For: ${(s.goal_tags || []).join(', ') || 'General'}`
   ).join('\n\n');
 }
 
 function formatStrategyFull(s: DBStrategy): string {
-  const steps = Array.isArray(s.steps) ? s.steps : [];
+  const steps = Array.isArray(s.implementation_steps) ? s.implementation_steps : [];
   const stepsStr = steps.length > 0
     ? steps.map((step: any, i: number) => `  ${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
     : '  (No detailed steps available)';
   
-  return `### ${s.id}: ${s.name}
+  return `### ${s.strategy_id}: ${s.title}
 - **Horseman:** ${s.horseman_type}
-- **Summary:** ${s.description}
-- **Estimated Impact:** ${s.estimated_impact || 'Varies'}
+- **Summary:** ${s.strategy_details}
+- **Potential Savings / Benefits:** ${s.potential_savings_benefits || 'Varies by profile'}
+- **Estimated Impact:** ${s.estimated_impact_display || 'Varies'}
 - **Difficulty:** ${s.difficulty}
 - **Tax Reference:** ${s.tax_return_line_or_area || 'N/A'}
-- **Financial Goals:** ${(s.financial_goals || []).join(', ') || 'General'}
+- **Financial Goals:** ${(s.goal_tags || []).join(', ') || 'General'}
 - **Implementation Steps:**
 ${stepsStr}`;
 }
@@ -505,14 +538,14 @@ function generateTemplateResponse(
 
   // Helper: format a single strategy as a numbered section
   const formatStrategyBlock = (s: DBStrategy, idx: number) => {
-    const steps = Array.isArray(s.steps) ? s.steps : [];
+    const steps = Array.isArray(s.implementation_steps) ? s.implementation_steps : [];
     const stepsStr = steps.length > 0
       ? steps.map((step: any, i: number) => `${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
       : '';
-    return `## ${idx}. ${s.name} (${s.id})
-**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${s.estimated_impact || 'Varies'} | **Difficulty:** ${s.difficulty}
+    return `## ${idx}. ${s.title} (${s.strategy_id})
+**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${s.estimated_impact_display || 'Varies'} | **Difficulty:** ${s.difficulty}
 
-${s.description}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
+${s.strategy_details}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
   };
 
   // ----- AUTO mode: single best strategy with full steps -----
@@ -531,7 +564,7 @@ Here are the step-by-step implementation plans for this strategy. Would you like
   // ----- GREETING -----
   if (intent === 'greeting') {
     const top = ranked[0];
-    const topTeaser = top ? `\n\nBased on your profile, your top recommended strategy is **${top.strategy.name}**. Would you like to see the details?` : '';
+    const topTeaser = top ? `\n\nBased on your profile, your top recommended strategy is **${top.strategy.title}**. Would you like to see the details?` : '';
     return `# Welcome to RPRx Strategy Assistant${profileName}! 👋
 
 I can help you explore strategies across the Four Horsemen of household finance — **Interest, Taxes, Insurance, and Education**.
@@ -590,17 +623,17 @@ Would you like implementation details for any of these?${disclaimer}`;
     const idMatch = userMessage.match(/\b([TIE](?:N)?-\d+)\b/i);
     let target = ranked[0]; // default to top
     if (idMatch) {
-      const found = ranked.find(s => s.strategy.id.toLowerCase() === idMatch[1].toLowerCase());
+      const found = ranked.find(s => s.strategy.strategy_id.toLowerCase() === idMatch[1].toLowerCase());
       if (found) target = found;
     } else {
       // Try matching by strategy name substring
       const msgLower = userMessage.toLowerCase();
-      const nameMatch = ranked.find(s => msgLower.includes(s.strategy.name.toLowerCase().substring(0, 20)));
+      const nameMatch = ranked.find(s => msgLower.includes(s.strategy.title.toLowerCase().substring(0, 20)));
       if (nameMatch) target = nameMatch;
     }
     if (!target) return `I couldn't find a matching strategy. Try asking me to "recommend strategies" first.${disclaimer}`;
 
-    return `# Implementation Plan: ${target.strategy.name}
+    return `# Implementation Plan: ${target.strategy.title}
 
 ${formatStrategyBlock(target.strategy, 1)}
 
@@ -638,14 +671,14 @@ ${sections.map(s => `- ${s}`).join('\n')}
 
 ${primaryHorseman ? `**Primary Horseman:** ${HORSEMAN_DISPLAY[primaryHorseman]}` : ''}
 
-${top ? `**Top Recommended Strategy:** ${top.strategy.name} (${top.strategy.id})` : ''}
+${top ? `**Top Recommended Strategy:** ${top.strategy.title} (${top.strategy.strategy_id})` : ''}
 
 Would you like to explore your recommended strategies?${disclaimer}`;
   }
 
   // ----- FALLBACK -----
   const top = ranked[0];
-  const topHint = top ? `\n\nYour top recommended strategy is **${top.strategy.name}**. Would you like to see the details or get other recommendations?` : '';
+  const topHint = top ? `\n\nYour top recommended strategy is **${top.strategy.title}**. Would you like to see the details or get other recommendations?` : '';
   return `I can help you with:\n- **Strategy recommendations** based on your profile\n- **Detailed implementation plans** for any strategy\n- **Horseman-specific** strategies (taxes, interest, insurance, education)\n- **Your profile summary** and RPRx score${topHint}${disclaimer}`;
 }
 
@@ -891,7 +924,7 @@ ${knowledgeBaseContext}
 
 ## MODE: AUTO (Single Best Strategy)
 ${autoInstructions}`;
-      console.log('Auto mode - top strategy:', topStrategy?.strategy.id, 'score:', topStrategy?.score);
+      console.log('Auto mode - top strategy:', topStrategy?.strategy.strategy_id, 'score:', topStrategy?.score);
     } else {
       // Manual mode: paginated strategy list
       const startIdx = (page - 1) * strategiesPerPage;

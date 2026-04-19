@@ -17,12 +17,14 @@ interface TableDef {
 }
 
 const CONFIG_TABLES: TableDef[] = [
-  { name: 'strategy_definitions', label: 'Strategy Definitions', description: 'All strategy templates', needsEdge: false },
+  { name: 'strategy_definitions', label: 'Strategy Definitions (Legacy)', description: 'Legacy strategy templates', needsEdge: false },
+  { name: 'strategy_catalog_v2', label: 'Strategy Catalog V2', description: 'Canonical deterministic strategy catalog', needsEdge: false },
   { name: 'assessment_questions', label: 'Assessment Questions', description: 'Core assessment questions', needsEdge: false },
   { name: 'deep_dive_questions', label: 'Deep Dive Questions', description: 'Horseman deep dive questions', needsEdge: false },
   { name: 'badge_definitions', label: 'Badge Definitions', description: 'Gamification badges', needsEdge: false },
   { name: 'onboarding_content', label: 'Onboarding Content', description: '30-day journey content', needsEdge: false },
   { name: 'prompt_templates', label: 'Prompt Templates', description: 'AI system prompts', needsEdge: true },
+  { name: 'prompt_engine_config', label: 'Prompt Engine Config', description: 'Deterministic strategy scoring and output config', needsEdge: false },
   { name: 'feature_flags', label: 'Feature Flags', description: 'Global toggles', needsEdge: false },
   { name: 'page_help_content', label: 'Page Help', description: 'Contextual help content', needsEdge: false },
   { name: 'knowledge_base', label: 'Knowledge Base', description: 'AI knowledge documents', needsEdge: true },

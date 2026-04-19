@@ -9,11 +9,13 @@ const corsHeaders = {
 // Only config/back-office tables — user data tables are intentionally excluded
 const ALLOWED_TABLES = [
   "strategy_definitions",
+  "strategy_catalog_v2",
   "assessment_questions",
   "deep_dive_questions",
   "badge_definitions",
   "onboarding_content",
   "prompt_templates",
+  "prompt_engine_config",
   "feature_flags",
   "page_help_content",
   "knowledge_base",
@@ -133,10 +135,17 @@ Deno.serve(async (req) => {
       const { error: insErr } = await serviceClient.from(table).insert(cleaned);
       if (insErr) throw insErr;
     } else {
-      // Upsert by primary key `id`
+      // Upsert by `id` by default; strategy_catalog_v2 can upsert by strategy_id when id is absent
+      const hasId = cleaned.some((r) => Object.prototype.hasOwnProperty.call(r, "id"));
+      const onConflict = table === 'strategy_catalog_v2' && !hasId ? 'strategy_id' : 'id';
+
+      const normalized = table === 'strategy_catalog_v2' && !hasId
+        ? cleaned.map((r) => ({ ...r, id: String(r.strategy_id ?? '') }))
+        : cleaned;
+
       const { error: upErr } = await serviceClient
         .from(table)
-        .upsert(cleaned, { onConflict: "id" });
+        .upsert(normalized, { onConflict });
       if (upErr) throw upErr;
     }
 

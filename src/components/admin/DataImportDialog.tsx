@@ -73,8 +73,11 @@ export function DataImportDialog({
       return;
     }
     if (mode === 'upsert' && !headers.includes('id')) {
-      toast.error('CSV must include an "id" column for upsert mode');
-      return;
+      const hasStrategyV2Key = tableName === 'strategy_catalog_v2' && headers.includes('strategy_id');
+      if (!hasStrategyV2Key) {
+        toast.error('CSV must include an "id" column for upsert mode (or strategy_id for strategy_catalog_v2)');
+        return;
+      }
     }
     if (mode === 'replace' && confirmText !== tableName) {
       toast.error(`Type "${tableName}" to confirm replace`);
@@ -147,7 +150,7 @@ export function DataImportDialog({
                 <div className="flex items-start gap-2">
                   <RadioGroupItem value="upsert" id="mode-upsert" className="mt-1" />
                   <Label htmlFor="mode-upsert" className="font-normal cursor-pointer">
-                    <span className="font-medium">Upsert</span> — insert new rows, update existing rows by <code className="text-xs">id</code>
+                    <span className="font-medium">Upsert</span> — insert new rows, update existing rows by <code className="text-xs">id</code> (or <code className="text-xs">strategy_id</code> for strategy_catalog_v2)
                   </Label>
                 </div>
                 <div className="flex items-start gap-2">
