@@ -428,7 +428,11 @@ export function buildPlanPDF(plan: SavedPlan): jsPDF {
     doc.setPage(i);
     drawFooter(doc, i, total);
   }
+  return doc;
+}
 
+export function exportPlanAsPDF(plan: SavedPlan): void {
+  const doc = buildPlanPDF(plan);
   const filename = `${plan.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_plan.pdf`;
   doc.save(filename);
 }
