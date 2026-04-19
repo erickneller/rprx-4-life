@@ -1054,8 +1054,7 @@ ${manualInstructions}`;
       // =====================================================
       console.log(forceTemplateEngine ? 'Forced template engine — generating response' : 'Free tier — generating template response');
       const intent = detectIntent(user_message, messages);
-      assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
-    } else {
+      assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message, page);
       // =====================================================
       // PAID TIER: OpenAI-powered conversational AI
       // =====================================================
