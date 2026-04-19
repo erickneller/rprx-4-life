@@ -25,14 +25,19 @@ const requestSchema = z.object({
 
 interface DBStrategy {
   id: string;
-  name: string;
-  description: string;
+  strategy_id: string;
+  title: string;
+  strategy_details: string;
+  example: string | null;
+  potential_savings_benefits: string | null;
   horseman_type: string;
   difficulty: string;
-  estimated_impact: string | null;
+  estimated_impact_min: number | null;
+  estimated_impact_max: number | null;
+  estimated_impact_display: string | null;
   tax_return_line_or_area: string | null;
-  financial_goals: string[] | null;
-  steps: unknown;
+  goal_tags: string[] | null;
+  implementation_steps: unknown;
   is_active: boolean;
   sort_order: number;
 }
@@ -44,72 +49,59 @@ interface ScoredStrategy {
 
 interface UserContext {
   primaryHorseman: string | null;
+  secondaryHorseman: string | null;
+  thirdHorseman: string | null;
   financialGoals: string[];
   profileTypes: string[];
   cashFlowStatus: string | null;
   completedStrategyIds: string[];
+  activeStrategyIds: string[];
   mode: 'auto' | 'manual';
 }
 
 // =====================================================
 // STRATEGY FETCHING FROM DATABASE
 // =====================================================
-// Engine V2: read from strategy_catalog_v2 first (canonical, cleaned).
-// Falls back to legacy strategy_definitions only if v2 is empty/unavailable.
-// RPRX_FORCE_TEMPLATE_ENGINE=true forces deterministic template path (handled below in main).
-
-function mapV2RowToDBStrategy(row: any): DBStrategy {
-  // jsonb arrays come back as arrays already
-  const goalTags = Array.isArray(row.goal_tags) ? row.goal_tags : [];
-  const steps = Array.isArray(row.implementation_steps) ? row.implementation_steps : [];
-  return {
-    id: row.strategy_id || row.id,
-    name: row.title,
-    description: row.strategy_details,
-    horseman_type: row.horseman_type,
-    difficulty: row.difficulty || 'moderate',
-    estimated_impact: row.estimated_impact_display || row.potential_savings_benefits || null,
-    tax_return_line_or_area: row.tax_return_line_or_area || null,
-    financial_goals: goalTags as string[],
-    steps,
-    is_active: row.is_active,
-    sort_order: row.sort_order || 0,
-  };
-}
 
 async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
-  // 1) Try v2 catalog first
-  try {
-    const { data: v2Data, error: v2Error } = await serviceClient
-      .from('strategy_catalog_v2')
-      .select('id, strategy_id, title, strategy_details, horseman_type, difficulty, estimated_impact_display, potential_savings_benefits, tax_return_line_or_area, goal_tags, implementation_steps, is_active, sort_order, dedupe_status')
-      .eq('is_active', true)
-      .eq('dedupe_status', 'canonical')
-      .order('sort_order', { ascending: true })
-      .limit(2000);
-
-    if (!v2Error && v2Data && v2Data.length > 0) {
-      console.log(`Strategy source: strategy_catalog_v2 (${v2Data.length} rows)`);
-      return v2Data.map(mapV2RowToDBStrategy);
-    }
-    if (v2Error) console.warn('strategy_catalog_v2 read error, falling back to legacy:', v2Error.message);
-  } catch (e) {
-    console.warn('strategy_catalog_v2 unavailable, falling back to legacy:', (e as Error).message);
-  }
-
-  // 2) Fallback: legacy strategy_definitions
   const { data, error } = await serviceClient
-    .from('strategy_definitions')
-    .select('id, name, description, horseman_type, difficulty, estimated_impact, tax_return_line_or_area, financial_goals, steps, is_active, sort_order')
+    .from('strategy_catalog_v2')
+    .select('id, strategy_id, title, strategy_details, example, potential_savings_benefits, horseman_type, difficulty, estimated_impact_min, estimated_impact_max, estimated_impact_display, tax_return_line_or_area, goal_tags, implementation_steps, is_active, sort_order')
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching strategies (legacy fallback):', error);
+  if (!error && data && data.length > 0) return data;
+
+  console.warn('strategy_catalog_v2 unavailable/empty, using legacy strategy_definitions fallback');
+  const { data: legacy, error: legacyError } = await serviceClient
+    .from('strategy_definitions')
+    .select('id, horseman_type, name, description, difficulty, estimated_impact, tax_return_line_or_area, financial_goals, steps, is_active, sort_order')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  if (legacyError || !legacy) {
+    console.error('Error fetching fallback strategies:', legacyError || error);
     return [];
   }
-  console.log(`Strategy source: strategy_definitions (legacy fallback, ${(data || []).length} rows)`);
-  return data || [];
+
+  return legacy.map((s: any) => ({
+    id: s.id,
+    strategy_id: s.id,
+    title: s.name,
+    strategy_details: s.description,
+    example: null,
+    potential_savings_benefits: null,
+    horseman_type: s.horseman_type,
+    difficulty: s.difficulty,
+    estimated_impact_min: null,
+    estimated_impact_max: null,
+    estimated_impact_display: s.estimated_impact,
+    tax_return_line_or_area: s.tax_return_line_or_area,
+    goal_tags: Array.isArray(s.financial_goals) ? s.financial_goals : [],
+    implementation_steps: s.steps,
+    is_active: s.is_active,
+    sort_order: s.sort_order ?? 0,
+  }));
 }
 
 // =====================================================
@@ -117,68 +109,59 @@ async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
 // =====================================================
 
 function scoreStrategy(strategy: DBStrategy, context: UserContext): number {
-  // Exclude completed strategies entirely
-  if (context.completedStrategyIds.includes(strategy.id)) {
-    return -1;
-  }
+  // Hard excludes
+  if (context.completedStrategyIds.includes(strategy.id)) return -1;
 
   let score = 0;
 
-  // 1. Horseman match (30% weight, max 30 points)
-  if (context.primaryHorseman && strategy.horseman_type === context.primaryHorseman) {
-    score += 30;
+  // 1) Horseman fit (max 35)
+  if (context.primaryHorseman && strategy.horseman_type === context.primaryHorseman) score += 35;
+  else if (context.secondaryHorseman && strategy.horseman_type === context.secondaryHorseman) score += 20;
+  else if (context.thirdHorseman && strategy.horseman_type === context.thirdHorseman) score += 10;
+
+  // 2) Goal fit (max 20)
+  if (context.financialGoals.length > 0 && strategy.goal_tags && strategy.goal_tags.length > 0) {
+    const overlap = strategy.goal_tags.filter(g => context.financialGoals.includes(g)).length;
+    const ratio = overlap / Math.max(1, Math.min(context.financialGoals.length, strategy.goal_tags.length));
+    if (ratio >= 0.7) score += 20;
+    else if (ratio > 0) score += 10;
   }
 
-  // 2. Financial goals match (25% weight, max 25 points)
-  if (context.financialGoals.length > 0 && strategy.financial_goals && strategy.financial_goals.length > 0) {
-    const overlap = strategy.financial_goals.filter(g => context.financialGoals.includes(g)).length;
-    const maxPossible = Math.min(context.financialGoals.length, strategy.financial_goals.length);
-    if (maxPossible > 0) {
-      score += Math.round((overlap / maxPossible) * 25);
-    }
+  // 3) Urgency fit (max 20)
+  // Prefer immediate-relief strategies when cash flow is tight/deficit
+  if (context.cashFlowStatus === 'deficit') {
+    if (strategy.difficulty === 'easy') score += 20;
+    else if (strategy.difficulty === 'moderate') score += 12;
+    else score += 4;
+  } else if (context.cashFlowStatus === 'tight') {
+    if (strategy.difficulty === 'easy') score += 16;
+    else if (strategy.difficulty === 'moderate') score += 12;
+    else score += 7;
+  } else {
+    score += 10;
   }
 
-  // 3. Difficulty fit (15% weight) - easy preferred for auto mode
-  const difficultyScores: Record<string, number> = { easy: 15, moderate: 10, advanced: 5 };
+  // 4) Feasibility fit (max 15)
   if (context.mode === 'auto') {
-    score += difficultyScores[strategy.difficulty] || 5;
+    if (strategy.difficulty === 'easy') score += 15;
+    else if (strategy.difficulty === 'moderate') score += 9;
+    else score += 4;
   } else {
-    // Manual mode: moderate weight, all difficulties welcome
-    score += 10;
+    if (strategy.difficulty === 'advanced') score += 10;
+    else score += 12;
   }
 
-  // 4. Profile type relevance (15% weight)
-  // Map profile types to horseman affinity
-  const profileHorsemanMap: Record<string, string[]> = {
-    business_owner: ['taxes', 'interest'],
-    retiree: ['taxes', 'insurance'],
-    salesperson: ['taxes', 'interest'],
-    wage_earner: ['taxes', 'interest'],
-    investor: ['taxes', 'interest'],
-    farmer: ['taxes', 'insurance'],
-    nonprofit: ['taxes', 'education'],
-  };
-  if (context.profileTypes.length > 0) {
-    for (const pt of context.profileTypes) {
-      const affinities = profileHorsemanMap[pt] || [];
-      if (affinities.includes(strategy.horseman_type)) {
-        score += 15;
-        break;
-      }
-    }
-  }
+  // 5) Impact fit (max 10)
+  const impact = (strategy.estimated_impact_display || '').toLowerCase();
+  if (impact.includes('50,000') || impact.includes('100,000') || impact.includes('high')) score += 10;
+  else if (impact.includes('10,000') || impact.includes('5,000')) score += 8;
+  else if (impact.trim()) score += 6;
+  else score += 4;
 
-  // 5. Cash flow compatibility (10% weight)
-  if (context.cashFlowStatus === 'deficit' && strategy.difficulty === 'advanced') {
-    // Deprioritize complex strategies for deficit users
-    score += 2;
-  } else if (context.cashFlowStatus === 'surplus') {
-    score += 10;
-  } else {
-    score += 7;
-  }
+  // Penalties
+  if (context.activeStrategyIds.includes(strategy.id)) score -= 20;
 
-  return score;
+  return Math.max(score, 0);
 }
 
 function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredStrategy[] {
@@ -195,28 +178,29 @@ function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredS
 function formatStrategiesCondensed(strategies: DBStrategy[]): string {
   if (strategies.length === 0) return "No strategies matched.";
   return strategies.map(s =>
-    `### ${s.id}: ${s.name}
+    `### ${s.strategy_id}: ${s.title}
 - Horseman: ${s.horseman_type}
-- Summary: ${s.description}
-- Impact: ${s.estimated_impact || 'Varies'}
+- Summary: ${s.strategy_details}
+- Impact: ${s.estimated_impact_display || 'Varies'}
 - Difficulty: ${s.difficulty}
-- Best For: ${(s.financial_goals || []).join(', ') || 'General'}`
+- Best For: ${(s.goal_tags || []).join(', ') || 'General'}`
   ).join('\n\n');
 }
 
 function formatStrategyFull(s: DBStrategy): string {
-  const steps = Array.isArray(s.steps) ? s.steps : [];
+  const steps = Array.isArray(s.implementation_steps) ? s.implementation_steps : [];
   const stepsStr = steps.length > 0
     ? steps.map((step: any, i: number) => `  ${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
     : '  (No detailed steps available)';
   
-  return `### ${s.id}: ${s.name}
+  return `### ${s.strategy_id}: ${s.title}
 - **Horseman:** ${s.horseman_type}
-- **Summary:** ${s.description}
-- **Estimated Impact:** ${s.estimated_impact || 'Varies'}
+- **Summary:** ${s.strategy_details}
+- **Potential Savings / Benefits:** ${s.potential_savings_benefits || 'Varies by profile'}
+- **Estimated Impact:** ${s.estimated_impact_display || 'Varies'}
 - **Difficulty:** ${s.difficulty}
 - **Tax Reference:** ${s.tax_return_line_or_area || 'N/A'}
-- **Financial Goals:** ${(s.financial_goals || []).join(', ') || 'General'}
+- **Financial Goals:** ${(s.goal_tags || []).join(', ') || 'General'}
 - **Implementation Steps:**
 ${stepsStr}`;
 }
@@ -554,44 +538,33 @@ function generateTemplateResponse(
 
   // Helper: format a single strategy as a numbered section
   const formatStrategyBlock = (s: DBStrategy, idx: number) => {
-    const steps = Array.isArray(s.steps) ? s.steps : [];
+    const steps = Array.isArray(s.implementation_steps) ? s.implementation_steps : [];
     const stepsStr = steps.length > 0
       ? steps.map((step: any, i: number) => `${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
       : '';
-    return `## ${idx}. ${s.name} (${s.id})
-**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${s.estimated_impact || 'Varies'} | **Difficulty:** ${s.difficulty}
+    return `## ${idx}. ${s.title} (${s.strategy_id})
+**Horseman:** ${HORSEMAN_DISPLAY[s.horseman_type] || s.horseman_type} | **Impact:** ${s.estimated_impact_display || 'Varies'} | **Difficulty:** ${s.difficulty}
 
-${s.description}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
+${s.strategy_details}${stepsStr ? `\n\n**Implementation Steps:**\n${stepsStr}` : ''}`;
   };
 
-  // ----- AUTO mode: single best strategy with full steps (Engine V2 format) -----
+  // ----- AUTO mode: single best strategy with full steps -----
   if (intent === 'auto' || mode === 'auto') {
     const top = ranked[0];
     if (!top) return `I don't have a matching strategy for your profile yet. Try completing the assessment first!${disclaimer}`;
-    const s = top.strategy;
-    const steps = Array.isArray(s.steps) ? s.steps : [];
-    const stepsStr = steps.length > 0
-      ? steps.map((step: any, i: number) => `${i + 1}. ${typeof step === 'string' ? step : step?.text || step?.step || JSON.stringify(step)}`).join('\n')
-      : '1. Review this strategy with a qualified advisor for next steps.';
-    const savingsLine = s.estimated_impact ? `\n**Potential benefit:** ${s.estimated_impact}` : '';
     return `# Your Recommended Strategy
 
 Based on your profile and assessment, here is your best-fit strategy for **${horsemanLabel}**:
 
-## ${s.name}
-${s.description}${savingsLine}
+${formatStrategyBlock(top.strategy, 1)}
 
-Here are the step-by-step implementation plans for this strategy:
-
-${stepsStr}
-
-Would you like to save this as your active plan?${disclaimer}`;
+Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}`;
   }
 
   // ----- GREETING -----
   if (intent === 'greeting') {
     const top = ranked[0];
-    const topTeaser = top ? `\n\nBased on your profile, your top recommended strategy is **${top.strategy.name}**. Would you like to see the details?` : '';
+    const topTeaser = top ? `\n\nBased on your profile, your top recommended strategy is **${top.strategy.title}**. Would you like to see the details?` : '';
     return `# Welcome to RPRx Strategy Assistant${profileName}! 👋
 
 I can help you explore strategies across the Four Horsemen of household finance — **Interest, Taxes, Insurance, and Education**.
@@ -650,17 +623,17 @@ Would you like implementation details for any of these?${disclaimer}`;
     const idMatch = userMessage.match(/\b([TIE](?:N)?-\d+)\b/i);
     let target = ranked[0]; // default to top
     if (idMatch) {
-      const found = ranked.find(s => s.strategy.id.toLowerCase() === idMatch[1].toLowerCase());
+      const found = ranked.find(s => s.strategy.strategy_id.toLowerCase() === idMatch[1].toLowerCase());
       if (found) target = found;
     } else {
       // Try matching by strategy name substring
       const msgLower = userMessage.toLowerCase();
-      const nameMatch = ranked.find(s => msgLower.includes(s.strategy.name.toLowerCase().substring(0, 20)));
+      const nameMatch = ranked.find(s => msgLower.includes(s.strategy.title.toLowerCase().substring(0, 20)));
       if (nameMatch) target = nameMatch;
     }
     if (!target) return `I couldn't find a matching strategy. Try asking me to "recommend strategies" first.${disclaimer}`;
 
-    return `# Implementation Plan: ${target.strategy.name}
+    return `# Implementation Plan: ${target.strategy.title}
 
 ${formatStrategyBlock(target.strategy, 1)}
 
@@ -698,14 +671,14 @@ ${sections.map(s => `- ${s}`).join('\n')}
 
 ${primaryHorseman ? `**Primary Horseman:** ${HORSEMAN_DISPLAY[primaryHorseman]}` : ''}
 
-${top ? `**Top Recommended Strategy:** ${top.strategy.name} (${top.strategy.id})` : ''}
+${top ? `**Top Recommended Strategy:** ${top.strategy.title} (${top.strategy.strategy_id})` : ''}
 
 Would you like to explore your recommended strategies?${disclaimer}`;
   }
 
   // ----- FALLBACK -----
   const top = ranked[0];
-  const topHint = top ? `\n\nYour top recommended strategy is **${top.strategy.name}**. Would you like to see the details or get other recommendations?` : '';
+  const topHint = top ? `\n\nYour top recommended strategy is **${top.strategy.title}**. Would you like to see the details or get other recommendations?` : '';
   return `I can help you with:\n- **Strategy recommendations** based on your profile\n- **Detailed implementation plans** for any strategy\n- **Horseman-specific** strategies (taxes, interest, insurance, education)\n- **Your profile summary** and RPRx score${topHint}${disclaimer}`;
 }
 
@@ -790,7 +763,7 @@ serve(async (req) => {
     }
 
     // Parallel: save message, fetch history, fetch profile, fetch strategies, fetch completed strategies, fetch prompt templates
-    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult, knowledgeBaseContext] = await Promise.all([
+    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, activeResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult, knowledgeBaseContext] = await Promise.all([
       supabase.from('messages').insert({
         conversation_id: conversationId,
         role: 'user',
@@ -813,12 +786,16 @@ serve(async (req) => {
         .select('strategy_id')
         .eq('user_id', userId)
         .eq('status', 'completed'),
+      supabase
+        .from('user_active_strategies')
+        .select('strategy_id, status')
+        .eq('user_id', userId),
       fetchPromptTemplate(serviceClient, 'system_prompt'),
       fetchPromptTemplate(serviceClient, 'auto_mode_instructions'),
       fetchPromptTemplate(serviceClient, 'manual_mode_instructions'),
       supabase
         .from('user_assessments')
-        .select('primary_horseman')
+        .select('primary_horseman, interest_score, taxes_score, insurance_score, education_score')
         .eq('user_id', userId)
         .not('completed_at', 'is', null)
         .order('completed_at', { ascending: false })
@@ -844,9 +821,18 @@ serve(async (req) => {
     messages.push({ role: 'user', content: user_message.trim() });
 
     const allStrategies = strategiesResult;
-    const completedStrategyIds = (completedResult.data || [])
+    const completedFromPlans = (completedResult.data || [])
       .map((p: any) => p.strategy_id)
       .filter(Boolean);
+    const completedFromActive = (activeResult.data || [])
+      .filter((r: any) => r.status === 'completed')
+      .map((r: any) => r.strategy_id)
+      .filter(Boolean);
+    const activeStrategyIds = (activeResult.data || [])
+      .filter((r: any) => r.status === 'active')
+      .map((r: any) => r.strategy_id)
+      .filter(Boolean);
+    const completedStrategyIds = Array.from(new Set([...completedFromPlans, ...completedFromActive]));
 
     // Build profile context
     const profile = profileResult.data;
@@ -854,9 +840,8 @@ serve(async (req) => {
 
     // Determine subscription tier from DB
     const { data: userTier } = await serviceClient.rpc('get_subscription_tier', { _user_id: userId });
-    const forceTemplate = (Deno.env.get('RPRX_FORCE_TEMPLATE_ENGINE') || '').toLowerCase() === 'true';
-    const isFreeUser = forceTemplate || (userTier || 'free') === 'free';
-    console.log('User subscription tier:', userTier || 'free', forceTemplate ? '(forced template engine)' : '');
+    const isFreeUser = (userTier || 'free') === 'free';
+    console.log('User subscription tier:', userTier || 'free');
 
     // Determine mode — free users always get auto mode
     const isAutoMode = isFreeUser || requestMode === 'auto' || 
@@ -887,12 +872,24 @@ serve(async (req) => {
       }
     }
 
+    const horsemanRanking = latestAssessment
+      ? [
+          { key: 'interest', score: Number((latestAssessment as any).interest_score || 0) },
+          { key: 'taxes', score: Number((latestAssessment as any).taxes_score || 0) },
+          { key: 'insurance', score: Number((latestAssessment as any).insurance_score || 0) },
+          { key: 'education', score: Number((latestAssessment as any).education_score || 0) },
+        ].sort((a, b) => b.score - a.score)
+      : [];
+
     const userContext: UserContext = {
       primaryHorseman,
+      secondaryHorseman: horsemanRanking[1]?.key || null,
+      thirdHorseman: horsemanRanking[2]?.key || null,
       financialGoals,
       profileTypes,
       cashFlowStatus,
       completedStrategyIds,
+      activeStrategyIds,
       mode: effectiveMode,
     };
 
@@ -927,7 +924,7 @@ ${knowledgeBaseContext}
 
 ## MODE: AUTO (Single Best Strategy)
 ${autoInstructions}`;
-      console.log('Auto mode - top strategy:', topStrategy?.strategy.id, 'score:', topStrategy?.score);
+      console.log('Auto mode - top strategy:', topStrategy?.strategy.strategy_id, 'score:', topStrategy?.score);
     } else {
       // Manual mode: paginated strategy list
       const startIdx = (page - 1) * strategiesPerPage;
@@ -953,12 +950,13 @@ ${manualInstructions}`;
     }
 
     let assistantMessage: string;
+    const forceTemplateEngine = Deno.env.get('RPRX_FORCE_TEMPLATE_ENGINE') === 'true';
 
-    if (isFreeUser) {
+    if (isFreeUser || forceTemplateEngine) {
       // =====================================================
-      // FREE TIER: Internal template-based response engine
+      // TEMPLATE ENGINE: deterministic internal strategy engine
       // =====================================================
-      console.log('Free tier — generating template response');
+      console.log(forceTemplateEngine ? 'Forced template engine — generating response' : 'Free tier — generating template response');
       const intent = detectIntent(user_message, messages);
       assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
     } else {
@@ -977,11 +975,10 @@ ${manualInstructions}`;
 
       const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
       if (!openaiApiKey) {
-        return new Response(
-          JSON.stringify({ error: 'OpenAI API key not configured' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+        console.log('OPENAI_API_KEY missing, falling back to template engine');
+        const intent = detectIntent(user_message, messages);
+        assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
+      } else {
 
       const maxRetries = 3;
       let lastError: string | null = null;
@@ -1045,6 +1042,7 @@ ${manualInstructions}`;
       }
 
       console.log('Received OpenAI response, length:', assistantMessage.length);
+      }
     }
 
     // Save assistant message (fire and forget)
