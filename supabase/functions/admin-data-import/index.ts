@@ -9,6 +9,8 @@ const corsHeaders = {
 // Only config/back-office tables — user data tables are intentionally excluded
 const ALLOWED_TABLES = [
   "strategy_definitions",
+  "strategy_catalog_v2",
+  "prompt_engine_config",
   "assessment_questions",
   "deep_dive_questions",
   "badge_definitions",
@@ -25,6 +27,11 @@ const ALLOWED_TABLES = [
   "partners",
   "wizard_step_content",
 ];
+
+// Per-table upsert conflict key. Defaults to "id" when not specified.
+const UPSERT_CONFLICT_KEYS: Record<string, string> = {
+  strategy_catalog_v2: "strategy_id",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
