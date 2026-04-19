@@ -54,8 +54,50 @@ interface UserContext {
 // =====================================================
 // STRATEGY FETCHING FROM DATABASE
 // =====================================================
+// Engine V2: read from strategy_catalog_v2 first (canonical, cleaned).
+// Falls back to legacy strategy_definitions only if v2 is empty/unavailable.
+// RPRX_FORCE_TEMPLATE_ENGINE=true forces deterministic template path (handled below in main).
+
+function mapV2RowToDBStrategy(row: any): DBStrategy {
+  // jsonb arrays come back as arrays already
+  const goalTags = Array.isArray(row.goal_tags) ? row.goal_tags : [];
+  const steps = Array.isArray(row.implementation_steps) ? row.implementation_steps : [];
+  return {
+    id: row.strategy_id || row.id,
+    name: row.title,
+    description: row.strategy_details,
+    horseman_type: row.horseman_type,
+    difficulty: row.difficulty || 'moderate',
+    estimated_impact: row.estimated_impact_display || row.potential_savings_benefits || null,
+    tax_return_line_or_area: row.tax_return_line_or_area || null,
+    financial_goals: goalTags as string[],
+    steps,
+    is_active: row.is_active,
+    sort_order: row.sort_order || 0,
+  };
+}
 
 async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
+  // 1) Try v2 catalog first
+  try {
+    const { data: v2Data, error: v2Error } = await serviceClient
+      .from('strategy_catalog_v2')
+      .select('id, strategy_id, title, strategy_details, horseman_type, difficulty, estimated_impact_display, potential_savings_benefits, tax_return_line_or_area, goal_tags, implementation_steps, is_active, sort_order, dedupe_status')
+      .eq('is_active', true)
+      .eq('dedupe_status', 'canonical')
+      .order('sort_order', { ascending: true })
+      .limit(2000);
+
+    if (!v2Error && v2Data && v2Data.length > 0) {
+      console.log(`Strategy source: strategy_catalog_v2 (${v2Data.length} rows)`);
+      return v2Data.map(mapV2RowToDBStrategy);
+    }
+    if (v2Error) console.warn('strategy_catalog_v2 read error, falling back to legacy:', v2Error.message);
+  } catch (e) {
+    console.warn('strategy_catalog_v2 unavailable, falling back to legacy:', (e as Error).message);
+  }
+
+  // 2) Fallback: legacy strategy_definitions
   const { data, error } = await serviceClient
     .from('strategy_definitions')
     .select('id, name, description, horseman_type, difficulty, estimated_impact, tax_return_line_or_area, financial_goals, steps, is_active, sort_order')
@@ -63,9 +105,10 @@ async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
     .order('sort_order', { ascending: true });
 
   if (error) {
-    console.error('Error fetching strategies:', error);
+    console.error('Error fetching strategies (legacy fallback):', error);
     return [];
   }
+  console.log(`Strategy source: strategy_definitions (legacy fallback, ${(data || []).length} rows)`);
   return data || [];
 }
 
