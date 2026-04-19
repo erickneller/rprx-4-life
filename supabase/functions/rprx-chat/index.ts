@@ -883,41 +883,64 @@ serve(async (req) => {
     const isFreeUser = (userTier || 'free') === 'free';
     console.log('User subscription tier:', userTier || 'free');
 
+    // Detect "show more" / pagination continuation — inherit horseman filter from prior assistant message
+    const trimmedLower = user_message.toLowerCase().trim();
+    const isShowMore = /^(show\s+more|more|next( page)?|see more|continue)\b/.test(trimmedLower) && trimmedLower.length < 30;
+    let inheritedHorseman: string | null = null;
+    let inheritedPage = 1;
+    if (isShowMore) {
+      const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+      if (lastAssistant) {
+        const ac = lastAssistant.content.toLowerCase();
+        if (ac.includes('strategies for tax')) inheritedHorseman = 'taxes';
+        else if (ac.includes('strategies for interest') || ac.includes('strategies for debt')) inheritedHorseman = 'interest';
+        else if (ac.includes('strategies for insurance')) inheritedHorseman = 'insurance';
+        else if (ac.includes('strategies for education')) inheritedHorseman = 'education';
+        // Parse current page from prior "Showing X–Y of Z" footer
+        const pageMatch = lastAssistant.content.match(/Showing\s+\d+[–-](\d+)\s+of\s+\d+/i);
+        if (pageMatch) {
+          const lastShown = parseInt(pageMatch[1], 10);
+          inheritedPage = Math.floor(lastShown / 5) + 1;
+        }
+      }
+    }
+
     // Detect explicit horseman-filter intent in the user message
     // (e.g. "show me tax strategies", "list insurance options", "education strategies")
     const msgLowerForFilter = user_message.toLowerCase();
-    let requestedHorsemanFilter: string | null = null;
-    if (/\b(tax|taxes|taxation)\b/.test(msgLowerForFilter) && !/\b(interest|debt|insurance|education)\b/.test(msgLowerForFilter)) {
-      requestedHorsemanFilter = 'taxes';
-    } else if (/\binsurance\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|education)\b/.test(msgLowerForFilter)) {
-      requestedHorsemanFilter = 'insurance';
-    } else if (/\beducation\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|insurance)\b/.test(msgLowerForFilter)) {
-      requestedHorsemanFilter = 'education';
-    } else if (/\b(interest|debt)\b/.test(msgLowerForFilter) && !/\b(tax|insurance|education)\b/.test(msgLowerForFilter)) {
-      requestedHorsemanFilter = 'interest';
-    }
-    // Only treat as filter when user is asking to see/show/list strategies
-    const looksLikeStrategyList = /\b(show|list|see|view|give|browse|explore|what|which)\b.*\bstrateg/i.test(user_message)
-      || /\bstrategies?\b/i.test(user_message);
-    if (requestedHorsemanFilter && !looksLikeStrategyList) {
-      requestedHorsemanFilter = null;
+    let requestedHorsemanFilter: string | null = inheritedHorseman;
+    if (!requestedHorsemanFilter) {
+      if (/\b(tax|taxes|taxation)\b/.test(msgLowerForFilter) && !/\b(interest|debt|insurance|education)\b/.test(msgLowerForFilter)) {
+        requestedHorsemanFilter = 'taxes';
+      } else if (/\binsurance\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|education)\b/.test(msgLowerForFilter)) {
+        requestedHorsemanFilter = 'insurance';
+      } else if (/\beducation\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|insurance)\b/.test(msgLowerForFilter)) {
+        requestedHorsemanFilter = 'education';
+      } else if (/\b(interest|debt)\b/.test(msgLowerForFilter) && !/\b(tax|insurance|education)\b/.test(msgLowerForFilter)) {
+        requestedHorsemanFilter = 'interest';
+      }
+      const looksLikeStrategyList = /\b(show|list|see|view|give|browse|explore|what|which)\b.*\bstrateg/i.test(user_message)
+        || /\bstrategies?\b/i.test(user_message);
+      if (requestedHorsemanFilter && !looksLikeStrategyList) {
+        requestedHorsemanFilter = null;
+      }
     }
 
     // Determine mode — free users always get auto mode, EXCEPT when the user
-    // explicitly asks for a horseman-filtered strategy list (force manual).
+    // explicitly asks for a horseman-filtered strategy list or paginates with "show more".
     const isAutoMode =
-      !requestedHorsemanFilter &&
+      !requestedHorsemanFilter && !isShowMore &&
       (isFreeUser || requestMode === 'auto' ||
         user_message.includes('## My Assessment Results') ||
         user_message.includes('## My Profile'));
 
-    const effectiveMode: 'auto' | 'manual' = requestedHorsemanFilter
+    const effectiveMode: 'auto' | 'manual' = (requestedHorsemanFilter || isShowMore)
       ? 'manual'
       : (isAutoMode ? 'auto' : (requestMode || 'manual'));
-    const page = requestPage || 1;
-    const strategiesPerPage = 10;
+    const page = requestPage || inheritedPage || 1;
+    const strategiesPerPage = 5;
     if (requestedHorsemanFilter) {
-      console.log(`Horseman filter requested: ${requestedHorsemanFilter} → forcing mode=manual`);
+      console.log(`Horseman filter: ${requestedHorsemanFilter} (inherited=${!!inheritedHorseman}) → mode=manual, page=${page}`);
     }
 
     // Detect primary horseman from assessment DB result, then fall back to message parsing
