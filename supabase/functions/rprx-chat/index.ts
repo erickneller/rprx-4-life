@@ -44,10 +44,13 @@ interface ScoredStrategy {
 
 interface UserContext {
   primaryHorseman: string | null;
+  secondaryHorseman: string | null;
+  thirdHorseman: string | null;
   financialGoals: string[];
   profileTypes: string[];
   cashFlowStatus: string | null;
   completedStrategyIds: string[];
+  activeStrategyIds: string[];
   mode: 'auto' | 'manual';
 }
 
@@ -74,68 +77,59 @@ async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
 // =====================================================
 
 function scoreStrategy(strategy: DBStrategy, context: UserContext): number {
-  // Exclude completed strategies entirely
-  if (context.completedStrategyIds.includes(strategy.id)) {
-    return -1;
-  }
+  // Hard excludes
+  if (context.completedStrategyIds.includes(strategy.id)) return -1;
 
   let score = 0;
 
-  // 1. Horseman match (30% weight, max 30 points)
-  if (context.primaryHorseman && strategy.horseman_type === context.primaryHorseman) {
-    score += 30;
-  }
+  // 1) Horseman fit (max 35)
+  if (context.primaryHorseman && strategy.horseman_type === context.primaryHorseman) score += 35;
+  else if (context.secondaryHorseman && strategy.horseman_type === context.secondaryHorseman) score += 20;
+  else if (context.thirdHorseman && strategy.horseman_type === context.thirdHorseman) score += 10;
 
-  // 2. Financial goals match (25% weight, max 25 points)
+  // 2) Goal fit (max 20)
   if (context.financialGoals.length > 0 && strategy.financial_goals && strategy.financial_goals.length > 0) {
     const overlap = strategy.financial_goals.filter(g => context.financialGoals.includes(g)).length;
-    const maxPossible = Math.min(context.financialGoals.length, strategy.financial_goals.length);
-    if (maxPossible > 0) {
-      score += Math.round((overlap / maxPossible) * 25);
-    }
+    const ratio = overlap / Math.max(1, Math.min(context.financialGoals.length, strategy.financial_goals.length));
+    if (ratio >= 0.7) score += 20;
+    else if (ratio > 0) score += 10;
   }
 
-  // 3. Difficulty fit (15% weight) - easy preferred for auto mode
-  const difficultyScores: Record<string, number> = { easy: 15, moderate: 10, advanced: 5 };
+  // 3) Urgency fit (max 20)
+  // Prefer immediate-relief strategies when cash flow is tight/deficit
+  if (context.cashFlowStatus === 'deficit') {
+    if (strategy.difficulty === 'easy') score += 20;
+    else if (strategy.difficulty === 'moderate') score += 12;
+    else score += 4;
+  } else if (context.cashFlowStatus === 'tight') {
+    if (strategy.difficulty === 'easy') score += 16;
+    else if (strategy.difficulty === 'moderate') score += 12;
+    else score += 7;
+  } else {
+    score += 10;
+  }
+
+  // 4) Feasibility fit (max 15)
   if (context.mode === 'auto') {
-    score += difficultyScores[strategy.difficulty] || 5;
+    if (strategy.difficulty === 'easy') score += 15;
+    else if (strategy.difficulty === 'moderate') score += 9;
+    else score += 4;
   } else {
-    // Manual mode: moderate weight, all difficulties welcome
-    score += 10;
+    if (strategy.difficulty === 'advanced') score += 10;
+    else score += 12;
   }
 
-  // 4. Profile type relevance (15% weight)
-  // Map profile types to horseman affinity
-  const profileHorsemanMap: Record<string, string[]> = {
-    business_owner: ['taxes', 'interest'],
-    retiree: ['taxes', 'insurance'],
-    salesperson: ['taxes', 'interest'],
-    wage_earner: ['taxes', 'interest'],
-    investor: ['taxes', 'interest'],
-    farmer: ['taxes', 'insurance'],
-    nonprofit: ['taxes', 'education'],
-  };
-  if (context.profileTypes.length > 0) {
-    for (const pt of context.profileTypes) {
-      const affinities = profileHorsemanMap[pt] || [];
-      if (affinities.includes(strategy.horseman_type)) {
-        score += 15;
-        break;
-      }
-    }
-  }
+  // 5) Impact fit (max 10)
+  const impact = (strategy.estimated_impact || '').toLowerCase();
+  if (impact.includes('50,000') || impact.includes('100,000') || impact.includes('high')) score += 10;
+  else if (impact.includes('10,000') || impact.includes('5,000')) score += 8;
+  else if (impact.trim()) score += 6;
+  else score += 4;
 
-  // 5. Cash flow compatibility (10% weight)
-  if (context.cashFlowStatus === 'deficit' && strategy.difficulty === 'advanced') {
-    // Deprioritize complex strategies for deficit users
-    score += 2;
-  } else if (context.cashFlowStatus === 'surplus') {
-    score += 10;
-  } else {
-    score += 7;
-  }
+  // Penalties
+  if (context.activeStrategyIds.includes(strategy.id)) score -= 20;
 
-  return score;
+  return Math.max(score, 0);
 }
 
 function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredStrategy[] {
@@ -736,7 +730,7 @@ serve(async (req) => {
     }
 
     // Parallel: save message, fetch history, fetch profile, fetch strategies, fetch completed strategies, fetch prompt templates
-    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult, knowledgeBaseContext] = await Promise.all([
+    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, activeResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult, knowledgeBaseContext] = await Promise.all([
       supabase.from('messages').insert({
         conversation_id: conversationId,
         role: 'user',
@@ -759,12 +753,16 @@ serve(async (req) => {
         .select('strategy_id')
         .eq('user_id', userId)
         .eq('status', 'completed'),
+      supabase
+        .from('user_active_strategies')
+        .select('strategy_id, status')
+        .eq('user_id', userId),
       fetchPromptTemplate(serviceClient, 'system_prompt'),
       fetchPromptTemplate(serviceClient, 'auto_mode_instructions'),
       fetchPromptTemplate(serviceClient, 'manual_mode_instructions'),
       supabase
         .from('user_assessments')
-        .select('primary_horseman')
+        .select('primary_horseman, interest_score, taxes_score, insurance_score, education_score')
         .eq('user_id', userId)
         .not('completed_at', 'is', null)
         .order('completed_at', { ascending: false })
@@ -790,9 +788,18 @@ serve(async (req) => {
     messages.push({ role: 'user', content: user_message.trim() });
 
     const allStrategies = strategiesResult;
-    const completedStrategyIds = (completedResult.data || [])
+    const completedFromPlans = (completedResult.data || [])
       .map((p: any) => p.strategy_id)
       .filter(Boolean);
+    const completedFromActive = (activeResult.data || [])
+      .filter((r: any) => r.status === 'completed')
+      .map((r: any) => r.strategy_id)
+      .filter(Boolean);
+    const activeStrategyIds = (activeResult.data || [])
+      .filter((r: any) => r.status === 'active')
+      .map((r: any) => r.strategy_id)
+      .filter(Boolean);
+    const completedStrategyIds = Array.from(new Set([...completedFromPlans, ...completedFromActive]));
 
     // Build profile context
     const profile = profileResult.data;
@@ -832,12 +839,24 @@ serve(async (req) => {
       }
     }
 
+    const horsemanRanking = latestAssessment
+      ? [
+          { key: 'interest', score: Number((latestAssessment as any).interest_score || 0) },
+          { key: 'taxes', score: Number((latestAssessment as any).taxes_score || 0) },
+          { key: 'insurance', score: Number((latestAssessment as any).insurance_score || 0) },
+          { key: 'education', score: Number((latestAssessment as any).education_score || 0) },
+        ].sort((a, b) => b.score - a.score)
+      : [];
+
     const userContext: UserContext = {
       primaryHorseman,
+      secondaryHorseman: horsemanRanking[1]?.key || null,
+      thirdHorseman: horsemanRanking[2]?.key || null,
       financialGoals,
       profileTypes,
       cashFlowStatus,
       completedStrategyIds,
+      activeStrategyIds,
       mode: effectiveMode,
     };
 
@@ -898,12 +917,13 @@ ${manualInstructions}`;
     }
 
     let assistantMessage: string;
+    const forceTemplateEngine = Deno.env.get('RPRX_FORCE_TEMPLATE_ENGINE') === 'true';
 
-    if (isFreeUser) {
+    if (isFreeUser || forceTemplateEngine) {
       // =====================================================
-      // FREE TIER: Internal template-based response engine
+      // TEMPLATE ENGINE: deterministic internal strategy engine
       // =====================================================
-      console.log('Free tier — generating template response');
+      console.log(forceTemplateEngine ? 'Forced template engine — generating response' : 'Free tier — generating template response');
       const intent = detectIntent(user_message, messages);
       assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
     } else {
@@ -922,11 +942,10 @@ ${manualInstructions}`;
 
       const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
       if (!openaiApiKey) {
-        return new Response(
-          JSON.stringify({ error: 'OpenAI API key not configured' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+        console.log('OPENAI_API_KEY missing, falling back to template engine');
+        const intent = detectIntent(user_message, messages);
+        assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message);
+      } else {
 
       const maxRetries = 3;
       let lastError: string | null = null;
@@ -990,6 +1009,7 @@ ${manualInstructions}`;
       }
 
       console.log('Received OpenAI response, length:', assistantMessage.length);
+      }
     }
 
     // Save assistant message (fire and forget)
