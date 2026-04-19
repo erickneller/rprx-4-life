@@ -528,6 +528,7 @@ function generateTemplateResponse(
   primaryHorseman: string | null,
   mode: 'auto' | 'manual',
   userMessage: string,
+  pageNum: number = 1,
 ): string {
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
