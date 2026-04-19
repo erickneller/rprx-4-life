@@ -843,14 +843,42 @@ serve(async (req) => {
     const isFreeUser = (userTier || 'free') === 'free';
     console.log('User subscription tier:', userTier || 'free');
 
-    // Determine mode — free users always get auto mode
-    const isAutoMode = isFreeUser || requestMode === 'auto' || 
-      user_message.includes('## My Assessment Results') || 
-      user_message.includes('## My Profile');
-    
-    const effectiveMode: 'auto' | 'manual' = isAutoMode ? 'auto' : (requestMode || 'manual');
+    // Detect explicit horseman-filter intent in the user message
+    // (e.g. "show me tax strategies", "list insurance options", "education strategies")
+    const msgLowerForFilter = user_message.toLowerCase();
+    let requestedHorsemanFilter: string | null = null;
+    if (/\b(tax|taxes|taxation)\b/.test(msgLowerForFilter) && !/\b(interest|debt|insurance|education)\b/.test(msgLowerForFilter)) {
+      requestedHorsemanFilter = 'taxes';
+    } else if (/\binsurance\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|education)\b/.test(msgLowerForFilter)) {
+      requestedHorsemanFilter = 'insurance';
+    } else if (/\beducation\b/.test(msgLowerForFilter) && !/\b(tax|interest|debt|insurance)\b/.test(msgLowerForFilter)) {
+      requestedHorsemanFilter = 'education';
+    } else if (/\b(interest|debt)\b/.test(msgLowerForFilter) && !/\b(tax|insurance|education)\b/.test(msgLowerForFilter)) {
+      requestedHorsemanFilter = 'interest';
+    }
+    // Only treat as filter when user is asking to see/show/list strategies
+    const looksLikeStrategyList = /\b(show|list|see|view|give|browse|explore|what|which)\b.*\bstrateg/i.test(user_message)
+      || /\bstrategies?\b/i.test(user_message);
+    if (requestedHorsemanFilter && !looksLikeStrategyList) {
+      requestedHorsemanFilter = null;
+    }
+
+    // Determine mode — free users always get auto mode, EXCEPT when the user
+    // explicitly asks for a horseman-filtered strategy list (force manual).
+    const isAutoMode =
+      !requestedHorsemanFilter &&
+      (isFreeUser || requestMode === 'auto' ||
+        user_message.includes('## My Assessment Results') ||
+        user_message.includes('## My Profile'));
+
+    const effectiveMode: 'auto' | 'manual' = requestedHorsemanFilter
+      ? 'manual'
+      : (isAutoMode ? 'auto' : (requestMode || 'manual'));
     const page = requestPage || 1;
     const strategiesPerPage = 10;
+    if (requestedHorsemanFilter) {
+      console.log(`Horseman filter requested: ${requestedHorsemanFilter} → forcing mode=manual`);
+    }
 
     // Detect primary horseman from assessment DB result, then fall back to message parsing
     let primaryHorseman: string | null = null;
