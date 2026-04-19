@@ -270,7 +270,58 @@ export default function PlanDetail() {
           </div>
         )}
 
-        {/* Requirements */}
+        {/* Expected Result */}
+        {content.expected_result && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Expected Result
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pb-4">
+              {content.expected_result.impact_range && (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">Impact</span>
+                  <span className="text-sm font-semibold">{content.expected_result.impact_range}</span>
+                </div>
+              )}
+              {content.expected_result.first_win_timeline && (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">First win</span>
+                  <span className="text-sm font-semibold">{content.expected_result.first_win_timeline}</span>
+                </div>
+              )}
+              {content.expected_result.confidence_note && (
+                <p className="text-xs text-muted-foreground italic pt-1">{content.expected_result.confidence_note}</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Before You Start */}
+        {content.before_you_start && content.before_you_start.length > 0 && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold">Before You Start</h2>
+              <p className="text-sm text-muted-foreground">Gather these before working through the plan</p>
+            </div>
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <ul className="space-y-2">
+                  {content.before_you_start.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Requirements (legacy field) */}
         {content.requirements && (
           <div className="space-y-2">
             <h2 className="text-base font-semibold">Key Requirements</h2>
@@ -282,7 +333,7 @@ export default function PlanDetail() {
         {content.steps && content.steps.length > 0 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-semibold">Step-by-Step Implementation Plan</h2>
+              <h2 className="text-lg font-semibold">Step-by-Step Plan</h2>
               <p className="text-sm text-muted-foreground">Check off each step as you complete it</p>
             </div>
             <Card>
@@ -293,6 +344,50 @@ export default function PlanDetail() {
                   onToggleStep={handleToggleStep}
                   disabled={updatePlan.isPending}
                 />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Risks & Mistakes to Avoid */}
+        {content.risks_and_mistakes_to_avoid && content.risks_and_mistakes_to_avoid.length > 0 && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold">Risks & Mistakes to Avoid</h2>
+              <p className="text-sm text-muted-foreground">Watch out for these common pitfalls</p>
+            </div>
+            <Card className="border-destructive/20 bg-destructive/5">
+              <CardContent className="pt-4 pb-4">
+                <ul className="space-y-2">
+                  {content.risks_and_mistakes_to_avoid.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Advisor Packet */}
+        {content.advisor_packet && content.advisor_packet.length > 0 && (
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold">Advisor Packet</h2>
+              <p className="text-sm text-muted-foreground">Bring this to your CPA, EA, or financial advisor</p>
+            </div>
+            <Card>
+              <CardContent className="pt-4 pb-4">
+                <ul className="space-y-2">
+                  {content.advisor_packet.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <Shield className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
           </div>
