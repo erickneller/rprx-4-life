@@ -3,8 +3,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import type { Json } from '@/integrations/supabase/types';
 
+export interface StructuredPlanStep {
+  title: string;
+  instruction: string;
+  time_estimate: string;
+  done_definition: string;
+}
+
+export interface ExpectedResult {
+  impact_range: string;
+  first_win_timeline: string;
+  confidence_note: string;
+}
+
 export interface PlanContent {
-  steps: string[];
+  /** Steps may be legacy string[] or new structured StructuredPlanStep[]. */
+  steps: Array<string | StructuredPlanStep>;
   summary?: string;
   horseman?: string[];
   savings?: string;
@@ -14,6 +28,12 @@ export interface PlanContent {
   disclaimer?: string;
   completedSteps?: number[];
   estimated_impact?: { low: number; high: number; source: string };
+  /** Structured-plan v1 fields (optional, backward-compatible). */
+  plan_schema?: 'v1';
+  expected_result?: ExpectedResult;
+  before_you_start?: string[];
+  risks_and_mistakes_to_avoid?: string[];
+  advisor_packet?: string[];
 }
 
 export interface SavedPlan {
