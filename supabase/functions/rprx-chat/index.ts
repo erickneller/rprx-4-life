@@ -365,7 +365,9 @@ function buildStructuredPlan(
     'Capture lessons learned in your RPRx plan notes',
   ].slice(0, Math.max(0, 5 - rawSteps.length) + rawSteps.length);
 
-  const structuredSteps: StructuredPlanStep[] = baseSteps.slice(0, 7).map((stepText, i) => {
+  const trimmedSteps = baseSteps.slice(0, 7);
+  const lastIdx = trimmedSteps.length - 1;
+  const structuredSteps: StructuredPlanStep[] = trimmedSteps.map((stepText, i) => {
     const text = cleanStrategyText(stepText);
     const titleSource = text.split(/[:.\-–]/)[0].trim();
     const title = (titleSource.length > 4 && titleSource.length <= 70 ? titleSource : `Step ${i + 1}`)
@@ -376,7 +378,7 @@ function buildStructuredPlan(
       time_estimate: i === 0 ? '15-20 min' : i < 3 ? '20-45 min' : '15-30 min',
       done_definition: i === 0
         ? 'You have the documents listed in "Before You Start" gathered in one folder.'
-        : i === structuredSteps_lastIndex(baseSteps.length, i)
+        : i === lastIdx
           ? 'Change is confirmed in writing and stored with your records.'
           : 'Action is completed and the result is captured in your plan notes.',
     };
@@ -409,10 +411,6 @@ function buildStructuredPlan(
     advisor_packet: preset.packet,
     disclaimer: 'Educational information only. Consult a qualified professional before implementation.',
   };
-}
-
-function structuredSteps_lastIndex(total: number, i: number): number {
-  return i === Math.min(total, 7) - 1 ? i : -1;
 }
 
 /** Embed structured plan as a hidden JSON code block the frontend can parse. */
