@@ -9,6 +9,7 @@ import { Loader2, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseEstimatedImpact } from '@/lib/moneyLeakEstimator';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface SavePlanModalProps {
   open: boolean;
@@ -26,9 +27,9 @@ export function SavePlanModal({ open, onOpenChange, initialData }: SavePlanModal
   const createPlan = useCreatePlan();
   const { data: existingPlans = [] } = usePlans();
   const { toast } = useToast();
+  const { isFree } = useSubscription();
 
-  // Free tier: max 1 plan
-  const isFree = true; // swap to subscription check later
+  // Free tier: max 1 plan (admins/paid: unlimited)
   const atLimit = isFree && existingPlans.length >= 1;
 
   const handleSave = async () => {
