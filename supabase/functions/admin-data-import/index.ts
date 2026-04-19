@@ -9,6 +9,8 @@ const corsHeaders = {
 // Only config/back-office tables — user data tables are intentionally excluded
 const ALLOWED_TABLES = [
   "strategy_definitions",
+  "strategy_catalog_v2",
+  "prompt_engine_config",
   "assessment_questions",
   "deep_dive_questions",
   "badge_definitions",
@@ -25,6 +27,11 @@ const ALLOWED_TABLES = [
   "partners",
   "wizard_step_content",
 ];
+
+// Per-table upsert conflict key. Defaults to "id" when not specified.
+const UPSERT_CONFLICT_KEYS: Record<string, string> = {
+  strategy_catalog_v2: "strategy_id",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -133,10 +140,22 @@ Deno.serve(async (req) => {
       const { error: insErr } = await serviceClient.from(table).insert(cleaned);
       if (insErr) throw insErr;
     } else {
-      // Upsert by primary key `id`
+      // Upsert by table-specific conflict key (defaults to id)
+      const conflictKey = UPSERT_CONFLICT_KEYS[table] || "id";
+
+      // For strategy_catalog_v2 specifically: if rows lack `id` but have `strategy_id`,
+      // mirror strategy_id into id so the PK is populated on insert.
+      if (table === "strategy_catalog_v2") {
+        for (const r of cleaned) {
+          if ((!r.id || r.id === null || r.id === "") && r.strategy_id) {
+            r.id = r.strategy_id;
+          }
+        }
+      }
+
       const { error: upErr } = await serviceClient
         .from(table)
-        .upsert(cleaned, { onConflict: "id" });
+        .upsert(cleaned, { onConflict: conflictKey });
       if (upErr) throw upErr;
     }
 
