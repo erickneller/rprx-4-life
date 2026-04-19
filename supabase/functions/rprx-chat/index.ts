@@ -854,8 +854,9 @@ serve(async (req) => {
 
     // Determine subscription tier from DB
     const { data: userTier } = await serviceClient.rpc('get_subscription_tier', { _user_id: userId });
-    const isFreeUser = (userTier || 'free') === 'free';
-    console.log('User subscription tier:', userTier || 'free');
+    const forceTemplate = (Deno.env.get('RPRX_FORCE_TEMPLATE_ENGINE') || '').toLowerCase() === 'true';
+    const isFreeUser = forceTemplate || (userTier || 'free') === 'free';
+    console.log('User subscription tier:', userTier || 'free', forceTemplate ? '(forced template engine)' : '');
 
     // Determine mode — free users always get auto mode
     const isAutoMode = isFreeUser || requestMode === 'auto' || 
