@@ -576,23 +576,35 @@ Here's what I can do:
 - 📊 **Summarize** your financial profile${topTeaser}${disclaimer}`;
   }
 
-  // ----- RECOMMEND: top 3 -----
+  // ----- RECOMMEND: top 5 (paginated) -----
   if (intent === 'recommend') {
-    const top3 = ranked.slice(0, 3);
-    if (top3.length === 0) return `I don't have matching strategies for your profile yet. Please complete the assessment first.${disclaimer}`;
+    const startIdx = (pageNum - 1) * 5;
+    const endIdx = startIdx + 5;
+    const pageItems = ranked.slice(startIdx, endIdx);
+    if (pageItems.length === 0) {
+      return pageNum === 1
+        ? `I don't have matching strategies for your profile yet. Please complete the assessment first.${disclaimer}`
+        : `No more strategies to show — you've reached the end of the list.${disclaimer}`;
+    }
+    const hasMore = endIdx < ranked.length;
+    const startNum = startIdx + 1;
 
-    const profileLine = profile?.profile_type
+    const profileLine = pageNum === 1 && profile?.profile_type
       ? `Based on your profile as a **${(Array.isArray(profile.profile_type) ? profile.profile_type : [profile.profile_type]).map((t: string) => profileTypeLabels[t] || t).join(', ')}** with a primary focus on **${horsemanLabel}**:\n\n`
       : '';
 
-    return `# Your Top Recommended Strategies
+    const moreHint = hasMore
+      ? `\n\n_Showing ${startNum}–${startIdx + pageItems.length} of ${ranked.length}. **Type "show more" to see additional strategies.**_`
+      : `\n\n_Showing ${startNum}–${startIdx + pageItems.length} of ${ranked.length}. End of list._`;
 
-${profileLine}${top3.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}
+    return `# Your Top Recommended Strategies${pageNum > 1 ? ` (Page ${pageNum})` : ''}
+
+${profileLine}${pageItems.map((s, i) => formatStrategyBlock(s.strategy, startNum + i)).join('\n\n')}${moreHint}
 
 Would you like a detailed implementation plan for any of these strategies? Just ask about one by name or ID.${disclaimer}`;
   }
 
-  // ----- HORSEMAN FILTER -----
+  // ----- HORSEMAN FILTER (top 5, paginated) -----
   if (intent === 'horseman_filter') {
     const msgLower = userMessage.toLowerCase();
     let filterHorseman = primaryHorseman || 'interest';
@@ -601,18 +613,31 @@ Would you like a detailed implementation plan for any of these strategies? Just 
     else if (/\binsurance\b/.test(msgLower)) filterHorseman = 'insurance';
     else if (/\beducation\b/.test(msgLower)) filterHorseman = 'education';
 
-    const filtered = ranked.filter(s => s.strategy.horseman_type === filterHorseman).slice(0, 3);
-    if (filtered.length === 0) {
-      const anyFiltered = ranked.slice(0, 3);
+    const filteredAll = ranked.filter(s => s.strategy.horseman_type === filterHorseman);
+    const startIdx = (pageNum - 1) * 5;
+    const endIdx = startIdx + 5;
+    const pageItems = filteredAll.slice(startIdx, endIdx);
+
+    if (filteredAll.length === 0) {
+      const anyFiltered = ranked.slice(0, 5);
       return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}
 
 I don't have specific ${filterHorseman} strategies matching your profile yet, but here are your top overall recommendations:
 
 ${anyFiltered.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}${disclaimer}`;
     }
-    return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}
+    if (pageItems.length === 0) {
+      return `No more ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman} strategies to show — you've reached the end of the list.${disclaimer}`;
+    }
+    const hasMore = endIdx < filteredAll.length;
+    const startNum = startIdx + 1;
+    const moreHint = hasMore
+      ? `\n\n_Showing ${startNum}–${startIdx + pageItems.length} of ${filteredAll.length}. **Type "show more" to see additional strategies.**_`
+      : `\n\n_Showing ${startNum}–${startIdx + pageItems.length} of ${filteredAll.length}. End of list._`;
 
-${filtered.map((s, i) => formatStrategyBlock(s.strategy, i + 1)).join('\n\n')}
+    return `# Strategies for ${HORSEMAN_DISPLAY[filterHorseman] || filterHorseman}${pageNum > 1 ? ` (Page ${pageNum})` : ''}
+
+${pageItems.map((s, i) => formatStrategyBlock(s.strategy, startNum + i)).join('\n\n')}${moreHint}
 
 Would you like implementation details for any of these?${disclaimer}`;
   }
