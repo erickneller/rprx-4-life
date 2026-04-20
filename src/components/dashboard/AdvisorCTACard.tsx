@@ -29,7 +29,7 @@ export function AdvisorCTACard() {
           <h3 className="font-semibold text-foreground">Speak with an RPRx Advisor</h3>
           <p className="text-sm text-muted-foreground">Get personalized guidance from a financial advisor</p>
         </div>
-        <Button asChild size="sm">
+        <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
           <a href={href} target={isPhone ? undefined : '_blank'} rel="noopener noreferrer">
             {isPhone ? 'Call Now' : 'Book Now'}
           </a>
