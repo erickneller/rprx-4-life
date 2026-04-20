@@ -105,8 +105,8 @@ export function useDayOneCTA() {
           navigate('/assessment');
           return;
         }
-        // Free tier guard
-        if (plans.length >= 1) {
+        // Free tier guard (admins/paid bypass)
+        if (isFree && plans.length >= 1) {
           toast({
             title: 'Plan limit reached',
             description: 'Free accounts are limited to 1 plan. Complete or delete your current plan first.',
