@@ -1,27 +1,41 @@
 
 
-## Fix: Admin Panel link bouncing back to /dashboard
+## Add Visible Loading Indicator While Strategy Assistant Responds
 
-**Root cause:** Race condition in `src/components/auth/AdminRoute.tsx`. The `useAdmin()` hook uses `useQuery` with `enabled: !!user`. On the very first render after auth resolves, React Query reports `isLoading: false` and `isAdmin: false` (the default) for one tick before the query actually starts. AdminRoute's check `if (!isAdmin) return <Navigate to="/dashboard" />` fires during that tick and silently bounces admins back to the dashboard — exactly what the screenshot shows.
+**Current state:** While `isSending` is true, the chat shows a tiny `Loader2` spinner inside a small grey message bubble next to the assistant avatar. It's easy to miss, especially in auto-mode where strategy generation can take 10–30 seconds.
 
-The `has_role` RPC in your network log returned `true`, confirming the user IS admin. The bug is purely in the gate's loading-state logic.
+### Fix (1 file: `src/components/assistant/ChatThread.tsx`)
 
-### Fix (2 small files)
+Replace the minimal spinner block with a more prominent, friendly "thinking" indicator:
 
-**1. `src/hooks/useAdmin.ts`** — return a proper "not yet checked" state.
-- Replace `isLoading` with `isPending` (or expose `status`).
-- React Query's `isPending` is `true` until the query has actually resolved at least once when `enabled` is true; combined with `enabled: !!user`, the consumer can distinguish "waiting" from "checked and false".
+**Visual design:**
+- Full-width centered card (matches existing `max-w-3xl mx-auto` thread layout)
+- Animated `AssistantAvatar` with the existing `animate-float` bounce
+- Large spinning `Loader2` icon (h-6 w-6) in the brand accent color
+- Status text that rotates through coach-tone messages every ~2 seconds:
+  - "Analyzing your profile…"
+  - "Reviewing your Four Horsemen…"
+  - "Crafting personalized strategies…"
+  - "Almost there…"
+- Subtle pulsing background using existing `animate-pulse` on the bubble
+- Three animated dots (`.` `.` `.`) using staggered `animate-bounce` for a chat-typing feel
 
-**2. `src/components/auth/AdminRoute.tsx`** — wait for the admin check to actually complete before redirecting.
-- Change the loading guard from `if (authLoading || adminLoading)` to also include the case where `user` exists but the admin query hasn't returned yet.
-- Concretely: gate on `authLoading || (!!user && adminPending)` and only evaluate `isAdmin` after the query has settled.
+**Auto-mode enhancement:**
+When `autoMode === true` and we're waiting on the first or second response, show a slightly different message set tuned to that flow:
+- "Building your strategy overview…"
+- "Generating step-by-step plans…"
+- "Finalizing implementation details…"
 
-### Result
-- Admin user clicks "Admin Panel" → sees the spinner for one frame → `/admin` renders normally.
-- Non-admin user → still correctly redirected to `/dashboard` after the role check resolves (no flash, no bounce).
+**Implementation notes:**
+- Add a small internal `useEffect` + `useState` to cycle the status message while `isSending` is true; reset on completion.
+- Use existing Tailwind animations (`animate-float`, `animate-pulse`, `animate-bounce`, `animate-spin`) — no new keyframes needed.
+- Keep auto-scroll behavior intact (the indicator sits where the old spinner was, just before the `scrollRef` div).
+- No layout shift: the indicator replaces the existing tiny bubble in-place.
 
-### Notes
-- No DB, RLS, or schema changes.
-- No impact on other gated routes (they use `ProtectedRoute`/`WizardGuard`, untouched).
-- Same pattern applies to any future role-gated routes.
+### Files touched
+- `src/components/assistant/ChatThread.tsx` (replace the existing `{isSending && (...)}` block)
+
+### Out of scope
+- No changes to message API, hooks, or response handling.
+- No new dependencies.
 
