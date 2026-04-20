@@ -128,8 +128,19 @@ export default function StrategyAssistant() {
             />
             
             {sendError && (
-              <div className="px-4 py-2 text-sm text-destructive bg-destructive/10 text-center">
-                {sendError}
+              <div className="px-4 py-3 text-sm bg-destructive/10 border-t border-destructive/20">
+                <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+                  <span className="text-destructive">
+                    {sendError === 'Not authenticated'
+                      ? 'Your session expired. Please refresh and sign in again.'
+                      : 'Something went wrong sending that message. Your text is saved — tap Retry to try again.'}
+                  </span>
+                  {lastFailedMessage && (
+                    <Button size="sm" variant="outline" onClick={handleRetry} disabled={isSending}>
+                      Retry
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
           </div>
