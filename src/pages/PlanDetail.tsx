@@ -451,12 +451,10 @@ export default function PlanDetail() {
           <div className="flex items-center gap-1"><Clock className="h-3 w-3" /> Updated {new Date(plan.updated_at).toLocaleDateString()}</div>
         </div>
 
-        {/* Disclaimer */}
-        {content.disclaimer && (
-          <div className="text-xs text-muted-foreground italic p-4 bg-muted/50 rounded-lg">
-            {content.disclaimer}
-          </div>
-        )}
+        {/* Disclaimer (always shown for compliance) */}
+        <div className="text-xs text-muted-foreground italic p-4 bg-muted/50 rounded-lg border">
+          {content.disclaimer || 'Educational information only. Not tax, legal, or financial advice. Consult a qualified professional before acting on any strategy.'}
+        </div>
       </div>
     </AuthenticatedLayout>
   );

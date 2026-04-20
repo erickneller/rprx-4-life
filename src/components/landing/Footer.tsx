@@ -23,10 +23,9 @@ const Footer = () => {
       { label: 'Affiliate Program', href: '#' },
     ],
     Legal: [
-      { label: 'Privacy Policy', href: '#' },
-      { label: 'Terms of Service', href: '#' },
-      { label: 'Cookie Policy', href: '#' },
-      { label: 'Security', href: '#' },
+      { label: 'Privacy Policy', href: '/privacy' },
+      { label: 'Terms of Service', href: '/terms' },
+      { label: 'Educational Disclaimer', href: '/terms#educational-purpose-only' },
     ],
   };
 
@@ -71,16 +70,28 @@ const Footer = () => {
             <div key={category}>
               <h4 className="font-semibold mb-4">{category}</h4>
               <ul className="space-y-3">
-                {links.map((link) => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
+                {links.map((link) => {
+                  const isInternal = link.href.startsWith('/');
+                  return (
+                    <li key={link.label}>
+                      {isInternal ? (
+                        <Link
+                          to={link.href}
+                          className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                        >
+                          {link.label}
+                        </Link>
+                      ) : (
+                        <a
+                          href={link.href}
+                          className="text-sm text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+                        >
+                          {link.label}
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

@@ -27,6 +27,8 @@ import CompanyDashboard from "./pages/CompanyDashboard";
 import NotFound from "./pages/NotFound";
 import Join from "./pages/Join";
 import Partners from "./pages/Partners";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 
 const queryClient = new QueryClient();
@@ -61,6 +63,8 @@ const App = () => (
           <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
           {/* /join — no ProtectedRoute; handles auth inline */}
           <Route path="/join" element={<Join />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

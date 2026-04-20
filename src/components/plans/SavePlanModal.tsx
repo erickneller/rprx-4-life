@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ interface SavePlanModalProps {
 }
 
 export function SavePlanModal({ open, onOpenChange, initialData }: SavePlanModalProps) {
+  const navigate = useNavigate();
   const [title, setTitle] = useState(initialData.strategyName);
   const [notes, setNotes] = useState('');
   const createPlan = useCreatePlan();
@@ -95,14 +97,29 @@ export function SavePlanModal({ open, onOpenChange, initialData }: SavePlanModal
         </DialogHeader>
         
         {atLimit ? (
-          <div className="py-6 text-center space-y-3">
+          <div className="py-6 text-center space-y-4">
             <Lock className="h-10 w-10 mx-auto text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Free accounts are limited to 1 active plan. Delete your current plan or upgrade to save more.
-            </p>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Got it
-            </Button>
+            <div className="space-y-2">
+              <p className="font-medium text-foreground">You've reached your free-tier plan limit</p>
+              <p className="text-sm text-muted-foreground">
+                Free accounts focus on one active plan at a time. To save this strategy, finish or delete your
+                current plan — your progress and notes will stay safe in your history.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Stay here
+              </Button>
+              <Button
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                onClick={() => { onOpenChange(false); navigate('/plans'); }}
+              >
+                Manage My Plans
+              </Button>
+            </div>
           </div>
         ) : (
           <>
