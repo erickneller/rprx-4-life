@@ -304,3 +304,51 @@ function AutoCreatePlanFooter({
     </div>
   );
 }
+
+const STANDARD_MESSAGES = [
+  'Analyzing your profile…',
+  'Reviewing your Four Horsemen…',
+  'Crafting personalized strategies…',
+  'Almost there…',
+];
+
+const AUTO_MESSAGES = [
+  'Building your strategy overview…',
+  'Generating step-by-step plans…',
+  'Finalizing implementation details…',
+  'Almost there…',
+];
+
+function ThinkingIndicator({ autoMode }: { autoMode: boolean }) {
+  const messages = autoMode ? AUTO_MESSAGES : STANDARD_MESSAGES;
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    setIdx(0);
+    const interval = setInterval(() => {
+      setIdx((prev) => (prev + 1) % messages.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [messages.length]);
+
+  return (
+    <div className="flex gap-3 animate-fade-in">
+      <AssistantAvatar className="animate-float" />
+      <div className="flex-1 bg-muted/60 rounded-2xl px-4 py-3 animate-pulse">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {messages[idx]}
+            </p>
+            <div className="flex gap-1 mt-1" aria-hidden="true">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
