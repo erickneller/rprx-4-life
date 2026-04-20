@@ -8,6 +8,7 @@ import { usePlans, useCreatePlan } from './usePlans';
 import { useAssessmentHistory } from './useAssessmentHistory';
 import { useSendMessage } from './useSendMessage';
 import { autoGenerateStrategy } from '@/lib/autoStrategyGenerator';
+import { useSubscription } from './useSubscription';
 import { toast } from './use-toast';
 import type { AssessmentResponseDetail } from '@/lib/promptGenerator';
 import { useQuery } from '@tanstack/react-query';
