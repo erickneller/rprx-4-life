@@ -9,9 +9,9 @@ interface AdminRouteProps {
 
 export function AdminRoute({ children }: AdminRouteProps) {
   const { user, loading: authLoading } = useAuth();
-  const { isAdmin, isLoading: adminLoading } = useAdmin();
+  const { isAdmin, isFetched } = useAdmin();
 
-  if (authLoading || adminLoading) {
+  if (authLoading || (!!user && !isFetched)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
