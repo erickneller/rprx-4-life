@@ -63,13 +63,13 @@ export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
   const { data: responses } = useAssessmentResponses(assessment?.id);
   const createPlan = useCreatePlan();
   const { data: existingPlans = [] } = usePlans();
+  const { isFree } = useSubscription();
   const [isGenerating, setIsGenerating] = useState(false);
 
   const loading = isGenerating || isSending;
 
   const handleGenerate = async () => {
-    // Free tier guard
-    const isFree = true;
+    // Free tier guard (admins/paid bypass)
     if (isFree && existingPlans.length >= 1) {
       toast({
         title: 'Plan limit reached',
