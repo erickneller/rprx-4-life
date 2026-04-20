@@ -206,14 +206,7 @@ export function ChatThread({ conversationId, onSendMessage, isSending, autoMode,
             </div>
           )}
           
-          {isSending && (
-            <div className="flex gap-3">
-              <AssistantAvatar />
-              <div className="bg-muted rounded-2xl px-4 py-3">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
-            </div>
-          )}
+          {isSending && <ThinkingIndicator autoMode={!!autoMode} />}
           
           <div ref={scrollRef} />
         </div>
