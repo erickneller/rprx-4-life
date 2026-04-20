@@ -8,6 +8,7 @@ import { usePlans, useCreatePlan } from './usePlans';
 import { useAssessmentHistory } from './useAssessmentHistory';
 import { useSendMessage } from './useSendMessage';
 import { autoGenerateStrategy } from '@/lib/autoStrategyGenerator';
+import { useSubscription } from './useSubscription';
 import { toast } from './use-toast';
 import type { AssessmentResponseDetail } from '@/lib/promptGenerator';
 import { useQuery } from '@tanstack/react-query';
@@ -75,6 +76,7 @@ export function useDayOneCTA() {
   const { data: activeCount = 0 } = useActiveStrategiesCount();
   const { sendMessage } = useSendMessage();
   const createPlanMutation = useCreatePlan();
+  const { isFree } = useSubscription();
   const [isGenerating, setIsGenerating] = useState(false);
 
   const latestAssessment = assessments[0] ?? null;
@@ -103,8 +105,8 @@ export function useDayOneCTA() {
           navigate('/assessment');
           return;
         }
-        // Free tier guard
-        if (plans.length >= 1) {
+        // Free tier guard (admins/paid bypass)
+        if (isFree && plans.length >= 1) {
           toast({
             title: 'Plan limit reached',
             description: 'Free accounts are limited to 1 plan. Complete or delete your current plan first.',

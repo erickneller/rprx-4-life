@@ -9,6 +9,7 @@ import { useSendMessage } from '@/hooks/useSendMessage';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatePlan, usePlans } from '@/hooks/usePlans';
+import { useSubscription } from '@/hooks/useSubscription';
 import { autoGenerateStrategy } from '@/lib/autoStrategyGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -62,13 +63,13 @@ export function SuggestedPromptCard({ assessment }: SuggestedPromptCardProps) {
   const { data: responses } = useAssessmentResponses(assessment?.id);
   const createPlan = useCreatePlan();
   const { data: existingPlans = [] } = usePlans();
+  const { isFree } = useSubscription();
   const [isGenerating, setIsGenerating] = useState(false);
 
   const loading = isGenerating || isSending;
 
   const handleGenerate = async () => {
-    // Free tier guard
-    const isFree = true;
+    // Free tier guard (admins/paid bypass)
     if (isFree && existingPlans.length >= 1) {
       toast({
         title: 'Plan limit reached',
