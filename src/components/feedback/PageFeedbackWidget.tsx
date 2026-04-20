@@ -44,12 +44,20 @@ export function PageFeedbackWidget() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          size="icon"
-          className="fixed bottom-6 left-6 z-50 h-12 w-12 rounded-full shadow-lg bg-accent text-accent-foreground hover:bg-accent/80"
-        >
-          <MessageSquarePlus className="h-5 w-5" />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                aria-label="Submit page feedback"
+                className="fixed bottom-6 left-6 z-50 h-12 w-12 rounded-full shadow-lg bg-accent text-accent-foreground hover:bg-accent/80"
+              >
+                <MessageSquarePlus className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Click to submit page specific feedback</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </PopoverTrigger>
       <PopoverContent side="top" align="start" className="w-80">
         <div className="space-y-3">
