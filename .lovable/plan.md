@@ -1,60 +1,27 @@
 
 
-## RPRx Library — Categorized Video Directory
+## Fix: Admin Panel link bouncing back to /dashboard
 
-Mirror the Partners architecture to create a Library of YouTube videos organized by category. Same admin management pattern, same user-facing card grid, same RLS model.
+**Root cause:** Race condition in `src/components/auth/AdminRoute.tsx`. The `useAdmin()` hook uses `useQuery` with `enabled: !!user`. On the very first render after auth resolves, React Query reports `isLoading: false` and `isAdmin: false` (the default) for one tick before the query actually starts. AdminRoute's check `if (!isAdmin) return <Navigate to="/dashboard" />` fires during that tick and silently bounces admins back to the dashboard — exactly what the screenshot shows.
 
-### Database (2 new tables)
+The `has_role` RPC in your network log returned `true`, confirming the user IS admin. The bug is purely in the gate's loading-state logic.
 
-**`library_categories`** (mirrors `partner_categories`)
-- `id` text PK, `name` text, `description` text, `sort_order` int, `is_active` bool, `created_at` timestamptz
+### Fix (2 small files)
 
-**`library_videos`** (mirrors `partners`)
-- `id` uuid PK, `category_id` text FK → library_categories
-- `title` text, `description` text (short)
-- `video_url` text (YouTube URL — converted to embed via existing `toYouTubeEmbedUrl` helper)
-- `thumbnail_url` text nullable (auto-fallback to YouTube thumbnail if blank)
-- `sort_order` int, `is_active` bool, `created_at`, `updated_at`
+**1. `src/hooks/useAdmin.ts`** — return a proper "not yet checked" state.
+- Replace `isLoading` with `isPending` (or expose `status`).
+- React Query's `isPending` is `true` until the query has actually resolved at least once when `enabled` is true; combined with `enabled: !!user`, the consumer can distinguish "waiting" from "checked and false".
 
-**RLS:** Admins manage all; authenticated users can read active rows. (Same as partners — no per-company visibility table needed unless you want it; library is global by default.)
+**2. `src/components/auth/AdminRoute.tsx`** — wait for the admin check to actually complete before redirecting.
+- Change the loading guard from `if (authLoading || adminLoading)` to also include the case where `user` exists but the admin query hasn't returned yet.
+- Concretely: gate on `authLoading || (!!user && adminPending)` and only evaluate `isAdmin` after the query has settled.
 
-### Backend hook
-`src/hooks/useLibrary.ts` — mirrors `usePartners.ts`:
-- `useLibraryCategories()`, `useAllLibraryCategories()`
-- `useLibraryVideos()`, `useAllLibraryVideos()`
-- `useUpsertLibraryCategory()`, `useDeleteLibraryCategory()`
-- `useUpsertLibraryVideo()`, `useDeleteLibraryVideo()`
-- Reuse `toYouTubeEmbedUrl` from `usePartners.ts` (export it from there or duplicate).
-
-### User-facing page
-`src/pages/Library.tsx` — mirrors `Partners.tsx`:
-- Header: BookOpen icon + "RPRx Library"
-- Group videos by category, render cards with embedded YouTube iframe (16:9 AspectRatio), title, short description.
-- Loading skeletons + empty state.
-
-**Routing (`src/App.tsx`):**
-- Add `<Route path="/library" element={<ProtectedRoute><WizardGuard><Library /></WizardGuard></ProtectedRoute>} />`
-
-**Navigation:**
-- Add `library` entry to `sidebar_nav_config` so it appears in the sidebar (admin can toggle visibility per existing visibility-control system). Place it near Partners under the appropriate section header.
-
-### Admin panel
-`src/components/admin/LibraryTab.tsx` — mirrors `PartnersTab.tsx`:
-- Two sub-tabs: **Categories** and **Videos**
-- Categories: list/add/edit/delete (id, name, description, sort_order, is_active)
-- Videos: list/add/edit/delete with category dropdown, title, description, YouTube URL, optional thumbnail URL, sort_order, is_active
-- Live YouTube preview when URL is entered (uses `toYouTubeEmbedUrl`)
-
-**Wire into `src/pages/AdminPanel.tsx`:**
-- Add a new "Library" tab next to "Partners".
-
-### Files touched
-- New: `src/hooks/useLibrary.ts`, `src/pages/Library.tsx`, `src/components/admin/LibraryTab.tsx`
-- Edit: `src/App.tsx` (route), `src/pages/AdminPanel.tsx` (tab), `src/hooks/usePartners.ts` (export helper) or duplicate helper
-- Migration: 2 new tables + RLS + 1 sidebar_nav_config insert
+### Result
+- Admin user clicks "Admin Panel" → sees the spinner for one frame → `/admin` renders normally.
+- Non-admin user → still correctly redirected to `/dashboard` after the role check resolves (no flash, no bounce).
 
 ### Notes
-- No engine, scoring, or assessment changes.
-- Library is globally visible to all authenticated users (no per-company gating). If you later want company-level hiding like partners, we can add `company_library_visibility` — easy follow-up.
-- Suggested seed: 1 sample category ("Getting Started") so the page isn't empty on first load.
+- No DB, RLS, or schema changes.
+- No impact on other gated routes (they use `ProtectedRoute`/`WizardGuard`, untouched).
+- Same pattern applies to any future role-gated routes.
 
