@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
+import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useCompany } from '@/hooks/useCompany';
 import { useWizardContent } from '@/hooks/useWizardContent';
 import { Button } from '@/components/ui/button';
@@ -144,41 +145,85 @@ function OptionCard({ label, selected, onClick }: { label: string; selected: boo
 
 export function ProfileWizard() {
   const navigate = useNavigate();
-  const { profile, updateProfile } = useProfile();
+  const { profile, updateProfile, isProfileComplete } = useProfile();
+  const { data: assessments } = useAssessmentHistory();
   const { createCompany, createCompanyPending } = useCompany();
   const { contentMap, isLoading: contentLoading } = useWizardContent();
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [companyName, setCompanyName] = useState('');
+  const [hydrated, setHydrated] = useState(false);
 
-  // Local form state initialized from profile
-  const [form, setForm] = useState(() => ({
-    monthly_income: profile?.monthly_income ?? null as number | null,
-    monthly_debt_payments: profile?.monthly_debt_payments ?? null as number | null,
-    monthly_housing: profile?.monthly_housing ?? null as number | null,
-    monthly_insurance: profile?.monthly_insurance ?? null as number | null,
-    monthly_living_expenses: profile?.monthly_living_expenses ?? null as number | null,
-    emergency_fund_balance: profile?.emergency_fund_balance ?? null as number | null,
-    filing_status: profile?.filing_status ?? '' as string,
-    employer_match_captured: profile?.employer_match_captured ?? '' as string,
-    tax_advantaged_accounts: ((profile?.tax_advantaged_accounts as string[]) ?? []) as string[],
-    num_children: profile?.num_children ?? null as number | null,
-    health_insurance: profile?.health_insurance ?? false,
-    life_insurance: profile?.life_insurance ?? false,
-    disability_insurance: profile?.disability_insurance ?? false,
-    long_term_care_insurance: profile?.long_term_care_insurance ?? false,
-    no_insurance: profile?.no_insurance ?? false,
-    financial_goals: profile?.financial_goals ?? [] as string[],
-    profile_type: profile?.profile_type ?? [] as string[],
-    years_until_retirement: profile?.years_until_retirement ?? null as number | null,
-    desired_retirement_income: profile?.desired_retirement_income ?? null as number | null,
-    retirement_balance_total: profile?.retirement_balance_total ?? null as number | null,
-    retirement_contribution_monthly: profile?.retirement_contribution_monthly ?? null as number | null,
-    stress_money_worry: profile?.stress_money_worry ?? '' as string,
-    stress_emergency_confidence: profile?.stress_emergency_confidence ?? '' as string,
-    stress_control_feeling: profile?.stress_control_feeling ?? '' as string,
-  }));
+  // Local form state — hydrated from profile via useEffect once profile loads
+  const [form, setForm] = useState({
+    monthly_income: null as number | null,
+    monthly_debt_payments: null as number | null,
+    monthly_housing: null as number | null,
+    monthly_insurance: null as number | null,
+    monthly_living_expenses: null as number | null,
+    emergency_fund_balance: null as number | null,
+    filing_status: '' as string,
+    employer_match_captured: '' as string,
+    tax_advantaged_accounts: [] as string[],
+    num_children: null as number | null,
+    health_insurance: false,
+    life_insurance: false,
+    disability_insurance: false,
+    long_term_care_insurance: false,
+    no_insurance: false,
+    financial_goals: [] as string[],
+    profile_type: [] as string[],
+    years_until_retirement: null as number | null,
+    desired_retirement_income: null as number | null,
+    retirement_balance_total: null as number | null,
+    retirement_contribution_monthly: null as number | null,
+    stress_money_worry: '' as string,
+    stress_emergency_confidence: '' as string,
+    stress_control_feeling: '' as string,
+  });
+
+  // Hydrate form from profile once it arrives (prevents blank Step 1 on remount)
+  useEffect(() => {
+    if (!profile || hydrated) return;
+    setForm({
+      monthly_income: profile.monthly_income ?? null,
+      monthly_debt_payments: profile.monthly_debt_payments ?? null,
+      monthly_housing: profile.monthly_housing ?? null,
+      monthly_insurance: profile.monthly_insurance ?? null,
+      monthly_living_expenses: profile.monthly_living_expenses ?? null,
+      emergency_fund_balance: profile.emergency_fund_balance ?? null,
+      filing_status: profile.filing_status ?? '',
+      employer_match_captured: profile.employer_match_captured ?? '',
+      tax_advantaged_accounts: (profile.tax_advantaged_accounts as string[]) ?? [],
+      num_children: profile.num_children ?? null,
+      health_insurance: profile.health_insurance ?? false,
+      life_insurance: profile.life_insurance ?? false,
+      disability_insurance: profile.disability_insurance ?? false,
+      long_term_care_insurance: profile.long_term_care_insurance ?? false,
+      no_insurance: profile.no_insurance ?? false,
+      financial_goals: profile.financial_goals ?? [],
+      profile_type: profile.profile_type ?? [],
+      years_until_retirement: profile.years_until_retirement ?? null,
+      desired_retirement_income: profile.desired_retirement_income ?? null,
+      retirement_balance_total: profile.retirement_balance_total ?? null,
+      retirement_contribution_monthly: profile.retirement_contribution_monthly ?? null,
+      stress_money_worry: profile.stress_money_worry ?? '',
+      stress_emergency_confidence: profile.stress_emergency_confidence ?? '',
+      stress_control_feeling: profile.stress_control_feeling ?? '',
+    });
+    setHydrated(true);
+  }, [profile, hydrated]);
+
+  // Defensive forward-redirect: if user already has a complete profile or any
+  // completed assessment, never show the wizard — send to dashboard.
+  useEffect(() => {
+    if (!profile) return;
+    const hasCompletedAssessment = (assessments || []).some(a => a.completed_at);
+    if (isProfileComplete || hasCompletedAssessment) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [profile, isProfileComplete, assessments, navigate]);
 
   const set = useCallback(<K extends keyof typeof form>(key: K, val: (typeof form)[K]) => {
     setForm(prev => ({ ...prev, [key]: val }));
