@@ -68,7 +68,7 @@ const Auth = () => {
       if (error) {
         setError(error.message);
       } else {
-        setSuccess('Password reset email sent! Check your inbox.');
+        setSuccess('Password reset email sent! Check your inbox — and your spam/junk folder if it doesn\'t arrive within 2 minutes.');
       }
     } finally {
       setIsSubmitting(false);
@@ -129,7 +129,7 @@ const Auth = () => {
             navigate('/wizard', { replace: true });
             return;
           }
-          setSuccess('Account created! Please check your email to confirm your account.');
+          setSuccess('Account created! Check your inbox to confirm your email. If you don\'t see it within 2 minutes, check your spam/junk folder or try resending.');
           setEmail('');
           setPassword('');
           setFullName('');
@@ -382,6 +382,11 @@ const Auth = () => {
           </Tabs>
         </CardContent>
       </Card>
+      <p className="absolute bottom-4 text-xs text-muted-foreground text-center px-4">
+        By continuing you agree to our{' '}
+        <a href="/terms" className="underline hover:text-foreground">Terms</a> and{' '}
+        <a href="/privacy" className="underline hover:text-foreground">Privacy Policy</a>.
+      </p>
     </div>
   );
 };

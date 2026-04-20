@@ -19,6 +19,7 @@ export default function StrategyAssistant() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [autoMode, setAutoMode] = useState(false);
   const [autoHorseman, setAutoHorseman] = useState<string | null>(null);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 
   // Open conversation from URL query param (e.g., ?c=uuid)
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function StrategyAssistant() {
   };
 
   const handleSendMessage = async (message: string) => {
+    setLastFailedMessage(null);
     const result = await sendMessage({
       conversationId: activeConversationId,
       userMessage: message,
@@ -66,6 +68,15 @@ export default function StrategyAssistant() {
           : message;
         updateTitle.mutate({ id: result.conversationId, title });
       }
+    } else {
+      // Preserve user message so they can retry without re-typing
+      setLastFailedMessage(message);
+    }
+  };
+
+  const handleRetry = () => {
+    if (lastFailedMessage) {
+      handleSendMessage(lastFailedMessage);
     }
   };
 
