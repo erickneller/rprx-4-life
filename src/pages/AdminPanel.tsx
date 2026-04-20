@@ -36,6 +36,7 @@ import { UserGuideTab } from '@/components/admin/UserGuideTab';
 import { KnowledgeBaseTab } from '@/components/admin/KnowledgeBaseTab';
 import { NavigationTab } from '@/components/admin/NavigationTab';
 import { PartnersTab } from '@/components/admin/PartnersTab';
+import { LibraryTab } from '@/components/admin/LibraryTab';
 import { DataExportTab } from '@/components/admin/DataExportTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
@@ -442,6 +443,9 @@ export default function AdminPanel() {
             <TabsTrigger value="partners" className="gap-1">
               <Building2 className="h-4 w-4" /> Partners
             </TabsTrigger>
+            <TabsTrigger value="library" className="gap-1">
+              <BookOpen className="h-4 w-4" /> Library
+            </TabsTrigger>
             <TabsTrigger value="data-export" className="gap-1">
               <Database className="h-4 w-4" /> Data Export
             </TabsTrigger>
@@ -658,6 +662,11 @@ export default function AdminPanel() {
           {/* ===== PARTNERS TAB ===== */}
           <TabsContent value="partners" className="space-y-4">
             <PartnersTab />
+          </TabsContent>
+
+          {/* ===== LIBRARY TAB ===== */}
+          <TabsContent value="library" className="space-y-4">
+            <LibraryTab />
           </TabsContent>
 
           {/* ===== DATA EXPORT TAB ===== */}
