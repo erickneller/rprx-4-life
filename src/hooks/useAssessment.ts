@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { calculateHorsemanScores, determinePrimaryHorseman } from '@/lib/scoringEngine';
@@ -37,6 +38,7 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
   const { profile } = useProfile();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { logActivity } = useGamification();
   
   const [state, setState] = useState<AssessmentState>({
@@ -431,16 +433,29 @@ export function useAssessment(questions: AssessmentQuestion[], editAssessmentId?
         awarded.forEach((badge) => showAchievementToast(badge));
       });
 
-      // Navigate to dashboard
+      // Invalidate caches so route guards see the new assessment + fresh profile
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['assessmentHistory', user.id] }),
+        queryClient.invalidateQueries({ queryKey: ['assessment', assessment.id] }),
+        queryClient.invalidateQueries({ queryKey: ['profile', user.id] }),
+      ]);
+
+      // Navigate to results
       if (hadNonCriticalFailure) {
         toast({
           title: "We're still setting up your plan",
           description: "Check back in a moment — everything will be ready shortly.",
         });
       }
+      console.log(`[Assessment] Navigating to /results/${assessment.id}`);
       navigate(`/results/${assessment.id}`);
     } catch (error) {
       console.error('[Assessment] Critical write failed:', error);
+      toast({
+        title: "We couldn't save your assessment",
+        description: "Please try again. Your answers are still here.",
+        variant: 'destructive',
+      });
       setState((prev) => ({ ...prev, isSubmitting: false }));
     }
   }, [user, questions, state.responses, deepDiveAnswers, calculatedHorseman, navigate, profile, logActivity, externalDeps]);

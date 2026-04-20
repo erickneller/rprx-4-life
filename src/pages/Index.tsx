@@ -29,12 +29,15 @@ const Index = () => {
     return <Navigate to="/complete-phone" replace />;
   }
 
-  // If profile incomplete, route to wizard (new users) or profile (returning users)
+  const hasCompletedAssessment = (assessments || []).some(a => a.completed_at);
+
+  // If user has even one completed assessment, never bounce to the wizard
+  if (hasCompletedAssessment) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // No assessments yet — route incomplete profiles to wizard
   if (!isProfileComplete) {
-    const hasCompletedAssessment = (assessments || []).some(a => a.completed_at);
-    if (hasCompletedAssessment) {
-      return <Navigate to="/profile" replace />;
-    }
     return <Navigate to="/wizard" replace />;
   }
 
