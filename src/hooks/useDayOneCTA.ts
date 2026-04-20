@@ -76,6 +76,7 @@ export function useDayOneCTA() {
   const { data: activeCount = 0 } = useActiveStrategiesCount();
   const { sendMessage } = useSendMessage();
   const createPlanMutation = useCreatePlan();
+  const { isFree } = useSubscription();
   const [isGenerating, setIsGenerating] = useState(false);
 
   const latestAssessment = assessments[0] ?? null;
