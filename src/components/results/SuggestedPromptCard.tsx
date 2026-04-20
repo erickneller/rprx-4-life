@@ -9,6 +9,7 @@ import { useSendMessage } from '@/hooks/useSendMessage';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreatePlan, usePlans } from '@/hooks/usePlans';
+import { useSubscription } from '@/hooks/useSubscription';
 import { autoGenerateStrategy } from '@/lib/autoStrategyGenerator';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
