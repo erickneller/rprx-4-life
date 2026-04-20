@@ -2,7 +2,16 @@ import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 
-const ALLOWED_PATHS = ['/wizard', '/assessment', '/complete-phone', '/profile', '/auth', '/auth/callback', '/reset-password'];
+const ALLOWED_PATHS = [
+  '/wizard',
+  '/assessment',
+  '/results',
+  '/complete-phone',
+  '/profile',
+  '/auth',
+  '/auth/callback',
+  '/reset-password',
+];
 
 interface WizardGuardProps {
   children: React.ReactNode;
@@ -10,24 +19,30 @@ interface WizardGuardProps {
 
 export function WizardGuard({ children }: WizardGuardProps) {
   const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
-  const { data: assessments, isLoading: assessmentsLoading } = useAssessmentHistory();
+  const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
   const location = useLocation();
 
-  if (profileLoading || assessmentsLoading) return <div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>;
+  // Wait for both queries to settle before evaluating redirects
+  if (profileLoading || assessmentsLoading || !assessmentsFetched) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
   if (!profile) return <>{children}</>;
 
   const isAllowed = ALLOWED_PATHS.some(p => location.pathname.startsWith(p));
   if (isAllowed) return <>{children}</>;
 
-  // If onboarding not complete and no assessments, redirect to wizard
-  if (!profile.onboarding_completed && !isProfileComplete) {
-    const hasAssessments = (assessments || []).some(a => a.completed_at);
-    if (!hasAssessments) {
-      return <Navigate to="/wizard" replace />;
-    }
+  const hasAssessments = (assessments || []).some(a => a.completed_at);
+
+  // Only bounce to wizard if there are NO completed assessments AND profile is incomplete
+  if (!profile.onboarding_completed && !isProfileComplete && !hasAssessments) {
+    return <Navigate to="/wizard" replace />;
   }
 
-  // Show banner if profile incomplete
+  // Show banner if profile incomplete (but user has assessments — don't redirect)
   if (!isProfileComplete && !profile.onboarding_completed) {
     return (
       <div className="flex flex-col min-h-screen">
