@@ -36,8 +36,9 @@ export function PageFeedbackWidget() {
       setRating(0);
       setComment('');
       setOpen(false);
-    } catch {
-      toast.error('Failed to submit feedback');
+    } catch (e: any) {
+      console.error('[feedback] submit failed', e);
+      toast.error(e?.message ? `Failed: ${e.message}` : 'Failed to submit feedback');
     }
   };
 
