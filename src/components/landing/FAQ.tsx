@@ -8,7 +8,7 @@ import {
 const FAQ = () => {
   const faqs = [
     {
-      question: 'What are the "Four Horsemen" of financial pressure?',
+      question: 'What are the "Four Horsemen" of financial apocalypse?',
       answer: 'The Four Horsemen are the four compounding forces that silently drain wealth over time: Interest (debt costs), Taxes (inefficient tax strategies), Insurance Costs (misaligned coverage), and Education Costs (including opportunity costs of financial illiteracy). Our assessment helps you identify which is impacting you most.',
     },
     {
