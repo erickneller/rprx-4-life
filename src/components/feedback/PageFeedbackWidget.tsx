@@ -105,7 +105,8 @@ export function PageFeedbackWidget() {
             {submitFeedback.isPending ? 'Submitting…' : 'Submit Feedback'}
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+    </TooltipProvider>
   );
 }
