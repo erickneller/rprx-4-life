@@ -43,10 +43,10 @@ export function PageFeedbackWidget() {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <TooltipProvider>
-          <Tooltip>
+    <TooltipProvider>
+      <Popover open={open} onOpenChange={setOpen}>
+        <Tooltip>
+          <PopoverTrigger asChild>
             <TooltipTrigger asChild>
               <Button
                 size="icon"
@@ -56,10 +56,9 @@ export function PageFeedbackWidget() {
                 <MessageSquarePlus className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">Click to submit page specific feedback</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </PopoverTrigger>
+          </PopoverTrigger>
+          <TooltipContent side="right">Click to submit page specific feedback</TooltipContent>
+        </Tooltip>
       <PopoverContent side="top" align="start" className="w-80">
         <div className="space-y-3">
           <div>
@@ -106,7 +105,8 @@ export function PageFeedbackWidget() {
             {submitFeedback.isPending ? 'Submitting…' : 'Submit Feedback'}
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+    </TooltipProvider>
   );
 }
