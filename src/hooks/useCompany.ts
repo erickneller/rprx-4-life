@@ -27,9 +27,12 @@ export interface CompanyWithMembership {
   membership: CompanyMember;
 }
 
-/** Build invite URL from token */
+/** Production origin for invite links — keeps URLs clean regardless of where they're generated. */
+const PRODUCTION_ORIGIN = 'https://app.rprx4life.com';
+
+/** Build invite URL from token (always uses production custom domain) */
 export function buildInviteUrl(token: string): string {
-  return `${window.location.origin}/join?token=${token}`;
+  return `${PRODUCTION_ORIGIN}/join?token=${token}`;
 }
 
 /** Convert a company name to a URL-safe slug */
