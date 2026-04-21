@@ -20,10 +20,18 @@ export function useSubmitFeedback() {
   return useMutation({
     mutationFn: async ({ page_route, rating, comment }: { page_route: string; rating: number; comment?: string }) => {
       if (!user) throw new Error('Not authenticated');
-      const { error } = await supabase
+      console.log('[feedback] submitting', { user_id: user.id, page_route, rating });
+      const { data, error } = await supabase
         .from('page_feedback' as any)
-        .insert({ user_id: user.id, page_route, rating, comment: comment || null } as any);
-      if (error) throw error;
+        .insert({ user_id: user.id, page_route, rating, comment: comment || null } as any)
+        .select()
+        .single();
+      if (error) {
+        console.error('[feedback] insert error', error);
+        throw error;
+      }
+      console.log('[feedback] inserted', data);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-feedback'] });
