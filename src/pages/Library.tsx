@@ -1,9 +1,11 @@
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
-import { useLibraryCategories, useLibraryVideos, toYouTubeEmbedUrl } from '@/hooks/useLibrary';
+import { useLibraryCategories, useLibraryVideos } from '@/hooks/useLibrary';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BookOpen } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { VideoPlayer } from '@/components/media/VideoPlayer';
+import { resolveVideoSource } from '@/lib/videoSource';
 
 export default function Library() {
   const { data: categories = [], isLoading: catLoading } = useLibraryCategories();
@@ -53,19 +55,11 @@ export default function Library() {
               </div>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {cat.videos.map(video => {
-                  const embedUrl = toYouTubeEmbedUrl(video.video_url);
+                  const source = resolveVideoSource(video.video_url);
                   return (
                     <Card key={video.id} className="flex flex-col overflow-hidden">
-                      {embedUrl ? (
-                        <AspectRatio ratio={16 / 9}>
-                          <iframe
-                            src={embedUrl}
-                            title={video.title}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            className="w-full h-full border-0"
-                          />
-                        </AspectRatio>
+                      {source.kind !== 'unknown' ? (
+                        <VideoPlayer url={video.video_url} title={video.title} />
                       ) : video.thumbnail_url ? (
                         <AspectRatio ratio={16 / 9}>
                           <img

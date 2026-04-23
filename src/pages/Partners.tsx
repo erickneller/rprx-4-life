@@ -1,11 +1,12 @@
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
-import { usePartnerCategories, usePartners, useCompanyPartnerVisibility, toYouTubeEmbedUrl } from '@/hooks/usePartners';
+import { usePartnerCategories, usePartners, useCompanyPartnerVisibility } from '@/hooks/usePartners';
 import { useCompany } from '@/hooks/useCompany';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Handshake, Play } from 'lucide-react';
+import { ExternalLink, Handshake } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { VideoPlayer } from '@/components/media/VideoPlayer';
+import { resolveVideoSource } from '@/lib/videoSource';
 
 export default function Partners() {
   const { data: categories = [], isLoading: catLoading } = usePartnerCategories();
@@ -16,15 +17,12 @@ export default function Partners() {
 
   const isLoading = catLoading || partLoading;
 
-  // Build hidden set from company visibility
   const hiddenPartnerIds = new Set(
     visibility.filter(v => !v.visible).map(v => v.partner_id)
   );
 
-  // Filter partners by company visibility
   const visiblePartners = partners.filter(p => !hiddenPartnerIds.has(p.id));
 
-  // Group by category
   const grouped = categories
     .map(cat => ({
       ...cat,
@@ -66,21 +64,13 @@ export default function Partners() {
               </div>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {cat.partners.map(partner => {
-                  const embedUrl = partner.video_url ? toYouTubeEmbedUrl(partner.video_url) : null;
+                  const hasVideo = resolveVideoSource(partner.video_url).kind !== 'unknown';
                   return (
                     <Card key={partner.id} className="flex flex-col overflow-hidden">
-                      {embedUrl && (
-                        <AspectRatio ratio={16 / 9}>
-                          <iframe
-                            src={embedUrl}
-                            title={partner.name}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            className="w-full h-full border-0"
-                          />
-                        </AspectRatio>
+                      {hasVideo && (
+                        <VideoPlayer url={partner.video_url} title={partner.name} />
                       )}
-                      {!embedUrl && partner.logo_url && (
+                      {!hasVideo && partner.logo_url && (
                         <div className="p-4 flex justify-center bg-muted/30">
                           <img
                             src={partner.logo_url}

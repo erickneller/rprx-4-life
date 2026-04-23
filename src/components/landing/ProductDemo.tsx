@@ -1,5 +1,7 @@
+import { VideoPlayer } from '@/components/media/VideoPlayer';
+
 const ProductDemo = () => {
-  const videoId = 'SjSOlKpCGfg';
+  const videoUrl = 'https://youtu.be/SjSOlKpCGfg';
 
   return (
     <section className="py-20 md:py-28 bg-muted/50">
@@ -17,16 +19,10 @@ const ProductDemo = () => {
           </p>
         </div>
 
-        {/* YouTube Video Embed */}
+        {/* Video Embed */}
         <div className="max-w-4xl mx-auto">
-          <div className="relative aspect-video rounded-2xl overflow-hidden bg-primary shadow-2xl">
-            <iframe
-              src={`https://www.youtube.com/embed/${videoId}`}
-              title="What is RPRx? - Product explainer"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="absolute inset-0 w-full h-full border-0"
-            />
+          <div className="rounded-2xl overflow-hidden bg-primary shadow-2xl">
+            <VideoPlayer url={videoUrl} title="What is RPRx? - Product explainer" />
           </div>
 
           <p className="text-center text-sm text-muted-foreground mt-4">
