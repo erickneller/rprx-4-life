@@ -1,25 +1,52 @@
 
 
-## Embed a YouTube video in the Product Info section
+## Add Loom support to the shared video player
+
+Extends the previously-approved GHL/YouTube plan to also accept Loom share links.
 
 ### What you'll see
-The dark dashboard mockup with the blue play button gets replaced by your actual YouTube video. Visitors see the video thumbnail with YouTube's native play button; clicking it plays the video inline (no leaving the page). The "2-minute explainer" caption stays underneath.
+Anywhere a video URL is accepted (admin **Library**, **Partners**, landing **Product Info**), you can paste:
+- YouTube link → iframe embed
+- Loom share link (`loom.com/share/{ID}`) → iframe embed
+- Direct file (`.mp4`/`.webm`/`.mov`/`.m4v`/`.ogg`, including GHL Media Library URLs) → native HTML5 `<video>` player
+
+Helper text under the admin "Video URL" field is updated to list all three.
 
 ### How it works
-`src/components/landing/ProductDemo.tsx` currently renders a fake dashboard mockup + non-functional play button. I'll replace that block with a responsive 16:9 `<iframe>` pointing at the YouTube embed URL derived from your link.
 
-- Extract the video ID from whatever format you paste (`watch?v=ID`, `youtu.be/ID`, or `/embed/ID`).
-- Use `https://www.youtube.com/embed/{ID}` as the iframe `src`.
-- Keep the rounded corners, shadow, and section header/caption exactly as they are now.
-- Add `title`, `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"`, and `allowFullScreen` for proper playback + a11y.
-- Remove the now-unused `Play` icon and `Button` imports.
+**`src/lib/videoSource.ts`** (new) — extends the planned helper:
+```ts
+export type VideoSource =
+  | { kind: 'youtube'; embedUrl: string }
+  | { kind: 'loom';    embedUrl: string }
+  | { kind: 'file';    src: string }
+  | { kind: 'unknown' };
+```
+Loom detection: match `loom.com/share/{id}` or `loom.com/embed/{id}` and return `https://www.loom.com/embed/{id}`.
 
-### Files touched
+**`src/components/media/VideoPlayer.tsx`** (new) — YouTube and Loom both render via `<iframe>` (same `allow`/`allowFullScreen` attrs, 16:9 `AspectRatio` wrapper). File kind renders `<video controls preload="metadata">`.
+
+**Refactor call sites** to use `<VideoPlayer />`:
+- `src/pages/Library.tsx`
+- `src/components/admin/LibraryTab.tsx` (relabel "YouTube URL" → "Video URL"; helper text: "YouTube, Loom, or direct .mp4/.webm URL (e.g. GHL Media Library)")
+- `src/pages/Partners.tsx`
 - `src/components/landing/ProductDemo.tsx`
 
-### Out of scope
-- No new dependencies, no admin-configurable video field (hard-coded URL — fastest path; we can promote it to a DB-managed setting later if you want non-devs to swap it).
-- No changes to surrounding sections, pricing, or FAQ.
+**Deprecate** `toYouTubeEmbedUrl()` in `useLibrary.ts` / `usePartners.ts` — keep as thin re-exports of the new helper so existing imports don't break.
 
-**Just reply with the YouTube link and I'll apply it.**
+### Out of scope
+- Password-protected Loom videos (no public embed available)
+- Vimeo, Wistia, other providers (easy to add later in the same helper)
+- DB schema changes — existing `video_url` text column accepts any URL
+- GHL funnel pages and gated course videos (per prior decision)
+
+### Files touched
+- ➕ `src/lib/videoSource.ts`
+- ➕ `src/components/media/VideoPlayer.tsx`
+- ✏️ `src/pages/Library.tsx`
+- ✏️ `src/components/admin/LibraryTab.tsx`
+- ✏️ `src/pages/Partners.tsx`
+- ✏️ `src/components/landing/ProductDemo.tsx`
+- ✏️ `src/hooks/useLibrary.ts`
+- ✏️ `src/hooks/usePartners.ts`
 
