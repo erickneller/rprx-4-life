@@ -6,10 +6,11 @@ import {
   useDeleteLibraryCategory,
   useUpsertLibraryVideo,
   useDeleteLibraryVideo,
-  toYouTubeEmbedUrl,
   type LibraryCategory,
   type LibraryVideo,
 } from '@/hooks/useLibrary';
+import { VideoPlayer } from '@/components/media/VideoPlayer';
+import { resolveVideoSource } from '@/lib/videoSource';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,7 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
+
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -99,7 +100,8 @@ export function LibraryTab() {
 
   if (catLoading || vidLoading) return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
 
-  const previewEmbed = vidForm.video_url ? toYouTubeEmbedUrl(vidForm.video_url) : null;
+  const previewSource = resolveVideoSource(vidForm.video_url);
+  const hasPreview = previewSource.kind !== 'unknown';
 
   return (
     <div className="space-y-8">
@@ -180,13 +182,17 @@ export function LibraryTab() {
               </Select>
             </div>
             <div><Label>Short Description</Label><Textarea value={vidForm.description || ''} onChange={e => setVidForm(f => ({ ...f, description: e.target.value }))} /></div>
-            <div><Label>YouTube URL</Label><Input value={vidForm.video_url || ''} onChange={e => setVidForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://youtube.com/watch?v=..." /></div>
-            {previewEmbed && (
+            <div>
+              <Label>Video URL</Label>
+              <Input value={vidForm.video_url || ''} onChange={e => setVidForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://youtube.com/watch?v=... or https://...mp4" />
+              <p className="text-xs text-muted-foreground mt-1">YouTube, Loom, or direct .mp4/.webm URL (e.g. GHL Media Library)</p>
+            </div>
+            {hasPreview && (
               <div>
                 <Label className="text-xs text-muted-foreground">Preview</Label>
-                <AspectRatio ratio={16 / 9} className="mt-1 rounded-md overflow-hidden border">
-                  <iframe src={previewEmbed} title="Preview" className="w-full h-full border-0" allowFullScreen />
-                </AspectRatio>
+                <div className="mt-1 rounded-md overflow-hidden border">
+                  <VideoPlayer url={vidForm.video_url} title="Preview" />
+                </div>
               </div>
             )}
             <div><Label>Thumbnail URL (optional)</Label><Input value={vidForm.thumbnail_url || ''} onChange={e => setVidForm(f => ({ ...f, thumbnail_url: e.target.value }))} placeholder="https://..." /></div>
