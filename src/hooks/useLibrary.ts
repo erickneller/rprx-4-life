@@ -149,26 +149,5 @@ export function useDeleteLibraryVideo() {
   });
 }
 
-/** Extract YouTube video ID from a URL (supports watch, embed, short formats). */
-export function getYouTubeVideoId(url: string): string | null {
-  if (!url) return null;
-  const embedMatch = url.match(/youtube\.com\/embed\/([^?&]+)/);
-  if (embedMatch) return embedMatch[1];
-  const watchMatch = url.match(/[?&]v=([^&]+)/);
-  if (watchMatch) return watchMatch[1];
-  const shortMatch = url.match(/youtu\.be\/([^?&]+)/);
-  if (shortMatch) return shortMatch[1];
-  return null;
-}
-
-/** Convert any YouTube URL to embed URL. */
-export function toYouTubeEmbedUrl(url: string): string | null {
-  const id = getYouTubeVideoId(url);
-  return id ? `https://www.youtube.com/embed/${id}` : null;
-}
-
-/** Get the YouTube hqdefault thumbnail for a video URL. */
-export function getYouTubeThumbnail(url: string): string | null {
-  const id = getYouTubeVideoId(url);
-  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
-}
+/** @deprecated Use resolveVideoSource / toEmbedUrl from '@/lib/videoSource'. */
+export { getYouTubeVideoId, getYouTubeThumbnail, toEmbedUrl as toYouTubeEmbedUrl } from '@/lib/videoSource';

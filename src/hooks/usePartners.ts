@@ -192,16 +192,5 @@ export function useToggleCompanyPartnerVisibility() {
   });
 }
 
-/** Convert a YouTube URL to an embeddable format */
-export function toYouTubeEmbedUrl(url: string): string | null {
-  if (!url) return null;
-  // Already embed format
-  if (url.includes('youtube.com/embed/')) return url;
-  // Standard watch URL
-  const watchMatch = url.match(/[?&]v=([^&]+)/);
-  if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`;
-  // Short URL
-  const shortMatch = url.match(/youtu\.be\/([^?&]+)/);
-  if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
-  return null;
-}
+/** @deprecated Use resolveVideoSource / toEmbedUrl from '@/lib/videoSource'. */
+export { toEmbedUrl as toYouTubeEmbedUrl } from '@/lib/videoSource';
