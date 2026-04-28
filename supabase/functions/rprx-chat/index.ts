@@ -1535,7 +1535,7 @@ ${manualInstructions}`;
     const branchLog = runtimeBranch === 'template-no-openai-key'
       ? 'fallback'
       : (runtimeBranch.startsWith('template') ? 'template' : 'paid_openai');
-    console.log(`branch=${branchLog} | runtime_branch=${runtimeBranch} | strategy_source=${strategySource} | tier=${userTier || 'free'} | mode=${effectiveMode} | primary_horseman=${selectedStrategyMetadata.primary_horseman || 'none'} | selected_horseman=${selectedStrategyMetadata.selected_horseman || 'none'} | selected_strategy_id=${selectedStrategyMetadata.selected_strategy_id || 'none'} | score=${selectedStrategyMetadata.score ?? 'none'}`);
+    console.log(`branch=${branchLog} | runtime_branch=${runtimeBranch} | force_template_engine=${forceTemplateEngine} | strict_json_v1=${strictJsonV1} | strategy_source=${strategySource} | tier=${userTier || 'free'} | mode=${effectiveMode} | primary_horseman=${selectedStrategyMetadata.primary_horseman || 'none'} | selected_horseman=${selectedStrategyMetadata.selected_horseman || 'none'} | selected_strategy_id=${selectedStrategyMetadata.selected_strategy_id || 'none'} | score=${selectedStrategyMetadata.score ?? 'none'}`);
 
     if (runtimeBranch.startsWith('template')) {
       // =====================================================
