@@ -116,7 +116,8 @@ async function fetchStrategies(serviceClient: any): Promise<{ strategies: DBStra
     implementation_steps: s.steps,
     is_active: s.is_active,
     sort_order: s.sort_order ?? 0,
-  }));
+  })),
+  };
 }
 
 // =====================================================
