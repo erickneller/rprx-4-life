@@ -1817,8 +1817,7 @@ Rules:
           }
 
           assistantMessage = '```json\n' + JSON.stringify(parsed, null, 2) + '\n```';
-          const finalPlanForAssertion = buildStructuredPlan(selected, profile, primaryHorseman);
-          const finalAssertionErrors = assertPlanMatchesStrategy(finalPlanForAssertion, selected);
+          const finalAssertionErrors = assertPlanMatchesStrategy(parsed as StructuredPlan, selected);
           if (finalAssertionErrors.length > 0) {
             console.error(`Canonical paid plan assertion failed | selected_strategy_id=${selected.strategy_id} | errors=${JSON.stringify(finalAssertionErrors)}`);
             return new Response(
