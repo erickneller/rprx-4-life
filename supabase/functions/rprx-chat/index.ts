@@ -187,6 +187,52 @@ function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredS
     .sort((a, b) => b.score - a.score);
 }
 
+type Horseman = 'interest' | 'taxes' | 'insurance' | 'education';
+
+const HORSEMEN: Horseman[] = ['interest', 'taxes', 'insurance', 'education'];
+const CROSS_HORSEMAN_OVERRIDE_THRESHOLD = 25;
+
+function normalizeHorseman(value: unknown): Horseman | null {
+  const raw = String(Array.isArray(value) ? value[0] : value || '').toLowerCase().trim();
+  if (raw === 'tax' || raw === 'taxation') return 'taxes';
+  if (raw === 'debt') return 'interest';
+  return HORSEMEN.includes(raw as Horseman) ? raw as Horseman : null;
+}
+
+function detectPromptHorseman(message: string): { horseman: Horseman | null; reason: string } {
+  const lower = message.toLowerCase();
+  const scores: Record<Horseman, number> = { interest: 0, taxes: 0, insurance: 0, education: 0 };
+
+  const add = (horseman: Horseman, points: number, patterns: RegExp[]) => {
+    for (const pattern of patterns) {
+      if (pattern.test(lower)) scores[horseman] += points;
+    }
+  };
+
+  add('taxes', 4, [/\b(tax|taxes|taxation|irs|1040|w-?4|withholding|deduction|deductible|refund)\b/, /\breduce\s+tax(es)?\b/, /\btax\s+(credit|return|prep|planning)\b/]);
+  add('interest', 4, [/\b(interest|debt|debts|apr|credit\s+card|balance\s+transfer|payoff|loan|loans|refinance|consolidat(e|ion))\b/, /\bmonthly\s+cash\s+flow\b/, /\bincrease\s+cash\s+flow\b/]);
+  add('insurance', 4, [/\b(insurance|premium|premiums|coverage|policy|policies|deductible|life\s+insurance|disability|long[-\s]?term\s+care)\b/]);
+  add('education', 4, [/\b(education|college|tuition|529|coverdell|student\s+aid|financial\s+aid|scholarship|fafsa)\b/, /\bsave\s+for\s+education\b/]);
+
+  // Avoid letting generic words override explicit tax/education/insurance intent.
+  if (/\btax\s+credit\b/.test(lower)) scores.interest = Math.max(0, scores.interest - 2);
+  if (/\bstudent\s+loan(s)?\b/.test(lower)) scores.interest += 2;
+
+  const ranked = HORSEMEN.map(h => ({ horseman: h, score: scores[h] })).sort((a, b) => b.score - a.score);
+  if (ranked[0].score <= 0 || ranked[0].score === ranked[1].score) {
+    return { horseman: null, reason: `none:${JSON.stringify(scores)}` };
+  }
+  return { horseman: ranked[0].horseman, reason: `keywords:${JSON.stringify(scores)}` };
+}
+
+function assertPlanMatchesStrategy(plan: StructuredPlan, strategy: DBStrategy): string[] {
+  const errors: string[] = [];
+  if (plan.strategy_id !== strategy.strategy_id) errors.push(`strategy_id:${plan.strategy_id}->${strategy.strategy_id}`);
+  if (plan.strategy_name !== strategy.title) errors.push(`strategy_name:${plan.strategy_name}->${strategy.title}`);
+  if (normalizeHorseman(plan.horseman) !== normalizeHorseman(strategy.horseman_type)) errors.push(`horseman:${plan.horseman}->${strategy.horseman_type}`);
+  return errors;
+}
+
 // =====================================================
 // STRATEGY FORMATTING
 // =====================================================
