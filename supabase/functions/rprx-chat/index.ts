@@ -953,15 +953,31 @@ ${cleanStrategyText(s.strategy_details)}${stepsStr ? `\n\n**Implementation Steps
   // ----- AUTO mode: single best strategy with full steps -----
   if (intent === 'auto' || mode === 'auto') {
     const top = ranked[0];
-    if (!top) return `I don't have a matching strategy for your profile yet. Try completing the assessment first!${disclaimer}`;
+    if (!top) {
+      return embedPlanJson({
+        plan_schema: 'v1',
+        strategy_id: 'no_matching_strategy',
+        strategy_name: 'No matching strategy found',
+        horseman: primaryHorseman || 'interest',
+        summary: 'No active strategy matched the current request and profile context. Complete or update your assessment, then try again.',
+        expected_result: { impact_range: 'N/A', first_win_timeline: 'N/A', confidence_note: 'No strategy was selected.' },
+        before_you_start: ['Review your assessment and profile details.'],
+        steps: [
+          { title: 'Review your assessment context', instruction: 'Confirm your primary financial pressure and profile details are current.', time_estimate: '15-20 min', done_definition: 'Assessment and profile context are up to date.' },
+          { title: 'Request a new strategy', instruction: 'Ask for a strategy after your context is updated.', time_estimate: '15-20 min', done_definition: 'A new strategy request has been submitted.' },
+        ],
+        risks_and_mistakes_to_avoid: ['Do not act on a strategy that does not match your situation.'],
+        advisor_packet: ['Current profile and assessment summary.'],
+        disclaimer: 'Educational information only. Consult a qualified professional before implementation.',
+      }).trim();
+    }
     const structured = buildStructuredPlan(top.strategy, profile, primaryHorseman);
-    return `# Your Recommended Strategy
-
-Based on your profile and assessment, here is your best-fit strategy for ${horsemanLabel}:
-
-${formatStrategyBlock(top.strategy, 1)}
-
-Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}${embedPlanJson(structured)}`;
+    const assertionErrors = assertPlanMatchesStrategy(structured, top.strategy);
+    if (assertionErrors.length > 0) {
+      console.error(`Canonical plan assertion failed | selected_strategy_id=${top.strategy.strategy_id} | errors=${JSON.stringify(assertionErrors)}`);
+      throw new Error('Canonical strategy plan mismatch');
+    }
+    return embedPlanJson(structured).trim();
   }
 
   // ----- GREETING -----
