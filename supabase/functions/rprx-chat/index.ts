@@ -63,14 +63,26 @@ interface UserContext {
 // STRATEGY FETCHING FROM DATABASE
 // =====================================================
 
-async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
+export type StrategySource = 'v2' | 'legacy' | 'none';
+
+async function fetchStrategies(serviceClient: any): Promise<{ strategies: DBStrategy[]; source: StrategySource; error?: string }> {
   const { data, error } = await serviceClient
     .from('strategy_catalog_v2')
     .select('id, strategy_id, title, strategy_details, example, potential_savings_benefits, horseman_type, difficulty, estimated_impact_min, estimated_impact_max, estimated_impact_display, tax_return_line_or_area, goal_tags, implementation_steps, is_active, sort_order')
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
 
-  if (!error && data && data.length > 0) return data;
+  if (!error && data && data.length > 0) {
+    console.log(`Strategy source: strategy_catalog_v2 (${data.length} rows)`);
+    return { strategies: data, source: 'v2' };
+  }
+
+  const allowLegacy = Deno.env.get('ALLOW_LEGACY_FALLBACK') === 'true';
+  if (!allowLegacy) {
+    const msg = 'strategy_catalog_v2 unavailable/empty and ALLOW_LEGACY_FALLBACK !== "true"';
+    console.error(msg, error);
+    return { strategies: [], source: 'none', error: msg };
+  }
 
   console.warn('strategy_catalog_v2 unavailable/empty, using legacy strategy_definitions fallback');
   const { data: legacy, error: legacyError } = await serviceClient
@@ -81,10 +93,13 @@ async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
 
   if (legacyError || !legacy) {
     console.error('Error fetching fallback strategies:', legacyError || error);
-    return [];
+    return { strategies: [], source: 'none', error: (legacyError || error)?.message };
   }
 
-  return legacy.map((s: any) => ({
+  console.log(`Strategy source: strategy_definitions legacy (${legacy.length} rows)`);
+  return {
+    source: 'legacy',
+    strategies: legacy.map((s: any) => ({
     id: s.id,
     strategy_id: s.id,
     title: s.name,
@@ -101,7 +116,8 @@ async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
     implementation_steps: s.steps,
     is_active: s.is_active,
     sort_order: s.sort_order ?? 0,
-  }));
+  })),
+  };
 }
 
 // =====================================================
@@ -1106,7 +1122,14 @@ serve(async (req) => {
     const messages = [...(historyResult.data || [])].reverse();
     messages.push({ role: 'user', content: user_message.trim() });
 
-    const allStrategies = strategiesResult;
+    const allStrategies = strategiesResult.strategies;
+    const strategySource: StrategySource = strategiesResult.source;
+    if (strategySource === 'none') {
+      return new Response(
+        JSON.stringify({ error: 'Strategy catalog unavailable', details: strategiesResult.error || 'No strategies returned' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const completedFromPlans = (completedResult.data || [])
       .map((p: any) => p.strategy_id)
       .filter(Boolean);
@@ -1292,34 +1315,69 @@ ${manualInstructions}`;
     }
 
     let assistantMessage: string;
+    let runtimeBranch: 'template-forced' | 'template-free' | 'template-no-openai-key' | 'paid-openai-strict-json' | 'paid-openai' = 'template-free';
     const forceTemplateEngine = Deno.env.get('RPRX_FORCE_TEMPLATE_ENGINE') === 'true';
+    const strictJsonV1 = Deno.env.get('STRICT_JSON_V1') === 'true';
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    if (isFreeUser || forceTemplateEngine) {
+    // Branch selection (explicit & mutually exclusive)
+    if (forceTemplateEngine) {
+      runtimeBranch = 'template-forced';
+    } else if (isFreeUser) {
+      runtimeBranch = 'template-free';
+    } else if (!openaiApiKey) {
+      runtimeBranch = 'template-no-openai-key';
+    } else {
+      runtimeBranch = strictJsonV1 ? 'paid-openai-strict-json' : 'paid-openai';
+    }
+    console.log(`Runtime branch: ${runtimeBranch} | strategy_source: ${strategySource} | tier: ${userTier || 'free'} | mode: ${effectiveMode}`);
+
+    if (runtimeBranch.startsWith('template')) {
       // =====================================================
       // TEMPLATE ENGINE: deterministic internal strategy engine
       // =====================================================
-      console.log(forceTemplateEngine ? 'Forced template engine — generating response' : 'Free tier — generating template response');
       const intent = detectIntent(user_message, messages);
       assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message, page);
+    } else {
       // =====================================================
       // PAID TIER: OpenAI-powered conversational AI
       // =====================================================
+      let systemPrompt = dynamicSystemPrompt;
+      if (runtimeBranch === 'paid-openai-strict-json') {
+        systemPrompt += `
+
+## STRICT OUTPUT CONTRACT (JSON v1) — MANDATORY
+You MUST respond with a SINGLE fenced \`\`\`json code block and NOTHING ELSE. No prose, no headings, no markdown outside the JSON fence. The JSON object MUST conform exactly to this schema:
+
+{
+  "plan_schema": "v1",
+  "strategy_id": "string (the chosen strategy's strategy_id from the catalog)",
+  "strategy_name": "string",
+  "summary": "string (2-4 sentences)",
+  "horseman": ["string"],
+  "steps": ["string", "string", "..."],
+  "complexity": 1,
+  "savings": "string (e.g. $500-$2,000/year)",
+  "tax_reference": "string (optional, e.g. IRC §401(k))",
+  "disclaimer": "string"
+}
+
+Rules:
+- "steps" MUST contain at least 2 items, each a complete actionable sentence.
+- "complexity", "savings", "tax_reference" are OPTIONAL — omit the key if not applicable.
+- All other keys are REQUIRED.
+- Output exactly one \`\`\`json ... \`\`\` block. No text before or after the fence.`;
+      }
+
       const openaiMessages = [
-        { role: 'system', content: dynamicSystemPrompt },
+        { role: 'system', content: systemPrompt },
         ...messages.map((m: { role: string; content: string }) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
         })),
       ];
 
-      console.log('Paid tier — calling OpenAI with', openaiMessages.length, 'messages');
-
-      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-      if (!openaiApiKey) {
-        console.log('OPENAI_API_KEY missing, falling back to template engine');
-        const intent = detectIntent(user_message, messages);
-        assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message, page);
-      } else {
+      console.log(`Calling OpenAI with ${openaiMessages.length} messages (strict_json=${runtimeBranch === 'paid-openai-strict-json'})`);
 
       const maxRetries = 3;
       let lastError: string | null = null;
@@ -1332,18 +1390,23 @@ ${manualInstructions}`;
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
 
+        const openaiBody: Record<string, unknown> = {
+          model: 'gpt-4o-mini',
+          messages: openaiMessages,
+          temperature: runtimeBranch === 'paid-openai-strict-json' ? 0.2 : 0.7,
+          max_tokens: 2500,
+        };
+        if (runtimeBranch === 'paid-openai-strict-json') {
+          openaiBody.response_format = { type: 'json_object' };
+        }
+
         const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${openaiApiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: openaiMessages,
-            temperature: 0.7,
-            max_tokens: 2500,
-          }),
+          body: JSON.stringify(openaiBody),
         });
 
         if (openaiResponse.ok) {
@@ -1382,8 +1445,16 @@ ${manualInstructions}`;
         );
       }
 
-      console.log('Received OpenAI response, length:', assistantMessage.length);
+      // When using response_format=json_object, OpenAI returns raw JSON (no fence).
+      // Wrap it in a ```json fence so the downstream parser (strategyParser.ts) detects it.
+      if (runtimeBranch === 'paid-openai-strict-json') {
+        const trimmed = assistantMessage.trim();
+        if (!trimmed.startsWith('```')) {
+          assistantMessage = '```json\n' + trimmed + '\n```';
+        }
       }
+
+      console.log('Received OpenAI response, length:', assistantMessage.length);
     }
 
     // Save assistant message (fire and forget)
@@ -1402,6 +1473,8 @@ ${manualInstructions}`;
         has_more_strategies: effectiveMode === 'manual' && rankedStrategies.length > page * strategiesPerPage,
         total_strategies: rankedStrategies.length,
         current_page: page,
+        strategy_source: strategySource,
+        runtime_branch: runtimeBranch,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
