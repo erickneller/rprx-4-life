@@ -1122,7 +1122,14 @@ serve(async (req) => {
     const messages = [...(historyResult.data || [])].reverse();
     messages.push({ role: 'user', content: user_message.trim() });
 
-    const allStrategies = strategiesResult;
+    const allStrategies = strategiesResult.strategies;
+    const strategySource: StrategySource = strategiesResult.source;
+    if (strategySource === 'none') {
+      return new Response(
+        JSON.stringify({ error: 'Strategy catalog unavailable', details: strategiesResult.error || 'No strategies returned' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const completedFromPlans = (completedResult.data || [])
       .map((p: any) => p.strategy_id)
       .filter(Boolean);
