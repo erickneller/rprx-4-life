@@ -1869,6 +1869,8 @@ Rules:
         current_page: page,
         strategy_source: strategySource,
         runtime_branch: runtimeBranch,
+        branch: branchLog,
+        selected_strategy: selectedStrategyMetadata,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
