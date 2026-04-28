@@ -1344,28 +1344,52 @@ ${manualInstructions}`;
       // =====================================================
       let systemPrompt = dynamicSystemPrompt;
       if (runtimeBranch === 'paid-openai-strict-json') {
+        const selectedStrategy = effectiveMode === 'auto' ? rankedStrategies[0]?.strategy : rankedStrategies[0]?.strategy;
+        const lockedId = selectedStrategy?.strategy_id || '';
+        const lockedName = selectedStrategy?.title || '';
+        const lockedHorseman = selectedStrategy?.horseman_type || primaryHorseman || 'interest';
         systemPrompt += `
 
 ## STRICT OUTPUT CONTRACT (JSON v1) — MANDATORY
-You MUST respond with a SINGLE fenced \`\`\`json code block and NOTHING ELSE. No prose, no headings, no markdown outside the JSON fence. The JSON object MUST conform exactly to this schema:
+You MUST respond with a SINGLE fenced \`\`\`json code block and NOTHING ELSE. No prose, no headings, no markdown outside the JSON fence.
 
+## LOCKED STRATEGY (DO NOT CHANGE)
+- strategy_id: "${lockedId}"
+- strategy_name: "${lockedName}"
+- horseman: ["${lockedHorseman}"]
+
+You MUST use those EXACT values for strategy_id, strategy_name, and horseman. Do not invent or substitute.
+All content (summary, steps, before_you_start, risks_and_mistakes_to_avoid, advisor_packet) MUST be specific to the "${lockedHorseman}" horseman and to this strategy. Do NOT inject tax-document defaults for non-tax strategies. Do NOT inject debt-payoff defaults for non-interest strategies.
+
+Schema:
 {
   "plan_schema": "v1",
-  "strategy_id": "string (the chosen strategy's strategy_id from the catalog)",
-  "strategy_name": "string",
-  "summary": "string (2-4 sentences)",
-  "horseman": ["string"],
-  "steps": ["string", "string", "..."],
+  "strategy_id": "${lockedId}",
+  "strategy_name": "${lockedName}",
+  "horseman": ["${lockedHorseman}"],
+  "summary": "string (2-4 sentences specific to this strategy)",
+  "steps": [
+    {
+      "title": "Concise action phrase, 4-70 chars, NEVER 'Step 1' or generic",
+      "instruction": "Concrete task tied to this specific strategy (1-3 sentences)",
+      "time_estimate": "one of: 15-20 min | 15-30 min | 20-45 min | 30-60 min",
+      "done_definition": "Measurable completion statement (what proves this step is done)"
+    }
+  ],
+  "before_you_start": ["string aligned to ${lockedHorseman} horseman"],
+  "risks_and_mistakes_to_avoid": ["string aligned to ${lockedHorseman} horseman"],
+  "advisor_packet": ["string aligned to ${lockedHorseman} horseman"],
   "complexity": 1,
   "savings": "string (e.g. $500-$2,000/year)",
-  "tax_reference": "string (optional, e.g. IRC §401(k))",
+  "tax_reference": "string (only when relevant, e.g. IRC §401(k))",
   "disclaimer": "string"
 }
 
 Rules:
-- "steps" MUST contain at least 2 items, each a complete actionable sentence.
-- "complexity", "savings", "tax_reference" are OPTIONAL — omit the key if not applicable.
-- All other keys are REQUIRED.
+- "steps" MUST contain at least 2 items. Each step MUST be an OBJECT with title, instruction, time_estimate, done_definition.
+- Step titles MUST be specific (e.g. "List all credit card balances", NOT "Step 1" or "Schedule a 30").
+- "before_you_start", "risks_and_mistakes_to_avoid", "advisor_packet" are REQUIRED arrays of 2-5 strings each, all aligned to "${lockedHorseman}".
+- "complexity", "savings", "tax_reference" are OPTIONAL — omit if not applicable.
 - Output exactly one \`\`\`json ... \`\`\` block. No text before or after the fence.`;
       }
 
@@ -1446,12 +1470,177 @@ Rules:
       }
 
       // When using response_format=json_object, OpenAI returns raw JSON (no fence).
-      // Wrap it in a ```json fence so the downstream parser (strategyParser.ts) detects it.
+      // Validate + deterministically repair before wrapping.
       if (runtimeBranch === 'paid-openai-strict-json') {
-        const trimmed = assistantMessage.trim();
-        if (!trimmed.startsWith('```')) {
-          assistantMessage = '```json\n' + trimmed + '\n```';
+        const selected = rankedStrategies[0]?.strategy;
+        const candidateIds = new Set(rankedStrategies.slice(0, 20).map(r => r.strategy.strategy_id));
+        const validationErrors: string[] = [];
+        const appliedFixes: string[] = [];
+        let consistencyFixed = false;
+
+        const TIME_ALLOWED = ['15-20 min', '15-30 min', '20-45 min', '30-60 min'];
+        const GENERIC_TITLE_RE = /^(step\s*\d+|follow[-\s]?up\s*\d*|schedule\s+a\s+\d+|untitled|todo)\s*$/i;
+
+        let parsed: any = null;
+        try {
+          parsed = JSON.parse(assistantMessage.trim());
+        } catch (_e) {
+          validationErrors.push('json_parse_failed');
         }
+
+        if (parsed && typeof parsed === 'object' && selected) {
+          // 1. Strategy consistency guard
+          if (parsed.strategy_id !== selected.strategy_id) {
+            validationErrors.push(`strategy_id_mismatch:${parsed.strategy_id}->${selected.strategy_id}`);
+            parsed.strategy_id = selected.strategy_id;
+            consistencyFixed = true;
+          } else if (!candidateIds.has(parsed.strategy_id)) {
+            validationErrors.push('strategy_id_not_in_candidates');
+            parsed.strategy_id = selected.strategy_id;
+            consistencyFixed = true;
+          }
+          if (parsed.strategy_name !== selected.title) {
+            parsed.strategy_name = selected.title;
+            consistencyFixed = true;
+            appliedFixes.push('strategy_name_overwritten');
+          }
+          const expectedHorseman = selected.horseman_type;
+          const horsemanArr = Array.isArray(parsed.horseman) ? parsed.horseman : [parsed.horseman].filter(Boolean);
+          if (horsemanArr.length === 0 || horsemanArr[0] !== expectedHorseman) {
+            parsed.horseman = [expectedHorseman];
+            consistencyFixed = true;
+            appliedFixes.push('horseman_overwritten');
+          }
+
+          // 2. Step normalization
+          if (!Array.isArray(parsed.steps)) {
+            parsed.steps = [];
+            validationErrors.push('steps_not_array');
+          }
+          parsed.steps = parsed.steps.map((s: any, idx: number) => {
+            // Coerce string steps to objects
+            if (typeof s === 'string') {
+              appliedFixes.push(`step_${idx}_coerced_from_string`);
+              s = { title: s.slice(0, 70), instruction: s, time_estimate: '15-30 min', done_definition: 'Step completed' };
+            }
+            if (!s || typeof s !== 'object') {
+              s = { title: `${selected.title} action ${idx + 1}`, instruction: '', time_estimate: '15-30 min', done_definition: 'Step completed' };
+              appliedFixes.push(`step_${idx}_replaced_invalid`);
+            }
+            const rawTitle = String(s.title || '').trim();
+            const isGeneric = !rawTitle || rawTitle.length < 4 || GENERIC_TITLE_RE.test(rawTitle) || /^step\s*\d+$/i.test(rawTitle);
+            if (isGeneric) {
+              const fallback = String(s.instruction || '').trim().split(/[.!?]/)[0].slice(0, 70).trim();
+              s.title = fallback && fallback.length >= 4
+                ? fallback
+                : `${selected.title}: action ${idx + 1}`;
+              appliedFixes.push(`step_${idx}_title_repaired`);
+            } else if (rawTitle.length > 70) {
+              s.title = rawTitle.slice(0, 67).replace(/[\s,;:.-]+$/, '') + '…';
+              appliedFixes.push(`step_${idx}_title_truncated`);
+            } else {
+              s.title = rawTitle;
+            }
+            if (!s.instruction || typeof s.instruction !== 'string' || s.instruction.trim().length < 10) {
+              s.instruction = `Complete the action: ${s.title}. Apply this to the "${selected.title}" strategy.`;
+              appliedFixes.push(`step_${idx}_instruction_repaired`);
+            }
+            if (!TIME_ALLOWED.includes(s.time_estimate)) {
+              s.time_estimate = '15-30 min';
+              appliedFixes.push(`step_${idx}_time_normalized`);
+            }
+            if (!s.done_definition || typeof s.done_definition !== 'string' || s.done_definition.trim().length < 5) {
+              s.done_definition = `You have completed: ${s.title}.`;
+              appliedFixes.push(`step_${idx}_done_definition_added`);
+            }
+            return s;
+          });
+
+          // Ensure >= 2 steps
+          while (parsed.steps.length < 2) {
+            const idx = parsed.steps.length;
+            parsed.steps.push({
+              title: `${selected.title}: follow-up action ${idx + 1}`,
+              instruction: `Review your progress on the "${selected.title}" strategy and capture next actions.`,
+              time_estimate: '15-30 min',
+              done_definition: 'Next action documented.',
+            });
+            appliedFixes.push(`step_${idx}_padded`);
+            validationErrors.push('steps_below_minimum');
+          }
+
+          // 3. Horseman-aware required arrays
+          const ensureArray = (key: string, defaultsByHorseman: Record<string, string[]>) => {
+            if (!Array.isArray(parsed[key]) || parsed[key].length === 0) {
+              parsed[key] = defaultsByHorseman[expectedHorseman] || defaultsByHorseman['interest'];
+              appliedFixes.push(`${key}_defaulted_for_${expectedHorseman}`);
+            } else {
+              parsed[key] = parsed[key].filter((x: any) => typeof x === 'string' && x.trim().length > 0);
+            }
+          };
+          const beforeDefaults: Record<string, string[]> = {
+            interest: ['Gather your most recent statements for each debt (balance, APR, minimum payment).', 'Confirm your monthly cash flow surplus available for extra debt payments.'],
+            taxes: ['Have your most recent tax return and current pay stub on hand.', 'Note your filing status and any tax-advantaged accounts you already use.'],
+            insurance: ['List your existing insurance policies (type, carrier, coverage amount, premium).', 'Identify dependents and the income they rely on.'],
+            education: ['List education goals (who, when, current savings).', 'Confirm your state of residence for 529 plan benefits.'],
+          };
+          const risksDefaults: Record<string, string[]> = {
+            interest: ['Do not miss minimum payments on other debts while focusing on one.', 'Avoid taking on new high-interest debt during the payoff period.'],
+            taxes: ['Do not implement tax strategies without confirming eligibility.', 'Avoid missing contribution or filing deadlines.'],
+            insurance: ['Do not cancel existing coverage before new coverage is in force.', 'Avoid under-insuring to save on premium.'],
+            education: ['Do not over-fund education accounts at the expense of retirement.', 'Avoid withdrawing 529 funds for non-qualified expenses.'],
+          };
+          const advisorDefaults: Record<string, string[]> = {
+            interest: ['List of all debts with balance, APR, and minimum payment.', 'Monthly cash flow surplus and target payoff date.'],
+            taxes: ['Most recent tax return.', 'Current pay stub and W-4.', 'List of tax-advantaged accounts and contribution levels.'],
+            insurance: ['Current policy declarations pages.', 'List of dependents and income needs.'],
+            education: ['Education goals and timeline.', 'Current education savings balances and account types.'],
+          };
+          ensureArray('before_you_start', beforeDefaults);
+          ensureArray('risks_and_mistakes_to_avoid', risksDefaults);
+          ensureArray('advisor_packet', advisorDefaults);
+
+          // Lock plan_schema + disclaimer
+          parsed.plan_schema = 'v1';
+          if (!parsed.disclaimer || typeof parsed.disclaimer !== 'string') {
+            parsed.disclaimer = 'This information is for educational purposes only and does not constitute tax, legal, or financial advice.';
+            appliedFixes.push('disclaimer_defaulted');
+          }
+          if (!parsed.summary || typeof parsed.summary !== 'string' || parsed.summary.trim().length < 20) {
+            parsed.summary = `${selected.title}. ${(selected.strategy_details || '').slice(0, 280)}`.trim();
+            appliedFixes.push('summary_repaired');
+          }
+
+          assistantMessage = '```json\n' + JSON.stringify(parsed, null, 2) + '\n```';
+        } else if (selected) {
+          // Could not parse — fall back deterministically using the selected strategy
+          validationErrors.push('falling_back_to_deterministic');
+          const fallback = {
+            plan_schema: 'v1',
+            strategy_id: selected.strategy_id,
+            strategy_name: selected.title,
+            horseman: [selected.horseman_type],
+            summary: `${selected.title}. ${(selected.strategy_details || '').slice(0, 280)}`.trim(),
+            steps: [
+              { title: `Review the ${selected.title} overview`, instruction: selected.strategy_details?.slice(0, 280) || 'Review the strategy details.', time_estimate: '15-30 min', done_definition: 'You understand the goal of this strategy.' },
+              { title: `Plan your first ${selected.title} action`, instruction: 'Identify one concrete action you can take this week.', time_estimate: '15-30 min', done_definition: 'A specific next action is written down.' },
+            ],
+            before_you_start: ['Gather the documents you need for this strategy.'],
+            risks_and_mistakes_to_avoid: ['Do not skip the eligibility check before acting.'],
+            advisor_packet: ['List of relevant accounts, balances, and recent statements.'],
+            disclaimer: 'This information is for educational purposes only and does not constitute tax, legal, or financial advice.',
+          };
+          assistantMessage = '```json\n' + JSON.stringify(fallback, null, 2) + '\n```';
+          consistencyFixed = true;
+        } else {
+          // No selected strategy — leave fence as-is
+          const trimmed = assistantMessage.trim();
+          if (!trimmed.startsWith('```')) {
+            assistantMessage = '```json\n' + trimmed + '\n```';
+          }
+        }
+
+        console.log(`Strict JSON v1 validation | selected_strategy_id: ${selected?.strategy_id} | selected_horseman: ${selected?.horseman_type} | parser: paid-openai-strict-json | strategy_consistency_fixed: ${consistencyFixed} | validation_errors: ${JSON.stringify(validationErrors)} | applied_fixes: ${JSON.stringify(appliedFixes)}`);
       }
 
       console.log('Received OpenAI response, length:', assistantMessage.length);
