@@ -344,11 +344,94 @@ const HORSEMAN_PRESETS: Record<string, {
   },
 };
 
+// Generic / truncated step-title detector
+const GENERIC_STEP_TITLE_RE = /^(step\s*\d+|follow[-\s]?up\s*\d*|schedule\s+a\s+\d+|untitled|todo|action\s*\d+)\s*$/i;
+
+function isGenericTitle(t: string): boolean {
+  if (!t) return true;
+  const trimmed = t.trim();
+  if (trimmed.length < 5 || trimmed.length > 80) return true;
+  if (GENERIC_STEP_TITLE_RE.test(trimmed)) return true;
+  // Truncated fragments like "Schedule a 30" (ends in a bare number with no noun)
+  if (/\b\d+\s*$/.test(trimmed) && trimmed.split(/\s+/).length < 5) return true;
+  return false;
+}
+
+/** Verb-led action title from a sentence (max ~70 chars). */
+function deriveActionTitle(text: string, fallback: string): string {
+  const cleaned = (text || '').replace(/\s+/g, ' ').trim().replace(/^\d+\.\s*/, '');
+  if (!cleaned) return fallback;
+  // Take the first clause up to first sentence terminator or 70 chars
+  let title = cleaned.split(/(?<=[.!?])\s+/)[0];
+  if (title.length > 70) {
+    // cut at last word boundary <=70
+    const cut = title.slice(0, 70);
+    title = cut.replace(/\s+\S*$/, '').trim();
+  }
+  // Capitalize first letter
+  title = title.charAt(0).toUpperCase() + title.slice(1);
+  if (isGenericTitle(title)) return fallback;
+  return title;
+}
+
+/**
+ * Build horseman-specific concrete steps for a strategy when DB has none.
+ * Steps are derived from the strategy's title + details so they are SPECIFIC.
+ */
+function buildHorsemanSpecificSteps(
+  s: DBStrategy,
+  horseman: string,
+): StructuredPlanStep[] {
+  const titleLow = s.title.replace(/\.$/, '').trim();
+  const advisorByHorseman: Record<string, string> = {
+    taxes: 'CPA or Enrolled Agent',
+    interest: 'credit counselor or financial advisor',
+    insurance: 'licensed insurance broker',
+    education: '529/financial-aid advisor',
+  };
+  const advisor = advisorByHorseman[horseman] || 'qualified financial professional';
+
+  const horsemanStepBank: Record<string, StructuredPlanStep[]> = {
+    taxes: [
+      { title: `Pull the documents needed to evaluate "${titleLow}"`, instruction: `Gather your most recent Form 1040, W-2/1099s, and any account statements relevant to ${titleLow}.`, time_estimate: '15-30 min', done_definition: 'All required tax documents are collected in one folder.' },
+      { title: `Confirm eligibility for this strategy`, instruction: `Verify your filing status, income range, and any plan/account requirements that apply to ${titleLow}.`, time_estimate: '15-20 min', done_definition: 'You can confirm in writing that you qualify for this strategy this tax year.' },
+      { title: `Quantify the projected tax impact`, instruction: `Estimate the deduction, credit, or deferral this strategy could produce on your current return.`, time_estimate: '20-45 min', done_definition: 'You have a written estimated dollar impact for this tax year.' },
+      { title: `Implement the change`, instruction: `Open the account, update the W-4, or file the form needed to put ${titleLow} into effect.`, time_estimate: '30-60 min', done_definition: 'The change is submitted and you have a confirmation number or signed copy.' },
+      { title: `Schedule a review with a ${advisor}`, instruction: `Book a 30-minute review to confirm this strategy is correctly applied to your return.`, time_estimate: '15-20 min', done_definition: 'The meeting is on the calendar with the documents attached.' },
+    ],
+    interest: [
+      { title: `List every debt with balance, APR, and minimum payment`, instruction: `Build a single sheet of every revolving and installment debt so you can see ${titleLow} in context.`, time_estimate: '20-45 min', done_definition: 'You have a written list of every debt with APR and minimum payment.' },
+      { title: `Identify the target account(s) for this strategy`, instruction: `Pick the specific debt(s) where ${titleLow} will be applied first.`, time_estimate: '15-20 min', done_definition: 'You have named the account(s) this strategy will be applied to.' },
+      { title: `Run the numbers before acting`, instruction: `Calculate the projected interest savings, total payoff time, and any fees tied to ${titleLow}.`, time_estimate: '20-45 min', done_definition: 'You have a written before/after comparison for this strategy.' },
+      { title: `Execute the change`, instruction: `Submit the application, transfer, or payment plan needed to put ${titleLow} into effect.`, time_estimate: '30-60 min', done_definition: 'The change is confirmed by the lender in writing or in your account.' },
+      { title: `Set a 90-day check-in`, instruction: `Add a calendar reminder to verify balances, APR, and that the strategy is producing the expected savings.`, time_estimate: '15-20 min', done_definition: 'A 90-day review is scheduled and your plan notes are updated.' },
+    ],
+    insurance: [
+      { title: `Pull every active policy declarations page`, instruction: `Collect declarations pages for auto, home, life, health, and disability so you can evaluate ${titleLow}.`, time_estimate: '20-45 min', done_definition: 'All declarations pages are saved in one folder.' },
+      { title: `Map current coverage limits and premiums`, instruction: `Write down each policy's limits, deductibles, premium, and renewal date relevant to ${titleLow}.`, time_estimate: '15-30 min', done_definition: 'You have a single coverage table for all active policies.' },
+      { title: `Get comparison quotes`, instruction: `Request 2-3 quotes that reflect the change required by ${titleLow} (carrier, coverage, or rider change).`, time_estimate: '30-60 min', done_definition: 'At least two written quotes are saved for comparison.' },
+      { title: `Confirm new coverage before cancelling old`, instruction: `Make sure replacement coverage is bound and effective before cancelling any existing policy.`, time_estimate: '20-45 min', done_definition: 'New policy effective date is confirmed in writing.' },
+      { title: `Review with a ${advisor}`, instruction: `Schedule a 30-minute review to validate the change matches your needs and beneficiaries.`, time_estimate: '15-20 min', done_definition: 'Review meeting is on the calendar with all policies attached.' },
+    ],
+    education: [
+      { title: `Gather current education-savings statements`, instruction: `Pull 529, custodial, and savings-account statements relevant to ${titleLow}.`, time_estimate: '15-30 min', done_definition: 'All current education-savings statements are in one folder.' },
+      { title: `Confirm beneficiary and state-plan eligibility`, instruction: `Verify the beneficiary, account owner, and any state-tax-deduction rules that apply to ${titleLow}.`, time_estimate: '15-20 min', done_definition: 'You have written confirmation of beneficiary and eligibility.' },
+      { title: `Project the contribution / aid impact`, instruction: `Estimate how ${titleLow} will affect contribution limits, gift-tax treatment, or financial-aid eligibility.`, time_estimate: '20-45 min', done_definition: 'You have a written estimate of the impact in dollars or aid percentage.' },
+      { title: `Open or update the account`, instruction: `Submit the application or change form needed to put ${titleLow} into effect.`, time_estimate: '30-60 min', done_definition: 'Account or change is confirmed with a reference number or signed form.' },
+      { title: `Set a 12-month review`, instruction: `Add a calendar reminder to re-check beneficiary, contribution pace, and tuition-cost projections.`, time_estimate: '15-20 min', done_definition: 'A 12-month review is on the calendar.' },
+    ],
+  };
+
+  return horsemanStepBank[horseman] || horsemanStepBank.taxes;
+}
+
 function buildStructuredPlan(
   s: DBStrategy,
   profile: any,
   primaryHorseman: string | null,
 ): StructuredPlan {
+  // CANONICAL BINDING: horseman MUST come from the selected strategy row,
+  // never from the model or the user's primary horseman.
   const horseman = (s.horseman_type || primaryHorseman || 'taxes').toLowerCase();
   const preset = HORSEMAN_PRESETS[horseman] || HORSEMAN_PRESETS.taxes;
 
@@ -370,51 +453,50 @@ function buildStructuredPlan(
   if (cleanedSavings && summaryParts.length < 3) summaryParts.push(`Why it matters: ${cleanedSavings.split(/(?<=[.!?])\s+/)[0]}`);
   const summary = summaryParts.join(' ').slice(0, 700) || `Apply the ${s.title} strategy to reduce the impact of the ${horseman} horseman on your finances.`;
 
-  // Steps: prefer DB steps; pad/transform into structured form.
+  // STEPS: prefer DB-provided steps; otherwise build horseman-specific, action-led steps.
   const rawSteps = normalizeSteps(s.implementation_steps);
-  const baseSteps = rawSteps.length >= 5 ? rawSteps : [
-    ...rawSteps,
-    `Schedule a 30-minute review with a qualified ${horseman === 'taxes' ? 'CPA or EA' : horseman === 'insurance' ? 'licensed insurance broker' : 'financial professional'}`,
-    'Document the change in writing (email or signed form) and store with your records',
-    'Set a 90-day calendar reminder to confirm the change took effect',
-    'Re-run your RPRx assessment after 6 months to measure impact',
-    'Capture lessons learned in your RPRx plan notes',
-  ].slice(0, Math.max(0, 5 - rawSteps.length) + rawSteps.length);
+  let structuredSteps: StructuredPlanStep[];
 
-  const trimmedSteps = baseSteps.slice(0, 7);
-  const lastIdx = trimmedSteps.length - 1;
-  const structuredSteps: StructuredPlanStep[] = trimmedSteps.map((stepText, i) => {
-    const text = cleanStrategyText(stepText);
-    const titleSource = text.split(/[:.\-–]/)[0].trim();
-    const title = (titleSource.length > 4 && titleSource.length <= 70 ? titleSource : `Step ${i + 1}`)
-      .replace(/^\d+\.\s*/, '');
-    return {
-      title,
-      instruction: text,
-      time_estimate: i === 0 ? '15-20 min' : i < 3 ? '20-45 min' : '15-30 min',
-      done_definition: i === 0
-        ? 'You have the documents listed in "Before You Start" gathered in one folder.'
-        : i === lastIdx
+  if (rawSteps.length >= 2) {
+    const trimmed = rawSteps.slice(0, 7);
+    const lastIdx = trimmed.length - 1;
+    structuredSteps = trimmed.map((stepText, i) => {
+      const text = cleanStrategyText(stepText);
+      const fallback = `Complete step ${i + 1} of "${s.title.replace(/\.$/, '')}"`;
+      const title = deriveActionTitle(text, fallback);
+      return {
+        title,
+        instruction: text,
+        time_estimate: i === 0 ? '15-20 min' : i < 3 ? '20-45 min' : '15-30 min',
+        done_definition: i === lastIdx
           ? 'Change is confirmed in writing and stored with your records.'
           : 'Action is completed and the result is captured in your plan notes.',
-    };
-  });
-  // Ensure at least 5 steps
-  while (structuredSteps.length < 5) {
-    const idx = structuredSteps.length;
-    structuredSteps.push({
-      title: `Follow-up ${idx + 1}`,
-      instruction: 'Review progress with the documents gathered above and capture next action in your plan notes.',
-      time_estimate: '15 min',
-      done_definition: 'Notes updated with the result and date.',
+      };
     });
+  } else {
+    structuredSteps = buildHorsemanSpecificSteps(s, horseman);
+  }
+
+  // FINAL REPAIR PASS: scrub any remaining generic / truncated titles.
+  const horsemanFallbacks = buildHorsemanSpecificSteps(s, horseman);
+  structuredSteps = structuredSteps.map((step, i) => {
+    if (isGenericTitle(step.title)) {
+      const replacement = horsemanFallbacks[i] || horsemanFallbacks[horsemanFallbacks.length - 1];
+      return { ...replacement, instruction: step.instruction || replacement.instruction };
+    }
+    return step;
+  });
+
+  // Ensure at least 2 steps (schema rule), pad with horseman-specific extras.
+  while (structuredSteps.length < 2) {
+    structuredSteps.push(horsemanFallbacks[structuredSteps.length] || horsemanFallbacks[0]);
   }
 
   return {
     plan_schema: 'v1',
-    strategy_id: s.strategy_id,
-    strategy_name: s.title,
-    horseman,
+    strategy_id: s.strategy_id,        // CANONICAL
+    strategy_name: s.title,            // CANONICAL
+    horseman,                          // CANONICAL
     summary,
     expected_result: {
       impact_range: impactRange,
@@ -1289,7 +1371,7 @@ ${knowledgeBaseContext}
 
 ## MODE: AUTO (Single Best Strategy)
 ${autoInstructions}`;
-      console.log('Auto mode - top strategy:', topStrategy?.strategy.strategy_id, 'score:', topStrategy?.score);
+      console.log('Auto mode - top strategy:', topStrategy?.strategy.strategy_id, '| horseman:', topStrategy?.strategy.horseman_type, '| title:', topStrategy?.strategy.title, '| score:', topStrategy?.score);
     } else {
       // Manual mode: paginated strategy list
       const startIdx = (page - 1) * strategiesPerPage;
