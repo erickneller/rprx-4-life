@@ -1456,6 +1456,13 @@ serve(async (req) => {
       ? [selectedStrategyForRequest, ...rankedStrategiesRaw.filter(s => s.strategy.id !== selectedStrategyForRequest!.strategy.id)]
       : rankedStrategiesRaw;
     console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}, primary_horseman: ${intentHorseman || routingPrimaryHorseman || 'none'}, selected_horseman: ${rankedStrategies[0]?.strategy.horseman_type || 'none'}, selected_strategy_id: ${rankedStrategies[0]?.strategy.strategy_id || 'none'}, score: ${rankedStrategies[0]?.score ?? 'none'}, prompt_horseman_reason: ${promptHorseman.reason}, override_allowed: ${horsemanOverrideLogged}`);
+    const selectedStrategyMetadata = {
+      primary_horseman: intentHorseman || routingPrimaryHorseman || null,
+      selected_horseman: rankedStrategies[0]?.strategy.horseman_type || null,
+      selected_strategy_id: rankedStrategies[0]?.strategy.strategy_id || null,
+      selected_strategy_name: rankedStrategies[0]?.strategy.title || null,
+      score: rankedStrategies[0]?.score ?? null,
+    };
 
     // Get prompt templates (with fallbacks)
     const baseSystemPrompt = systemPromptResult || FALLBACK_SYSTEM_PROMPT;
@@ -1525,7 +1532,10 @@ ${manualInstructions}`;
     } else {
       runtimeBranch = strictJsonV1 ? 'paid-openai-strict-json' : 'paid-openai';
     }
-    console.log(`Runtime branch: ${runtimeBranch} | strategy_source: ${strategySource} | tier: ${userTier || 'free'} | mode: ${effectiveMode}`);
+    const branchLog = runtimeBranch === 'template-no-openai-key'
+      ? 'fallback'
+      : (runtimeBranch.startsWith('template') ? 'template' : 'paid_openai');
+    console.log(`branch=${branchLog} | runtime_branch=${runtimeBranch} | strategy_source=${strategySource} | tier=${userTier || 'free'} | mode=${effectiveMode} | primary_horseman=${selectedStrategyMetadata.primary_horseman || 'none'} | selected_horseman=${selectedStrategyMetadata.selected_horseman || 'none'} | selected_strategy_id=${selectedStrategyMetadata.selected_strategy_id || 'none'} | score=${selectedStrategyMetadata.score ?? 'none'}`);
 
     if (runtimeBranch.startsWith('template')) {
       // =====================================================
