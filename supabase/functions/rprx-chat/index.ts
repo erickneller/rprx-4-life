@@ -187,6 +187,77 @@ function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredS
     .sort((a, b) => b.score - a.score);
 }
 
+type Horseman = 'interest' | 'taxes' | 'insurance' | 'education';
+
+const HORSEMEN: Horseman[] = ['interest', 'taxes', 'insurance', 'education'];
+const CROSS_HORSEMAN_OVERRIDE_THRESHOLD = 25;
+
+function normalizeHorseman(value: unknown): Horseman | null {
+  const raw = String(Array.isArray(value) ? value[0] : value || '').toLowerCase().trim();
+  if (raw === 'tax' || raw === 'taxation') return 'taxes';
+  if (raw === 'debt') return 'interest';
+  return HORSEMEN.includes(raw as Horseman) ? raw as Horseman : null;
+}
+
+function detectPromptHorseman(message: string): { horseman: Horseman | null; reason: string } {
+  const lower = message.toLowerCase();
+  const scores: Record<Horseman, number> = { interest: 0, taxes: 0, insurance: 0, education: 0 };
+
+  const add = (horseman: Horseman, points: number, patterns: RegExp[]) => {
+    for (const pattern of patterns) {
+      if (pattern.test(lower)) scores[horseman] += points;
+    }
+  };
+
+  add('taxes', 4, [/\b(tax|taxes|taxation|irs|1040|w-?4|withholding|deduction|deductible|refund)\b/, /\breduce\s+tax(es)?\b/, /\btax\s+(credit|return|prep|planning)\b/]);
+  add('interest', 4, [/\b(interest|debt|debts|apr|credit\s+card|balance\s+transfer|payoff|loan|loans|refinance|consolidat(e|ion))\b/, /\bmonthly\s+cash\s+flow\b/, /\bincrease\s+cash\s+flow\b/]);
+  add('insurance', 4, [/\b(insurance|premium|premiums|coverage|policy|policies|deductible|life\s+insurance|disability|long[-\s]?term\s+care)\b/]);
+  add('education', 4, [/\b(education|college|tuition|529|coverdell|student\s+aid|financial\s+aid|scholarship|fafsa)\b/, /\bsave\s+for\s+education\b/]);
+
+  // Avoid letting generic words override explicit tax/education/insurance intent.
+  if (/\btax\s+credit\b/.test(lower)) scores.interest = Math.max(0, scores.interest - 2);
+  if (/\bstudent\s+loan(s)?\b/.test(lower)) scores.interest += 2;
+
+  const ranked = HORSEMEN.map(h => ({ horseman: h, score: scores[h] })).sort((a, b) => b.score - a.score);
+  if (ranked[0].score <= 0 || ranked[0].score === ranked[1].score) {
+    return { horseman: null, reason: `none:${JSON.stringify(scores)}` };
+  }
+  return { horseman: ranked[0].horseman, reason: `keywords:${JSON.stringify(scores)}` };
+}
+
+function inferStrategyContentHorseman(strategy: DBStrategy): { horseman: Horseman | null; reason: string } {
+  const signalText = `${strategy.title} ${strategy.strategy_details || ''}`;
+  const detected = detectPromptHorseman(signalText);
+  if (!detected.horseman) return detected;
+
+  const lower = signalText.toLowerCase();
+  // Education strategies often include tax-credit language; keep them education when the education signal is explicit.
+  if (/\b(education|college|tuition|529|coverdell|financial\s+aid|student)\b/.test(lower)) {
+    return { horseman: 'education', reason: `education_override:${detected.reason}` };
+  }
+  return detected;
+}
+
+function filterCatalogIntegrity(strategies: DBStrategy[]): DBStrategy[] {
+  return strategies.filter(strategy => {
+    const rowHorseman = normalizeHorseman(strategy.horseman_type);
+    const inferred = inferStrategyContentHorseman(strategy);
+    if (rowHorseman && inferred.horseman && inferred.horseman !== rowHorseman) {
+      console.error(`Strategy catalog integrity mismatch excluded | strategy_id=${strategy.strategy_id} | row_horseman=${strategy.horseman_type} | inferred_horseman=${inferred.horseman} | reason=${inferred.reason} | title=${strategy.title}`);
+      return false;
+    }
+    return true;
+  });
+}
+
+function assertPlanMatchesStrategy(plan: StructuredPlan, strategy: DBStrategy): string[] {
+  const errors: string[] = [];
+  if (plan.strategy_id !== strategy.strategy_id) errors.push(`strategy_id:${plan.strategy_id}->${strategy.strategy_id}`);
+  if (plan.strategy_name !== strategy.title) errors.push(`strategy_name:${plan.strategy_name}->${strategy.title}`);
+  if (normalizeHorseman(plan.horseman) !== normalizeHorseman(strategy.horseman_type)) errors.push(`horseman:${plan.horseman}->${strategy.horseman_type}`);
+  return errors;
+}
+
 // =====================================================
 // STRATEGY FORMATTING
 // =====================================================
@@ -907,15 +978,31 @@ ${cleanStrategyText(s.strategy_details)}${stepsStr ? `\n\n**Implementation Steps
   // ----- AUTO mode: single best strategy with full steps -----
   if (intent === 'auto' || mode === 'auto') {
     const top = ranked[0];
-    if (!top) return `I don't have a matching strategy for your profile yet. Try completing the assessment first!${disclaimer}`;
+    if (!top) {
+      return embedPlanJson({
+        plan_schema: 'v1',
+        strategy_id: 'no_matching_strategy',
+        strategy_name: 'No matching strategy found',
+        horseman: primaryHorseman || 'interest',
+        summary: 'No active strategy matched the current request and profile context. Complete or update your assessment, then try again.',
+        expected_result: { impact_range: 'N/A', first_win_timeline: 'N/A', confidence_note: 'No strategy was selected.' },
+        before_you_start: ['Review your assessment and profile details.'],
+        steps: [
+          { title: 'Review your assessment context', instruction: 'Confirm your primary financial pressure and profile details are current.', time_estimate: '15-20 min', done_definition: 'Assessment and profile context are up to date.' },
+          { title: 'Request a new strategy', instruction: 'Ask for a strategy after your context is updated.', time_estimate: '15-20 min', done_definition: 'A new strategy request has been submitted.' },
+        ],
+        risks_and_mistakes_to_avoid: ['Do not act on a strategy that does not match your situation.'],
+        advisor_packet: ['Current profile and assessment summary.'],
+        disclaimer: 'Educational information only. Consult a qualified professional before implementation.',
+      }).trim();
+    }
     const structured = buildStructuredPlan(top.strategy, profile, primaryHorseman);
-    return `# Your Recommended Strategy
-
-Based on your profile and assessment, here is your best-fit strategy for ${horsemanLabel}:
-
-${formatStrategyBlock(top.strategy, 1)}
-
-Here are the step-by-step implementation plans for this strategy. Would you like to save this as your active plan?${disclaimer}${embedPlanJson(structured)}`;
+    const assertionErrors = assertPlanMatchesStrategy(structured, top.strategy);
+    if (assertionErrors.length > 0) {
+      console.error(`Canonical plan assertion failed | selected_strategy_id=${top.strategy.strategy_id} | errors=${JSON.stringify(assertionErrors)}`);
+      throw new Error('Canonical strategy plan mismatch');
+    }
+    return embedPlanJson(structured).trim();
   }
 
   // ----- GREETING -----
@@ -1204,7 +1291,7 @@ serve(async (req) => {
     const messages = [...(historyResult.data || [])].reverse();
     messages.push({ role: 'user', content: user_message.trim() });
 
-    const allStrategies = strategiesResult.strategies;
+    const allStrategies = filterCatalogIntegrity(strategiesResult.strategies);
     const strategySource: StrategySource = strategiesResult.source;
     if (strategySource === 'none') {
       return new Response(
@@ -1323,9 +1410,15 @@ serve(async (req) => {
         ].sort((a, b) => b.score - a.score)
       : [];
 
+    const promptHorseman = detectPromptHorseman(user_message);
+    const routingPrimaryHorseman = promptHorseman.horseman || normalizeHorseman(primaryHorseman) || null;
+    const assessmentPrimaryHorseman = normalizeHorseman(primaryHorseman);
+
     const userContext: UserContext = {
-      primaryHorseman,
-      secondaryHorseman: horsemanRanking[1]?.key || null,
+      primaryHorseman: routingPrimaryHorseman,
+      secondaryHorseman: promptHorseman.horseman && assessmentPrimaryHorseman && promptHorseman.horseman !== assessmentPrimaryHorseman
+        ? assessmentPrimaryHorseman
+        : (horsemanRanking[1]?.key || null),
       thirdHorseman: horsemanRanking[2]?.key || null,
       financialGoals,
       profileTypes,
@@ -1340,9 +1433,36 @@ serve(async (req) => {
       ? allStrategies.filter(s => s.horseman_type === requestedHorsemanFilter)
       : allStrategies;
 
-    // Rank strategies
-    const rankedStrategies = rankStrategies(strategiesForRanking, userContext);
-    console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}`);
+    // Rank strategies freshly on every request using current prompt + assessment context.
+    const rankedStrategiesRaw = rankStrategies(strategiesForRanking, userContext);
+    const intentHorseman = requestedHorsemanFilter || promptHorseman.horseman;
+    let selectedStrategyForRequest = rankedStrategiesRaw[0] || null;
+    let horsemanOverrideLogged = false;
+    if (intentHorseman && rankedStrategiesRaw.length > 0) {
+      const bestIntentMatch = rankedStrategiesRaw.find(s => s.strategy.horseman_type === intentHorseman) || null;
+      const bestOverall = rankedStrategiesRaw[0];
+      if (bestIntentMatch && bestOverall.strategy.horseman_type !== intentHorseman) {
+        const delta = bestOverall.score - bestIntentMatch.score;
+        if (delta >= CROSS_HORSEMAN_OVERRIDE_THRESHOLD) {
+          horsemanOverrideLogged = true;
+          console.warn(`Intent horseman override allowed | primary_horseman=${intentHorseman} | selected_horseman=${bestOverall.strategy.horseman_type} | selected_strategy_id=${bestOverall.strategy.strategy_id} | score=${bestOverall.score} | intent_best_strategy_id=${bestIntentMatch.strategy.strategy_id} | intent_best_score=${bestIntentMatch.score} | delta=${delta}`);
+        } else {
+          selectedStrategyForRequest = bestIntentMatch;
+          console.log(`Intent horseman guard selected in-horseman strategy | primary_horseman=${intentHorseman} | selected_horseman=${bestIntentMatch.strategy.horseman_type} | selected_strategy_id=${bestIntentMatch.strategy.strategy_id} | score=${bestIntentMatch.score} | rejected_strategy_id=${bestOverall.strategy.strategy_id} | rejected_horseman=${bestOverall.strategy.horseman_type} | delta=${delta}`);
+        }
+      }
+    }
+    const rankedStrategies = selectedStrategyForRequest
+      ? [selectedStrategyForRequest, ...rankedStrategiesRaw.filter(s => s.strategy.id !== selectedStrategyForRequest!.strategy.id)]
+      : rankedStrategiesRaw;
+    console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}, primary_horseman: ${intentHorseman || routingPrimaryHorseman || 'none'}, selected_horseman: ${rankedStrategies[0]?.strategy.horseman_type || 'none'}, selected_strategy_id: ${rankedStrategies[0]?.strategy.strategy_id || 'none'}, score: ${rankedStrategies[0]?.score ?? 'none'}, prompt_horseman_reason: ${promptHorseman.reason}, override_allowed: ${horsemanOverrideLogged}`);
+    const selectedStrategyMetadata = {
+      primary_horseman: intentHorseman || routingPrimaryHorseman || null,
+      selected_horseman: rankedStrategies[0]?.strategy.horseman_type || null,
+      selected_strategy_id: rankedStrategies[0]?.strategy.strategy_id || null,
+      selected_strategy_name: rankedStrategies[0]?.strategy.title || null,
+      score: rankedStrategies[0]?.score ?? null,
+    };
 
     // Get prompt templates (with fallbacks)
     const baseSystemPrompt = systemPromptResult || FALLBACK_SYSTEM_PROMPT;
@@ -1412,7 +1532,10 @@ ${manualInstructions}`;
     } else {
       runtimeBranch = strictJsonV1 ? 'paid-openai-strict-json' : 'paid-openai';
     }
-    console.log(`Runtime branch: ${runtimeBranch} | strategy_source: ${strategySource} | tier: ${userTier || 'free'} | mode: ${effectiveMode}`);
+    const branchLog = runtimeBranch === 'template-no-openai-key'
+      ? 'fallback'
+      : (runtimeBranch.startsWith('template') ? 'template' : 'paid_openai');
+    console.log(`branch=${branchLog} | runtime_branch=${runtimeBranch} | force_template_engine=${forceTemplateEngine} | strict_json_v1=${strictJsonV1} | strategy_source=${strategySource} | tier=${userTier || 'free'} | mode=${effectiveMode} | primary_horseman=${selectedStrategyMetadata.primary_horseman || 'none'} | selected_horseman=${selectedStrategyMetadata.selected_horseman || 'none'} | selected_strategy_id=${selectedStrategyMetadata.selected_strategy_id || 'none'} | score=${selectedStrategyMetadata.score ?? 'none'}`);
 
     if (runtimeBranch.startsWith('template')) {
       // =====================================================
@@ -1661,22 +1784,22 @@ Rules:
             }
           };
           const beforeDefaults: Record<string, string[]> = {
-            interest: ['Gather your most recent statements for each debt (balance, APR, minimum payment).', 'Confirm your monthly cash flow surplus available for extra debt payments.'],
-            taxes: ['Have your most recent tax return and current pay stub on hand.', 'Note your filing status and any tax-advantaged accounts you already use.'],
-            insurance: ['List your existing insurance policies (type, carrier, coverage amount, premium).', 'Identify dependents and the income they rely on.'],
-            education: ['List education goals (who, when, current savings).', 'Confirm your state of residence for 529 plan benefits.'],
+            interest: HORSEMAN_PRESETS.interest.before,
+            taxes: HORSEMAN_PRESETS.taxes.before,
+            insurance: HORSEMAN_PRESETS.insurance.before,
+            education: HORSEMAN_PRESETS.education.before,
           };
           const risksDefaults: Record<string, string[]> = {
-            interest: ['Do not miss minimum payments on other debts while focusing on one.', 'Avoid taking on new high-interest debt during the payoff period.'],
-            taxes: ['Do not implement tax strategies without confirming eligibility.', 'Avoid missing contribution or filing deadlines.'],
-            insurance: ['Do not cancel existing coverage before new coverage is in force.', 'Avoid under-insuring to save on premium.'],
-            education: ['Do not over-fund education accounts at the expense of retirement.', 'Avoid withdrawing 529 funds for non-qualified expenses.'],
+            interest: HORSEMAN_PRESETS.interest.risks,
+            taxes: HORSEMAN_PRESETS.taxes.risks,
+            insurance: HORSEMAN_PRESETS.insurance.risks,
+            education: HORSEMAN_PRESETS.education.risks,
           };
           const advisorDefaults: Record<string, string[]> = {
-            interest: ['List of all debts with balance, APR, and minimum payment.', 'Monthly cash flow surplus and target payoff date.'],
-            taxes: ['Most recent tax return.', 'Current pay stub and W-4.', 'List of tax-advantaged accounts and contribution levels.'],
-            insurance: ['Current policy declarations pages.', 'List of dependents and income needs.'],
-            education: ['Education goals and timeline.', 'Current education savings balances and account types.'],
+            interest: HORSEMAN_PRESETS.interest.packet,
+            taxes: HORSEMAN_PRESETS.taxes.packet,
+            insurance: HORSEMAN_PRESETS.insurance.packet,
+            education: HORSEMAN_PRESETS.education.packet,
           };
           ensureArray('before_you_start', beforeDefaults);
           ensureArray('risks_and_mistakes_to_avoid', risksDefaults);
@@ -1694,24 +1817,18 @@ Rules:
           }
 
           assistantMessage = '```json\n' + JSON.stringify(parsed, null, 2) + '\n```';
+          const finalAssertionErrors = assertPlanMatchesStrategy(parsed as StructuredPlan, selected);
+          if (finalAssertionErrors.length > 0) {
+            console.error(`Canonical paid plan assertion failed | selected_strategy_id=${selected.strategy_id} | errors=${JSON.stringify(finalAssertionErrors)}`);
+            return new Response(
+              JSON.stringify({ error: 'Canonical strategy plan mismatch', selected_strategy_id: selected.strategy_id, validation_errors: finalAssertionErrors }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         } else if (selected) {
           // Could not parse — fall back deterministically using the selected strategy
           validationErrors.push('falling_back_to_deterministic');
-          const fallback = {
-            plan_schema: 'v1',
-            strategy_id: selected.strategy_id,
-            strategy_name: selected.title,
-            horseman: [selected.horseman_type],
-            summary: `${selected.title}. ${(selected.strategy_details || '').slice(0, 280)}`.trim(),
-            steps: [
-              { title: `Review the ${selected.title} overview`, instruction: selected.strategy_details?.slice(0, 280) || 'Review the strategy details.', time_estimate: '15-30 min', done_definition: 'You understand the goal of this strategy.' },
-              { title: `Plan your first ${selected.title} action`, instruction: 'Identify one concrete action you can take this week.', time_estimate: '15-30 min', done_definition: 'A specific next action is written down.' },
-            ],
-            before_you_start: ['Gather the documents you need for this strategy.'],
-            risks_and_mistakes_to_avoid: ['Do not skip the eligibility check before acting.'],
-            advisor_packet: ['List of relevant accounts, balances, and recent statements.'],
-            disclaimer: 'This information is for educational purposes only and does not constitute tax, legal, or financial advice.',
-          };
+          const fallback = buildStructuredPlan(selected, profile, primaryHorseman);
           assistantMessage = '```json\n' + JSON.stringify(fallback, null, 2) + '\n```';
           consistencyFixed = true;
         } else {
@@ -1746,6 +1863,8 @@ Rules:
         current_page: page,
         strategy_source: strategySource,
         runtime_branch: runtimeBranch,
+        branch: branchLog,
+        selected_strategy: selectedStrategyMetadata,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
