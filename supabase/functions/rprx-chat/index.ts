@@ -225,6 +225,31 @@ function detectPromptHorseman(message: string): { horseman: Horseman | null; rea
   return { horseman: ranked[0].horseman, reason: `keywords:${JSON.stringify(scores)}` };
 }
 
+function inferStrategyContentHorseman(strategy: DBStrategy): { horseman: Horseman | null; reason: string } {
+  const signalText = `${strategy.title} ${strategy.strategy_details || ''}`;
+  const detected = detectPromptHorseman(signalText);
+  if (!detected.horseman) return detected;
+
+  const lower = signalText.toLowerCase();
+  // Education strategies often include tax-credit language; keep them education when the education signal is explicit.
+  if (/\b(education|college|tuition|529|coverdell|financial\s+aid|student)\b/.test(lower)) {
+    return { horseman: 'education', reason: `education_override:${detected.reason}` };
+  }
+  return detected;
+}
+
+function filterCatalogIntegrity(strategies: DBStrategy[]): DBStrategy[] {
+  return strategies.filter(strategy => {
+    const rowHorseman = normalizeHorseman(strategy.horseman_type);
+    const inferred = inferStrategyContentHorseman(strategy);
+    if (rowHorseman && inferred.horseman && inferred.horseman !== rowHorseman) {
+      console.error(`Strategy catalog integrity mismatch excluded | strategy_id=${strategy.strategy_id} | row_horseman=${strategy.horseman_type} | inferred_horseman=${inferred.horseman} | reason=${inferred.reason} | title=${strategy.title}`);
+      return false;
+    }
+    return true;
+  });
+}
+
 function assertPlanMatchesStrategy(plan: StructuredPlan, strategy: DBStrategy): string[] {
   const errors: string[] = [];
   if (plan.strategy_id !== strategy.strategy_id) errors.push(`strategy_id:${plan.strategy_id}->${strategy.strategy_id}`);
