@@ -1344,28 +1344,52 @@ ${manualInstructions}`;
       // =====================================================
       let systemPrompt = dynamicSystemPrompt;
       if (runtimeBranch === 'paid-openai-strict-json') {
+        const selectedStrategy = effectiveMode === 'auto' ? rankedStrategies[0]?.strategy : rankedStrategies[0]?.strategy;
+        const lockedId = selectedStrategy?.strategy_id || '';
+        const lockedName = selectedStrategy?.title || '';
+        const lockedHorseman = selectedStrategy?.horseman_type || primaryHorseman || 'interest';
         systemPrompt += `
 
 ## STRICT OUTPUT CONTRACT (JSON v1) — MANDATORY
-You MUST respond with a SINGLE fenced \`\`\`json code block and NOTHING ELSE. No prose, no headings, no markdown outside the JSON fence. The JSON object MUST conform exactly to this schema:
+You MUST respond with a SINGLE fenced \`\`\`json code block and NOTHING ELSE. No prose, no headings, no markdown outside the JSON fence.
 
+## LOCKED STRATEGY (DO NOT CHANGE)
+- strategy_id: "${lockedId}"
+- strategy_name: "${lockedName}"
+- horseman: ["${lockedHorseman}"]
+
+You MUST use those EXACT values for strategy_id, strategy_name, and horseman. Do not invent or substitute.
+All content (summary, steps, before_you_start, risks_and_mistakes_to_avoid, advisor_packet) MUST be specific to the "${lockedHorseman}" horseman and to this strategy. Do NOT inject tax-document defaults for non-tax strategies. Do NOT inject debt-payoff defaults for non-interest strategies.
+
+Schema:
 {
   "plan_schema": "v1",
-  "strategy_id": "string (the chosen strategy's strategy_id from the catalog)",
-  "strategy_name": "string",
-  "summary": "string (2-4 sentences)",
-  "horseman": ["string"],
-  "steps": ["string", "string", "..."],
+  "strategy_id": "${lockedId}",
+  "strategy_name": "${lockedName}",
+  "horseman": ["${lockedHorseman}"],
+  "summary": "string (2-4 sentences specific to this strategy)",
+  "steps": [
+    {
+      "title": "Concise action phrase, 4-70 chars, NEVER 'Step 1' or generic",
+      "instruction": "Concrete task tied to this specific strategy (1-3 sentences)",
+      "time_estimate": "one of: 15-20 min | 15-30 min | 20-45 min | 30-60 min",
+      "done_definition": "Measurable completion statement (what proves this step is done)"
+    }
+  ],
+  "before_you_start": ["string aligned to ${lockedHorseman} horseman"],
+  "risks_and_mistakes_to_avoid": ["string aligned to ${lockedHorseman} horseman"],
+  "advisor_packet": ["string aligned to ${lockedHorseman} horseman"],
   "complexity": 1,
   "savings": "string (e.g. $500-$2,000/year)",
-  "tax_reference": "string (optional, e.g. IRC §401(k))",
+  "tax_reference": "string (only when relevant, e.g. IRC §401(k))",
   "disclaimer": "string"
 }
 
 Rules:
-- "steps" MUST contain at least 2 items, each a complete actionable sentence.
-- "complexity", "savings", "tax_reference" are OPTIONAL — omit the key if not applicable.
-- All other keys are REQUIRED.
+- "steps" MUST contain at least 2 items. Each step MUST be an OBJECT with title, instruction, time_estimate, done_definition.
+- Step titles MUST be specific (e.g. "List all credit card balances", NOT "Step 1" or "Schedule a 30").
+- "before_you_start", "risks_and_mistakes_to_avoid", "advisor_packet" are REQUIRED arrays of 2-5 strings each, all aligned to "${lockedHorseman}".
+- "complexity", "savings", "tax_reference" are OPTIONAL — omit if not applicable.
 - Output exactly one \`\`\`json ... \`\`\` block. No text before or after the fence.`;
       }
 
