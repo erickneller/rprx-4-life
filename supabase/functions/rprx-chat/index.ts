@@ -1315,34 +1315,69 @@ ${manualInstructions}`;
     }
 
     let assistantMessage: string;
+    let runtimeBranch: 'template-forced' | 'template-free' | 'template-no-openai-key' | 'paid-openai-strict-json' | 'paid-openai' = 'template-free';
     const forceTemplateEngine = Deno.env.get('RPRX_FORCE_TEMPLATE_ENGINE') === 'true';
+    const strictJsonV1 = Deno.env.get('STRICT_JSON_V1') === 'true';
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    if (isFreeUser || forceTemplateEngine) {
+    // Branch selection (explicit & mutually exclusive)
+    if (forceTemplateEngine) {
+      runtimeBranch = 'template-forced';
+    } else if (isFreeUser) {
+      runtimeBranch = 'template-free';
+    } else if (!openaiApiKey) {
+      runtimeBranch = 'template-no-openai-key';
+    } else {
+      runtimeBranch = strictJsonV1 ? 'paid-openai-strict-json' : 'paid-openai';
+    }
+    console.log(`Runtime branch: ${runtimeBranch} | strategy_source: ${strategySource} | tier: ${userTier || 'free'} | mode: ${effectiveMode}`);
+
+    if (runtimeBranch.startsWith('template')) {
       // =====================================================
       // TEMPLATE ENGINE: deterministic internal strategy engine
       // =====================================================
-      console.log(forceTemplateEngine ? 'Forced template engine — generating response' : 'Free tier — generating template response');
       const intent = detectIntent(user_message, messages);
       assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message, page);
+    } else {
       // =====================================================
       // PAID TIER: OpenAI-powered conversational AI
       // =====================================================
+      let systemPrompt = dynamicSystemPrompt;
+      if (runtimeBranch === 'paid-openai-strict-json') {
+        systemPrompt += `
+
+## STRICT OUTPUT CONTRACT (JSON v1) — MANDATORY
+You MUST respond with a SINGLE fenced \`\`\`json code block and NOTHING ELSE. No prose, no headings, no markdown outside the JSON fence. The JSON object MUST conform exactly to this schema:
+
+{
+  "plan_schema": "v1",
+  "strategy_id": "string (the chosen strategy's strategy_id from the catalog)",
+  "strategy_name": "string",
+  "summary": "string (2-4 sentences)",
+  "horseman": ["string"],
+  "steps": ["string", "string", "..."],
+  "complexity": 1,
+  "savings": "string (e.g. $500-$2,000/year)",
+  "tax_reference": "string (optional, e.g. IRC §401(k))",
+  "disclaimer": "string"
+}
+
+Rules:
+- "steps" MUST contain at least 2 items, each a complete actionable sentence.
+- "complexity", "savings", "tax_reference" are OPTIONAL — omit the key if not applicable.
+- All other keys are REQUIRED.
+- Output exactly one \`\`\`json ... \`\`\` block. No text before or after the fence.`;
+      }
+
       const openaiMessages = [
-        { role: 'system', content: dynamicSystemPrompt },
+        { role: 'system', content: systemPrompt },
         ...messages.map((m: { role: string; content: string }) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
         })),
       ];
 
-      console.log('Paid tier — calling OpenAI with', openaiMessages.length, 'messages');
-
-      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-      if (!openaiApiKey) {
-        console.log('OPENAI_API_KEY missing, falling back to template engine');
-        const intent = detectIntent(user_message, messages);
-        assistantMessage = generateTemplateResponse(intent, rankedStrategies, profile, primaryHorseman, effectiveMode, user_message, page);
-      } else {
+      console.log(`Calling OpenAI with ${openaiMessages.length} messages (strict_json=${runtimeBranch === 'paid-openai-strict-json'})`);
 
       const maxRetries = 3;
       let lastError: string | null = null;
@@ -1355,18 +1390,23 @@ ${manualInstructions}`;
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
 
+        const openaiBody: Record<string, unknown> = {
+          model: 'gpt-4o-mini',
+          messages: openaiMessages,
+          temperature: runtimeBranch === 'paid-openai-strict-json' ? 0.2 : 0.7,
+          max_tokens: 2500,
+        };
+        if (runtimeBranch === 'paid-openai-strict-json') {
+          openaiBody.response_format = { type: 'json_object' };
+        }
+
         const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${openaiApiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: openaiMessages,
-            temperature: 0.7,
-            max_tokens: 2500,
-          }),
+          body: JSON.stringify(openaiBody),
         });
 
         if (openaiResponse.ok) {
@@ -1405,8 +1445,16 @@ ${manualInstructions}`;
         );
       }
 
-      console.log('Received OpenAI response, length:', assistantMessage.length);
+      // When using response_format=json_object, OpenAI returns raw JSON (no fence).
+      // Wrap it in a ```json fence so the downstream parser (strategyParser.ts) detects it.
+      if (runtimeBranch === 'paid-openai-strict-json') {
+        const trimmed = assistantMessage.trim();
+        if (!trimmed.startsWith('```')) {
+          assistantMessage = '```json\n' + trimmed + '\n```';
+        }
       }
+
+      console.log('Received OpenAI response, length:', assistantMessage.length);
     }
 
     // Save assistant message (fire and forget)
