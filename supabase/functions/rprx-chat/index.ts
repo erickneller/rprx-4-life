@@ -1784,22 +1784,22 @@ Rules:
             }
           };
           const beforeDefaults: Record<string, string[]> = {
-            interest: ['Gather your most recent statements for each debt (balance, APR, minimum payment).', 'Confirm your monthly cash flow surplus available for extra debt payments.'],
-            taxes: ['Have your most recent tax return and current pay stub on hand.', 'Note your filing status and any tax-advantaged accounts you already use.'],
-            insurance: ['List your existing insurance policies (type, carrier, coverage amount, premium).', 'Identify dependents and the income they rely on.'],
-            education: ['List education goals (who, when, current savings).', 'Confirm your state of residence for 529 plan benefits.'],
+            interest: HORSEMAN_PRESETS.interest.before,
+            taxes: HORSEMAN_PRESETS.taxes.before,
+            insurance: HORSEMAN_PRESETS.insurance.before,
+            education: HORSEMAN_PRESETS.education.before,
           };
           const risksDefaults: Record<string, string[]> = {
-            interest: ['Do not miss minimum payments on other debts while focusing on one.', 'Avoid taking on new high-interest debt during the payoff period.'],
-            taxes: ['Do not implement tax strategies without confirming eligibility.', 'Avoid missing contribution or filing deadlines.'],
-            insurance: ['Do not cancel existing coverage before new coverage is in force.', 'Avoid under-insuring to save on premium.'],
-            education: ['Do not over-fund education accounts at the expense of retirement.', 'Avoid withdrawing 529 funds for non-qualified expenses.'],
+            interest: HORSEMAN_PRESETS.interest.risks,
+            taxes: HORSEMAN_PRESETS.taxes.risks,
+            insurance: HORSEMAN_PRESETS.insurance.risks,
+            education: HORSEMAN_PRESETS.education.risks,
           };
           const advisorDefaults: Record<string, string[]> = {
-            interest: ['List of all debts with balance, APR, and minimum payment.', 'Monthly cash flow surplus and target payoff date.'],
-            taxes: ['Most recent tax return.', 'Current pay stub and W-4.', 'List of tax-advantaged accounts and contribution levels.'],
-            insurance: ['Current policy declarations pages.', 'List of dependents and income needs.'],
-            education: ['Education goals and timeline.', 'Current education savings balances and account types.'],
+            interest: HORSEMAN_PRESETS.interest.packet,
+            taxes: HORSEMAN_PRESETS.taxes.packet,
+            insurance: HORSEMAN_PRESETS.insurance.packet,
+            education: HORSEMAN_PRESETS.education.packet,
           };
           ensureArray('before_you_start', beforeDefaults);
           ensureArray('risks_and_mistakes_to_avoid', risksDefaults);
@@ -1820,21 +1820,7 @@ Rules:
         } else if (selected) {
           // Could not parse — fall back deterministically using the selected strategy
           validationErrors.push('falling_back_to_deterministic');
-          const fallback = {
-            plan_schema: 'v1',
-            strategy_id: selected.strategy_id,
-            strategy_name: selected.title,
-            horseman: [selected.horseman_type],
-            summary: `${selected.title}. ${(selected.strategy_details || '').slice(0, 280)}`.trim(),
-            steps: [
-              { title: `Review the ${selected.title} overview`, instruction: selected.strategy_details?.slice(0, 280) || 'Review the strategy details.', time_estimate: '15-30 min', done_definition: 'You understand the goal of this strategy.' },
-              { title: `Plan your first ${selected.title} action`, instruction: 'Identify one concrete action you can take this week.', time_estimate: '15-30 min', done_definition: 'A specific next action is written down.' },
-            ],
-            before_you_start: ['Gather the documents you need for this strategy.'],
-            risks_and_mistakes_to_avoid: ['Do not skip the eligibility check before acting.'],
-            advisor_packet: ['List of relevant accounts, balances, and recent statements.'],
-            disclaimer: 'This information is for educational purposes only and does not constitute tax, legal, or financial advice.',
-          };
+          const fallback = buildStructuredPlan(selected, profile, primaryHorseman);
           assistantMessage = '```json\n' + JSON.stringify(fallback, null, 2) + '\n```';
           consistencyFixed = true;
         } else {
