@@ -1473,6 +1473,8 @@ Rules:
         has_more_strategies: effectiveMode === 'manual' && rankedStrategies.length > page * strategiesPerPage,
         total_strategies: rankedStrategies.length,
         current_page: page,
+        strategy_source: strategySource,
+        runtime_branch: runtimeBranch,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
