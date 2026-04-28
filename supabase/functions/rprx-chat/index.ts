@@ -63,14 +63,26 @@ interface UserContext {
 // STRATEGY FETCHING FROM DATABASE
 // =====================================================
 
-async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
+export type StrategySource = 'v2' | 'legacy' | 'none';
+
+async function fetchStrategies(serviceClient: any): Promise<{ strategies: DBStrategy[]; source: StrategySource; error?: string }> {
   const { data, error } = await serviceClient
     .from('strategy_catalog_v2')
     .select('id, strategy_id, title, strategy_details, example, potential_savings_benefits, horseman_type, difficulty, estimated_impact_min, estimated_impact_max, estimated_impact_display, tax_return_line_or_area, goal_tags, implementation_steps, is_active, sort_order')
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
 
-  if (!error && data && data.length > 0) return data;
+  if (!error && data && data.length > 0) {
+    console.log(`Strategy source: strategy_catalog_v2 (${data.length} rows)`);
+    return { strategies: data, source: 'v2' };
+  }
+
+  const allowLegacy = Deno.env.get('ALLOW_LEGACY_FALLBACK') === 'true';
+  if (!allowLegacy) {
+    const msg = 'strategy_catalog_v2 unavailable/empty and ALLOW_LEGACY_FALLBACK !== "true"';
+    console.error(msg, error);
+    return { strategies: [], source: 'none', error: msg };
+  }
 
   console.warn('strategy_catalog_v2 unavailable/empty, using legacy strategy_definitions fallback');
   const { data: legacy, error: legacyError } = await serviceClient
@@ -81,10 +93,13 @@ async function fetchStrategies(serviceClient: any): Promise<DBStrategy[]> {
 
   if (legacyError || !legacy) {
     console.error('Error fetching fallback strategies:', legacyError || error);
-    return [];
+    return { strategies: [], source: 'none', error: (legacyError || error)?.message };
   }
 
-  return legacy.map((s: any) => ({
+  console.log(`Strategy source: strategy_definitions legacy (${legacy.length} rows)`);
+  return {
+    source: 'legacy',
+    strategies: legacy.map((s: any) => ({
     id: s.id,
     strategy_id: s.id,
     title: s.name,
