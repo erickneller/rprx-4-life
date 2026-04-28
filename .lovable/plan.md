@@ -1,52 +1,25 @@
+## Plan: Clear all strategies for fresh import
 
+### What gets deleted
+- **All rows in `strategy_catalog_v2`** (the canonical strategy source for the chat engine)
+- **All rows in `user_active_strategies`** (every user's currently-activated strategies)
 
-## Add Loom support to the shared video player
+### What stays untouched
+- `strategy_definitions` (legacy fallback table) — preserved as safety net
+- `saved_plans` — user-generated plan content stays
+- `strategy_catalog_v2_backup_20260428` — existing backup remains for rollback
+- All other config tables (prompts, knowledge base, etc.)
 
-Extends the previously-approved GHL/YouTube plan to also accept Loom share links.
+### Steps
+1. Run a migration: 
+   - `DELETE FROM public.user_active_strategies;`
+   - `DELETE FROM public.strategy_catalog_v2;`
+2. Confirm both row counts are 0.
+3. You upload the new CSV via Admin Panel → Data Export tab → **Upload** next to **Strategy Catalog V2** (upsert mode, conflict key `strategy_id`).
+4. Verify the row count matches your CSV after import.
 
-### What you'll see
-Anywhere a video URL is accepted (admin **Library**, **Partners**, landing **Product Info**), you can paste:
-- YouTube link → iframe embed
-- Loom share link (`loom.com/share/{ID}`) → iframe embed
-- Direct file (`.mp4`/`.webm`/`.mov`/`.m4v`/`.ogg`, including GHL Media Library URLs) → native HTML5 `<video>` player
+### Heads-up
+Until you import the new CSV, the chat engine will fall back to the legacy `strategy_definitions` table — so users can still get strategies during the gap.
 
-Helper text under the admin "Video URL" field is updated to list all three.
-
-### How it works
-
-**`src/lib/videoSource.ts`** (new) — extends the planned helper:
-```ts
-export type VideoSource =
-  | { kind: 'youtube'; embedUrl: string }
-  | { kind: 'loom';    embedUrl: string }
-  | { kind: 'file';    src: string }
-  | { kind: 'unknown' };
-```
-Loom detection: match `loom.com/share/{id}` or `loom.com/embed/{id}` and return `https://www.loom.com/embed/{id}`.
-
-**`src/components/media/VideoPlayer.tsx`** (new) — YouTube and Loom both render via `<iframe>` (same `allow`/`allowFullScreen` attrs, 16:9 `AspectRatio` wrapper). File kind renders `<video controls preload="metadata">`.
-
-**Refactor call sites** to use `<VideoPlayer />`:
-- `src/pages/Library.tsx`
-- `src/components/admin/LibraryTab.tsx` (relabel "YouTube URL" → "Video URL"; helper text: "YouTube, Loom, or direct .mp4/.webm URL (e.g. GHL Media Library)")
-- `src/pages/Partners.tsx`
-- `src/components/landing/ProductDemo.tsx`
-
-**Deprecate** `toYouTubeEmbedUrl()` in `useLibrary.ts` / `usePartners.ts` — keep as thin re-exports of the new helper so existing imports don't break.
-
-### Out of scope
-- Password-protected Loom videos (no public embed available)
-- Vimeo, Wistia, other providers (easy to add later in the same helper)
-- DB schema changes — existing `video_url` text column accepts any URL
-- GHL funnel pages and gated course videos (per prior decision)
-
-### Files touched
-- ➕ `src/lib/videoSource.ts`
-- ➕ `src/components/media/VideoPlayer.tsx`
-- ✏️ `src/pages/Library.tsx`
-- ✏️ `src/components/admin/LibraryTab.tsx`
-- ✏️ `src/pages/Partners.tsx`
-- ✏️ `src/components/landing/ProductDemo.tsx`
-- ✏️ `src/hooks/useLibrary.ts`
-- ✏️ `src/hooks/usePartners.ts`
-
+### Rollback
+If anything goes wrong, restore `strategy_catalog_v2` from `strategy_catalog_v2_backup_20260428` with a single insert. (User-active strategies cannot be auto-restored — let me know if you want a backup of those before deletion.)
