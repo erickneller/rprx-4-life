@@ -1385,9 +1385,15 @@ serve(async (req) => {
         ].sort((a, b) => b.score - a.score)
       : [];
 
+    const promptHorseman = detectPromptHorseman(user_message);
+    const routingPrimaryHorseman = promptHorseman.horseman || normalizeHorseman(primaryHorseman) || null;
+    const assessmentPrimaryHorseman = normalizeHorseman(primaryHorseman);
+
     const userContext: UserContext = {
-      primaryHorseman,
-      secondaryHorseman: horsemanRanking[1]?.key || null,
+      primaryHorseman: routingPrimaryHorseman,
+      secondaryHorseman: promptHorseman.horseman && assessmentPrimaryHorseman && promptHorseman.horseman !== assessmentPrimaryHorseman
+        ? assessmentPrimaryHorseman
+        : (horsemanRanking[1]?.key || null),
       thirdHorseman: horsemanRanking[2]?.key || null,
       financialGoals,
       profileTypes,
@@ -1402,9 +1408,29 @@ serve(async (req) => {
       ? allStrategies.filter(s => s.horseman_type === requestedHorsemanFilter)
       : allStrategies;
 
-    // Rank strategies
-    const rankedStrategies = rankStrategies(strategiesForRanking, userContext);
-    console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}`);
+    // Rank strategies freshly on every request using current prompt + assessment context.
+    const rankedStrategiesRaw = rankStrategies(strategiesForRanking, userContext);
+    const intentHorseman = requestedHorsemanFilter || promptHorseman.horseman;
+    let selectedStrategyForRequest = rankedStrategiesRaw[0] || null;
+    let horsemanOverrideLogged = false;
+    if (intentHorseman && rankedStrategiesRaw.length > 0) {
+      const bestIntentMatch = rankedStrategiesRaw.find(s => s.strategy.horseman_type === intentHorseman) || null;
+      const bestOverall = rankedStrategiesRaw[0];
+      if (bestIntentMatch && bestOverall.strategy.horseman_type !== intentHorseman) {
+        const delta = bestOverall.score - bestIntentMatch.score;
+        if (delta >= CROSS_HORSEMAN_OVERRIDE_THRESHOLD) {
+          horsemanOverrideLogged = true;
+          console.warn(`Intent horseman override allowed | primary_horseman=${intentHorseman} | selected_horseman=${bestOverall.strategy.horseman_type} | selected_strategy_id=${bestOverall.strategy.strategy_id} | score=${bestOverall.score} | intent_best_strategy_id=${bestIntentMatch.strategy.strategy_id} | intent_best_score=${bestIntentMatch.score} | delta=${delta}`);
+        } else {
+          selectedStrategyForRequest = bestIntentMatch;
+          console.log(`Intent horseman guard selected in-horseman strategy | primary_horseman=${intentHorseman} | selected_horseman=${bestIntentMatch.strategy.horseman_type} | selected_strategy_id=${bestIntentMatch.strategy.strategy_id} | score=${bestIntentMatch.score} | rejected_strategy_id=${bestOverall.strategy.strategy_id} | rejected_horseman=${bestOverall.strategy.horseman_type} | delta=${delta}`);
+        }
+      }
+    }
+    const rankedStrategies = selectedStrategyForRequest
+      ? [selectedStrategyForRequest, ...rankedStrategiesRaw.filter(s => s.strategy.id !== selectedStrategyForRequest!.strategy.id)]
+      : rankedStrategiesRaw;
+    console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}, primary_horseman: ${intentHorseman || routingPrimaryHorseman || 'none'}, selected_horseman: ${rankedStrategies[0]?.strategy.horseman_type || 'none'}, selected_strategy_id: ${rankedStrategies[0]?.strategy.strategy_id || 'none'}, score: ${rankedStrategies[0]?.score ?? 'none'}, prompt_horseman_reason: ${promptHorseman.reason}, override_allowed: ${horsemanOverrideLogged}`);
 
     // Get prompt templates (with fallbacks)
     const baseSystemPrompt = systemPromptResult || FALLBACK_SYSTEM_PROMPT;
