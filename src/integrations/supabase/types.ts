@@ -809,6 +809,51 @@ export type Database = {
           },
         ]
       }
+      plan_generation_events: {
+        Row: {
+          chosen_strategy_id: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          latency_ms: number | null
+          mode: string | null
+          parser_path: string | null
+          ranker_score: number | null
+          step_count: number | null
+          strategy_source: string | null
+          tier: string | null
+          user_id: string
+        }
+        Insert: {
+          chosen_strategy_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          mode?: string | null
+          parser_path?: string | null
+          ranker_score?: number | null
+          step_count?: number | null
+          strategy_source?: string | null
+          tier?: string | null
+          user_id: string
+        }
+        Update: {
+          chosen_strategy_id?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          mode?: string | null
+          parser_path?: string | null
+          ranker_score?: number | null
+          step_count?: number | null
+          strategy_source?: string | null
+          tier?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

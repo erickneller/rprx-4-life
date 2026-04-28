@@ -1089,8 +1089,9 @@ serve(async (req) => {
     ]);
 
     if (saveResult.error) {
+      console.error('Failed to save message:', JSON.stringify(saveResult.error), 'conversationId:', conversationId, 'userId:', userId);
       return new Response(
-        JSON.stringify({ error: 'Failed to save message' }),
+        JSON.stringify({ error: 'Failed to save message', details: saveResult.error.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
