@@ -1291,7 +1291,7 @@ serve(async (req) => {
     const messages = [...(historyResult.data || [])].reverse();
     messages.push({ role: 'user', content: user_message.trim() });
 
-    const allStrategies = strategiesResult.strategies;
+    const allStrategies = filterCatalogIntegrity(strategiesResult.strategies);
     const strategySource: StrategySource = strategiesResult.source;
     if (strategySource === 'none') {
       return new Response(
