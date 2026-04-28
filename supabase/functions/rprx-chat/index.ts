@@ -1371,7 +1371,7 @@ ${knowledgeBaseContext}
 
 ## MODE: AUTO (Single Best Strategy)
 ${autoInstructions}`;
-      console.log('Auto mode - top strategy:', topStrategy?.strategy.strategy_id, 'score:', topStrategy?.score);
+      console.log('Auto mode - top strategy:', topStrategy?.strategy.strategy_id, '| horseman:', topStrategy?.strategy.horseman_type, '| title:', topStrategy?.strategy.title, '| score:', topStrategy?.score);
     } else {
       // Manual mode: paginated strategy list
       const startIdx = (page - 1) * strategiesPerPage;
