@@ -26,7 +26,9 @@ export function parseStrategyFromMessage(messageContent: string, lenient = false
           content: {
             steps: parsed.steps,
             summary: parsed.summary,
-            horseman: parsed.horseman ? [String(parsed.horseman)] : undefined,
+            horseman: Array.isArray(parsed.horseman)
+              ? parsed.horseman.map(String)
+              : (parsed.horseman ? [String(parsed.horseman)] : undefined),
             disclaimer: parsed.disclaimer,
             completedSteps: [],
             plan_schema: 'v1',
