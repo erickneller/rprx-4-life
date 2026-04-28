@@ -1817,6 +1817,15 @@ Rules:
           }
 
           assistantMessage = '```json\n' + JSON.stringify(parsed, null, 2) + '\n```';
+          const finalPlanForAssertion = buildStructuredPlan(selected, profile, primaryHorseman);
+          const finalAssertionErrors = assertPlanMatchesStrategy(finalPlanForAssertion, selected);
+          if (finalAssertionErrors.length > 0) {
+            console.error(`Canonical paid plan assertion failed | selected_strategy_id=${selected.strategy_id} | errors=${JSON.stringify(finalAssertionErrors)}`);
+            return new Response(
+              JSON.stringify({ error: 'Canonical strategy plan mismatch', selected_strategy_id: selected.strategy_id, validation_errors: finalAssertionErrors }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         } else if (selected) {
           // Could not parse — fall back deterministically using the selected strategy
           validationErrors.push('falling_back_to_deterministic');
