@@ -847,12 +847,124 @@ function toSentenceCase(s: string): string {
     .trim();
 }
 
-/** Cap a step title to 5–12 words, action-led. */
-function trimStepTitle(title: string): string {
-  let t = tidyText(title).replace(/[.!?]+$/, '');
-  const words = t.split(/\s+/);
-  if (words.length > 12) t = words.slice(0, 12).join(' ');
-  return toSentenceCase(t);
+// Trailing stopwords forbidden at the end of a step title.
+const TRAILING_STOPWORDS = new Set(['to','for','of','a','an','the','and','or','in','on','at','by','with','from','as','into','vs','via','your','my','this','that']);
+// Action verbs to fall back to when titles aren't action-led.
+const ACTION_VERBS_BY_HORSEMAN: Record<string, string[]> = {
+  education: ['Gather', 'Confirm', 'Project', 'Submit', 'Schedule'],
+  taxes: ['Gather', 'Confirm', 'Project', 'File', 'Schedule'],
+  interest: ['List', 'Compare', 'Apply', 'Transfer', 'Schedule'],
+  insurance: ['Gather', 'Compare', 'Request', 'Update', 'Schedule'],
+  default: ['Gather', 'Confirm', 'Project', 'Submit', 'Schedule'],
+};
+
+function dropTrailingStopwords(t: string): string {
+  let words = t.split(/\s+/).filter(Boolean);
+  while (words.length > 0) {
+    const last = words[words.length - 1].replace(/[^A-Za-z0-9-]/g, '').toLowerCase();
+    if (TRAILING_STOPWORDS.has(last)) words.pop(); else break;
+  }
+  return words.join(' ');
+}
+
+function ensureActionLed(t: string, horseman?: string): string {
+  if (!t) return t;
+  const first = t.split(/\s+/)[0] || '';
+  // First word is a verb if it ends with -e/consonant and isn't an article/preposition.
+  const looksVerb = /^[A-Z][a-z]+/.test(first) && !TRAILING_STOPWORDS.has(first.toLowerCase());
+  if (looksVerb) return t;
+  const verbs = ACTION_VERBS_BY_HORSEMAN[(horseman || 'default').toLowerCase()] || ACTION_VERBS_BY_HORSEMAN.default;
+  const verb = verbs[0];
+  return `${verb} ${t.charAt(0).toLowerCase()}${t.slice(1)}`;
+}
+
+/**
+ * Cap a step title to 4–10 complete words, action-led, no trailing stopwords,
+ * no full strategy_name reuse. Deterministic rewrite when violations remain.
+ */
+function trimStepTitle(title: string, opts: { strategyName?: string; horseman?: string; index?: number } = {}): string {
+  const { strategyName = '', horseman, index = 0 } = opts;
+  let t = tidyText(title).replace(/[.!?,;:]+$/, '');
+
+  // Remove direct strategy_name substring (case-insensitive) from titles.
+  if (strategyName) {
+    const escaped = strategyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\.$/, '');
+    t = t.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), '').replace(/\s+/g, ' ').trim();
+  }
+
+  // Drop dangling fragments like trailing ":"-clauses or em-dashes mid-thought.
+  t = t.replace(/\s*[—–-]\s*$/, '').replace(/[(\[]\s*$/, '').trim();
+
+  let words = t.split(/\s+/).filter(Boolean);
+  if (words.length > 10) words = words.slice(0, 10);
+  t = dropTrailingStopwords(words.join(' '));
+
+  // If too short or empty, fall back to a deterministic horseman template.
+  const verbs = ACTION_VERBS_BY_HORSEMAN[(horseman || 'default').toLowerCase()] || ACTION_VERBS_BY_HORSEMAN.default;
+  const FALLBACKS: Record<string, string[]> = {
+    education: [
+      'Gather 529 account records',
+      'Confirm beneficiary eligibility this year',
+      'Project contribution impact on aid',
+      'Submit 529 election with payroll',
+      'Schedule annual education review',
+    ],
+    taxes: [
+      'Gather W-2 and 1099 records',
+      'Confirm filing status this year',
+      'Project tax impact of changes',
+      'Submit updated W-4 to payroll',
+      'Schedule annual tax review',
+    ],
+    interest: [
+      'List every debt with current APR',
+      'Compare balance transfer offers today',
+      'Apply for the best transfer card',
+      'Transfer balances to new card',
+      'Schedule monthly debt review',
+    ],
+    insurance: [
+      'Gather current policy declarations pages',
+      'Compare coverage from three carriers',
+      'Request matching quotes in writing',
+      'Update beneficiaries and coverage limits',
+      'Schedule annual insurance review',
+    ],
+    default: [
+      'Gather your supporting records',
+      'Confirm eligibility for this strategy',
+      'Project the dollar impact today',
+      'Submit changes with your provider',
+      'Schedule a quarterly progress review',
+    ],
+  };
+  const pool = FALLBACKS[(horseman || 'default').toLowerCase()] || FALLBACKS.default;
+
+  let final = toSentenceCase(t);
+  let finalWords = final.split(/\s+/).filter(Boolean);
+  if (finalWords.length < 4 || finalWords.length > 10) {
+    final = pool[index % pool.length];
+    finalWords = final.split(/\s+/).filter(Boolean);
+  }
+
+  // Ensure action-led; if not, prepend a horseman verb and re-trim.
+  const led = ensureActionLed(final, horseman);
+  let ledWords = led.split(/\s+/).filter(Boolean);
+  if (ledWords.length > 10) ledWords = ledWords.slice(0, 10);
+  final = dropTrailingStopwords(ledWords.join(' '));
+
+  // Last-resort guard: if still invalid, use the deterministic fallback.
+  finalWords = final.split(/\s+/).filter(Boolean);
+  if (finalWords.length < 4 || finalWords.length > 10) {
+    final = pool[index % pool.length];
+  }
+
+  // Reject titles still containing the full strategy name (case-insensitive).
+  if (strategyName && final.toLowerCase().includes(strategyName.toLowerCase().slice(0, Math.max(8, strategyName.length - 4)))) {
+    final = pool[index % pool.length];
+  }
+
+  return toSentenceCase(final);
 }
 
 function trimToCharLimit(text: string, limit: number): string {
@@ -860,7 +972,6 @@ function trimToCharLimit(text: string, limit: number): string {
   const cut = text.slice(0, limit);
   const lastBoundary = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
   if (lastBoundary > limit * 0.6) return cut.slice(0, lastBoundary + 1).trim();
-  // Otherwise cut at last word boundary and add period
   return cut.replace(/\s+\S*$/, '').replace(/[,;:]?$/, '') + '.';
 }
 
@@ -868,30 +979,63 @@ function trimToCharLimit(text: string, limit: number): string {
 function stripRedundantStrategyName(text: string, strategyName: string): string {
   if (!text || !strategyName) return text;
   const escaped = strategyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\.$/, '');
-  // Remove `"<name>"` quotes patterns and bare repeats
   let out = text.replace(new RegExp(`["“]${escaped}["”]`, 'gi'), 'this strategy');
   out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), 'this strategy');
-  // De-duplicate "this strategy" repeated within same string
   out = out.replace(/(this strategy)([^.]*?)\bthis strategy\b/gi, '$1$2it');
   return tidyText(out);
 }
 
+/** Force instruction to start with a verb. */
+function ensureInstructionVerb(text: string): string {
+  if (!text) return text;
+  const first = (text.split(/\s+/)[0] || '').toLowerCase().replace(/[^a-z]/g, '');
+  const looksVerb = first.length > 1 && !TRAILING_STOPWORDS.has(first) && !/^(it|this|that|there|these|those|you|we|i)$/.test(first);
+  if (looksVerb) return text.charAt(0).toUpperCase() + text.slice(1);
+  return 'Start by ' + text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+/** Drop adjacent steps that reuse the same 4-gram clause. */
+function dropAdjacentClauseRepeats(steps: StructuredPlanStep[]): StructuredPlanStep[] {
+  const ngrams = (s: string, n = 4): Set<string> => {
+    const w = s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+    const out = new Set<string>();
+    for (let i = 0; i + n <= w.length; i++) out.add(w.slice(i, i + n).join(' '));
+    return out;
+  };
+  let lastGrams = new Set<string>();
+  return steps.map((step) => {
+    const grams = ngrams(step.instruction || '');
+    const overlap = [...grams].filter(g => lastGrams.has(g));
+    let instruction = step.instruction;
+    if (overlap.length >= 2 && instruction) {
+      // Strip the first occurrence of each repeated 4-gram clause.
+      for (const g of overlap.slice(0, 2)) {
+        const re = new RegExp(g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        instruction = instruction.replace(re, '').replace(/\s+/g, ' ').trim();
+      }
+      instruction = tidyText(instruction);
+    }
+    lastGrams = grams;
+    return { ...step, instruction };
+  });
+}
+
 /** Diversify openers: ensure adjacent step titles do not share their first 3 words. */
-function diversifyAdjacentOpeners(steps: StructuredPlanStep[]): StructuredPlanStep[] {
+function diversifyAdjacentOpeners(steps: StructuredPlanStep[], opts: { strategyName?: string; horseman?: string } = {}): StructuredPlanStep[] {
   const firstN = (t: string, n: number) =>
     t.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).slice(0, n).join(' ');
-  const REWRITES = ['Then ', 'Next, ', 'After that, ', 'Now '];
+  const REWRITES = ['Then', 'Next', 'After that', 'Now'];
   const out: StructuredPlanStep[] = [];
   let lastKey = '';
   let rewriteIdx = 0;
-  for (const step of steps) {
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
     let title = step.title;
     if (firstN(title, 3) === lastKey && lastKey.length > 0) {
       const prefix = REWRITES[rewriteIdx % REWRITES.length];
       rewriteIdx++;
-      // Lower-case the original first letter so the prefix flows naturally
-      title = prefix + title.charAt(0).toLowerCase() + title.slice(1);
-      title = trimStepTitle(title);
+      title = `${prefix} ${title.charAt(0).toLowerCase()}${title.slice(1)}`;
+      title = trimStepTitle(title, { ...opts, index: i });
     }
     lastKey = firstN(title, 3);
     out.push({ ...step, title });
@@ -899,20 +1043,42 @@ function diversifyAdjacentOpeners(steps: StructuredPlanStep[]): StructuredPlanSt
   return out;
 }
 
-/** Trim a summary to 2-3 short, plain sentences. */
+/** Repair `. lowercase` merge errors by joining as a comma clause. */
+function repairSentenceMerges(s: string): string {
+  return s.replace(/\.\s+([a-z])/g, (_m, c) => `, ${c}`);
+}
+
+/** Trim a summary to max 2 short, plain sentences with grammar repair. */
 function trimSummary(summary: string): string {
-  const cleaned = tidyText(summary);
-  // Strip filler disclaimers if they leaked into summary
+  const cleaned = repairSentenceMerges(tidyText(summary));
   const noDisclaim = cleaned
     .replace(/\bThis (information|content) is for educational purposes only[^.]*\.?/gi, '')
     .replace(/\bConsult (a|with) (qualified|your) (professional|advisor|tax)[^.]*\.?/gi, '')
     .trim();
-  const sentences = noDisclaim.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 3);
-  return capSentenceLength(sentences.join(' '), 28);
+  const sentences = noDisclaim.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 2);
+  let joined = capSentenceLength(sentences.join(' '), 24);
+  // Ensure capitalization after each sentence-ending period.
+  joined = joined.replace(/([.!?])\s+([a-z])/g, (_m, p, c) => `${p} ${c.toUpperCase()}`);
+  // Final guard: collapse any remaining ". lowercase" patterns.
+  joined = repairSentenceMerges(joined);
+  if (joined && !/[.!?]$/.test(joined)) joined += '.';
+  return joined.charAt(0).toUpperCase() + joined.slice(1);
 }
 
 function buildRenderBlocks(plan: StructuredPlan): RenderBlocks {
-  const headline = trimSummary(plan.summary).split(/(?<=[.!?])\s+/)[0] || plan.strategy_name;
+  const sum = trimSummary(plan.summary);
+  // Headline: take the first sentence, strip parenthetical citations like "(IRC §...)".
+  let headline = (sum.split(/(?<=[.!?])\s+/)[0] || plan.strategy_name)
+    .replace(/\([^)]*§[^)]*\)/g, '')
+    .replace(/\bIRC\s*§?\s*[\d().a-z-]+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[.!?]+$/, '');
+  if (headline.length > 90) {
+    const cut = headline.slice(0, 90);
+    const lastSpace = cut.lastIndexOf(' ');
+    headline = (lastSpace > 50 ? cut.slice(0, lastSpace) : cut).trim();
+  }
   const quickWin = `${plan.expected_result?.impact_range || 'Varies'} • first win in ${plan.expected_result?.first_win_timeline || '14-30 days'}`;
   const checklist = plan.steps.map(s => s.title);
   const riskAlerts = (plan.risks_and_mistakes_to_avoid || []).slice(0, 2);
@@ -927,14 +1093,16 @@ function buildRenderBlocks(plan: StructuredPlan): RenderBlocks {
 function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
   if (!plan || plan.plan_schema !== 'v1') return plan;
   const strategyName = plan.strategy_name || '';
+  const horseman = (plan.horseman || '').toLowerCase();
 
   const summary = trimSummary(plan.summary || '');
 
-  const cleanedSteps: StructuredPlanStep[] = (plan.steps || []).map(step => {
-    let title = trimStepTitle(step.title || '');
+  const cleanedSteps: StructuredPlanStep[] = (plan.steps || []).map((step, i) => {
+    let title = trimStepTitle(step.title || '', { strategyName, horseman, index: i });
     let instruction = stripRedundantStrategyName(tidyText(step.instruction || ''), strategyName);
+    instruction = ensureInstructionVerb(instruction);
     instruction = capSentenceLength(instruction, 28);
-    instruction = trimToCharLimit(instruction, 220);
+    instruction = trimToCharLimit(instruction, 180);
     let done = stripRedundantStrategyName(tidyText(step.done_definition || ''), strategyName);
     done = capSentenceLength(done, 24);
     done = trimToCharLimit(done, 140);
@@ -942,7 +1110,8 @@ function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
     return { title, instruction, time_estimate: time, done_definition: done };
   });
 
-  const diversified = diversifyAdjacentOpeners(cleanedSteps);
+  const deduped = dropAdjacentClauseRepeats(cleanedSteps);
+  const diversified = diversifyAdjacentOpeners(deduped, { strategyName, horseman });
 
   // Light tidy of meta arrays
   const tidyArr = (arr?: string[]) => (arr || []).map(s => tidyText(s)).filter(Boolean);
