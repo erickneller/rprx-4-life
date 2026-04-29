@@ -1093,14 +1093,16 @@ function buildRenderBlocks(plan: StructuredPlan): RenderBlocks {
 function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
   if (!plan || plan.plan_schema !== 'v1') return plan;
   const strategyName = plan.strategy_name || '';
+  const horseman = (plan.horseman || '').toLowerCase();
 
   const summary = trimSummary(plan.summary || '');
 
-  const cleanedSteps: StructuredPlanStep[] = (plan.steps || []).map(step => {
-    let title = trimStepTitle(step.title || '');
+  const cleanedSteps: StructuredPlanStep[] = (plan.steps || []).map((step, i) => {
+    let title = trimStepTitle(step.title || '', { strategyName, horseman, index: i });
     let instruction = stripRedundantStrategyName(tidyText(step.instruction || ''), strategyName);
+    instruction = ensureInstructionVerb(instruction);
     instruction = capSentenceLength(instruction, 28);
-    instruction = trimToCharLimit(instruction, 220);
+    instruction = trimToCharLimit(instruction, 180);
     let done = stripRedundantStrategyName(tidyText(step.done_definition || ''), strategyName);
     done = capSentenceLength(done, 24);
     done = trimToCharLimit(done, 140);
@@ -1108,7 +1110,8 @@ function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
     return { title, instruction, time_estimate: time, done_definition: done };
   });
 
-  const diversified = diversifyAdjacentOpeners(cleanedSteps);
+  const deduped = dropAdjacentClauseRepeats(cleanedSteps);
+  const diversified = diversifyAdjacentOpeners(deduped, { strategyName, horseman });
 
   // Light tidy of meta arrays
   const tidyArr = (arr?: string[]) => (arr || []).map(s => tidyText(s)).filter(Boolean);
