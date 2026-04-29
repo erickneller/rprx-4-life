@@ -2152,6 +2152,36 @@ Rules:
       if (error) console.error('Error saving assistant message:', error);
     });
 
+    // Telemetry: plan_generation_events (fire and forget, service role bypasses RLS)
+    try {
+      let stepCount: number | null = null;
+      const jsonMatch = assistantMessage.match(/```json\s*\n([\s\S]*?)\n```/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          if (Array.isArray(parsed?.steps)) stepCount = parsed.steps.length;
+        } catch { /* ignore */ }
+      }
+      const latencyMs = Date.now() - startedAt;
+      serviceClient.from('plan_generation_events').insert({
+        user_id: userId,
+        conversation_id: conversationId,
+        chosen_strategy_id: selectedStrategyMetadata.selected_strategy_id,
+        ranker_score: selectedStrategyMetadata.score,
+        strategy_source: strategySource,
+        parser_path: runtimeBranch,
+        mode: effectiveMode,
+        tier: userTier || 'free',
+        step_count: stepCount,
+        latency_ms: latencyMs,
+        model_variant: modelVariant,
+      }).then(({ error }: { error: any }) => {
+        if (error) console.error('plan_generation_events insert error:', error);
+      });
+    } catch (err) {
+      console.error('Telemetry insert threw:', err);
+    }
+
     return new Response(
       JSON.stringify({
         conversation_id: conversationId,
