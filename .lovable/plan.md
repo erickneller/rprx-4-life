@@ -1,102 +1,93 @@
+## Problem
+
+When the assistant returns a strategy, the chat bubble currently renders the entire message body through ReactMarkdown — including a large ```json ... ``` code block containing the structured plan. The result is a wall of raw JSON that's hard to read, with no visual hierarchy, no bold/bullets in the right spots, and the curated step titles + instructions get buried.
+
+The plan data itself is already clean (curated titles, summary, steps, expected_result, before_you_start, risks, advisor_packet, render_blocks). We just need to render it properly.
+
 ## Goal
 
-Stop relying on model/DB prose for step titles. Force every plan step to use a deterministic, curated, human-readable title chosen by horseman, with short verb-first instructions and a hardened summary + render_blocks. Apply to BOTH the auto/template path and the paid OpenAI strict-JSON path.
+When an assistant message contains a v1 plan JSON block, hide the raw JSON and render a human-friendly **StrategyPlanCard** above any remaining prose. Keep the existing Save Plan button. No backend or schema changes.
 
 ## Scope
 
-- `supabase/functions/rprx-chat/index.ts` (logic + normalization)
-- `supabase/functions/rprx-chat/guards_test.ts` (regression fixture + assertions)
+Frontend only:
+- `src/components/assistant/MessageBubble.tsx` (wire in the new card; strip the JSON block from the markdown body)
+- `src/components/assistant/StrategyPlanCard.tsx` (new — presentation component)
+- `src/lib/strategyParser.ts` (small addition: also expose `render_blocks` and the raw plan so the card can use the headline/quick_win/checklist/risk_alerts)
 
-No frontend, schema, or contract changes. JSON v1 schema, `strategy_id`, `strategy_name`, `horseman` integrity preserved.
+No changes to `usePlans`, the edge function, or saved-plan rendering.
 
-## Implementation
+## StrategyPlanCard layout
 
-### 1. Curated title banks (per horseman)
+Built with existing shadcn primitives (Card, Badge, Separator, Collapsible) and lucide icons. All colors via semantic tokens (`bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary/10`, etc.) — no hard-coded colors.
 
-Add a constant `CURATED_STEP_TITLES` keyed by horseman with exactly 5 entries each:
+```text
+┌─ Card ─────────────────────────────────────────────┐
+│ [Horseman badge(s)]  [Strategy ID badge]           │
+│ Headline (text-lg font-semibold)                    │
+│ Summary paragraph (text-sm text-muted-foreground)   │
+│                                                     │
+│ ┌─ Quick win pill ──────────────────────────────┐  │
+│ │ ⚡ $X-$Y • first win in 14–30 days            │  │
+│ └────────────────────────────────────────────────┘  │
+│                                                     │
+│ Steps (h4: "Your plan")                             │
+│  1. **Step title** (font-semibold)                  │
+│     Instruction sentence (text-sm)                  │
+│     ⏱ time_estimate   ✓ Done when: …               │
+│  2. …                                               │
+│                                                     │
+│ ▸ Before you start  (Collapsible, bullet list)      │
+│ ▸ Watch out for     (Collapsible, bullet list of    │
+│                      risk_alerts/risks_and_mistakes)│
+│ ▸ Bring to your advisor (Collapsible, bullets)      │
+│                                                     │
+│ Disclaimer (text-xs text-muted-foreground italic)   │
+└─────────────────────────────────────────────────────┘
+[Save Plan button — unchanged]
+```
 
-- **education**: Gather 529 account records / Confirm beneficiary and eligibility / Estimate contribution impact / Submit plan election or update / Schedule annual progress review
-- **taxes**: Gather tax documents / Verify eligibility thresholds / Estimate tax impact / File required changes / Schedule compliance review
-- **interest**: List balances and APRs / Compare payoff/refi options / Choose lowest-cost path / Execute account changes / Track 90-day savings
-- **insurance**: Collect policy declarations / Compare coverage and premiums / Select policy adjustments / Submit coverage updates / Review renewal readiness
+Behavior:
+- Headline source priority: `render_blocks.headline` → `strategy_name`.
+- Quick-win pill source: `render_blocks.quick_win` → derived from `expected_result`.
+- Step rendering uses the existing `StructuredPlanStep` shape (title / instruction / time_estimate / done_definition). Strip stray `**` from any field (same `cleanStepText` pattern as `PlanChecklist`).
+- Risk section prefers `render_blocks.risk_alerts` (top 2), falls back to first 3 of `risks_and_mistakes_to_avoid`.
+- Collapsible sections default closed except Steps; bullets via standard `<ul class="list-disc pl-5 space-y-1">` so they look right in both themes.
+- Mobile-friendly: `min-w-0`, `break-words`, no fixed widths.
 
-A `pickCuratedTitles(horseman, n)` helper returns the first `n` titles (capped at 5). Unknown horseman → fall back to a generic 5-step "diagnose → plan → act → verify → review" bank.
+## strategyParser.ts changes
 
-### 2. Deterministic instruction templates
+`parseStrategyFromMessage` already returns the v1 plan content. Add two small things to the returned object (non-breaking):
+- `renderBlocks?: { headline?, quick_win?, checklist?, risk_alerts? }` taken from `parsed.render_blocks`.
+- `strategyId` already present.
 
-Add `CURATED_STEP_INSTRUCTIONS` parallel to the title bank — one short verb-first sentence per slot per horseman (≤160 chars). At render time, optionally append a single anchor token (form/account/threshold) extracted via existing `extractAnchors` if it's available and short. Never include `strategy_name` substring.
+No legacy-path changes.
 
-Each curated step also gets:
-- `time_estimate` from existing heuristic (kept).
-- `done_definition` from a parallel `CURATED_DONE` bank (≤140 chars, verb-first).
+## MessageBubble.tsx changes
 
-### 3. Title/instruction rewrite pass (both paths)
+1. After parsing, compute `cleanedContent` = `message.content` with the first ```json ... ``` block removed (only when `parsedStrategy` is non-null and the JSON parsed as v1). Trim resulting blank lines.
+2. Render order inside the assistant bubble:
+   - If `parsedStrategy` → `<StrategyPlanCard plan={parsedStrategy} />`
+   - If `cleanedContent.trim()` non-empty → existing ReactMarkdown block, fed `cleanedContent` instead of `message.content` (keeps any intro/outro prose the model wrote).
+   - Existing Save Plan button block (unchanged).
+3. Widen the assistant bubble for plan messages: when `parsedStrategy` is present, use `max-w-[92%]` instead of `max-w-[80%]` so the card has room to breathe; keep `bg-muted` wrapper.
 
-After the existing `normalizePlanReadability`, run a new `applyCuratedSteps(plan)` pass that:
-- Determines `horseman` from `plan.horseman[0]` (lowercased).
-- Replaces every `steps[i].title` with `pickCuratedTitles(horseman, steps.length)[i]` — unconditionally (per user decision).
-- Replaces `steps[i].instruction` with the curated instruction (with optional anchor) if the original instruction (a) contains the full `strategy_name`, (b) ends with a stopword, (c) exceeds 160 chars, or (d) is shorter than 25 chars. Otherwise keep the cleaned original.
-- Replaces `steps[i].done_definition` from the curated bank if missing or contains `strategy_name`.
-- Caps `steps.length` to 5 and pads to a minimum of 4 by drawing from the curated bank.
+## Acceptance
 
-Wired into BOTH:
-- The auto/template `buildStructuredPlan` return path
-- The paid OpenAI strict-JSON path immediately after JSON parse + existing readability normalization
-
-### 4. Summary hardening
-
-Strengthen `normalizeSummary`:
-- Already runs `repairSentenceMerges`; add: collapse to ≤2 sentences and ≤260 chars total.
-- If after repair the summary still trips the merge regex `\.\s+[a-z]` OR is empty/awkward (single fragment, no verb), substitute deterministic fallback:
-  - Sentence 1: `"This plan helps you ${horsemanVerbPhrase}."` (verb phrase per horseman: "lower your tax bill", "cut interest costs", "stretch your education savings", "right-size your insurance coverage").
-  - Sentence 2: from `expected_result.impact_range` + `expected_result.timeframe` if present, else `"Most people see results within 30–90 days."`
-
-### 5. render_blocks hard mode
-
-`buildRenderBlocks(plan)` updated to:
-- `headline`: ≤80 chars, plain-language verb phrase derived from horseman + (optional) the strategy's primary noun anchor (e.g. "Cut interest costs by moving balances to a lower-rate card"). If derivation overflows 80 chars, fall back to a fixed per-horseman headline.
-- `checklist`: exactly the curated step titles used in `steps[]` (mirrors them 1:1, in order).
-- `risk_alerts`: first 2 items from `risks_and_mistakes_to_avoid` (unchanged).
-- `quick_win`: unchanged format.
-
-### 6. Regression tests (`guards_test.ts`)
-
-Add a fixture constant `BROKEN_EDUCATION_SAMPLE` capturing the current bad output (truncated titles like "Schedule a 30", strategy_name leak, ". assuming" merge). Then:
-
-- `applyCuratedSteps(BROKEN_EDUCATION_SAMPLE)` produces:
-  - Exactly the 5 curated education titles, in order.
-  - No step title or instruction contains the `strategy_name` substring.
-  - No title ends with a stopword (reuse `endsWithStopword`).
-  - No title outside 4–10 words.
-  - All instructions ≤160 chars and start with a verb.
-- `render_blocks.checklist` deep-equals `steps.map(s => s.title)`.
-- `render_blocks.headline.length <= 80`.
-- `summary` does not match `/\.\s+[a-z]/` and is ≤260 chars / ≤2 sentences.
-- A second fixture for taxes + interest verifies horseman routing picks the correct bank.
-
-All 13 existing tests continue to pass.
-
-## Verification
-
-1. Run `supabase--test_edge_functions` against `rprx-chat/guards_test.ts` — must be green.
-2. Deploy `rprx-chat` via `supabase--deploy_edge_functions`.
-3. Live `supabase--curl_edge_functions` for an education prompt; capture the returned JSON and paste it into the final reply, confirming:
-   - Clean 5-step checklist matching the curated education bank.
-   - No repeated long phrase or strategy-name leak.
-   - Headline ≤80 chars.
-   - Summary ≤260 chars, no `. lowercase` merge.
-4. Spot-check taxes + interest prompts to confirm bank routing.
-
-Plan is not marked done without the education sample JSON in the final reply.
+- An assistant message containing a v1 plan JSON block shows the structured card with: horseman badge, headline, summary, quick-win pill, numbered steps with bold titles + instruction + time + done-when, and the three collapsible sections.
+- The raw ```json``` block is no longer visible in chat.
+- Save Plan button still appears and saves the same `PlanContent`.
+- Non-plan assistant messages render exactly as today.
+- Looks correct in light and dark mode at 375px and 1211px widths.
 
 ## Out of scope
 
-- Ranking/business logic
-- KB retrieval changes
-- Telemetry schema (existing `plan_generation_events` insert remains as-is, `parser_path` will simply tag whichever branch executed)
-- Frontend rendering
+- Edge function / curated banks / JSON schema (already addressed in prior loops).
+- Saved Plan detail page rendering (`PlanChecklist` already handles structured steps).
+- Telemetry / scoring.
 
 ## Files changed
 
-- `supabase/functions/rprx-chat/index.ts`
-- `supabase/functions/rprx-chat/guards_test.ts`
+- `src/components/assistant/StrategyPlanCard.tsx` (new)
+- `src/components/assistant/MessageBubble.tsx` (edit)
+- `src/lib/strategyParser.ts` (edit — additive only)

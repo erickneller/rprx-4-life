@@ -1,9 +1,17 @@
 import type { PlanContent } from '@/hooks/usePlans';
 
+export interface RenderBlocks {
+  headline?: string;
+  quick_win?: string;
+  checklist?: string[];
+  risk_alerts?: string[];
+}
+
 interface ParsedStrategy {
   strategyId?: string;
   strategyName: string;
   content: PlanContent;
+  renderBlocks?: RenderBlocks;
 }
 
 // Marker phrase that indicates a genuine implementation plan response
@@ -38,6 +46,14 @@ export function parseStrategyFromMessage(messageContent: string, lenient = false
             advisor_packet: Array.isArray(parsed.advisor_packet) ? parsed.advisor_packet : undefined,
             savings: parsed.expected_result?.impact_range,
           },
+          renderBlocks: parsed.render_blocks && typeof parsed.render_blocks === 'object'
+            ? {
+                headline: typeof parsed.render_blocks.headline === 'string' ? parsed.render_blocks.headline : undefined,
+                quick_win: typeof parsed.render_blocks.quick_win === 'string' ? parsed.render_blocks.quick_win : undefined,
+                checklist: Array.isArray(parsed.render_blocks.checklist) ? parsed.render_blocks.checklist.map(String) : undefined,
+                risk_alerts: Array.isArray(parsed.render_blocks.risk_alerts) ? parsed.render_blocks.risk_alerts.map(String) : undefined,
+              }
+            : undefined,
         };
       }
     } catch {
