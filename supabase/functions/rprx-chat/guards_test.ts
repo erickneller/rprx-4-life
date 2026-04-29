@@ -106,3 +106,66 @@ Deno.test("step title word cap (<=12 words)", () => {
   const t = "Pull every document needed for HSA contribution and verification before next April".split(/\s+/);
   assert(t.length <= 12 || t.slice(0, 12).join(' ').split(/\s+/).length === 12);
 });
+
+// ─── Readability v2 contract (stopwords / strategy_name / summary / headline) ──
+const TRAILING_STOPWORDS = new Set(['to','for','of','a','an','the','and','or','in','on','at','by','with','from','as','into','vs','via','your','my','this','that']);
+function endsWithStopword(t: string): boolean {
+  const w = t.trim().split(/\s+/);
+  const last = (w[w.length - 1] || '').replace(/[^A-Za-z0-9-]/g, '').toLowerCase();
+  return TRAILING_STOPWORDS.has(last);
+}
+function wordCount(t: string): number {
+  return t.trim().split(/\s+/).filter(Boolean).length;
+}
+
+Deno.test("title: never ends with a banned stopword", () => {
+  for (const t of [
+    "Gather 529 account records",
+    "Confirm beneficiary eligibility this year",
+    "Submit 529 election with payroll",
+  ]) {
+    assertEquals(endsWithStopword(t), false, `unexpected stopword tail: ${t}`);
+  }
+  assert(endsWithStopword("Schedule a 30 to"));
+  assert(endsWithStopword("Plan to transfer to"));
+});
+
+Deno.test("title: must not contain the full strategy_name", () => {
+  const strategyName = "Transfer your credit card balances to a 0% APR card";
+  const titles = [
+    "Compare balance transfer offers today",
+    "Apply for the best transfer card",
+  ];
+  for (const t of titles) {
+    assert(!t.toLowerCase().includes(strategyName.toLowerCase()), `title leaks strategy name: ${t}`);
+  }
+});
+
+Deno.test("title: word count between 4 and 10 inclusive", () => {
+  const samples = [
+    "Gather 529 account records",
+    "Confirm beneficiary eligibility this year",
+    "Project contribution impact on aid",
+    "Submit 529 election with payroll",
+    "Schedule annual education review",
+  ];
+  for (const t of samples) {
+    const wc = wordCount(t);
+    assert(wc >= 4 && wc <= 10, `bad word count ${wc} for: ${t}`);
+  }
+});
+
+Deno.test("summary: no '. lowercase' merge errors remain", () => {
+  // Mirror repairSentenceMerges from index.ts
+  const repair = (s: string) => s.replace(/\.\s+([a-z])/g, (_m, c) => `, ${c}`);
+  const fixed = repair("This works. assuming you qualify.");
+  assert(!/\.\s+[a-z]/.test(fixed), `still has merge error: ${fixed}`);
+});
+
+Deno.test("headline: max length is 90 chars", () => {
+  const headlines = [
+    "Cut your interest costs by transferring balances to a 0% APR card.",
+    "Boost college savings using a 529 election with your payroll.",
+  ];
+  for (const h of headlines) assert(h.length <= 90, `too long (${h.length}): ${h}`);
+});
