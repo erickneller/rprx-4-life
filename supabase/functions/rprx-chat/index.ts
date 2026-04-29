@@ -446,14 +446,108 @@ function deriveActionTitle(text: string, fallback: string): string {
 }
 
 /**
+ * Extract concrete anchors (forms, accounts, dollar thresholds, time horizons)
+ * from a strategy's free-text fields so generated steps reference real specifics.
+ */
+interface StrategyAnchors {
+  forms: string[];
+  accounts: string[];
+  thresholds: string[];
+  horizons: string[];
+  taxLines: string[];
+}
+
+function extractAnchors(s: DBStrategy): StrategyAnchors {
+  const corpus = [
+    s.title,
+    s.strategy_details,
+    s.example,
+    s.potential_savings_benefits,
+    s.tax_return_line_or_area,
+    Array.isArray(s.implementation_steps) ? JSON.stringify(s.implementation_steps) : '',
+  ].filter(Boolean).join(' \n ');
+
+  const uniq = (arr: string[]) => Array.from(new Set(arr.map(x => x.trim()).filter(x => x.length > 0))).slice(0, 4);
+
+  const forms = uniq([
+    ...(corpus.match(/\bForm\s+\d+[A-Z]?(?:-[A-Z]+)?\b/gi) || []),
+    ...(corpus.match(/\bSchedule\s+[A-Z]\b/gi) || []),
+    ...(corpus.match(/\bW-?[24]\b/gi) || []),
+    ...(corpus.match(/\b1099(?:-[A-Z]+)?\b/gi) || []),
+    ...(corpus.match(/\b1040(?:-[A-Z]+)?\b/gi) || []),
+    ...(corpus.match(/\bFAFSA\b/gi) || []),
+  ]);
+
+  const accounts = uniq([
+    ...(corpus.match(/\b(?:Roth\s+)?(?:IRA|401\(k\)|403\(b\)|457\(b\)|HSA|FSA|HRA|529|UTMA|UGMA|SEP\s*IRA|SIMPLE\s*IRA|Solo\s*401\(k\)|Coverdell|ABLE)\b/gi) || []),
+  ]);
+
+  const thresholds = uniq([
+    ...(corpus.match(/\$[\d,]+(?:\.\d+)?\s*(?:\/\s*(?:year|month|yr|mo))?/gi) || []),
+    ...(corpus.match(/\b\d{1,2}(?:\.\d+)?\s*%\b/g) || []),
+  ]);
+
+  const horizons = uniq([
+    ...(corpus.match(/\b\d{1,3}\s*(?:days?|weeks?|months?|years?)\b/gi) || []),
+  ]);
+
+  const taxLines = uniq([
+    ...(s.tax_return_line_or_area ? [s.tax_return_line_or_area] : []),
+    ...(corpus.match(/\bIRC\s*§?\s*\d+[A-Za-z]?(?:\([a-z0-9]+\))?/gi) || []),
+    ...(corpus.match(/\bSection\s+\d+[A-Za-z]?\b/gi) || []),
+  ]);
+
+  return { forms, accounts, thresholds, horizons, taxLines };
+}
+
+/** Pick a step title from a list of variants, biased by step index so the same plan reads varied. */
+function pickVariant<T>(variants: T[], idx: number, salt: string): T {
+  if (variants.length === 0) throw new Error('pickVariant: empty');
+  // Deterministic but spread across the array using strategy id + index.
+  let h = idx;
+  for (let i = 0; i < salt.length; i++) h = (h * 31 + salt.charCodeAt(i)) >>> 0;
+  return variants[h % variants.length];
+}
+
+/** Heuristic time estimate from instruction text. */
+function pickTimeEstimate(text: string, idx: number): string {
+  const low = (text || '').toLowerCase();
+  if (/\b(meet|review|consult|schedule|book|advisor|cpa)\b/.test(low)) return '30-60 min';
+  if (low.length > 180 || /(compare|calculate|project|model|simulate)/.test(low)) return '20-45 min';
+  if (idx === 0) return '15-20 min';
+  return '15-30 min';
+}
+
+/** Ensure no two adjacent step titles share their first 4 words. */
+function dedupeAdjacentTitles(steps: StructuredPlanStep[]): StructuredPlanStep[] {
+  const firstWords = (t: string) => t.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).slice(0, 4).join(' ');
+  const out: StructuredPlanStep[] = [];
+  let lastKey = '';
+  for (const step of steps) {
+    let title = step.title;
+    let key = firstWords(title);
+    if (key === lastKey && key.length > 0) {
+      // Rewrite by appending a differentiator
+      title = `Document the result of "${title.replace(/\.$/, '').slice(0, 50)}"`;
+      key = firstWords(title);
+    }
+    out.push({ ...step, title });
+    lastKey = key;
+  }
+  return out;
+}
+
+/**
  * Build horseman-specific concrete steps for a strategy when DB has none.
- * Steps are derived from the strategy's title + details so they are SPECIFIC.
+ * Steps are derived from the strategy's title + extracted anchors so they are SPECIFIC
+ * and so two different strategies in the same horseman do not read identically.
  */
 function buildHorsemanSpecificSteps(
   s: DBStrategy,
   horseman: string,
 ): StructuredPlanStep[] {
   const titleLow = s.title.replace(/\.$/, '').trim();
+  const anchors = extractAnchors(s);
   const advisorByHorseman: Record<string, string> = {
     taxes: 'CPA or Enrolled Agent',
     interest: 'credit counselor or financial advisor',
@@ -462,38 +556,114 @@ function buildHorsemanSpecificSteps(
   };
   const advisor = advisorByHorseman[horseman] || 'qualified financial professional';
 
-  const horsemanStepBank: Record<string, StructuredPlanStep[]> = {
-    taxes: [
-      { title: `Pull the documents needed to evaluate "${titleLow}"`, instruction: `Gather your most recent Form 1040, W-2/1099s, and any account statements relevant to ${titleLow}.`, time_estimate: '15-30 min', done_definition: 'All required tax documents are collected in one folder.' },
-      { title: `Confirm eligibility for this strategy`, instruction: `Verify your filing status, income range, and any plan/account requirements that apply to ${titleLow}.`, time_estimate: '15-20 min', done_definition: 'You can confirm in writing that you qualify for this strategy this tax year.' },
-      { title: `Quantify the projected tax impact`, instruction: `Estimate the deduction, credit, or deferral this strategy could produce on your current return.`, time_estimate: '20-45 min', done_definition: 'You have a written estimated dollar impact for this tax year.' },
-      { title: `Implement the change`, instruction: `Open the account, update the W-4, or file the form needed to put ${titleLow} into effect.`, time_estimate: '30-60 min', done_definition: 'The change is submitted and you have a confirmation number or signed copy.' },
-      { title: `Schedule a review with a ${advisor}`, instruction: `Book a 30-minute review to confirm this strategy is correctly applied to your return.`, time_estimate: '15-20 min', done_definition: 'The meeting is on the calendar with the documents attached.' },
-    ],
-    interest: [
-      { title: `List every debt with balance, APR, and minimum payment`, instruction: `Build a single sheet of every revolving and installment debt so you can see ${titleLow} in context.`, time_estimate: '20-45 min', done_definition: 'You have a written list of every debt with APR and minimum payment.' },
-      { title: `Identify the target account(s) for this strategy`, instruction: `Pick the specific debt(s) where ${titleLow} will be applied first.`, time_estimate: '15-20 min', done_definition: 'You have named the account(s) this strategy will be applied to.' },
-      { title: `Run the numbers before acting`, instruction: `Calculate the projected interest savings, total payoff time, and any fees tied to ${titleLow}.`, time_estimate: '20-45 min', done_definition: 'You have a written before/after comparison for this strategy.' },
-      { title: `Execute the change`, instruction: `Submit the application, transfer, or payment plan needed to put ${titleLow} into effect.`, time_estimate: '30-60 min', done_definition: 'The change is confirmed by the lender in writing or in your account.' },
-      { title: `Set a 90-day check-in`, instruction: `Add a calendar reminder to verify balances, APR, and that the strategy is producing the expected savings.`, time_estimate: '15-20 min', done_definition: 'A 90-day review is scheduled and your plan notes are updated.' },
-    ],
-    insurance: [
-      { title: `Pull every active policy declarations page`, instruction: `Collect declarations pages for auto, home, life, health, and disability so you can evaluate ${titleLow}.`, time_estimate: '20-45 min', done_definition: 'All declarations pages are saved in one folder.' },
-      { title: `Map current coverage limits and premiums`, instruction: `Write down each policy's limits, deductibles, premium, and renewal date relevant to ${titleLow}.`, time_estimate: '15-30 min', done_definition: 'You have a single coverage table for all active policies.' },
-      { title: `Get comparison quotes`, instruction: `Request 2-3 quotes that reflect the change required by ${titleLow} (carrier, coverage, or rider change).`, time_estimate: '30-60 min', done_definition: 'At least two written quotes are saved for comparison.' },
-      { title: `Confirm new coverage before cancelling old`, instruction: `Make sure replacement coverage is bound and effective before cancelling any existing policy.`, time_estimate: '20-45 min', done_definition: 'New policy effective date is confirmed in writing.' },
-      { title: `Review with a ${advisor}`, instruction: `Schedule a 30-minute review to validate the change matches your needs and beneficiaries.`, time_estimate: '15-20 min', done_definition: 'Review meeting is on the calendar with all policies attached.' },
-    ],
-    education: [
-      { title: `Gather current education-savings statements`, instruction: `Pull 529, custodial, and savings-account statements relevant to ${titleLow}.`, time_estimate: '15-30 min', done_definition: 'All current education-savings statements are in one folder.' },
-      { title: `Confirm beneficiary and state-plan eligibility`, instruction: `Verify the beneficiary, account owner, and any state-tax-deduction rules that apply to ${titleLow}.`, time_estimate: '15-20 min', done_definition: 'You have written confirmation of beneficiary and eligibility.' },
-      { title: `Project the contribution / aid impact`, instruction: `Estimate how ${titleLow} will affect contribution limits, gift-tax treatment, or financial-aid eligibility.`, time_estimate: '20-45 min', done_definition: 'You have a written estimate of the impact in dollars or aid percentage.' },
-      { title: `Open or update the account`, instruction: `Submit the application or change form needed to put ${titleLow} into effect.`, time_estimate: '30-60 min', done_definition: 'Account or change is confirmed with a reference number or signed form.' },
-      { title: `Set a 12-month review`, instruction: `Add a calendar reminder to re-check beneficiary, contribution pace, and tuition-cost projections.`, time_estimate: '15-20 min', done_definition: 'A 12-month review is on the calendar.' },
-    ],
-  };
+  const formRef = anchors.forms[0] || (horseman === 'taxes' ? 'Form 1040' : '');
+  const accountRef = anchors.accounts[0] || '';
+  const thresholdRef = anchors.thresholds[0] || '';
+  const horizonRef = anchors.horizons[0] || '';
+  const taxLineRef = anchors.taxLines[0] || '';
 
-  return horsemanStepBank[horseman] || horsemanStepBank.taxes;
+  const ctx = (parts: Array<string | undefined | false>) => parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
+  // Variant pools per slot. Each variant references real anchors when present.
+  const gatherVariants: StructuredPlanStep[] = [
+    {
+      title: ctx(['Pull every document needed for', titleLow]),
+      instruction: ctx([`Collect`, formRef && `${formRef},`, accountRef && `${accountRef} statements,`, `and any account records relevant to "${titleLow}".`]),
+      time_estimate: '15-30 min',
+      done_definition: 'All documents are saved in a single folder you can hand to an advisor.',
+    },
+    {
+      title: ctx(['Build the baseline snapshot for', titleLow]),
+      instruction: ctx([`Write down today's numbers — current balance, premium, payment, or contribution — that "${titleLow}" will change.`, thresholdRef && `Capture the ${thresholdRef} reference figure.`]),
+      time_estimate: '15-20 min',
+      done_definition: 'You have a one-page baseline you can compare to the after-state.',
+    },
+    {
+      title: ctx(['Inventory accounts in scope for', titleLow]),
+      instruction: ctx([`List every`, accountRef || 'account', `that this strategy will touch and note who the owner / beneficiary is on each.`]),
+      time_estimate: '15-30 min',
+      done_definition: 'You have a written inventory of in-scope accounts with owner and balance.',
+    },
+  ];
+
+  const eligibilityVariants: StructuredPlanStep[] = [
+    {
+      title: ctx(['Confirm you qualify for', titleLow]),
+      instruction: ctx([`Verify income, filing status, and account-type rules that gate "${titleLow}".`, taxLineRef && `Cross-reference ${taxLineRef}.`]),
+      time_estimate: '15-20 min',
+      done_definition: 'You can state in writing that you meet every eligibility rule for this year.',
+    },
+    {
+      title: ctx(['Verify the rules behind', titleLow]),
+      instruction: ctx([`Read the current-year limits, deadlines, and contribution rules tied to "${titleLow}".`, formRef && `Reference ${formRef}.`]),
+      time_estimate: '20-45 min',
+      done_definition: 'You have a one-paragraph summary of the rules and where they came from.',
+    },
+  ];
+
+  const projectVariants: StructuredPlanStep[] = [
+    {
+      title: ctx(['Project the dollar impact of', titleLow]),
+      instruction: ctx([`Estimate the savings, deduction, or cash flow change "${titleLow}" should produce.`, thresholdRef && `Use ${thresholdRef} as your starting figure.`, horizonRef && `Project across ${horizonRef}.`]),
+      time_estimate: '20-45 min',
+      done_definition: 'You have a written before/after comparison with a dollar delta.',
+    },
+    {
+      title: ctx(['Run the numbers before acting on', titleLow]),
+      instruction: ctx([`Calculate the projected impact of "${titleLow}" — fees, taxes, and net benefit — and compare against doing nothing.`]),
+      time_estimate: '20-45 min',
+      done_definition: 'You have a side-by-side calculation you can defend to an advisor.',
+    },
+  ];
+
+  const executeVariants: StructuredPlanStep[] = [
+    {
+      title: ctx(['Execute', titleLow]),
+      instruction: ctx([`Submit the application, transfer, election, or filing needed to put "${titleLow}" into effect.`, formRef && `Use ${formRef}.`]),
+      time_estimate: '30-60 min',
+      done_definition: 'The change is confirmed in writing with a reference number or signed copy.',
+    },
+    {
+      title: ctx(['Put', titleLow, 'into effect']),
+      instruction: ctx([`Open or update`, accountRef || 'the relevant account,', `and complete every form required so "${titleLow}" actually starts.`]),
+      time_estimate: '30-60 min',
+      done_definition: 'Account opening or change is confirmed and the effective date is recorded.',
+    },
+  ];
+
+  const reviewVariants: StructuredPlanStep[] = [
+    {
+      title: ctx(['Schedule a follow-up with a', advisor]),
+      instruction: ctx([`Book a 30-minute review with a ${advisor} to confirm "${titleLow}" is correctly applied.`]),
+      time_estimate: '15-20 min',
+      done_definition: 'The review is on the calendar with all supporting documents attached.',
+    },
+    {
+      title: ctx(['Verify', titleLow, 'is producing the expected result']),
+      instruction: ctx([`Set a calendar reminder`, horizonRef ? `in ${horizonRef}` : 'in 90 days', `to re-check that the change is delivering the projected savings.`]),
+      time_estimate: '15-20 min',
+      done_definition: 'A check-in date is on the calendar with the expected metric to verify.',
+    },
+  ];
+
+  // Salt with the strategy_id so the same strategy always renders deterministically,
+  // but different strategies in the same horseman pull different variants.
+  const salt = `${horseman}:${s.strategy_id}`;
+  const ordered: StructuredPlanStep[] = [
+    pickVariant(gatherVariants, 0, salt),
+    pickVariant(eligibilityVariants, 1, salt),
+    pickVariant(projectVariants, 2, salt),
+    pickVariant(executeVariants, 3, salt),
+    pickVariant(reviewVariants, 4, salt),
+  ];
+
+  // Apply heuristic time estimates over each step instruction (overrides the static defaults).
+  const tuned = ordered.map((step, i) => ({
+    ...step,
+    time_estimate: pickTimeEstimate(step.instruction, i),
+  }));
+
+  return dedupeAdjacentTitles(tuned);
 }
 
 function buildStructuredPlan(
@@ -538,7 +708,7 @@ function buildStructuredPlan(
       return {
         title,
         instruction: text,
-        time_estimate: i === 0 ? '15-20 min' : i < 3 ? '20-45 min' : '15-30 min',
+        time_estimate: pickTimeEstimate(text, i),
         done_definition: i === lastIdx
           ? 'Change is confirmed in writing and stored with your records.'
           : 'Action is completed and the result is captured in your plan notes.',
@@ -562,6 +732,9 @@ function buildStructuredPlan(
   while (structuredSteps.length < 2) {
     structuredSteps.push(horsemanFallbacks[structuredSteps.length] || horsemanFallbacks[0]);
   }
+
+  // Dedupe adjacent step titles so the plan does not read repetitive.
+  structuredSteps = dedupeAdjacentTitles(structuredSteps);
 
   return {
     plan_schema: 'v1',
@@ -656,22 +829,132 @@ async function fetchPromptTemplate(serviceClient: any, templateId: string): Prom
 }
 
 // =====================================================
-// KNOWLEDGE BASE FETCHING
+// KNOWLEDGE BASE FETCHING (scoped retrieval)
 // =====================================================
 
-async function fetchKnowledgeBase(serviceClient: any): Promise<string> {
+interface KBRow { name: string; content: string }
+interface KBSection { source: string; heading: string; body: string }
+
+async function fetchKnowledgeBaseRows(serviceClient: any): Promise<KBRow[]> {
   try {
     const { data, error } = await serviceClient
       .from('knowledge_base')
       .select('name, content')
       .eq('is_active', true)
       .not('content', 'eq', '');
-    if (error || !data || data.length === 0) return '';
-    return '\n## KNOWLEDGE BASE\n' +
-      data.map((d: any) => `### ${d.name}\n${d.content}`).join('\n\n');
+    if (error || !data) return [];
+    return data as KBRow[];
   } catch {
-    return '';
+    return [];
   }
+}
+
+/** Split a KB document into ## / ### sections with their headings preserved. */
+function splitKBIntoSections(row: KBRow): KBSection[] {
+  const lines = (row.content || '').split('\n');
+  const sections: KBSection[] = [];
+  let heading = row.name;
+  let buffer: string[] = [];
+  const flush = () => {
+    const body = buffer.join('\n').trim();
+    if (body.length > 20) sections.push({ source: row.name, heading, body });
+    buffer = [];
+  };
+  for (const line of lines) {
+    const m = line.match(/^\s{0,3}(#{2,3})\s+(.+?)\s*$/);
+    if (m) {
+      flush();
+      heading = m[2].trim();
+    } else {
+      buffer.push(line);
+    }
+  }
+  flush();
+  if (sections.length === 0 && (row.content || '').trim().length > 0) {
+    sections.push({ source: row.name, heading: row.name, body: row.content.trim() });
+  }
+  return sections;
+}
+
+/** Token overlap score between section text and a query token bag. */
+function scoreSectionRelevance(section: KBSection, queryTokens: Set<string>): number {
+  if (queryTokens.size === 0) return 0;
+  const haystack = `${section.heading} ${section.body}`.toLowerCase();
+  let score = 0;
+  for (const token of queryTokens) {
+    if (!token) continue;
+    if (haystack.includes(token)) score += token.length >= 6 ? 2 : 1;
+  }
+  // Heading bonus
+  const headingLow = section.heading.toLowerCase();
+  for (const token of queryTokens) {
+    if (token && headingLow.includes(token)) score += 2;
+  }
+  return score;
+}
+
+function tokenizeForKB(input: string): string[] {
+  return (input || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 3 && !KB_STOPWORDS.has(t));
+}
+
+const KB_STOPWORDS = new Set([
+  'the','and','for','with','your','you','this','that','from','into','have','will','are','was',
+  'can','any','all','use','has','our','out','not','but','one','two','more','than','their','they',
+  'how','who','why','what','when','where','who','also','about','over','under','then','these','those',
+  'each','some','many','most','other','onto','only','every','same','strategy','plan',
+]);
+
+/** Build a scoped knowledge-base context block for the selected strategy and horseman. */
+function buildScopedKnowledgeContext(
+  rows: KBRow[],
+  ctx: { horseman: string | null; strategy: DBStrategy | null },
+  opts: { topN?: number; charBudget?: number } = {},
+): string {
+  if (!rows || rows.length === 0) return '';
+  const topN = opts.topN ?? 3;
+  const charBudget = opts.charBudget ?? 4000;
+
+  const queryParts: string[] = [];
+  if (ctx.horseman) queryParts.push(ctx.horseman);
+  if (ctx.strategy) {
+    queryParts.push(ctx.strategy.title || '');
+    queryParts.push(ctx.strategy.tax_return_line_or_area || '');
+    if (Array.isArray(ctx.strategy.goal_tags)) queryParts.push(ctx.strategy.goal_tags.join(' '));
+  }
+  const queryTokens = new Set(tokenizeForKB(queryParts.join(' ')));
+
+  const allSections: KBSection[] = rows.flatMap(splitKBIntoSections);
+  if (allSections.length === 0) return '';
+
+  // If no query tokens, fall back to first section of each source (legacy-ish behaviour but capped).
+  let scored: { section: KBSection; score: number }[];
+  if (queryTokens.size === 0) {
+    scored = allSections.slice(0, topN).map(s => ({ section: s, score: 0 }));
+  } else {
+    scored = allSections
+      .map(section => ({ section, score: scoreSectionRelevance(section, queryTokens) }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topN);
+  }
+
+  if (scored.length === 0) return '';
+
+  const blocks: string[] = [];
+  let used = 0;
+  for (const { section } of scored) {
+    const text = section.body.length > 1500 ? section.body.slice(0, 1500) + '…' : section.body;
+    const block = `### ${section.source} — ${section.heading}\n${text}`;
+    if (used + block.length > charBudget && blocks.length > 0) break;
+    blocks.push(block);
+    used += block.length;
+  }
+
+  return '\n## KNOWLEDGE BASE (scoped)\n' + blocks.join('\n\n');
 }
 
 // =====================================================
@@ -1161,6 +1444,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const startedAt = Date.now();
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -1233,7 +1517,7 @@ serve(async (req) => {
     }
 
     // Parallel: save message, fetch history, fetch profile, fetch strategies, fetch completed strategies, fetch prompt templates
-    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, activeResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult, knowledgeBaseContext] = await Promise.all([
+    const [saveResult, historyResult, profileResult, strategiesResult, completedResult, activeResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult, knowledgeBaseRows] = await Promise.all([
       supabase.from('messages').insert({
         conversation_id: conversationId,
         role: 'user',
@@ -1270,7 +1554,7 @@ serve(async (req) => {
         .not('completed_at', 'is', null)
         .order('completed_at', { ascending: false })
         .limit(1),
-      fetchKnowledgeBase(serviceClient),
+      fetchKnowledgeBaseRows(serviceClient),
     ]);
 
     if (saveResult.error) {
@@ -1464,6 +1748,15 @@ serve(async (req) => {
       score: rankedStrategies[0]?.score ?? null,
     };
 
+    // Build SCOPED knowledge base context now that the selected strategy + horseman are known.
+    const knowledgeBaseContext = buildScopedKnowledgeContext(
+      knowledgeBaseRows,
+      {
+        horseman: rankedStrategies[0]?.strategy.horseman_type || intentHorseman || routingPrimaryHorseman || null,
+        strategy: rankedStrategies[0]?.strategy || null,
+      },
+    );
+    console.log(`KB scoped retrieval | sources_loaded=${knowledgeBaseRows.length} | context_chars=${knowledgeBaseContext.length}`);
     // Get prompt templates (with fallbacks)
     const baseSystemPrompt = systemPromptResult || FALLBACK_SYSTEM_PROMPT;
     const autoInstructions = autoPromptResult || '';
@@ -1521,6 +1814,11 @@ ${manualInstructions}`;
     const forceTemplateEngine = Deno.env.get('RPRX_FORCE_TEMPLATE_ENGINE') === 'true';
     const strictJsonV1 = Deno.env.get('STRICT_JSON_V1') === 'true';
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    // A/B model variant: 'a' (default) | 'b'. Map to actual model ids.
+    const modelVariantRaw = (Deno.env.get('RPRX_PAID_MODEL_VARIANT') || 'a').toLowerCase();
+    const modelVariant = modelVariantRaw === 'b' ? 'b' : 'a';
+    const PAID_MODEL_BY_VARIANT: Record<string, string> = { a: 'gpt-4o-mini', b: 'gpt-4o-mini' };
+    const paidModel = PAID_MODEL_BY_VARIANT[modelVariant];
 
     // Branch selection (explicit & mutually exclusive)
     if (forceTemplateEngine) {
@@ -1535,7 +1833,7 @@ ${manualInstructions}`;
     const branchLog = runtimeBranch === 'template-no-openai-key'
       ? 'fallback'
       : (runtimeBranch.startsWith('template') ? 'template' : 'paid_openai');
-    console.log(`branch=${branchLog} | runtime_branch=${runtimeBranch} | force_template_engine=${forceTemplateEngine} | strict_json_v1=${strictJsonV1} | strategy_source=${strategySource} | tier=${userTier || 'free'} | mode=${effectiveMode} | primary_horseman=${selectedStrategyMetadata.primary_horseman || 'none'} | selected_horseman=${selectedStrategyMetadata.selected_horseman || 'none'} | selected_strategy_id=${selectedStrategyMetadata.selected_strategy_id || 'none'} | score=${selectedStrategyMetadata.score ?? 'none'}`);
+    console.log(`branch=${branchLog} | runtime_branch=${runtimeBranch} | model_variant=${modelVariant} | model=${paidModel} | force_template_engine=${forceTemplateEngine} | strict_json_v1=${strictJsonV1} | strategy_source=${strategySource} | tier=${userTier || 'free'} | mode=${effectiveMode} | primary_horseman=${selectedStrategyMetadata.primary_horseman || 'none'} | selected_horseman=${selectedStrategyMetadata.selected_horseman || 'none'} | selected_strategy_id=${selectedStrategyMetadata.selected_strategy_id || 'none'} | score=${selectedStrategyMetadata.score ?? 'none'}`);
 
     if (runtimeBranch.startsWith('template')) {
       // =====================================================
@@ -1620,7 +1918,7 @@ Rules:
         }
 
         const openaiBody: Record<string, unknown> = {
-          model: 'gpt-4o-mini',
+          model: paidModel,
           messages: openaiMessages,
           temperature: runtimeBranch === 'paid-openai-strict-json' ? 0.2 : 0.7,
           max_tokens: 2500,
@@ -1853,6 +2151,36 @@ Rules:
     }).then(({ error }) => {
       if (error) console.error('Error saving assistant message:', error);
     });
+
+    // Telemetry: plan_generation_events (fire and forget, service role bypasses RLS)
+    try {
+      let stepCount: number | null = null;
+      const jsonMatch = assistantMessage.match(/```json\s*\n([\s\S]*?)\n```/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          if (Array.isArray(parsed?.steps)) stepCount = parsed.steps.length;
+        } catch { /* ignore */ }
+      }
+      const latencyMs = Date.now() - startedAt;
+      serviceClient.from('plan_generation_events').insert({
+        user_id: userId,
+        conversation_id: conversationId,
+        chosen_strategy_id: selectedStrategyMetadata.selected_strategy_id,
+        ranker_score: selectedStrategyMetadata.score,
+        strategy_source: strategySource,
+        parser_path: runtimeBranch,
+        mode: effectiveMode,
+        tier: userTier || 'free',
+        step_count: stepCount,
+        latency_ms: latencyMs,
+        model_variant: modelVariant,
+      }).then(({ error }: { error: any }) => {
+        if (error) console.error('plan_generation_events insert error:', error);
+      });
+    } catch (err) {
+      console.error('Telemetry insert threw:', err);
+    }
 
     return new Response(
       JSON.stringify({
