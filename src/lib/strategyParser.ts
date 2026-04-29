@@ -1,9 +1,17 @@
 import type { PlanContent } from '@/hooks/usePlans';
 
+export interface RenderBlocks {
+  headline?: string;
+  quick_win?: string;
+  checklist?: string[];
+  risk_alerts?: string[];
+}
+
 interface ParsedStrategy {
   strategyId?: string;
   strategyName: string;
   content: PlanContent;
+  renderBlocks?: RenderBlocks;
 }
 
 // Marker phrase that indicates a genuine implementation plan response
