@@ -2089,11 +2089,15 @@ serve(async (req) => {
       );
     }
 
-    // User-scoped client
+    // User-scoped client - forward both apikey and Authorization so PostgREST
+    // applies RLS as the authenticated user (auth.uid()), not anon.
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
+      {
+        global: { headers: { Authorization: authHeader, apikey: Deno.env.get('SUPABASE_ANON_KEY')! } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      }
     );
 
     // Service-role client for reading strategies & prompt templates
