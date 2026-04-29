@@ -765,8 +765,201 @@ function buildStructuredPlan(
 
 /** Embed structured plan as a hidden JSON code block the frontend can parse. */
 function embedPlanJson(plan: StructuredPlan): string {
-  return `\n\n\`\`\`json\n${JSON.stringify(plan, null, 2)}\n\`\`\``;
+  const normalized = normalizePlanReadability(plan);
+  return `\n\n\`\`\`json\n${JSON.stringify(normalized, null, 2)}\n\`\`\``;
 }
+
+// ─── READABILITY NORMALIZATION ───────────────────────────────────────────────
+// Mobile-first style guard. Runs as the LAST pass before serialization. Never
+// changes plan_schema, strategy_id, strategy_name, horseman, or core arrays.
+
+const JARGON_MAP: Array<[RegExp, string]> = [
+  [/\butili[sz]e\b/gi, 'use'],
+  [/\bin\s+order\s+to\b/gi, 'to'],
+  [/\bcommence\b/gi, 'start'],
+  [/\bendeavor\b/gi, 'try'],
+  [/\bsubsequent(ly)?\b/gi, 'then'],
+  [/\bprior\s+to\b/gi, 'before'],
+  [/\bin\s+the\s+event\s+that\b/gi, 'if'],
+  [/\bdue\s+to\s+the\s+fact\s+that\b/gi, 'because'],
+  [/\bat\s+this\s+time\b/gi, 'now'],
+  [/\bremuneration\b/gi, 'pay'],
+];
+
+function tidyText(s: string): string {
+  if (!s) return s;
+  let out = s.replace(/\s+/g, ' ').trim();
+  // Collapse semicolon chains into sentences
+  out = out.replace(/\s*;\s*/g, '. ');
+  // Awkward punctuation: " ,", " .", duplicate periods, stray quotes around nothing
+  out = out.replace(/\s+([,.;:!?])/g, '$1');
+  out = out.replace(/\.{2,}/g, '.');
+  out = out.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+  // De-jargon
+  for (const [re, repl] of JARGON_MAP) out = out.replace(re, repl);
+  return out.trim();
+}
+
+/** Split sentences > maxWords into shorter sentences at clause boundaries. */
+function capSentenceLength(text: string, maxWords = 28): string {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const out: string[] = [];
+  for (const sentence of sentences) {
+    const words = sentence.split(/\s+/);
+    if (words.length <= maxWords) { out.push(sentence); continue; }
+    // Split on commas / dashes when present
+    const parts = sentence.split(/,\s+|\s+—\s+|\s+-\s+/);
+    let buf: string[] = [];
+    for (const part of parts) {
+      const partWords = part.split(/\s+/);
+      if (buf.length + partWords.length > maxWords && buf.length > 0) {
+        out.push(buf.join(' ').replace(/[.,;:]?$/, '.'));
+        buf = partWords;
+      } else {
+        buf = buf.concat(partWords);
+      }
+    }
+    if (buf.length) out.push(buf.join(' ').replace(/[.,;:]?$/, '.'));
+  }
+  return out.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+/** Sentence case for titles: capitalize first letter, lowercase the rest unless it looks like an acronym/proper noun. */
+function toSentenceCase(s: string): string {
+  if (!s) return s;
+  // Keep ALL-CAPS short tokens (IRA, HSA, 401(k), CPA, FAFSA, IRC, IRS, W-4, W-2)
+  const KEEP_CAPS = /^(IRA|HSA|FSA|HRA|CPA|EA|FAFSA|IRC|IRS|APR|SEP|529|UTMA|UGMA|W-?[24]|1040|1099|529)$/i;
+  return s
+    .split(/(\s+)/)
+    .map((tok, idx) => {
+      if (/^\s+$/.test(tok)) return tok;
+      // Preserve tokens with parens like 401(k)
+      if (/[()]/.test(tok)) return tok.toUpperCase() === tok ? tok : tok;
+      const bare = tok.replace(/[^A-Za-z0-9-]/g, '');
+      if (KEEP_CAPS.test(bare)) return tok.toUpperCase();
+      // Title-case-y "Like This" → drop to lowercase except first word
+      if (idx === 0) return tok.charAt(0).toUpperCase() + tok.slice(1).toLowerCase();
+      // Preserve already-lowercase common nouns; lowercase capitalized non-acronyms
+      if (/^[A-Z][a-z]+$/.test(tok)) return tok.toLowerCase();
+      return tok;
+    })
+    .join('')
+    .trim();
+}
+
+/** Cap a step title to 5–12 words, action-led. */
+function trimStepTitle(title: string): string {
+  let t = tidyText(title).replace(/[.!?]+$/, '');
+  const words = t.split(/\s+/);
+  if (words.length > 12) t = words.slice(0, 12).join(' ');
+  return toSentenceCase(t);
+}
+
+function trimToCharLimit(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  const cut = text.slice(0, limit);
+  const lastBoundary = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  if (lastBoundary > limit * 0.6) return cut.slice(0, lastBoundary + 1).trim();
+  // Otherwise cut at last word boundary and add period
+  return cut.replace(/\s+\S*$/, '').replace(/[,;:]?$/, '') + '.';
+}
+
+/** Drop the strategy name being echoed back inside its own step body. */
+function stripRedundantStrategyName(text: string, strategyName: string): string {
+  if (!text || !strategyName) return text;
+  const escaped = strategyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\.$/, '');
+  // Remove `"<name>"` quotes patterns and bare repeats
+  let out = text.replace(new RegExp(`["“]${escaped}["”]`, 'gi'), 'this strategy');
+  out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), 'this strategy');
+  // De-duplicate "this strategy" repeated within same string
+  out = out.replace(/(this strategy)([^.]*?)\bthis strategy\b/gi, '$1$2it');
+  return tidyText(out);
+}
+
+/** Diversify openers: ensure adjacent step titles do not share their first 3 words. */
+function diversifyAdjacentOpeners(steps: StructuredPlanStep[]): StructuredPlanStep[] {
+  const firstN = (t: string, n: number) =>
+    t.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).slice(0, n).join(' ');
+  const REWRITES = ['Then ', 'Next, ', 'After that, ', 'Now '];
+  const out: StructuredPlanStep[] = [];
+  let lastKey = '';
+  let rewriteIdx = 0;
+  for (const step of steps) {
+    let title = step.title;
+    if (firstN(title, 3) === lastKey && lastKey.length > 0) {
+      const prefix = REWRITES[rewriteIdx % REWRITES.length];
+      rewriteIdx++;
+      // Lower-case the original first letter so the prefix flows naturally
+      title = prefix + title.charAt(0).toLowerCase() + title.slice(1);
+      title = trimStepTitle(title);
+    }
+    lastKey = firstN(title, 3);
+    out.push({ ...step, title });
+  }
+  return out;
+}
+
+/** Trim a summary to 2-3 short, plain sentences. */
+function trimSummary(summary: string): string {
+  const cleaned = tidyText(summary);
+  // Strip filler disclaimers if they leaked into summary
+  const noDisclaim = cleaned
+    .replace(/\bThis (information|content) is for educational purposes only[^.]*\.?/gi, '')
+    .replace(/\bConsult (a|with) (qualified|your) (professional|advisor|tax)[^.]*\.?/gi, '')
+    .trim();
+  const sentences = noDisclaim.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 3);
+  return capSentenceLength(sentences.join(' '), 28);
+}
+
+function buildRenderBlocks(plan: StructuredPlan): RenderBlocks {
+  const headline = trimSummary(plan.summary).split(/(?<=[.!?])\s+/)[0] || plan.strategy_name;
+  const quickWin = `${plan.expected_result?.impact_range || 'Varies'} • first win in ${plan.expected_result?.first_win_timeline || '14-30 days'}`;
+  const checklist = plan.steps.map(s => s.title);
+  const riskAlerts = (plan.risks_and_mistakes_to_avoid || []).slice(0, 2);
+  return {
+    headline: tidyText(headline),
+    quick_win: tidyText(quickWin),
+    checklist,
+    risk_alerts: riskAlerts.map(tidyText),
+  };
+}
+
+function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
+  if (!plan || plan.plan_schema !== 'v1') return plan;
+  const strategyName = plan.strategy_name || '';
+
+  const summary = trimSummary(plan.summary || '');
+
+  const cleanedSteps: StructuredPlanStep[] = (plan.steps || []).map(step => {
+    let title = trimStepTitle(step.title || '');
+    let instruction = stripRedundantStrategyName(tidyText(step.instruction || ''), strategyName);
+    instruction = capSentenceLength(instruction, 28);
+    instruction = trimToCharLimit(instruction, 220);
+    let done = stripRedundantStrategyName(tidyText(step.done_definition || ''), strategyName);
+    done = capSentenceLength(done, 24);
+    done = trimToCharLimit(done, 140);
+    const time = tidyText(step.time_estimate || '15-30 min');
+    return { title, instruction, time_estimate: time, done_definition: done };
+  });
+
+  const diversified = diversifyAdjacentOpeners(cleanedSteps);
+
+  // Light tidy of meta arrays
+  const tidyArr = (arr?: string[]) => (arr || []).map(s => tidyText(s)).filter(Boolean);
+
+  const out: StructuredPlan = {
+    ...plan,
+    summary,
+    steps: diversified,
+    before_you_start: tidyArr(plan.before_you_start),
+    risks_and_mistakes_to_avoid: tidyArr(plan.risks_and_mistakes_to_avoid),
+    advisor_packet: tidyArr(plan.advisor_packet),
+    disclaimer: tidyText(plan.disclaimer || ''),
+  };
+  out.render_blocks = buildRenderBlocks(out);
+  return out;
+}
+
 
 function formatStrategiesCondensed(strategies: DBStrategy[]): string {
   if (strategies.length === 0) return "No strategies matched.";
