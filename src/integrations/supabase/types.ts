@@ -817,6 +817,7 @@ export type Database = {
           id: string
           latency_ms: number | null
           mode: string | null
+          model_variant: string | null
           parser_path: string | null
           ranker_score: number | null
           step_count: number | null
@@ -831,6 +832,7 @@ export type Database = {
           id?: string
           latency_ms?: number | null
           mode?: string | null
+          model_variant?: string | null
           parser_path?: string | null
           ranker_score?: number | null
           step_count?: number | null
@@ -845,6 +847,7 @@ export type Database = {
           id?: string
           latency_ms?: number | null
           mode?: string | null
+          model_variant?: string | null
           parser_path?: string | null
           ranker_score?: number | null
           step_count?: number | null
