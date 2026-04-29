@@ -2315,8 +2315,9 @@ Rules:
             appliedFixes.push('summary_repaired');
           }
 
-          assistantMessage = '```json\n' + JSON.stringify(parsed, null, 2) + '\n```';
-          const finalAssertionErrors = assertPlanMatchesStrategy(parsed as StructuredPlan, selected);
+          const normalizedParsed = normalizePlanReadability(parsed as StructuredPlan);
+          assistantMessage = '```json\n' + JSON.stringify(normalizedParsed, null, 2) + '\n```';
+          const finalAssertionErrors = assertPlanMatchesStrategy(normalizedParsed, selected);
           if (finalAssertionErrors.length > 0) {
             console.error(`Canonical paid plan assertion failed | selected_strategy_id=${selected.strategy_id} | errors=${JSON.stringify(finalAssertionErrors)}`);
             return new Response(
@@ -2327,7 +2328,7 @@ Rules:
         } else if (selected) {
           // Could not parse — fall back deterministically using the selected strategy
           validationErrors.push('falling_back_to_deterministic');
-          const fallback = buildStructuredPlan(selected, profile, primaryHorseman);
+          const fallback = normalizePlanReadability(buildStructuredPlan(selected, profile, primaryHorseman));
           assistantMessage = '```json\n' + JSON.stringify(fallback, null, 2) + '\n```';
           consistencyFixed = true;
         } else {
