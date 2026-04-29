@@ -2784,7 +2784,7 @@ Rules:
     }
 
     // Save assistant message (fire and forget)
-    supabase.from('messages').insert({
+    serviceClient.from('messages').insert({
       conversation_id: conversationId,
       role: 'assistant',
       content: assistantMessage,
