@@ -1065,20 +1065,277 @@ function trimSummary(summary: string): string {
   return joined.charAt(0).toUpperCase() + joined.slice(1);
 }
 
-function buildRenderBlocks(plan: StructuredPlan): RenderBlocks {
-  const sum = trimSummary(plan.summary);
-  // Headline: take the first sentence, strip parenthetical citations like "(IRC §...)".
-  let headline = (sum.split(/(?<=[.!?])\s+/)[0] || plan.strategy_name)
+// ─── CURATED DETERMINISTIC STEP BANKS ────────────────────────────────────────
+// Per-horseman readable titles, instructions, and "done when" definitions.
+// These ALWAYS replace step titles, and replace instructions/done-defs when
+// the model/DB output is contaminated (truncated, leaks strategy name,
+// stopword tail, too long, or too short).
+
+type CuratedHorseman = 'taxes' | 'interest' | 'insurance' | 'education' | 'default';
+
+const CURATED_STEP_TITLES: Record<CuratedHorseman, string[]> = {
+  education: [
+    'Gather 529 account records',
+    'Confirm beneficiary and eligibility',
+    'Estimate contribution impact',
+    'Submit plan election or update',
+    'Schedule annual progress review',
+  ],
+  taxes: [
+    'Gather tax documents',
+    'Verify eligibility thresholds',
+    'Estimate tax impact',
+    'File required changes',
+    'Schedule compliance review',
+  ],
+  interest: [
+    'List balances and APRs',
+    'Compare payoff and refi options',
+    'Choose lowest-cost path',
+    'Execute account changes',
+    'Track 90-day savings',
+  ],
+  insurance: [
+    'Collect policy declarations',
+    'Compare coverage and premiums',
+    'Select policy adjustments',
+    'Submit coverage updates',
+    'Review renewal readiness',
+  ],
+  default: [
+    'Diagnose your starting point',
+    'Plan the change',
+    'Execute the change',
+    'Verify results',
+    'Schedule a follow-up review',
+  ],
+};
+
+const CURATED_STEP_INSTRUCTIONS: Record<CuratedHorseman, string[]> = {
+  education: [
+    'Pull statements for every 529, Coverdell, or custodial account in the household.',
+    'Confirm the named beneficiary, state residency, and any age or income limits.',
+    'Project how much your planned contribution grows over the time horizon.',
+    'Submit the new contribution amount or beneficiary change with the plan administrator.',
+    'Set a yearly date to review balances, returns, and tuition assumptions.',
+  ],
+  taxes: [
+    'Pull last year\'s Form 1040, current pay stubs, and account statements.',
+    'Check income, filing status, and contribution limits against IRS rules.',
+    'Estimate dollar savings using a simple projection or tax software.',
+    'Submit updated W-4, contributions, or filings with the right form.',
+    'Calendar a mid-year and year-end review to confirm savings.',
+  ],
+  interest: [
+    'Write down each balance, APR, minimum payment, and payoff date.',
+    'Compare a balance transfer, refinance, and avalanche/snowball plan.',
+    'Pick the option with the lowest total interest you can actually execute.',
+    'Open or move accounts, set autopay, and redirect extra cash to the focus debt.',
+    'Recheck balances and interest paid after 90 days to confirm progress.',
+  ],
+  insurance: [
+    'Gather the declarations page and current premiums for every policy.',
+    'Compare coverage limits, deductibles, and premiums against current need.',
+    'Decide which limits, riders, or carriers to change.',
+    'File the policy change with your carrier and confirm new coverage in writing.',
+    'Diary the renewal date and re-shop the market 30 days before.',
+  ],
+  default: [
+    'Collect the documents and account info you need to act.',
+    'Confirm you qualify and understand the trade-offs.',
+    'Estimate the dollar or time impact of the change.',
+    'Execute the change with the right party or platform.',
+    'Schedule a check-in to verify it worked.',
+  ],
+};
+
+const CURATED_DONE: Record<CuratedHorseman, string[]> = {
+  education: [
+    'You have a single folder with every account statement.',
+    'Beneficiary and eligibility are confirmed in writing.',
+    'You have a written estimate of the contribution impact.',
+    'The plan administrator confirms your update.',
+    'A recurring annual review is on your calendar.',
+  ],
+  taxes: [
+    'You have last year\'s return and current pay stubs in one place.',
+    'You have written confirmation you qualify.',
+    'You have a dollar estimate you trust.',
+    'You receive confirmation the change was filed.',
+    'A mid-year review is on your calendar.',
+  ],
+  interest: [
+    'You have a one-page list of every balance and APR.',
+    'You have written numbers comparing each option.',
+    'You have chosen and committed to one path.',
+    'Autopay is on and the focus debt is receiving extra payments.',
+    'You can show the dollar drop in interest paid.',
+  ],
+  insurance: [
+    'You have every declarations page in one folder.',
+    'You have a side-by-side coverage and premium comparison.',
+    'You have written down what to change and why.',
+    'You have written confirmation of the new policy terms.',
+    'A renewal reminder is on your calendar.',
+  ],
+  default: [
+    'Source documents are gathered.',
+    'Eligibility is confirmed.',
+    'Impact is estimated in dollars or time.',
+    'Change is filed and confirmed.',
+    'Follow-up is scheduled.',
+  ],
+};
+
+const HORSEMAN_VERB_PHRASE: Record<CuratedHorseman, string> = {
+  taxes: 'lower your tax bill',
+  interest: 'cut interest costs',
+  education: 'stretch your education savings',
+  insurance: 'right-size your insurance coverage',
+  default: 'make a measurable financial improvement',
+};
+
+const HORSEMAN_FALLBACK_HEADLINE: Record<CuratedHorseman, string> = {
+  taxes: 'Lower your tax bill with a few targeted moves.',
+  interest: 'Cut interest costs and free up monthly cash flow.',
+  education: 'Stretch your education savings with smarter contributions.',
+  insurance: 'Right-size your insurance coverage and premiums.',
+  default: 'Make a measurable improvement to your finances.',
+};
+
+function curatedKey(horseman: string | undefined | null): CuratedHorseman {
+  const h = String(horseman || '').toLowerCase().trim();
+  if (h === 'tax' || h === 'taxation') return 'taxes';
+  if (h === 'debt') return 'interest';
+  if (h === 'taxes' || h === 'interest' || h === 'insurance' || h === 'education') return h;
+  return 'default';
+}
+
+function pickCuratedTitles(horseman: string | undefined | null, n: number): string[] {
+  const bank = CURATED_STEP_TITLES[curatedKey(horseman)];
+  const count = Math.max(1, Math.min(5, n || bank.length));
+  return bank.slice(0, count);
+}
+
+/**
+ * Hard-mode step rewriter. Replaces every title with a curated bank entry
+ * (per the user contract: "Always use curated bank"). Replaces instruction /
+ * done_definition only when the original is contaminated.
+ */
+function applyCuratedSteps(plan: StructuredPlan): StructuredPlan {
+  if (!plan || plan.plan_schema !== 'v1') return plan;
+  const key = curatedKey(plan.horseman);
+  const titleBank = CURATED_STEP_TITLES[key];
+  const instrBank = CURATED_STEP_INSTRUCTIONS[key];
+  const doneBank = CURATED_DONE[key];
+  const sname = (plan.strategy_name || '').toLowerCase();
+
+  const existing = Array.isArray(plan.steps) ? plan.steps : [];
+  // Cap at 5 and pad to at least 4
+  const target = Math.max(4, Math.min(5, existing.length || 5));
+
+  const TRAILING_STOPWORDS_LOCAL = new Set([
+    'to','for','of','a','an','the','and','or','in','on','at','by','with','from',
+    'as','into','vs','via','your','my','this','that',
+  ]);
+  const endsWithStop = (t: string) => {
+    const w = (t || '').trim().split(/\s+/);
+    const last = (w[w.length - 1] || '').replace(/[^A-Za-z0-9-]/g, '').toLowerCase();
+    return TRAILING_STOPWORDS_LOCAL.has(last);
+  };
+  const isContaminatedInstr = (s: string): boolean => {
+    if (!s) return true;
+    const t = s.trim();
+    if (t.length > 160) return true;
+    if (t.length < 25) return true;
+    if (sname && t.toLowerCase().includes(sname)) return true;
+    if (endsWithStop(t.replace(/[.!?]+$/, ''))) return true;
+    return false;
+  };
+  const containsStrategyName = (s: string) =>
+    !!sname && (s || '').toLowerCase().includes(sname);
+
+  const out: StructuredPlanStep[] = [];
+  for (let i = 0; i < target; i++) {
+    const src = existing[i] || ({} as StructuredPlanStep);
+    const title = titleBank[i] || titleBank[titleBank.length - 1];
+    const origInstr = tidyText(src.instruction || '');
+    const instruction = isContaminatedInstr(origInstr) ? instrBank[i] : origInstr;
+    const origDone = tidyText(src.done_definition || '');
+    const done = !origDone || containsStrategyName(origDone) ? doneBank[i] : origDone;
+    const time = tidyText(src.time_estimate || pickTimeEstimateLocal(instruction));
+    out.push({
+      title,
+      instruction: trimToCharLimit(instruction, 160),
+      time_estimate: time,
+      done_definition: trimToCharLimit(done, 140),
+    });
+  }
+  return { ...plan, steps: out };
+}
+
+function pickTimeEstimateLocal(instr: string): string {
+  const len = (instr || '').length;
+  const lower = (instr || '').toLowerCase();
+  if (/\b(meet|schedule|review|call)\b/.test(lower)) return '30-60 min';
+  if (len > 120) return '20-45 min';
+  return '15-30 min';
+}
+
+/** Build deterministic 2-sentence summary as a fallback when the original is awkward. */
+function buildDeterministicSummary(plan: StructuredPlan): string {
+  const key = curatedKey(plan.horseman);
+  const verbPhrase = HORSEMAN_VERB_PHRASE[key];
+  const s1 = `This plan helps you ${verbPhrase}.`;
+  const impact = (plan.expected_result?.impact_range || '').trim();
+  const tf = (plan.expected_result?.first_win_timeline || '').trim();
+  let s2: string;
+  if (impact && tf) s2 = `Expect ${impact} with a first win in ${tf}.`;
+  else if (impact) s2 = `Expect ${impact}.`;
+  else if (tf) s2 = `Expect a first win in ${tf}.`;
+  else s2 = 'Most people see results within 30-90 days.';
+  let out = `${s1} ${s2}`;
+  if (out.length > 260) out = out.slice(0, 257).replace(/\s+\S*$/, '') + '...';
+  return out;
+}
+
+function summaryNeedsFallback(s: string): boolean {
+  if (!s) return true;
+  if (/\.\s+[a-z]/.test(s)) return true;
+  const trimmed = s.trim();
+  if (trimmed.length < 25) return true;
+  if (!/[a-zA-Z]/.test(trimmed)) return true;
+  // Awkward: no verb at all (very rough heuristic — no whitespace = single word)
+  if (!/\s/.test(trimmed)) return true;
+  return false;
+}
+
+function buildHeadline(plan: StructuredPlan): string {
+  const key = curatedKey(plan.horseman);
+  // Prefer first sentence of summary, but only if clean and short enough.
+  const sum = (plan.summary || '').trim();
+  let candidate = (sum.split(/(?<=[.!?])\s+/)[0] || '')
     .replace(/\([^)]*§[^)]*\)/g, '')
     .replace(/\bIRC\s*§?\s*[\d().a-z-]+/gi, '')
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/[.!?]+$/, '');
-  if (headline.length > 90) {
-    const cut = headline.slice(0, 90);
-    const lastSpace = cut.lastIndexOf(' ');
-    headline = (lastSpace > 50 ? cut.slice(0, lastSpace) : cut).trim();
+  // Strip strategy name leak
+  const sname = (plan.strategy_name || '').toLowerCase();
+  if (sname && candidate.toLowerCase().includes(sname)) candidate = '';
+  if (!candidate || candidate.length > 80 || candidate.split(/\s+/).length < 4) {
+    candidate = HORSEMAN_FALLBACK_HEADLINE[key].replace(/[.!?]+$/, '');
   }
+  if (candidate.length > 80) {
+    const cut = candidate.slice(0, 80);
+    const lastSpace = cut.lastIndexOf(' ');
+    candidate = (lastSpace > 50 ? cut.slice(0, lastSpace) : cut).trim();
+  }
+  return candidate;
+}
+
+function buildRenderBlocks(plan: StructuredPlan): RenderBlocks {
+  const headline = buildHeadline(plan);
   const quickWin = `${plan.expected_result?.impact_range || 'Varies'} • first win in ${plan.expected_result?.first_win_timeline || '14-30 days'}`;
   const checklist = plan.steps.map(s => s.title);
   const riskAlerts = (plan.risks_and_mistakes_to_avoid || []).slice(0, 2);
@@ -1095,7 +1352,13 @@ function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
   const strategyName = plan.strategy_name || '';
   const horseman = (plan.horseman || '').toLowerCase();
 
-  const summary = trimSummary(plan.summary || '');
+  let summary = trimSummary(plan.summary || '');
+  // Hard cap at 260 chars and 2 sentences (already enforced); fallback if awkward.
+  if (summaryNeedsFallback(summary)) {
+    summary = buildDeterministicSummary(plan);
+  } else if (summary.length > 260) {
+    summary = summary.slice(0, 257).replace(/\s+\S*$/, '') + '...';
+  }
 
   const cleanedSteps: StructuredPlanStep[] = (plan.steps || []).map((step, i) => {
     let title = trimStepTitle(step.title || '', { strategyName, horseman, index: i });
@@ -1116,7 +1379,7 @@ function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
   // Light tidy of meta arrays
   const tidyArr = (arr?: string[]) => (arr || []).map(s => tidyText(s)).filter(Boolean);
 
-  const out: StructuredPlan = {
+  let out: StructuredPlan = {
     ...plan,
     summary,
     steps: diversified,
@@ -1125,6 +1388,8 @@ function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
     advisor_packet: tidyArr(plan.advisor_packet),
     disclaimer: tidyText(plan.disclaimer || ''),
   };
+  // HARD MODE: deterministic curated step rewrite (titles always replaced).
+  out = applyCuratedSteps(out);
   out.render_blocks = buildRenderBlocks(out);
   return out;
 }
