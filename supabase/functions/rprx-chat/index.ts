@@ -2089,11 +2089,15 @@ serve(async (req) => {
       );
     }
 
-    // User-scoped client
+    // User-scoped client - forward both apikey and Authorization so PostgREST
+    // applies RLS as the authenticated user (auth.uid()), not anon.
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
+      {
+        global: { headers: { Authorization: authHeader, apikey: Deno.env.get('SUPABASE_ANON_KEY')! } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      }
     );
 
     // Service-role client for reading strategies & prompt templates
@@ -2153,7 +2157,7 @@ serve(async (req) => {
 
     // Parallel: save message, fetch history, fetch profile, fetch strategies, fetch completed strategies, fetch prompt templates
     const [saveResult, historyResult, profileResult, strategiesResult, completedResult, activeResult, systemPromptResult, autoPromptResult, manualPromptResult, assessmentResult, knowledgeBaseRows] = await Promise.all([
-      supabase.from('messages').insert({
+      serviceClient.from('messages').insert({
         conversation_id: conversationId,
         role: 'user',
         content: user_message.trim(),
@@ -2780,7 +2784,7 @@ Rules:
     }
 
     // Save assistant message (fire and forget)
-    supabase.from('messages').insert({
+    serviceClient.from('messages').insert({
       conversation_id: conversationId,
       role: 'assistant',
       content: assistantMessage,
