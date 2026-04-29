@@ -1814,6 +1814,11 @@ ${manualInstructions}`;
     const forceTemplateEngine = Deno.env.get('RPRX_FORCE_TEMPLATE_ENGINE') === 'true';
     const strictJsonV1 = Deno.env.get('STRICT_JSON_V1') === 'true';
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    // A/B model variant: 'a' (default) | 'b'. Map to actual model ids.
+    const modelVariantRaw = (Deno.env.get('RPRX_PAID_MODEL_VARIANT') || 'a').toLowerCase();
+    const modelVariant = modelVariantRaw === 'b' ? 'b' : 'a';
+    const PAID_MODEL_BY_VARIANT: Record<string, string> = { a: 'gpt-4o-mini', b: 'gpt-4o-mini' };
+    const paidModel = PAID_MODEL_BY_VARIANT[modelVariant];
 
     // Branch selection (explicit & mutually exclusive)
     if (forceTemplateEngine) {
@@ -1828,7 +1833,7 @@ ${manualInstructions}`;
     const branchLog = runtimeBranch === 'template-no-openai-key'
       ? 'fallback'
       : (runtimeBranch.startsWith('template') ? 'template' : 'paid_openai');
-    console.log(`branch=${branchLog} | runtime_branch=${runtimeBranch} | force_template_engine=${forceTemplateEngine} | strict_json_v1=${strictJsonV1} | strategy_source=${strategySource} | tier=${userTier || 'free'} | mode=${effectiveMode} | primary_horseman=${selectedStrategyMetadata.primary_horseman || 'none'} | selected_horseman=${selectedStrategyMetadata.selected_horseman || 'none'} | selected_strategy_id=${selectedStrategyMetadata.selected_strategy_id || 'none'} | score=${selectedStrategyMetadata.score ?? 'none'}`);
+    console.log(`branch=${branchLog} | runtime_branch=${runtimeBranch} | model_variant=${modelVariant} | model=${paidModel} | force_template_engine=${forceTemplateEngine} | strict_json_v1=${strictJsonV1} | strategy_source=${strategySource} | tier=${userTier || 'free'} | mode=${effectiveMode} | primary_horseman=${selectedStrategyMetadata.primary_horseman || 'none'} | selected_horseman=${selectedStrategyMetadata.selected_horseman || 'none'} | selected_strategy_id=${selectedStrategyMetadata.selected_strategy_id || 'none'} | score=${selectedStrategyMetadata.score ?? 'none'}`);
 
     if (runtimeBranch.startsWith('template')) {
       // =====================================================
@@ -1913,7 +1918,7 @@ Rules:
         }
 
         const openaiBody: Record<string, unknown> = {
-          model: 'gpt-4o-mini',
+          model: paidModel,
           messages: openaiMessages,
           temperature: runtimeBranch === 'paid-openai-strict-json' ? 0.2 : 0.7,
           max_tokens: 2500,
