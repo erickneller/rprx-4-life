@@ -656,22 +656,132 @@ async function fetchPromptTemplate(serviceClient: any, templateId: string): Prom
 }
 
 // =====================================================
-// KNOWLEDGE BASE FETCHING
+// KNOWLEDGE BASE FETCHING (scoped retrieval)
 // =====================================================
 
-async function fetchKnowledgeBase(serviceClient: any): Promise<string> {
+interface KBRow { name: string; content: string }
+interface KBSection { source: string; heading: string; body: string }
+
+async function fetchKnowledgeBaseRows(serviceClient: any): Promise<KBRow[]> {
   try {
     const { data, error } = await serviceClient
       .from('knowledge_base')
       .select('name, content')
       .eq('is_active', true)
       .not('content', 'eq', '');
-    if (error || !data || data.length === 0) return '';
-    return '\n## KNOWLEDGE BASE\n' +
-      data.map((d: any) => `### ${d.name}\n${d.content}`).join('\n\n');
+    if (error || !data) return [];
+    return data as KBRow[];
   } catch {
-    return '';
+    return [];
   }
+}
+
+/** Split a KB document into ## / ### sections with their headings preserved. */
+function splitKBIntoSections(row: KBRow): KBSection[] {
+  const lines = (row.content || '').split('\n');
+  const sections: KBSection[] = [];
+  let heading = row.name;
+  let buffer: string[] = [];
+  const flush = () => {
+    const body = buffer.join('\n').trim();
+    if (body.length > 20) sections.push({ source: row.name, heading, body });
+    buffer = [];
+  };
+  for (const line of lines) {
+    const m = line.match(/^\s{0,3}(#{2,3})\s+(.+?)\s*$/);
+    if (m) {
+      flush();
+      heading = m[2].trim();
+    } else {
+      buffer.push(line);
+    }
+  }
+  flush();
+  if (sections.length === 0 && (row.content || '').trim().length > 0) {
+    sections.push({ source: row.name, heading: row.name, body: row.content.trim() });
+  }
+  return sections;
+}
+
+/** Token overlap score between section text and a query token bag. */
+function scoreSectionRelevance(section: KBSection, queryTokens: Set<string>): number {
+  if (queryTokens.size === 0) return 0;
+  const haystack = `${section.heading} ${section.body}`.toLowerCase();
+  let score = 0;
+  for (const token of queryTokens) {
+    if (!token) continue;
+    if (haystack.includes(token)) score += token.length >= 6 ? 2 : 1;
+  }
+  // Heading bonus
+  const headingLow = section.heading.toLowerCase();
+  for (const token of queryTokens) {
+    if (token && headingLow.includes(token)) score += 2;
+  }
+  return score;
+}
+
+function tokenizeForKB(input: string): string[] {
+  return (input || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length >= 3 && !KB_STOPWORDS.has(t));
+}
+
+const KB_STOPWORDS = new Set([
+  'the','and','for','with','your','you','this','that','from','into','have','will','are','was',
+  'can','any','all','use','has','our','out','not','but','one','two','more','than','their','they',
+  'how','who','why','what','when','where','who','also','about','over','under','then','these','those',
+  'each','some','many','most','other','onto','only','every','same','strategy','plan',
+]);
+
+/** Build a scoped knowledge-base context block for the selected strategy and horseman. */
+function buildScopedKnowledgeContext(
+  rows: KBRow[],
+  ctx: { horseman: string | null; strategy: DBStrategy | null },
+  opts: { topN?: number; charBudget?: number } = {},
+): string {
+  if (!rows || rows.length === 0) return '';
+  const topN = opts.topN ?? 3;
+  const charBudget = opts.charBudget ?? 4000;
+
+  const queryParts: string[] = [];
+  if (ctx.horseman) queryParts.push(ctx.horseman);
+  if (ctx.strategy) {
+    queryParts.push(ctx.strategy.title || '');
+    queryParts.push(ctx.strategy.tax_return_line_or_area || '');
+    if (Array.isArray(ctx.strategy.goal_tags)) queryParts.push(ctx.strategy.goal_tags.join(' '));
+  }
+  const queryTokens = new Set(tokenizeForKB(queryParts.join(' ')));
+
+  const allSections: KBSection[] = rows.flatMap(splitKBIntoSections);
+  if (allSections.length === 0) return '';
+
+  // If no query tokens, fall back to first section of each source (legacy-ish behaviour but capped).
+  let scored: { section: KBSection; score: number }[];
+  if (queryTokens.size === 0) {
+    scored = allSections.slice(0, topN).map(s => ({ section: s, score: 0 }));
+  } else {
+    scored = allSections
+      .map(section => ({ section, score: scoreSectionRelevance(section, queryTokens) }))
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topN);
+  }
+
+  if (scored.length === 0) return '';
+
+  const blocks: string[] = [];
+  let used = 0;
+  for (const { section } of scored) {
+    const text = section.body.length > 1500 ? section.body.slice(0, 1500) + '…' : section.body;
+    const block = `### ${section.source} — ${section.heading}\n${text}`;
+    if (used + block.length > charBudget && blocks.length > 0) break;
+    blocks.push(block);
+    used += block.length;
+  }
+
+  return '\n## KNOWLEDGE BASE (scoped)\n' + blocks.join('\n\n');
 }
 
 // =====================================================
