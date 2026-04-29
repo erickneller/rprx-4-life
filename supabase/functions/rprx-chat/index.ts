@@ -1747,6 +1747,15 @@ serve(async (req) => {
       score: rankedStrategies[0]?.score ?? null,
     };
 
+    // Build SCOPED knowledge base context now that the selected strategy + horseman are known.
+    const knowledgeBaseContext = buildScopedKnowledgeContext(
+      knowledgeBaseRows,
+      {
+        horseman: rankedStrategies[0]?.strategy.horseman_type || intentHorseman || routingPrimaryHorseman || null,
+        strategy: rankedStrategies[0]?.strategy || null,
+      },
+    );
+    console.log(`KB scoped retrieval | sources_loaded=${knowledgeBaseRows.length} | context_chars=${knowledgeBaseContext.length}`);
     // Get prompt templates (with fallbacks)
     const baseSystemPrompt = systemPromptResult || FALLBACK_SYSTEM_PROMPT;
     const autoInstructions = autoPromptResult || '';
