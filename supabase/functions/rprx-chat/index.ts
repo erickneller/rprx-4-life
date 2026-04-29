@@ -708,7 +708,7 @@ function buildStructuredPlan(
       return {
         title,
         instruction: text,
-        time_estimate: i === 0 ? '15-20 min' : i < 3 ? '20-45 min' : '15-30 min',
+        time_estimate: pickTimeEstimate(text, i),
         done_definition: i === lastIdx
           ? 'Change is confirmed in writing and stored with your records.'
           : 'Action is completed and the result is captured in your plan notes.',
@@ -732,6 +732,9 @@ function buildStructuredPlan(
   while (structuredSteps.length < 2) {
     structuredSteps.push(horsemanFallbacks[structuredSteps.length] || horsemanFallbacks[0]);
   }
+
+  // Dedupe adjacent step titles so the plan does not read repetitive.
+  structuredSteps = dedupeAdjacentTitles(structuredSteps);
 
   return {
     plan_schema: 'v1',
