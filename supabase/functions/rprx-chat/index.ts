@@ -299,6 +299,13 @@ interface StructuredPlanStep {
   done_definition: string;
 }
 
+interface RenderBlocks {
+  headline: string;
+  quick_win: string;
+  checklist: string[];
+  risk_alerts: string[];
+}
+
 interface StructuredPlan {
   plan_schema: 'v1';
   strategy_id: string;
@@ -315,6 +322,7 @@ interface StructuredPlan {
   risks_and_mistakes_to_avoid: string[];
   advisor_packet: string[];
   disclaimer: string;
+  render_blocks?: RenderBlocks;
 }
 
 const HORSEMAN_PRESETS: Record<string, {
