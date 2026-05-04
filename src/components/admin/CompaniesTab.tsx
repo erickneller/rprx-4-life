@@ -52,7 +52,7 @@ export function CompaniesTab() {
       // Fetch companies
       const { data: rows, error } = await (supabase
         .from('companies') as any)
-        .select('id, name, slug, plan, owner_id, invite_token, created_at')
+        .select('id, name, slug, plan, owner_id, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -100,7 +100,13 @@ export function CompaniesTab() {
 
   // ─── Copy invite link ────────────────────────────────────────────────────
   const handleCopy = async (company: CompanyRow) => {
-    const url = buildInviteUrl(company.invite_token);
+    const { data: token, error } = await supabase
+      .rpc('get_company_invite_token', { _company_id: company.id });
+    if (error || !token) {
+      toast.error('Failed to fetch invite token.');
+      return;
+    }
+    const url = buildInviteUrl(token as string);
     await navigator.clipboard.writeText(url);
     setCopiedId(company.id);
     toast.success('Invite link copied!');
