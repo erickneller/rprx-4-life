@@ -1,120 +1,69 @@
+# Strategy Assistant → Implementation Plan: World-Class Upgrade
 
-# Strategy Assistant → Implementation Plan: Path to World-Class
+Goal: every paid request returns up to 3 ranked, structured strategies that render as save-ready plan cards with a clear path to implementation. Free tier returns 1 reliable templated plan. Everything is observable and admin-tunable.
 
-## Where we are today
+## Part 1 — Lock the contract (reliability)
 
-The pipeline already does a lot right:
+1. **Force `STRICT_JSON_V1=true`** in `rprx-chat`. Paid path always calls OpenAI with `response_format: json_object` and a schema-pinned system prompt.
+2. **Pure parser.** `strategyParser.ts`: keep only the JSON-block branch. Require `plan_schema: "v1"` and non-empty `steps[]`. Delete the legacy regex/marker-phrase fallback.
+3. **One repair retry.** If first response fails schema validation, re-call once with "Return JSON only matching this schema" + the validation error. If still bad, return a friendly fallback card built from the catalog row (title, summary, 3 generic steps, disclaimer) — never a raw error.
+4. **Server-side schema guard** before sending to client: validate with a small zod-like check; log failures to `plan_generation_events` with `parser_path` = `strict|repair|fallback`.
 
-- Single source of truth: `strategy_catalog_v2` (493 active), with integrity filter that excludes mis-tagged rows.
-- Smart ranker (horseman fit, goal fit, urgency, feasibility, impact) with completed/active penalties.
-- Strict structured plan schema `v1` with `expected_result`, `before_you_start`, `steps[{title, instruction, time_estimate, done_definition}]`, `risks_and_mistakes_to_avoid`, `advisor_packet`, `render_blocks`.
-- `StrategyPlanCard` renders the schema cleanly with badges, numbered steps, and collapsible sections.
-- Save Plan / Create Plan flow exists, plans become focus, strategy auto-activates.
+## Part 2 — Single-call multi-plan ("Auto" mode)
 
-## What's still holding it back
+1. Replace the current 2-call auto-flow with **one** OpenAI call returning a `v1-multi` envelope:
+   ```
+   { plan_schema: "v1-multi", overview_md: "...", plans: [v1, v1, v1] }
+   ```
+2. `MessageBubble` renders the overview markdown + up to 3 `StrategyPlanCard`s, each with its own Save/Activate buttons.
+3. Remove the auto-fired second user message in `ChatThread`.
+4. Cards are collapsible; first card expanded by default, Quick Win chip + first step visible.
 
-**1. JSON v1 is "preferred" but not enforced.** `STRICT_JSON_V1` env flag exists but isn't on. When the model returns prose-only or partial JSON, the parser silently drops to a fragile legacy regex path that needs the literal phrase *"Here are the step-by-step implementation plans"* and reconstructs steps from numbered lines. Result: inconsistent cards, missing `before_you_start` / `advisor_packet`, no `quick_win` chip.
+## Part 3 — Make the engine admin-tunable
 
-**2. Auto-mode does two sequential AI calls.** `ChatThread` sends a follow-up *"Please provide the step-by-step implementation plans for all 3 strategies above"* after the first response. That doubles latency (~6–14 s extra), doubles cost, and the overview message is rendered raw above the real plan, which looks like duplicate content.
+Wire `prompt_engine_config` (already exists, admin-RLS) into `rprx-chat` with a 60s in-memory cache:
+- ranker weights (horseman/goal/urgency/feasibility/impact/active-penalty)
+- model, temperature, max strategies (default 3)
+- system-prompt tone block + disclaimer
+- diversification toggle (prefer one strategy per distinct horseman when top scores within 10%)
+- anti-repetition window (penalize last N `plan_generation_events` strategy_ids)
 
-**3. Multi-strategy responses aren't first-class.** Auto-mode asks for 3 strategies but the parser + card handle exactly one plan. The other two strategies appear only as markdown prose with no card, no Save button, no activation path.
+Add a small admin tab `Assistant Engine` to edit these (read/write the existing table).
 
-**4. No progress signal back into the chat.** Once a plan is saved, there is no badge in the assistant view ("Plan saved · 2 of 7 steps done"), no "Resume your active plan" prompt, and no link from the chat card to `/plans/:id`.
+## Part 4 — Card → Implementation UX
 
-**5. Advisor handoff is a static list, not an action.** `advisor_packet` renders as a collapsed bullet list. There is no "Email this packet to my advisor" or "Copy packet" CTA, and no link to the configured advisor (we already have `useAdvisorLink`).
+In `StrategyPlanCard` + `SavePlanButton`:
+- Quick Win chip, "~Xh effort", impact range, complexity dots in header.
+- Per-step "Mark done" checkbox; persists to `saved_plans.completed_steps` if a saved plan exists for that `strategy_id`.
+- "Continue plan →" link when a `saved_plans` row already matches `strategy_id` (jumps to `PlanDetail`).
+- Advisor packet rendered as actionable buttons (Copy questions, Email advisor, Schedule) using existing `useAdvisorLink`.
+- Risks/mistakes shown as an alert strip.
 
-**6. `prompt_engine_config` is unused.** The table is in place with admin-friendly RLS but the edge function reads no rows from it. Tone, ranker weights, model variant, and step counts are still hard-coded in `index.ts`.
+## Part 5 — Observability ("Assistant Quality" admin tab)
 
-**7. No streaming + no skeleton of the card.** Users wait 8–20 s with only a spinning "Almost there…" message. The plan card pops in fully formed at the end. Streaming the markdown body and progressively filling the card would feel dramatically faster.
+Off existing `plan_generation_events`:
+- parser-path distribution (strict / repair / fallback / template)
+- p50/p95 latency, token usage, cost
+- step-count + advisor-packet presence rates
+- per-strategy save-rate and activate-rate funnel
+- top failing schema fields (last 7 days)
 
-**8. No "tier-aware" depth.** Free vs paid both get the same plan length / advisor packet. Paid should get deeper plans + advisor email export; free should get a shorter "teaser" with an upgrade CTA.
+## Part 6 — Cleanup
 
-**9. Strategy ranker doesn't diversify.** Top 3 in auto-mode can all be the same horseman with similar tactics. Need anti-repetition + cross-horseman diversification when scores are close.
-
-**10. No telemetry on plan quality.** `plan_generation_events` is logged but there's no admin view of: parser path used (`v1` vs `legacy`), step count distribution, latency, ranker scores. Hard to know if changes regress quality.
-
----
-
-## Proposed plan
-
-### Part 1 — Lock the contract (highest leverage)
-
-- Turn on `STRICT_JSON_V1=true`. Make the edge function:
-  - Always include the JSON v1 block (already templated).
-  - On parse failure, retry once with a "JSON only, no prose" repair prompt instead of returning prose.
-  - Reject (and log) any response without `plan_schema: "v1"` and a non-empty `steps` array; return a friendly fallback card built from the chosen catalog row.
-- Tighten `strategyParser.ts` to **only** trust the JSON block. Delete the legacy regex path entirely (after telemetry confirms <1% legacy hits over 7 days).
-
-### Part 2 — Fix auto-mode in one round trip
-
-- Change the prompt so the first auto-mode response returns:
-  - One markdown overview comparing 3 ranked strategies (table format).
-  - Three JSON v1 plans in a single ` ```json ` array under one envelope `{ "plan_schema": "v1-multi", "plans": [ ... ] }`.
-- Remove the follow-up message in `ChatThread.tsx` (`autoFollowUpSent` block).
-- Update parser to return `ParsedStrategy[]` and update `MessageBubble` to render up to 3 cards, each with its own Save/Activate button.
-- Net effect: ~2× faster, ~50% cheaper, no duplicate overview message.
-
-### Part 3 — Card upgrades for clarity
-
-- Default-open the **first step** + **Quick Win** chip; keep the rest collapsible.
-- Add per-step "Mark done" toggle that writes back to `saved_plans.content.completedSteps` if the plan is already saved.
-- Add a "Continue plan →" link on the card when an existing `saved_plans` row matches `strategy_id`.
-- Convert the "Bring to your advisor" section into an action panel: **Copy packet**, **Email to advisor** (uses `useAdvisorLink`), and **Schedule a call** (uses configured advisor URL).
-
-### Part 4 — Wire `prompt_engine_config`
-
-- Read the active config row at edge-function start. Surface in admin UI:
-  - Ranker weights (horseman / goal / urgency / feasibility / impact).
-  - Number of strategies (1 in manual, 3 in auto — make configurable).
-  - Tone preset and disclaimer text.
-  - Model + temperature.
-- Cache for 60 s in the edge function to avoid hot-path DB reads.
-
-### Part 5 — Tier-aware depth
-
-- Free: 1 strategy, 4–6 steps, no advisor packet, upgrade CTA on the card.
-- Paid: 3 strategies in auto-mode, full packet, "Email packet" enabled.
-- Read tier from `get_subscription_tier(_user_id)` once per request.
-
-### Part 6 — Diversification in the ranker
-
-- After ranking, when top-3 scores are within 10% of each other, prefer one strategy per distinct horseman.
-- Anti-repetition: penalize any strategy whose `strategy_id` was returned in the user's last 5 plan_generation_events.
-
-### Part 7 — Progressive rendering
-
-- Switch `rprx-chat` to streaming SSE. Stream the markdown overview first, then the JSON block.
-- `ChatThread` shows a card skeleton with the chosen strategy title (pulled from the ranker step, not the model) the moment ranking finishes — typically <500 ms.
-
-### Part 8 — Quality telemetry
-
-- New admin tab "Assistant Quality":
-  - 7/30-day chart of parser path (`v1` / `v1-multi` / `legacy` / `failed`).
-  - p50/p95 latency and step-count distribution.
-  - Top strategies returned vs activated (conversion rate per strategy).
-- Backed by existing `plan_generation_events` plus two new columns: `parsed_ok bool`, `step_count_total int`.
-
----
+- Delete legacy regex parser branch + `PLAN_MARKER_PHRASE`.
+- Remove the `parseStrategyFromMessage(content, true)` lenient path and the `buildFallbackPlan` branch in `MessageBubble` once Parts 1–2 ship.
+- Update `guards_test.ts` with strict-mode + multi-envelope cases.
 
 ## Technical notes
 
-- All schema additions to `plan_generation_events` go via `supabase--migration`.
-- `v1-multi` envelope keeps backward compat: a single-plan response is just `plans: [{...v1...}]`.
-- Parser becomes pure: no regex fallbacks, no horseman keyword guessing — the JSON declares everything.
-- Streaming requires moving from `serve` JSON response to `ReadableStream`; client uses `fetch` with `ReadableStreamDefaultReader` (no SDK change needed).
+- Files touched: `supabase/functions/rprx-chat/index.ts`, `supabase/functions/rprx-chat/guards_test.ts`, `src/lib/strategyParser.ts`, `src/components/assistant/MessageBubble.tsx`, `src/components/assistant/ChatThread.tsx`, `src/components/assistant/StrategyPlanCard.tsx`, `src/components/plans/SavePlanButton.tsx`, `src/hooks/useSendMessage.ts` (envelope handling), new `src/components/admin/AssistantEngineTab.tsx` + `AssistantQualityTab.tsx`, `src/pages/AdminPanel.tsx`.
+- DB: no new tables. Use `prompt_engine_config` and `plan_generation_events` as-is. Add 1–2 indexes on `plan_generation_events(created_at)` and `(strategy_id)` if missing.
+- Backwards-compat: keep `v1` single-plan envelope working; `v1-multi` is additive.
 
-## Done when
+## Suggested ship order
 
-- Auto-mode shows 1–3 strategy cards in a single AI call, no duplicate overview.
-- 100% of assistant responses with a plan are parsed via JSON v1 (legacy parser removed).
-- Each card has working Save / Continue / Email-advisor actions.
-- Admins can change ranker weights, model, and strategy count from the UI without a deploy.
-- Free vs Paid users see materially different depth.
-- Admin can see parser success %, latency, and per-strategy activation rate.
-
-## Out of scope for this plan
-
-- Voice input / output.
-- Multi-turn refinement beyond the existing chat.
-- Recommending strategies that aren't in `strategy_catalog_v2` (no live web search).
-- Migrating non-admin reads off the legacy `strategy_definitions` view (already a no-op view, can stay).
+1. Parts 1 + 6 (parser + strict mode + cleanup) — foundation, low risk.
+2. Part 2 (single-call multi) — biggest UX win.
+3. Part 4 (card polish) — conversion win.
+4. Part 3 (admin engine tab) — operator control.
+5. Part 5 (quality tab) — measure & iterate.
