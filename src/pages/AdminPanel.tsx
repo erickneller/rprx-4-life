@@ -455,8 +455,24 @@ export default function AdminPanel() {
           <TabsContent value="strategies" className="space-y-4">
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="master-active" className="text-sm">All Active</Label>
+              <div className="flex flex-col gap-0.5">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <span className="text-muted-foreground">
+                    Total: <span className="font-medium text-foreground">{strategies.length}</span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    Active: <span className="font-medium text-foreground">{strategies.filter(s => s.is_active).length}</span>
+                  </span>
+                  {selectedIds.size > 0 && (
+                    <span className="text-muted-foreground">
+                      Selected: <span className="font-medium text-foreground">{selectedIds.size}</span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground">Source: strategy_catalog_v2</span>
+              </div>
+              <div className="flex items-center gap-2 ml-2">
+                <Label htmlFor="master-active" className="text-sm">Activate all</Label>
                 <Switch
                   id="master-active"
                   checked={allActive}
@@ -467,12 +483,9 @@ export default function AdminPanel() {
               </div>
               <div className="flex-1" />
               {selectedIds.size > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
-                  <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
-                    <Trash2 className="h-4 w-4 mr-1" /> Delete Selected
-                  </Button>
-                </div>
+                <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+                  <Trash2 className="h-4 w-4 mr-1" /> Delete Selected ({selectedIds.size})
+                </Button>
               )}
               <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1">
                 <Download className="h-4 w-4" /> Export CSV
