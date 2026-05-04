@@ -118,23 +118,9 @@ export function ChatThread({ conversationId, onSendMessage, isSending, autoMode,
   const { data: existingPlans = [] } = usePlans();
   const { isFree } = useSubscription();
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
-  const [autoFollowUpSent, setAutoFollowUpSent] = useState(false);
-
-  // In auto-mode, after the first assistant response (strategy overview), automatically
-  // send a follow-up requesting full implementation plans so we get detailed steps
-  useEffect(() => {
-    if (!autoMode || autoFollowUpSent || isSending || !messages) return;
-    const assistantMessages = messages.filter(m => m.role === 'assistant');
-    // After exactly 1 assistant response (the overview), send the follow-up
-    if (assistantMessages.length === 1) {
-      const content = assistantMessages[0].content;
-      // Only send follow-up if the response doesn't already have the detailed plan marker
-      if (!content.includes('step-by-step implementation plans')) {
-        setAutoFollowUpSent(true);
-        onSendMessage('Please provide the step-by-step implementation plans for all 3 strategies listed above. Include detailed numbered steps for each strategy.');
-      }
-    }
-  }, [autoMode, messages, isSending, autoFollowUpSent, onSendMessage]);
+  // Auto-mode: the single edge-function call now returns a structured plan with steps,
+  // so we no longer fire a follow-up "give me the implementation plans" message.
+  // The "Create My Plan" footer reads the latest assistant message directly.
 
   // Scroll to bottom when messages change
   useEffect(() => {
