@@ -256,14 +256,9 @@ function AutoCreatePlanFooter({
 }: { 
   messages: Message[]; horseman: string | null | undefined; isCreating: boolean; onCreate: () => void 
 }) {
-  // Show button only after the detailed implementation response (2nd assistant message) 
-  // or if the first response already has the detailed marker
+  // Show button as soon as the assistant has responded.
   const assistantMsgs = messages.filter(m => m.role === 'assistant');
   if (assistantMsgs.length === 0) return null;
-  const lastMsg = assistantMsgs[assistantMsgs.length - 1].content;
-  const hasDetailedPlan = assistantMsgs.length >= 2 || lastMsg.includes('step-by-step implementation plans');
-  
-  if (!hasDetailedPlan) return null;
 
   return (
     <div className="border-t p-4">
