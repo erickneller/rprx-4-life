@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const ALLOWED_TABLES = [
-  "strategy_definitions",
+  "strategy_catalog_v2",
   "assessment_questions",
   "deep_dive_questions",
   "badge_definitions",

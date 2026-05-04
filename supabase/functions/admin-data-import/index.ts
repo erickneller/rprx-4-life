@@ -8,7 +8,6 @@ const corsHeaders = {
 
 // Only config/back-office tables — user data tables are intentionally excluded
 const ALLOWED_TABLES = [
-  "strategy_definitions",
   "strategy_catalog_v2",
   "prompt_engine_config",
   "assessment_questions",
