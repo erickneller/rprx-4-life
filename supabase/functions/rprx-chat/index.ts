@@ -63,7 +63,10 @@ interface UserContext {
 // STRATEGY FETCHING FROM DATABASE
 // =====================================================
 
-export type StrategySource = 'v2' | 'legacy' | 'none';
+// `strategy_catalog_v2` is the single source of truth. The legacy
+// `strategy_definitions` table is now a read-only view over v2, so the old
+// fallback path was removed in the 2026-05 reconciliation.
+export type StrategySource = 'v2' | 'none';
 
 async function fetchStrategies(serviceClient: any): Promise<{ strategies: DBStrategy[]; source: StrategySource; error?: string }> {
   const { data, error } = await serviceClient
@@ -72,52 +75,14 @@ async function fetchStrategies(serviceClient: any): Promise<{ strategies: DBStra
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
 
-  if (!error && data && data.length > 0) {
-    console.log(`Strategy source: strategy_catalog_v2 (${data.length} rows)`);
-    return { strategies: data, source: 'v2' };
-  }
-
-  const allowLegacy = Deno.env.get('ALLOW_LEGACY_FALLBACK') === 'true';
-  if (!allowLegacy) {
-    const msg = 'strategy_catalog_v2 unavailable/empty and ALLOW_LEGACY_FALLBACK !== "true"';
+  if (error || !data || data.length === 0) {
+    const msg = 'strategy_catalog_v2 unavailable or empty';
     console.error(msg, error);
-    return { strategies: [], source: 'none', error: msg };
+    return { strategies: [], source: 'none', error: error?.message ?? msg };
   }
 
-  console.warn('strategy_catalog_v2 unavailable/empty, using legacy strategy_definitions fallback');
-  const { data: legacy, error: legacyError } = await serviceClient
-    .from('strategy_definitions')
-    .select('id, horseman_type, name, description, difficulty, estimated_impact, tax_return_line_or_area, financial_goals, steps, is_active, sort_order')
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true });
-
-  if (legacyError || !legacy) {
-    console.error('Error fetching fallback strategies:', legacyError || error);
-    return { strategies: [], source: 'none', error: (legacyError || error)?.message };
-  }
-
-  console.log(`Strategy source: strategy_definitions legacy (${legacy.length} rows)`);
-  return {
-    source: 'legacy',
-    strategies: legacy.map((s: any) => ({
-    id: s.id,
-    strategy_id: s.id,
-    title: s.name,
-    strategy_details: s.description,
-    example: null,
-    potential_savings_benefits: null,
-    horseman_type: s.horseman_type,
-    difficulty: s.difficulty,
-    estimated_impact_min: null,
-    estimated_impact_max: null,
-    estimated_impact_display: s.estimated_impact,
-    tax_return_line_or_area: s.tax_return_line_or_area,
-    goal_tags: Array.isArray(s.financial_goals) ? s.financial_goals : [],
-    implementation_steps: s.steps,
-    is_active: s.is_active,
-    sort_order: s.sort_order ?? 0,
-  })),
-  };
+  console.log(`Strategy source: strategy_catalog_v2 (${data.length} rows)`);
+  return { strategies: data, source: 'v2' };
 }
 
 // =====================================================
