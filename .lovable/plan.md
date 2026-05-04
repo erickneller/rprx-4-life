@@ -1,93 +1,83 @@
-## Problem
-
-When the assistant returns a strategy, the chat bubble currently renders the entire message body through ReactMarkdown — including a large ```json ... ``` code block containing the structured plan. The result is a wall of raw JSON that's hard to read, with no visual hierarchy, no bold/bullets in the right spots, and the curated step titles + instructions get buried.
-
-The plan data itself is already clean (curated titles, summary, steps, expected_result, before_you_start, risks, advisor_packet, render_blocks). We just need to render it properly.
+# Strategy Catalog Reconciliation + Admin Header Clarity
 
 ## Goal
 
-When an assistant message contains a v1 plan JSON block, hide the raw JSON and render a human-friendly **StrategyPlanCard** above any remaining prose. Keep the existing Save Plan button. No backend or schema changes.
+1. Make `strategy_catalog_v2` the single source of truth (it has the richer schema: `implementation_steps`, `estimated_impact_min/max`, `time_to_impact`, `effort_level`, etc.).
+2. Stop maintaining the legacy `strategy_definitions` mirror.
+3. Fix the ambiguous admin header so 513 vs 493 vs "selected" is unmistakable.
 
-## Scope
+Today both tables hold the same 513 rows / 493 active across the same 4 horsemen, but only `rprx-chat` reads `strategy_catalog_v2`. Every other surface (admin UI, activation card, scoring, plans, dashboards) still reads `strategy_definitions`. Any edit in the admin Strategies tab silently diverges the two.
 
-Frontend only:
-- `src/components/assistant/MessageBubble.tsx` (wire in the new card; strip the JSON block from the markdown body)
-- `src/components/assistant/StrategyPlanCard.tsx` (new — presentation component)
-- `src/lib/strategyParser.ts` (small addition: also expose `render_blocks` and the raw plan so the card can use the headline/quick_win/checklist/risk_alerts)
+---
 
-No changes to `usePlans`, the edge function, or saved-plan rendering.
+## Part A — Reconcile to one catalog
 
-## StrategyPlanCard layout
+### Approach: keep `strategy_catalog_v2` as canonical, expose `strategy_definitions` as a read-only compatibility view
 
-Built with existing shadcn primitives (Card, Badge, Separator, Collapsible) and lucide icons. All colors via semantic tokens (`bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary/10`, etc.) — no hard-coded colors.
+This avoids touching `user_active_strategies.strategy_id` (text FK by id) and avoids rewriting every consumer at once.
 
-```text
-┌─ Card ─────────────────────────────────────────────┐
-│ [Horseman badge(s)]  [Strategy ID badge]           │
-│ Headline (text-lg font-semibold)                    │
-│ Summary paragraph (text-sm text-muted-foreground)   │
-│                                                     │
-│ ┌─ Quick win pill ──────────────────────────────┐  │
-│ │ ⚡ $X-$Y • first win in 14–30 days            │  │
-│ └────────────────────────────────────────────────┘  │
-│                                                     │
-│ Steps (h4: "Your plan")                             │
-│  1. **Step title** (font-semibold)                  │
-│     Instruction sentence (text-sm)                  │
-│     ⏱ time_estimate   ✓ Done when: …               │
-│  2. …                                               │
-│                                                     │
-│ ▸ Before you start  (Collapsible, bullet list)      │
-│ ▸ Watch out for     (Collapsible, bullet list of    │
-│                      risk_alerts/risks_and_mistakes)│
-│ ▸ Bring to your advisor (Collapsible, bullets)      │
-│                                                     │
-│ Disclaimer (text-xs text-muted-foreground italic)   │
-└─────────────────────────────────────────────────────┘
-[Save Plan button — unchanged]
-```
+### Step 1 — Database migration
 
-Behavior:
-- Headline source priority: `render_blocks.headline` → `strategy_name`.
-- Quick-win pill source: `render_blocks.quick_win` → derived from `expected_result`.
-- Step rendering uses the existing `StructuredPlanStep` shape (title / instruction / time_estimate / done_definition). Strip stray `**` from any field (same `cleanStepText` pattern as `PlanChecklist`).
-- Risk section prefers `render_blocks.risk_alerts` (top 2), falls back to first 3 of `risks_and_mistakes_to_avoid`.
-- Collapsible sections default closed except Steps; bullets via standard `<ul class="list-disc pl-5 space-y-1">` so they look right in both themes.
-- Mobile-friendly: `min-w-0`, `break-words`, no fixed widths.
+- Verify parity one more time (id sets equal, horseman_type matches).
+- Drop the legacy table `strategy_definitions`.
+- Recreate `strategy_definitions` as a **VIEW** over `strategy_catalog_v2` exposing the legacy column shape consumers expect:
+  - `id, name (=title), description (=strategy_details), horseman_type, difficulty, estimated_impact (=estimated_impact_display), steps (=implementation_steps), sort_order, is_active, tax_return_line_or_area, financial_goals (=who_best_for or [] cast), created_at`.
+- Grant SELECT on the view to `authenticated`.
+- Drop the existing INSERT/UPDATE/DELETE RLS policies on `strategy_definitions` (no longer applicable to a view).
+- Backup table `strategy_catalog_v2_backup_20260428` is left alone.
 
-## strategyParser.ts changes
+Result: every existing read path keeps working unchanged. Writes through the legacy admin hooks will start failing — which is intentional and handled in Step 2.
 
-`parseStrategyFromMessage` already returns the v1 plan content. Add two small things to the returned object (non-breaking):
-- `renderBlocks?: { headline?, quick_win?, checklist?, risk_alerts? }` taken from `parsed.render_blocks`.
-- `strategyId` already present.
+### Step 2 — Repoint admin write path to v2
 
-No legacy-path changes.
+Update `src/hooks/useAdminStrategies.ts` and `src/components/admin/LibraryTab.tsx` (Strategies tab) so create/update/delete/import/bulk-toggle target `strategy_catalog_v2` directly using its real columns (`title`, `strategy_details`, `implementation_steps`, etc.).
 
-## MessageBubble.tsx changes
+Update `useAdminStrategies` reads to also pull from `strategy_catalog_v2` directly so the editor surfaces the richer fields (impact min/max, effort_level, time_to_impact, requires_advisor) that today's UI hides.
 
-1. After parsing, compute `cleanedContent` = `message.content` with the first ```json ... ``` block removed (only when `parsedStrategy` is non-null and the JSON parsed as v1). Trim resulting blank lines.
-2. Render order inside the assistant bubble:
-   - If `parsedStrategy` → `<StrategyPlanCard plan={parsedStrategy} />`
-   - If `cleanedContent.trim()` non-empty → existing ReactMarkdown block, fed `cleanedContent` instead of `message.content` (keeps any intro/outro prose the model wrote).
-   - Existing Save Plan button block (unchanged).
-3. Widen the assistant bubble for plan messages: when `parsedStrategy` is present, use `max-w-[92%]` instead of `max-w-[80%]` so the card has room to breathe; keep `bg-muted` wrapper.
+### Step 3 — Repoint chat engine fallback
 
-## Acceptance
+In `supabase/functions/rprx-chat/index.ts`, drop the `ALLOW_LEGACY_FALLBACK` branch that reads `strategy_definitions`. With the view in place the fallback is now a no-op, but removing it eliminates dead code and the misleading log line. Keep `STRICT_JSON_V1` and other guards untouched.
 
-- An assistant message containing a v1 plan JSON block shows the structured card with: horseman badge, headline, summary, quick-win pill, numbered steps with bold titles + instruction + time + done-when, and the three collapsible sections.
-- The raw ```json``` block is no longer visible in chat.
-- Save Plan button still appears and saves the same `PlanContent`.
-- Non-plan assistant messages render exactly as today.
-- Looks correct in light and dark mode at 375px and 1211px widths.
+### Step 4 — Update admin import/export catalog
+
+- `supabase/functions/admin-data-export/index.ts` and `admin-data-import/index.ts`: remove `strategy_definitions` from the table list (it's a view now, not importable). Keep `strategy_catalog_v2`.
+- `src/components/admin/DataExportTab.tsx`: remove the "Strategy Definitions (Legacy)" entry; relabel v2 as "Strategy Catalog".
+
+### Step 5 — Leave non-admin reads alone (for now)
+
+`StrategyActivationCard`, `MyStrategiesCard`, `DailyCheckIn`, `useRPRxScore`, `gamification.ts`, `SavePlanModal`, `autoStrategyGenerator` keep reading `strategy_definitions` — they now transparently read the view. A follow-up cleanup can migrate them to v2 directly to access richer fields, but it's not needed for correctness.
+
+---
+
+## Part B — Admin header clarity
+
+In `src/pages/AdminPanel.tsx` Strategies tab header (where "All Active" toggle and "513 selected" appear):
+
+- Always show three counts: **Total: 513 · Active: 493 · Selected: N**.
+- Rename the "All Active" toggle label to **"Show only active"** (current label is ambiguous — it reads like a bulk action).
+- When 0 selected, hide the "Selected" chip instead of showing "0 selected".
+- Add a small subtitle under the tab title: "Source: strategy_catalog_v2".
+
+Pure presentation change — no logic changes to selection or filtering.
+
+---
+
+## Technical notes
+
+- The view approach means **no data migration / no row copying** — zero risk of drift during cutover.
+- `user_active_strategies.strategy_id` is text and references ids that exist in both tables today; nothing to change.
+- `src/integrations/supabase/types.ts` regenerates automatically after the migration — `strategy_definitions` will appear as a View instead of a Table, which TypeScript treats the same for `.select()`. Existing `.insert()/.update()/.delete()` calls against it will start failing typecheck — that's the signal to repoint them in Step 2.
+- Hard-coded ranking weights in `rprx-chat` (`scoreStrategy`) and the unused `prompt_engine_config` are out of scope here — separate cleanup.
 
 ## Out of scope
 
-- Edge function / curated banks / JSON schema (already addressed in prior loops).
-- Saved Plan detail page rendering (`PlanChecklist` already handles structured steps).
-- Telemetry / scoring.
+- Wiring `prompt_engine_config` into the ranker.
+- Auto-mode diversification / anti-repetition.
+- Migrating non-admin consumers off the legacy column names.
 
-## Files changed
+## Done when
 
-- `src/components/assistant/StrategyPlanCard.tsx` (new)
-- `src/components/assistant/MessageBubble.tsx` (edit)
-- `src/lib/strategyParser.ts` (edit — additive only)
+- `strategy_definitions` is a view; admin edits flow into `strategy_catalog_v2` and immediately reflect everywhere.
+- Admin header shows Total / Active / Selected unambiguously.
+- `rprx-chat` no longer references `strategy_definitions` or `ALLOW_LEGACY_FALLBACK`.
+- Admin export/import lists only `strategy_catalog_v2` for strategies.
