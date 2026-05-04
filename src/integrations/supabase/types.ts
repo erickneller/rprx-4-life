@@ -1333,51 +1333,6 @@ export type Database = {
         }
         Relationships: []
       }
-      strategy_definitions: {
-        Row: {
-          created_at: string
-          description: string
-          difficulty: string
-          estimated_impact: string | null
-          financial_goals: string[] | null
-          horseman_type: string
-          id: string
-          is_active: boolean
-          name: string
-          sort_order: number
-          steps: Json
-          tax_return_line_or_area: string | null
-        }
-        Insert: {
-          created_at?: string
-          description: string
-          difficulty?: string
-          estimated_impact?: string | null
-          financial_goals?: string[] | null
-          horseman_type: string
-          id: string
-          is_active?: boolean
-          name: string
-          sort_order?: number
-          steps?: Json
-          tax_return_line_or_area?: string | null
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          difficulty?: string
-          estimated_impact?: string | null
-          financial_goals?: string[] | null
-          horseman_type?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-          sort_order?: number
-          steps?: Json
-          tax_return_line_or_area?: string | null
-        }
-        Relationships: []
-      }
       user_active_strategies: {
         Row: {
           activated_at: string
@@ -1406,15 +1361,7 @@ export type Database = {
           strategy_id?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "user_active_strategies_strategy_id_fkey"
-            columns: ["strategy_id"]
-            isOneToOne: false
-            referencedRelation: "strategy_definitions"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_activity_log: {
         Row: {
@@ -1796,7 +1743,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      strategy_definitions: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          difficulty: string | null
+          estimated_impact: string | null
+          financial_goals: string[] | null
+          horseman_type: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          sort_order: number | null
+          steps: Json | null
+          tax_return_line_or_area: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          estimated_impact?: string | null
+          financial_goals?: never
+          horseman_type?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          sort_order?: number | null
+          steps?: Json | null
+          tax_return_line_or_area?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          difficulty?: string | null
+          estimated_impact?: string | null
+          financial_goals?: never
+          horseman_type?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          sort_order?: number | null
+          steps?: Json | null
+          tax_return_line_or_area?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_list_users: {
