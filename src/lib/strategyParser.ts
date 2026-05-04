@@ -14,166 +14,54 @@ interface ParsedStrategy {
   renderBlocks?: RenderBlocks;
 }
 
-// Marker phrase that indicates a genuine implementation plan response
-const PLAN_MARKER_PHRASE = "Here are the step-by-step implementation plans";
-
 /**
- * Parses assistant messages to detect strategy recommendations with implementation steps.
- * Returns parsed strategy data if found, null otherwise.
+ * Parses assistant messages for an embedded `plan_schema: "v1"` JSON block.
+ * Strict: returns null unless a valid v1 plan with non-empty steps is found.
+ * The legacy regex/marker fallback was removed in favor of a single contract.
+ *
+ * The `lenient` flag is preserved for callers but no longer changes behavior;
+ * if no JSON v1 plan is present, the caller should build a fallback card
+ * from the catalog/profile, not reconstruct one from prose.
  */
-export function parseStrategyFromMessage(messageContent: string, lenient = false): ParsedStrategy | null {
-  // 1) Preferred path: structured plan v1 embedded as a JSON code block.
+export function parseStrategyFromMessage(messageContent: string, _lenient = false): ParsedStrategy | null {
   const jsonBlockMatch = messageContent.match(/```json\s*\n([\s\S]*?)\n```/);
-  if (jsonBlockMatch) {
-    try {
-      const parsed = JSON.parse(jsonBlockMatch[1]);
-      if (parsed && parsed.plan_schema === 'v1' && Array.isArray(parsed.steps)) {
-        return {
-          strategyId: typeof parsed.strategy_id === 'string' ? parsed.strategy_id : undefined,
-          strategyName: typeof parsed.strategy_name === 'string' ? parsed.strategy_name : 'Implementation Plan',
-          content: {
-            steps: parsed.steps,
-            summary: parsed.summary,
-            horseman: Array.isArray(parsed.horseman)
-              ? parsed.horseman.map(String)
-              : (parsed.horseman ? [String(parsed.horseman)] : undefined),
-            disclaimer: parsed.disclaimer,
-            completedSteps: [],
-            plan_schema: 'v1',
-            expected_result: parsed.expected_result,
-            before_you_start: Array.isArray(parsed.before_you_start) ? parsed.before_you_start : undefined,
-            risks_and_mistakes_to_avoid: Array.isArray(parsed.risks_and_mistakes_to_avoid) ? parsed.risks_and_mistakes_to_avoid : undefined,
-            advisor_packet: Array.isArray(parsed.advisor_packet) ? parsed.advisor_packet : undefined,
-            savings: parsed.expected_result?.impact_range,
-          },
-          renderBlocks: parsed.render_blocks && typeof parsed.render_blocks === 'object'
-            ? {
-                headline: typeof parsed.render_blocks.headline === 'string' ? parsed.render_blocks.headline : undefined,
-                quick_win: typeof parsed.render_blocks.quick_win === 'string' ? parsed.render_blocks.quick_win : undefined,
-                checklist: Array.isArray(parsed.render_blocks.checklist) ? parsed.render_blocks.checklist.map(String) : undefined,
-                risk_alerts: Array.isArray(parsed.render_blocks.risk_alerts) ? parsed.render_blocks.risk_alerts.map(String) : undefined,
-              }
-            : undefined,
-        };
-      }
-    } catch {
-      // Fall through to legacy parsing
-    }
-  }
+  if (!jsonBlockMatch) return null;
 
-  // 2) Legacy path: only show Save Plan button if marker phrase is present.
-  if (!lenient && !messageContent.includes(PLAN_MARKER_PHRASE)) {
+  let parsed: any;
+  try {
+    parsed = JSON.parse(jsonBlockMatch[1]);
+  } catch {
     return null;
   }
 
-  // Look for strategy IDs like T-1, I-3, IN-2, E-5
-  const strategyIdMatch = messageContent.match(/\b([TIE](?:N)?-\d+)\b/i);
-  
-  // Extract strategy name - look for bold text or headers after strategy ID
-  let strategyName = 'Implementation Plan';
-  
-  // Try to find a title near the strategy ID
-  if (strategyIdMatch) {
-    const idPosition = messageContent.indexOf(strategyIdMatch[0]);
-    const contextAround = messageContent.substring(
-      Math.max(0, idPosition - 50),
-      Math.min(messageContent.length, idPosition + 150)
-    );
-    
-    // Look for bold text like **Strategy Name** or ### Strategy Name
-    const boldMatch = contextAround.match(/\*\*([^*]+)\*\*/);
-    const headerMatch = contextAround.match(/#{1,3}\s*([^\n]+)/);
-    
-    if (boldMatch) {
-      strategyName = boldMatch[1].trim();
-    } else if (headerMatch) {
-      strategyName = headerMatch[1].trim();
-    } else {
-      // Use text after colon if present
-      const colonMatch = contextAround.match(/:\s*([^.\n]{10,60})/);
-      if (colonMatch) {
-        strategyName = colonMatch[1].trim();
-      }
-    }
-  }
-  
-  // Extract steps from numbered lists
-  const steps: string[] = [];
-  const stepMatches = messageContent.matchAll(/(?:^|\n)\s*(\d+)\.\s+([^\n]+)/gm);
-  for (const match of stepMatches) {
-    const stepText = match[2].trim();
-    // Filter out very short or non-actionable items
-    if (stepText.length > 10 && !stepText.startsWith('http')) {
-      steps.push(stepText);
-    }
-  }
-  
-  // If no numbered steps, try bullet points
-  if (steps.length < 2) {
-    const bulletMatches = messageContent.matchAll(/(?:^|\n)\s*[-•*]\s+([^\n]+)/gm);
-    for (const match of bulletMatches) {
-      const stepText = match[1].trim();
-      if (stepText.length > 10 && !stepText.startsWith('http')) {
-        steps.push(stepText);
-      }
-    }
-  }
-  
-  // Need at least 2 steps to be considered a plan
-  if (steps.length < 2) {
-    return null;
-  }
-  
-  // Extract summary - first paragraph or text before steps
-  let summary: string | undefined;
-  const firstParagraph = messageContent.match(/^([^#\n*-1].{50,500}?)(?:\n\n|\n\d\.|\n-|\n\*)/s);
-  if (firstParagraph) {
-    summary = firstParagraph[1].trim();
-  }
-  
-  // Detect horseman type
-  const horseman: string[] = [];
-  if (/\btax(?:es|ation)?\b/i.test(messageContent)) horseman.push('Taxes');
-  if (/\binterest\b/i.test(messageContent) && !/\binterest(?:ed|ing)\b/i.test(messageContent)) horseman.push('Interest');
-  if (/\binsurance\b/i.test(messageContent)) horseman.push('Insurance');
-  if (/\beducation|college|529\b/i.test(messageContent)) horseman.push('Education');
-  
-  // Extract complexity if mentioned
-  let complexity: number | undefined;
-  const complexityMatch = messageContent.match(/complexity[:\s]*(\d)[\/\s]*(?:out\s*of\s*)?5/i);
-  if (complexityMatch) {
-    complexity = parseInt(complexityMatch[1]);
-  }
-  
-  // Extract savings potential
-  let savings: string | undefined;
-  const savingsMatch = messageContent.match(/(?:savings?|save)[:\s]*\$?([0-9,]+(?:\s*[-–]\s*\$?[0-9,]+)?(?:\+)?)/i);
-  if (savingsMatch) {
-    savings = '$' + savingsMatch[1].replace(/^\$/, '');
-  }
-  
-  // Extract tax reference
-  let taxReference: string | undefined;
-  const taxRefMatch = messageContent.match(/(?:IRC|Section|§)\s*(?:§\s*)?(\d+[A-Za-z]?(?:\([a-z]\))?)/i);
-  if (taxRefMatch) {
-    taxReference = 'IRC §' + taxRefMatch[1];
-  }
-  
-  // Standard disclaimer
-  const disclaimer = 'This information is for educational purposes only and does not constitute tax, legal, or financial advice. Consult with qualified professionals before implementing any strategy.';
-  
+  if (!parsed || parsed.plan_schema !== 'v1') return null;
+  if (!Array.isArray(parsed.steps) || parsed.steps.length === 0) return null;
+
   return {
-    strategyId: strategyIdMatch ? strategyIdMatch[1].toUpperCase() : undefined,
-    strategyName: strategyName.substring(0, 100), // Limit length
+    strategyId: typeof parsed.strategy_id === 'string' ? parsed.strategy_id : undefined,
+    strategyName: typeof parsed.strategy_name === 'string' ? parsed.strategy_name : 'Implementation Plan',
     content: {
-      steps,
-      summary,
-      horseman: horseman.length > 0 ? horseman : undefined,
-      complexity,
-      savings,
-      taxReference,
-      disclaimer,
+      steps: parsed.steps,
+      summary: parsed.summary,
+      horseman: Array.isArray(parsed.horseman)
+        ? parsed.horseman.map(String)
+        : (parsed.horseman ? [String(parsed.horseman)] : undefined),
+      disclaimer: parsed.disclaimer,
       completedSteps: [],
+      plan_schema: 'v1',
+      expected_result: parsed.expected_result,
+      before_you_start: Array.isArray(parsed.before_you_start) ? parsed.before_you_start : undefined,
+      risks_and_mistakes_to_avoid: Array.isArray(parsed.risks_and_mistakes_to_avoid) ? parsed.risks_and_mistakes_to_avoid : undefined,
+      advisor_packet: Array.isArray(parsed.advisor_packet) ? parsed.advisor_packet : undefined,
+      savings: parsed.expected_result?.impact_range,
     },
+    renderBlocks: parsed.render_blocks && typeof parsed.render_blocks === 'object'
+      ? {
+          headline: typeof parsed.render_blocks.headline === 'string' ? parsed.render_blocks.headline : undefined,
+          quick_win: typeof parsed.render_blocks.quick_win === 'string' ? parsed.render_blocks.quick_win : undefined,
+          checklist: Array.isArray(parsed.render_blocks.checklist) ? parsed.render_blocks.checklist.map(String) : undefined,
+          risk_alerts: Array.isArray(parsed.render_blocks.risk_alerts) ? parsed.render_blocks.risk_alerts.map(String) : undefined,
+        }
+      : undefined,
   };
 }
