@@ -17,9 +17,8 @@ interface TableDef {
 }
 
 const CONFIG_TABLES: TableDef[] = [
-  { name: 'strategy_catalog_v2', label: 'Strategy Catalog V2', description: 'Canonical cleaned strategy catalog (active engine source)', needsEdge: false },
+  { name: 'strategy_catalog_v2', label: 'Strategy Catalog', description: 'Canonical strategy catalog (single source of truth for the engine and admin UI)', needsEdge: false },
   { name: 'prompt_engine_config', label: 'Prompt Engine Config', description: 'Scoring weights & output settings for Strategy Engine V2', needsEdge: false },
-  { name: 'strategy_definitions', label: 'Strategy Definitions (Legacy)', description: 'Legacy strategy table — fallback only, do not edit unless rolling back', needsEdge: false },
   { name: 'assessment_questions', label: 'Assessment Questions', description: 'Core assessment questions', needsEdge: false },
   { name: 'deep_dive_questions', label: 'Deep Dive Questions', description: 'Horseman deep dive questions', needsEdge: false },
   { name: 'badge_definitions', label: 'Badge Definitions', description: 'Gamification badges', needsEdge: false },
