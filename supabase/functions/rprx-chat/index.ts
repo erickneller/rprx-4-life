@@ -2416,7 +2416,8 @@ ${manualInstructions}`;
     let assistantMessage: string;
     let runtimeBranch: 'template-forced' | 'template-free' | 'template-no-openai-key' | 'paid-openai-strict-json' | 'paid-openai' = 'template-free';
     const forceTemplateEngine = Deno.env.get('RPRX_FORCE_TEMPLATE_ENGINE') === 'true';
-    const strictJsonV1 = Deno.env.get('STRICT_JSON_V1') === 'true';
+    // Strict JSON v1 is now the default for paid tier. Set STRICT_JSON_V1=false to opt out.
+    const strictJsonV1 = (Deno.env.get('STRICT_JSON_V1') ?? 'true').toLowerCase() !== 'false';
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     // A/B model variant: 'a' (default) | 'b'. Map to actual model ids.
     const modelVariantRaw = (Deno.env.get('RPRX_PAID_MODEL_VARIANT') || 'a').toLowerCase();
