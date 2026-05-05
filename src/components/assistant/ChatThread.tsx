@@ -256,9 +256,12 @@ function AutoCreatePlanFooter({
 }: { 
   messages: Message[]; horseman: string | null | undefined; isCreating: boolean; onCreate: () => void 
 }) {
-  // Show button as soon as the assistant has responded.
+  // Show button as soon as the assistant has responded — but hide when the
+  // last assistant message is a v1-multi envelope (cards have their own Save buttons).
   const assistantMsgs = messages.filter(m => m.role === 'assistant');
   if (assistantMsgs.length === 0) return null;
+  const last = assistantMsgs[assistantMsgs.length - 1];
+  if (parseMultiPlanFromMessage(last.content)) return null;
 
   return (
     <div className="border-t p-4">
