@@ -1,45 +1,39 @@
-# Why you only see one strategy
+# Why the text is cut off
 
-Two independent things are pinning output to a single plan:
+The screenshot shows an alternate strategy card (Option 3) whose summary ends mid-sentence with "...". That's not a CSS clip — it's the **text itself** that has been truncated server-side before it ever reached the UI.
 
-### 1. The multi-plan envelope only builds in **auto mode**
-`supabase/functions/rprx-chat/index.ts` (line 2778) wraps `[primary, ...alternates]` into a `v1-multi` envelope only when `effectiveMode === 'auto'`. Auto mode is triggered by the `?auto=1` redirect from the assessment results page. Every message you type into the chat (`handleSendMessage` in `StrategyAssistant.tsx`) goes out **without** a `mode`, so the function defaults to `manual` and skips the multi-envelope branch entirely → exactly one card.
+In `supabase/functions/rprx-chat/index.ts`, every plan (primary and alternate) runs through `normalizePlanReadability()`:
 
-### 2. Even in auto mode, config caps it at 1
-`prompt_engine_config.strategy_engine_v2_default.output` currently has:
+```ts
+let summary = trimSummary(plan.summary || '');     // forces max 2 sentences, ~24 words/sentence
+if (summaryNeedsFallback(summary)) {
+  summary = buildDeterministicSummary(plan);
+} else if (summary.length > 260) {
+  summary = summary.slice(0, 257).replace(/\s+\S*$/, '') + '...';   // ← the literal "..."
+}
 ```
-auto_mode_results: 1
-auto_mode_multi_plans: <unset>
-manual_mode_results: 5
-```
-The envelope code reads `auto_mode_multi_plans ?? auto_mode_results ?? 3`, which evaluates to `1`, and the `if (maxPlans > 1)` guard then skips the envelope. So even auto mode would only return one card today.
 
----
+For deterministic alternates the source `summary` is built in `buildStructuredPlan` from the catalog row's details/example/savings (line ~668: `.slice(0, 700)`). When `trimSummary` keeps two long sentences and the result still exceeds 260 chars, the hard 257-char cut leaves a dangling "...that would" — exactly what's in the screenshot.
+
+The frontend (`StrategyPlanCard`) only adds `break-words` / `leading-relaxed` and does not clamp lines, so this is purely a backend trimming artifact.
 
 ## Plan
 
-### A. Backend (`rprx-chat/index.ts`)
-1. Build the `v1-multi` envelope in **manual mode** as well, not just auto. Read the cap from `manual_mode_multi_plans ?? manual_mode_results ?? 3` for manual, and `auto_mode_multi_plans ?? auto_mode_results ?? 3` for auto.
-2. Keep the `diversify_horseman` rule and the dedupe-by-strategy_id logic exactly as-is.
-3. Keep free tier behavior unchanged (free tier already runs the deterministic template branch and exits before this block — confirm and leave alone).
+Tighten the summary builder so alternates don't ship dangling sentences.
 
-### B. Engine config (`prompt_engine_config`)
-Update `strategy_engine_v2_default.output` via migration:
-- `auto_mode_multi_plans: 3`
-- `manual_mode_multi_plans: 3`
-- Leave `auto_mode_results` / `manual_mode_results` as-is (they control ranker page size, not envelope size).
+### Backend — `supabase/functions/rprx-chat/index.ts`
 
-This gives all paid users 3 ranked cards per round-trip in both modes, tunable later from the Assistant Engine admin tab.
+1. **Drop the "..." cliffhanger.** In `normalizePlanReadability`, replace the 257-char hard slice with a sentence-boundary cut: keep only complete sentences that fit under the cap; if none fit, fall back to `buildDeterministicSummary(plan)` (already grammatical and short).
+2. **Lower the cap to ~220 chars** so two short sentences fit comfortably without forcing a mid-word cut.
+3. **Apply the same rule inside `buildStructuredPlan`** before storing `summary` (replace `.slice(0, 700)` with a sentence-aware trim) so the input to `normalizePlanReadability` is already clean for both primary and alternate plans.
+4. Redeploy `rprx-chat`.
 
-### C. Admin Engine tab
-Add the two new fields (`auto_mode_multi_plans`, `manual_mode_multi_plans`) to `AssistantEngineTab.tsx` so admins can tune the cap without a migration.
+### Verification
 
-### D. Verification
-1. Send a manual chat message as a paid user → expect 3 `StrategyPlanCard`s with individual Save buttons and the "Create My Plan" footer hidden.
-2. Send via `?auto=1` from results → same multi-card behavior.
-3. Free tier → unchanged single templated plan.
-4. Check `plan_generation_events` to confirm `step_count` and latency stay in line.
+- Send a manual chat that triggers a `v1-multi` envelope with 3 plans.
+- Confirm none of the 3 cards' summary ends in "..." or a dangling word.
+- Spot-check a known-long catalog row (e.g. `tax_topic_accelerate` from the screenshot) — summary should end on a `.`/`!`/`?`.
 
 ### Out of scope
-- Free-tier multi (still 1 plan by design).
-- Per-card "Continue plan" deep-link (Part 4 of the larger roadmap).
+
+No UI changes — `StrategyPlanCard` already handles wrapping correctly; the fix is purely in the server-side summary normalizer.

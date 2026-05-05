@@ -665,7 +665,7 @@ function buildStructuredPlan(
   if (headline) summaryParts.push(headline);
   if (cleanedExample) summaryParts.push(`Example: ${cleanedExample.split(/(?<=[.!?])\s+/)[0]}`);
   if (cleanedSavings && summaryParts.length < 3) summaryParts.push(`Why it matters: ${cleanedSavings.split(/(?<=[.!?])\s+/)[0]}`);
-  const summary = summaryParts.join(' ').slice(0, 700) || `Apply the ${s.title} strategy to reduce the impact of the ${horseman} horseman on your finances.`;
+  const summary = trimToSentenceBoundary(summaryParts.join(' '), 220) || `Apply the ${s.title} strategy to reduce the impact of the ${horseman} horseman on your finances.`;
 
   // STEPS: prefer DB-provided steps; otherwise build horseman-specific, action-led steps.
   const rawSteps = normalizeSteps(s.implementation_steps);
@@ -1013,6 +1013,21 @@ function repairSentenceMerges(s: string): string {
   return s.replace(/\.\s+([a-z])/g, (_m, c) => `, ${c}`);
 }
 
+/** Trim text to the last complete sentence that fits under maxChars. Returns '' if no sentence fits. */
+function trimToSentenceBoundary(text: string, maxChars: number): string {
+  const t = (text || '').trim();
+  if (!t) return '';
+  if (t.length <= maxChars) return t;
+  const sentences = t.split(/(?<=[.!?])\s+/);
+  let out = '';
+  for (const s of sentences) {
+    const next = out ? `${out} ${s}` : s;
+    if (next.length > maxChars) break;
+    out = next;
+  }
+  return out.trim();
+}
+
 /** Trim a summary to max 2 short, plain sentences with grammar repair. */
 function trimSummary(summary: string): string {
   const cleaned = repairSentenceMerges(tidyText(summary));
@@ -1319,11 +1334,12 @@ function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
   const horseman = String(horsemanRaw).toLowerCase();
 
   let summary = trimSummary(plan.summary || '');
-  // Hard cap at 260 chars and 2 sentences (already enforced); fallback if awkward.
+  // Sentence-boundary cut at ~220 chars; fall back to deterministic if awkward or empty.
   if (summaryNeedsFallback(summary)) {
     summary = buildDeterministicSummary(plan);
-  } else if (summary.length > 260) {
-    summary = summary.slice(0, 257).replace(/\s+\S*$/, '') + '...';
+  } else if (summary.length > 220) {
+    const trimmed = trimToSentenceBoundary(summary, 220);
+    summary = trimmed || buildDeterministicSummary(plan);
   }
 
   const cleanedSteps: StructuredPlanStep[] = (plan.steps || []).map((step, i) => {
