@@ -1,71 +1,45 @@
-# Strategy Assistant → Implementation Plan: World-Class Upgrade
+# Why you only see one strategy
 
-Status: Parts 1, 2, 3, 5, 6 shipped. Part 4 (per-step Mark-done, Continue plan link, advisor packet actions) remaining.
+Two independent things are pinning output to a single plan:
 
-Goal: every paid request returns up to 3 ranked, structured strategies that render as save-ready plan cards with a clear path to implementation. Free tier returns 1 reliable templated plan. Everything is observable and admin-tunable.
+### 1. The multi-plan envelope only builds in **auto mode**
+`supabase/functions/rprx-chat/index.ts` (line 2778) wraps `[primary, ...alternates]` into a `v1-multi` envelope only when `effectiveMode === 'auto'`. Auto mode is triggered by the `?auto=1` redirect from the assessment results page. Every message you type into the chat (`handleSendMessage` in `StrategyAssistant.tsx`) goes out **without** a `mode`, so the function defaults to `manual` and skips the multi-envelope branch entirely → exactly one card.
 
-## Part 1 — Lock the contract (reliability)
+### 2. Even in auto mode, config caps it at 1
+`prompt_engine_config.strategy_engine_v2_default.output` currently has:
+```
+auto_mode_results: 1
+auto_mode_multi_plans: <unset>
+manual_mode_results: 5
+```
+The envelope code reads `auto_mode_multi_plans ?? auto_mode_results ?? 3`, which evaluates to `1`, and the `if (maxPlans > 1)` guard then skips the envelope. So even auto mode would only return one card today.
 
-1. **Force `STRICT_JSON_V1=true`** in `rprx-chat`. Paid path always calls OpenAI with `response_format: json_object` and a schema-pinned system prompt.
-2. **Pure parser.** `strategyParser.ts`: keep only the JSON-block branch. Require `plan_schema: "v1"` and non-empty `steps[]`. Delete the legacy regex/marker-phrase fallback.
-3. **One repair retry.** If first response fails schema validation, re-call once with "Return JSON only matching this schema" + the validation error. If still bad, return a friendly fallback card built from the catalog row (title, summary, 3 generic steps, disclaimer) — never a raw error.
-4. **Server-side schema guard** before sending to client: validate with a small zod-like check; log failures to `plan_generation_events` with `parser_path` = `strict|repair|fallback`.
+---
 
-## Part 2 — Single-call multi-plan ("Auto" mode)
+## Plan
 
-1. Replace the current 2-call auto-flow with **one** OpenAI call returning a `v1-multi` envelope:
-   ```
-   { plan_schema: "v1-multi", overview_md: "...", plans: [v1, v1, v1] }
-   ```
-2. `MessageBubble` renders the overview markdown + up to 3 `StrategyPlanCard`s, each with its own Save/Activate buttons.
-3. Remove the auto-fired second user message in `ChatThread`.
-4. Cards are collapsible; first card expanded by default, Quick Win chip + first step visible.
+### A. Backend (`rprx-chat/index.ts`)
+1. Build the `v1-multi` envelope in **manual mode** as well, not just auto. Read the cap from `manual_mode_multi_plans ?? manual_mode_results ?? 3` for manual, and `auto_mode_multi_plans ?? auto_mode_results ?? 3` for auto.
+2. Keep the `diversify_horseman` rule and the dedupe-by-strategy_id logic exactly as-is.
+3. Keep free tier behavior unchanged (free tier already runs the deterministic template branch and exits before this block — confirm and leave alone).
 
-## Part 3 — Make the engine admin-tunable
+### B. Engine config (`prompt_engine_config`)
+Update `strategy_engine_v2_default.output` via migration:
+- `auto_mode_multi_plans: 3`
+- `manual_mode_multi_plans: 3`
+- Leave `auto_mode_results` / `manual_mode_results` as-is (they control ranker page size, not envelope size).
 
-Wire `prompt_engine_config` (already exists, admin-RLS) into `rprx-chat` with a 60s in-memory cache:
-- ranker weights (horseman/goal/urgency/feasibility/impact/active-penalty)
-- model, temperature, max strategies (default 3)
-- system-prompt tone block + disclaimer
-- diversification toggle (prefer one strategy per distinct horseman when top scores within 10%)
-- anti-repetition window (penalize last N `plan_generation_events` strategy_ids)
+This gives all paid users 3 ranked cards per round-trip in both modes, tunable later from the Assistant Engine admin tab.
 
-Add a small admin tab `Assistant Engine` to edit these (read/write the existing table).
+### C. Admin Engine tab
+Add the two new fields (`auto_mode_multi_plans`, `manual_mode_multi_plans`) to `AssistantEngineTab.tsx` so admins can tune the cap without a migration.
 
-## Part 4 — Card → Implementation UX
+### D. Verification
+1. Send a manual chat message as a paid user → expect 3 `StrategyPlanCard`s with individual Save buttons and the "Create My Plan" footer hidden.
+2. Send via `?auto=1` from results → same multi-card behavior.
+3. Free tier → unchanged single templated plan.
+4. Check `plan_generation_events` to confirm `step_count` and latency stay in line.
 
-In `StrategyPlanCard` + `SavePlanButton`:
-- Quick Win chip, "~Xh effort", impact range, complexity dots in header.
-- Per-step "Mark done" checkbox; persists to `saved_plans.completed_steps` if a saved plan exists for that `strategy_id`.
-- "Continue plan →" link when a `saved_plans` row already matches `strategy_id` (jumps to `PlanDetail`).
-- Advisor packet rendered as actionable buttons (Copy questions, Email advisor, Schedule) using existing `useAdvisorLink`.
-- Risks/mistakes shown as an alert strip.
-
-## Part 5 — Observability ("Assistant Quality" admin tab)
-
-Off existing `plan_generation_events`:
-- parser-path distribution (strict / repair / fallback / template)
-- p50/p95 latency, token usage, cost
-- step-count + advisor-packet presence rates
-- per-strategy save-rate and activate-rate funnel
-- top failing schema fields (last 7 days)
-
-## Part 6 — Cleanup
-
-- Delete legacy regex parser branch + `PLAN_MARKER_PHRASE`.
-- Remove the `parseStrategyFromMessage(content, true)` lenient path and the `buildFallbackPlan` branch in `MessageBubble` once Parts 1–2 ship.
-- Update `guards_test.ts` with strict-mode + multi-envelope cases.
-
-## Technical notes
-
-- Files touched: `supabase/functions/rprx-chat/index.ts`, `supabase/functions/rprx-chat/guards_test.ts`, `src/lib/strategyParser.ts`, `src/components/assistant/MessageBubble.tsx`, `src/components/assistant/ChatThread.tsx`, `src/components/assistant/StrategyPlanCard.tsx`, `src/components/plans/SavePlanButton.tsx`, `src/hooks/useSendMessage.ts` (envelope handling), new `src/components/admin/AssistantEngineTab.tsx` + `AssistantQualityTab.tsx`, `src/pages/AdminPanel.tsx`.
-- DB: no new tables. Use `prompt_engine_config` and `plan_generation_events` as-is. Add 1–2 indexes on `plan_generation_events(created_at)` and `(strategy_id)` if missing.
-- Backwards-compat: keep `v1` single-plan envelope working; `v1-multi` is additive.
-
-## Suggested ship order
-
-1. Parts 1 + 6 (parser + strict mode + cleanup) — foundation, low risk.
-2. Part 2 (single-call multi) — biggest UX win.
-3. Part 4 (card polish) — conversion win.
-4. Part 3 (admin engine tab) — operator control.
-5. Part 5 (quality tab) — measure & iterate.
+### Out of scope
+- Free-tier multi (still 1 plan by design).
+- Per-card "Continue plan" deep-link (Part 4 of the larger roadmap).

@@ -17,6 +17,7 @@ interface EngineConfig {
     auto_mode_results?: number;
     auto_mode_multi_plans?: number;
     manual_mode_results?: number;
+    manual_mode_multi_plans?: number;
     diversify_horseman?: boolean;
     max_steps_shown?: number;
   };
@@ -110,7 +111,12 @@ export function AssistantEngineTab() {
             <p className="text-xs text-muted-foreground">Max strategies returned in one auto-mode reply (1–5).</p>
           </div>
           <div className="space-y-1">
-            <Label>Manual-mode results / page</Label>
+            <Label>Manual-mode plans (multi)</Label>
+            <Input type="number" min={1} max={5} value={o.manual_mode_multi_plans ?? 3} onChange={e => setOutput('manual_mode_multi_plans', Number(e.target.value))} />
+            <p className="text-xs text-muted-foreground">Max strategies returned per chat reply (1–5).</p>
+          </div>
+          <div className="space-y-1">
+            <Label>Manual-mode ranker page size</Label>
             <Input type="number" min={1} max={10} value={o.manual_mode_results ?? 5} onChange={e => setOutput('manual_mode_results', Number(e.target.value))} />
           </div>
           <div className="space-y-1">
