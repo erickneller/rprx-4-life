@@ -2749,6 +2749,52 @@ Rules:
       console.log('Received OpenAI response, length:', assistantMessage.length);
     }
 
+    // ─── v1-multi envelope (auto mode only) ─────────────────────────────────
+    // Wrap the primary plan + up to (maxPlans-1) deterministic alternates from
+    // the ranker into a single multi-plan envelope so the UI can render them
+    // as separate save-ready cards from one round-trip.
+    if (effectiveMode === 'auto') {
+      try {
+        const cfg = await fetchEngineConfig(serviceClient);
+        const maxPlans = Math.max(1, Math.min(5, Number(cfg?.output?.auto_mode_multi_plans ?? cfg?.output?.auto_mode_results ?? 3)));
+        const diversify = cfg?.output?.diversify_horseman !== false;
+        if (maxPlans > 1) {
+          const fence = assistantMessage.match(/```json\s*\n([\s\S]*?)\n```/);
+          let primaryPlan: any = null;
+          if (fence) {
+            try { primaryPlan = JSON.parse(fence[1]); } catch { /* ignore */ }
+          }
+          if (primaryPlan && primaryPlan.plan_schema === 'v1') {
+            const usedIds = new Set<string>([primaryPlan.strategy_id]);
+            const usedHorsemen = new Set<string>([String(primaryPlan.horseman || '').toLowerCase()]);
+            const alternates: any[] = [];
+            for (const r of rankedStrategies) {
+              if (alternates.length >= maxPlans - 1) break;
+              const sid = r.strategy.strategy_id;
+              if (usedIds.has(sid)) continue;
+              const h = (r.strategy.horseman_type || '').toLowerCase();
+              if (diversify && usedHorsemen.has(h) && rankedStrategies.some(x => !usedIds.has(x.strategy.strategy_id) && !usedHorsemen.has((x.strategy.horseman_type || '').toLowerCase()))) {
+                continue;
+              }
+              const altPlan = normalizePlanReadability(buildStructuredPlan(r.strategy, profile, primaryHorseman));
+              alternates.push(altPlan);
+              usedIds.add(sid);
+              usedHorsemen.add(h);
+            }
+            const overview = assistantMessage.replace(/```json\s*\n[\s\S]*?\n```/, '').trim();
+            const envelope = {
+              plan_schema: 'v1-multi',
+              overview_md: overview || `Here are your top ${1 + alternates.length} personalized strategies. Save the one that fits best, or activate more than one.`,
+              plans: [primaryPlan, ...alternates],
+            };
+            assistantMessage = '```json\n' + JSON.stringify(envelope, null, 2) + '\n```';
+          }
+        }
+      } catch (err) {
+        console.error('v1-multi envelope build failed:', err);
+      }
+    }
+
     // Save assistant message (fire and forget)
     serviceClient.from('messages').insert({
       conversation_id: conversationId,
