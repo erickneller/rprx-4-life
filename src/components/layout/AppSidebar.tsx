@@ -78,7 +78,7 @@ export function AppSidebar() {
   const { membership } = useCompany();
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
   const { enabled: advisorEnabled, url: advisorUrl } = useAdvisorLink();
-  const { isVisible } = useSidebarConfig();
+  const { isVisible, isCourse } = useSidebarConfig();
 
   const resolveAdvisorHref = (url: string) => {
     const digits = url.replace(/\D/g, '');
@@ -110,9 +110,13 @@ export function AppSidebar() {
               )}
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {visibleItems.map((item) => (
+                  {visibleItems.map((item) => {
+                    const courseFlag = item.configId ? isCourse(item.configId) : false;
+                    const effectiveUrl = courseFlag && item.configId ? `/course/${item.configId}` : item.url;
+                    const showAsComingSoon = item.comingSoon && !courseFlag;
+                    return (
                     <SidebarMenuItem key={item.title}>
-                      {item.comingSoon ? (
+                      {showAsComingSoon ? (
                         <SidebarMenuButton tooltip={item.title} className="flex items-center gap-3 rounded-md px-3 py-2 text-foreground cursor-default hover:bg-foreground hover:text-background transition-colors">
                           <item.icon className="h-5 w-5 shrink-0" />
                           <span className={isCollapsed ? "sr-only" : "text-sm"}>
@@ -122,19 +126,20 @@ export function AppSidebar() {
                       ) : (
                         <SidebarMenuButton asChild tooltip={item.title}>
                           <NavLink
-                            to={item.url}
+                            to={effectiveUrl}
                             className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                             activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                           >
                             <item.icon className="h-5 w-5 shrink-0" />
-                            <span className={isCollapsed ? "sr-only" : ""}>
-                              {item.title}
+                            <span className={isCollapsed ? "sr-only" : "flex-1 text-sm"}>
+                              {item.title}{courseFlag && <span className="ml-2 text-[10px] uppercase tracking-wide opacity-70">Course</span>}
                             </span>
                           </NavLink>
                         </SidebarMenuButton>
                       )}
                     </SidebarMenuItem>
-                  ))}
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

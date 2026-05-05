@@ -40,6 +40,7 @@ import { LibraryTab } from '@/components/admin/LibraryTab';
 import { DataExportTab } from '@/components/admin/DataExportTab';
 import { AssistantEngineTab } from '@/components/admin/AssistantEngineTab';
 import { AssistantQualityTab } from '@/components/admin/AssistantQualityTab';
+import { CoursesTab } from '@/components/admin/CoursesTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -442,6 +443,9 @@ export default function AdminPanel() {
             <TabsTrigger value="navigation" className="gap-1">
               <PanelLeft className="h-4 w-4" /> Navigation
             </TabsTrigger>
+            <TabsTrigger value="courses" className="gap-1">
+              <BookOpen className="h-4 w-4" /> Courses
+            </TabsTrigger>
             <TabsTrigger value="partners" className="gap-1">
               <Building2 className="h-4 w-4" /> Partners
             </TabsTrigger>
@@ -673,6 +677,10 @@ export default function AdminPanel() {
           {/* ===== USER GUIDE TAB ===== */}
           <TabsContent value="user-guide" className="space-y-4">
             <UserGuideTab />
+          </TabsContent>
+
+          <TabsContent value="courses" className="space-y-4">
+            <CoursesTab />
           </TabsContent>
 
           {/* ===== NAVIGATION TAB ===== */}

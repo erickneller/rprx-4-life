@@ -292,6 +292,170 @@ export type Database = {
         }
         Relationships: []
       }
+      course_lesson_attachments: {
+        Row: {
+          created_at: string
+          file_path: string | null
+          id: string
+          kind: Database["public"]["Enums"]["course_attachment_kind"]
+          label: string
+          lesson_id: string
+          sort_order: number
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["course_attachment_kind"]
+          label: string
+          lesson_id: string
+          sort_order?: number
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["course_attachment_kind"]
+          label?: string
+          lesson_id?: string
+          sort_order?: number
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_lesson_attachments_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_lessons: {
+        Row: {
+          body_markdown: string
+          created_at: string
+          id: string
+          is_published: boolean
+          module_id: string
+          sort_order: number
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          body_markdown?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          module_id: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          body_markdown?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          module_id?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_modules: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string
+          id: string
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string
+          id?: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_modules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          description: string
+          id: string
+          is_published: boolean
+          nav_config_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          is_published?: boolean
+          nav_config_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          is_published?: boolean
+          nav_config_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courses_nav_config_id_fkey"
+            columns: ["nav_config_id"]
+            isOneToOne: true
+            referencedRelation: "sidebar_nav_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_card_config: {
         Row: {
           component_key: string
@@ -1138,6 +1302,7 @@ export type Database = {
       sidebar_nav_config: {
         Row: {
           id: string
+          is_course: boolean
           label: string
           sort_order: number
           updated_at: string
@@ -1145,6 +1310,7 @@ export type Database = {
         }
         Insert: {
           id: string
+          is_course?: boolean
           label: string
           sort_order?: number
           updated_at?: string
@@ -1152,6 +1318,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          is_course?: boolean
           label?: string
           sort_order?: number
           updated_at?: string
@@ -1382,6 +1549,35 @@ export type Database = {
             columns: ["badge_id"]
             isOneToOne: false
             referencedRelation: "badge_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_course_progress: {
+        Row: {
+          completed_at: string
+          id: string
+          lesson_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          lesson_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          lesson_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_course_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "course_lessons"
             referencedColumns: ["id"]
           },
         ]
@@ -1785,6 +1981,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       cash_flow_status: "surplus" | "tight" | "deficit"
+      course_attachment_kind: "file" | "link" | "book_call"
       debt_type:
         | "credit_card"
         | "student_loan"
@@ -1928,6 +2125,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       cash_flow_status: ["surplus", "tight", "deficit"],
+      course_attachment_kind: ["file", "link", "book_call"],
       debt_type: [
         "credit_card",
         "student_loan",

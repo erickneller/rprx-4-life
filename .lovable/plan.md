@@ -1,50 +1,70 @@
-# Fix: Education-only request returns mixed-horseman strategies
 
-## Root cause
+# Sidebar Mini-Courses
 
-In `supabase/functions/rprx-chat/index.ts` two things combine to produce mixed results when the user asks "give me strategies to reduce education costs":
+Turn any sidebar item into a GHL-style mini-course (modules → lessons with video, files, links, and markdown body). Admin-authored only. User progress is tracked but does not award XP.
 
-1. **Horseman filter is too narrow.** `requestedHorsemanFilter` is only set when the message also contains the literal word `strateg(y|ies)` plus a verb like show/list/give (lines 2274–2290). A natural phrase like "reduce education costs" / "lower tuition" / "save on college" does NOT trip the filter, so `strategiesForRanking` stays as the full catalog (all four horsemen).
+## 1. Data model (Supabase)
 
-2. **The v1-multi envelope actively diversifies away from the primary horseman.** In the multi-plan builder (lines 2790–2839), `diversify_horseman` defaults to `true`. After the primary education plan is chosen, the loop deliberately *skips* any further education strategies as long as a different-horseman alternate exists (line 2817). Result: card 1 = education, cards 2/3 = taxes/interest/insurance.
+New tables (all RLS-protected):
 
-`detectPromptHorseman` already correctly classifies "reduce education costs" as `education` (line 180 keyword set), so the routing primary horseman is right — only the alternates are wrong.
+- **courses** — one per sidebar item flagged as a course
+  - `id` (uuid), `nav_config_id` (text, unique, references `sidebar_nav_config.id`), `title`, `description`, `cover_image_url` (nullable — falls back to default placeholder), `is_published`, timestamps
+- **course_modules** — sections within a course
+  - `id`, `course_id`, `title`, `description`, `sort_order`
+- **course_lessons** — sub-sections / lessons inside a module
+  - `id`, `module_id`, `title`, `body_markdown`, `video_url`, `sort_order`, `is_published`
+- **course_lesson_attachments** — files + links per lesson
+  - `id`, `lesson_id`, `kind` enum (`file` | `link` | `book_call`), `label`, `url` (for links / book-a-call — set per-attachment by admin), `file_path` (storage path for uploads), `sort_order`
+- **user_course_progress** — per-user lesson completion
+  - `id`, `user_id`, `lesson_id`, `completed_at`, unique(user_id, lesson_id)
 
-## Fix
+Add to `sidebar_nav_config`: `is_course` boolean (default false). When true, the sidebar item routes to `/course/:navConfigId` instead of its `url` and shows a "Course" badge instead of "Coming Soon". Existing "Coming Soon" items stay unchanged until an admin explicitly flags them.
 
-All changes confined to `supabase/functions/rprx-chat/index.ts` (backend / presentation glue). No DB or frontend changes.
+New storage bucket: **`course-assets`** (public read, admin write) for cover images, lesson files, and uploaded MP4 videos.
 
-### 1. Broaden horseman-intent detection so it triggers on natural phrasing
+RLS:
+- Authenticated users: SELECT on courses / modules / lessons / attachments where `is_published = true`
+- Admins: full ALL access on all course tables
+- `user_course_progress`: each user can SELECT / INSERT / DELETE only their own rows
 
-Replace the `looksLikeStrategyList` gate with a broader "intent" check that ALSO accepts reduce/lower/save/cut/optimize verbs paired with a horseman keyword.
+## 2. Admin authoring (`/admin` → new "Courses" tab)
 
-```text
-allow when message matches:
-  - existing strategy-list pattern, OR
-  - /\b(reduce|lower|cut|save\s+on|minimize|optimize|pay\s+down|pay\s+off|eliminate)\b/
-    AND a horseman keyword (tax|insurance|education|tuition|college|debt|interest|loan|premium)
-```
+- List of all sidebar items with an "Is course?" toggle (writes `sidebar_nav_config.is_course`)
+- For items toggled on, an "Edit course" button opens the **Course Builder**:
+  - Course header: title, description, optional cover image upload, published toggle
+  - Drag-to-reorder list of **Modules** (add / rename / delete)
+  - Inside each module, drag-to-reorder list of **Lessons**
+  - Lesson editor (drawer / modal):
+    - Title
+    - Markdown body (reuse existing markdown editor pattern from KnowledgeBaseTab / WizardCopyTab)
+    - Optional video: paste URL (YouTube / Vimeo / Loom auto-embed) OR upload MP4 to `course-assets`
+    - Attachments list: add file upload, external link, or "Book a call" link (label + URL set per-attachment by admin — no global default)
+    - Published toggle
 
-When `detectPromptHorseman` returns a horseman AND this broader intent matches, set `requestedHorsemanFilter` to that horseman. This makes "reduce education costs", "lower my insurance premiums", "pay down my debt" all pre-filter the catalog correctly.
+`NavigationTab` stays for visibility; new `CoursesTab` handles the course flag + content. An item can be hidden via NavigationTab regardless of its course flag.
 
-### 2. Disable cross-horseman diversification when the user picked a horseman
+## 3. User experience
 
-In the v1-multi envelope block (lines 2790–2839):
+- **Sidebar** (`AppSidebar.tsx`): when `isVisible(configId)` AND `is_course === true`, render the item as a normal NavLink to `/course/:navConfigId` with a small "Course" badge — overrides any "Coming Soon" placeholder.
+- **Course page** (`/course/:navConfigId`):
+  - Uses default cover-image placeholder when no upload exists
+  - Left rail: collapsible module / lesson tree with check marks for completed lessons and a course-level progress bar
+  - Main panel: current lesson — video player at top, markdown body, attachments list (files download, links open in new tab, book-a-call links open in new tab), Prev / Next buttons, "Mark complete" button
+  - Mobile: tree collapses into a top sheet
+- Progress: marking a lesson complete inserts into `user_course_progress`. Course % = completed / total published lessons. No XP, no badge triggers.
 
-- Compute `intentHorseman = requestedHorsemanFilter || promptHorseman.horseman`.
-- If `intentHorseman` is set, force `diversify = false` AND additionally filter the alternate candidate loop to `r.strategy.horseman_type === intentHorseman`. If fewer than `maxPlans-1` in-horseman alternates exist, just return whatever is available (do NOT pad with other horsemen).
-- Keep the existing `diversify_horseman` config behavior only for the no-intent case (assessment-driven auto suggestions where variety is helpful).
+## 4. Routing & files
 
-### 3. Logging
+- New route in `src/App.tsx`: `/course/:navConfigId` → `src/pages/CoursePage.tsx`
+- New components: `src/components/courses/CourseSidebarTree.tsx`, `LessonViewer.tsx`, `LessonAttachments.tsx`, `VideoEmbed.tsx`
+- New admin: `src/components/admin/CoursesTab.tsx`, `src/components/admin/course/CourseBuilder.tsx`, `ModuleList.tsx`, `LessonEditor.tsx`
+- New hooks: `src/hooks/useCourse.ts`, `useCourseAdmin.ts`, `useCourseProgress.ts`
+- Default cover placeholder image added to `src/assets/`
 
-Add one line: `multi-plan envelope | intent_horseman=… | diversify=… | alternates_in_horseman=N | alternates_total=N` so we can verify in edge logs.
+## 5. Defaults confirmed
 
-### 4. Redeploy
-
-Redeploy `rprx-chat` and verify by sending "give me strategies to reduce education costs" — expect all 3 cards to be `horseman: "education"`.
-
-## Out of scope
-
-- No changes to the ranker scoring weights.
-- No DB migration — `prompt_engine_config.diversify_horseman` stays as-is and still controls behavior for general/assessment-driven requests.
-- No frontend changes; `StrategyPlanCard` already renders whatever the envelope contains.
+- Cover images: default placeholder, admin can upload later per course
+- "Book a call" target: per-attachment, set inside the course builder (no global Advisor reuse)
+- Coming Soon items: stay as-is until each is flagged as a course
+- Hiding the nav item also hides the course route (404 if accessed directly while hidden)
+- All courses are global in v1 (no company-scoped overrides)
