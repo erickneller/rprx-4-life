@@ -63,6 +63,7 @@ const App = () => (
           <Route path="/partners" element={<ProtectedRoute><WizardGuard><Partners /></WizardGuard></ProtectedRoute>} />
           <Route path="/library" element={<ProtectedRoute><WizardGuard><Library /></WizardGuard></ProtectedRoute>} />
           <Route path="/company-dashboard" element={<ProtectedRoute><WizardGuard><CompanyDashboard /></WizardGuard></ProtectedRoute>} />
+          <Route path="/course/:navConfigId" element={<ProtectedRoute><WizardGuard><CoursePage /></WizardGuard></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
           {/* /join — no ProtectedRoute; handles auth inline */}
           <Route path="/join" element={<Join />} />
