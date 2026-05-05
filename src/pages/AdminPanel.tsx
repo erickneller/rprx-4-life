@@ -451,6 +451,12 @@ export default function AdminPanel() {
             <TabsTrigger value="data-export" className="gap-1">
               <Database className="h-4 w-4" /> Data Export
             </TabsTrigger>
+            <TabsTrigger value="assistant-engine" className="gap-1">
+              <MessageSquare className="h-4 w-4" /> Assistant Engine
+            </TabsTrigger>
+            <TabsTrigger value="assistant-quality" className="gap-1">
+              <BarChart3 className="h-4 w-4" /> Assistant Quality
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
