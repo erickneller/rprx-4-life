@@ -178,10 +178,10 @@ export default function CoursePage() {
               height={720}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/10" />
             <div className="absolute bottom-3 left-4 right-4">
-              <h1 className="text-xl md:text-2xl font-bold">{course.title}</h1>
-              {course.description && <p className="text-sm text-muted-foreground line-clamp-1">{course.description}</p>}
+              <h1 className="text-xl md:text-2xl font-bold text-foreground [text-shadow:_0_1px_8px_rgb(0_0_0_/_40%)]">{course.title}</h1>
+              {course.description && <p className="text-sm text-foreground/80 line-clamp-1 [text-shadow:_0_1px_6px_rgb(0_0_0_/_40%)]">{course.description}</p>}
             </div>
           </div>
 
