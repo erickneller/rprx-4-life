@@ -1013,6 +1013,21 @@ function repairSentenceMerges(s: string): string {
   return s.replace(/\.\s+([a-z])/g, (_m, c) => `, ${c}`);
 }
 
+/** Trim text to the last complete sentence that fits under maxChars. Returns '' if no sentence fits. */
+function trimToSentenceBoundary(text: string, maxChars: number): string {
+  const t = (text || '').trim();
+  if (!t) return '';
+  if (t.length <= maxChars) return t;
+  const sentences = t.split(/(?<=[.!?])\s+/);
+  let out = '';
+  for (const s of sentences) {
+    const next = out ? `${out} ${s}` : s;
+    if (next.length > maxChars) break;
+    out = next;
+  }
+  return out.trim();
+}
+
 /** Trim a summary to max 2 short, plain sentences with grammar repair. */
 function trimSummary(summary: string): string {
   const cleaned = repairSentenceMerges(tidyText(summary));
