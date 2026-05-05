@@ -38,6 +38,8 @@ import { NavigationTab } from '@/components/admin/NavigationTab';
 import { PartnersTab } from '@/components/admin/PartnersTab';
 import { LibraryTab } from '@/components/admin/LibraryTab';
 import { DataExportTab } from '@/components/admin/DataExportTab';
+import { AssistantEngineTab } from '@/components/admin/AssistantEngineTab';
+import { AssistantQualityTab } from '@/components/admin/AssistantQualityTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
