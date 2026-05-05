@@ -156,7 +156,11 @@ export function CourseBuilder({ navConfigId, onClose }: Props) {
                 <Input
                   defaultValue={mod.title}
                   className="font-semibold"
-                  onBlur={(e) => e.target.value !== mod.title && upsertModule.mutate({ ...mod, title: e.target.value })}
+                  onBlur={(e) => {
+                    if (e.target.value === mod.title) return;
+                    const { lessons, ...modRow } = mod;
+                    upsertModule.mutate({ ...modRow, title: e.target.value });
+                  }}
                 />
                 <Button
                   variant="ghost" size="icon"
