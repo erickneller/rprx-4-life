@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useAssessmentStore } from '@/store/healthAssessmentStore';
 import { WelcomeScreen } from '@/components/health-assessment/WelcomeScreen';
 import { ProgressBar } from '@/components/health-assessment/ProgressBar';
@@ -9,34 +9,84 @@ import { Step4Goals } from '@/components/health-assessment/Step4Goals';
 import { Step5Contact } from '@/components/health-assessment/Step5Contact';
 import { ResultsScreen } from '@/components/health-assessment/ResultsScreen';
 
+const isEmbedded = () => {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (window.parent !== window) return true;
+  } catch {
+    return true;
+  }
+  return new URLSearchParams(window.location.search).has('embed');
+};
+
 const HealthAssessment = () => {
   const currentStep = useAssessmentStore((state) => state.currentStep);
+  const rootRef = useRef<HTMLDivElement>(null);
 
-  // Report height to parent window when embedded in an iframe (e.g. GoHighLevel)
+  // Toggle embed mode class on <html>
   useEffect(() => {
-    if (typeof window === 'undefined' || window.parent === window) return;
+    if (!isEmbedded()) return;
+    document.documentElement.classList.add('embed');
+    return () => document.documentElement.classList.remove('embed');
+  }, []);
+
+  // Report height to parent window when embedded
+  useEffect(() => {
+    if (!isEmbedded() || !rootRef.current) return;
+    const el = rootRef.current;
+    let lastHeight = 0;
+    let rafId = 0;
 
     const postHeight = () => {
-      const height = Math.max(
-        document.body.scrollHeight,
-        document.documentElement.scrollHeight
-      );
-      window.parent.postMessage({ type: 'rprx:height', height }, '*');
+      rafId = 0;
+      const height = Math.ceil(el.getBoundingClientRect().height);
+      if (height && height !== lastHeight) {
+        lastHeight = height;
+        try {
+          window.parent.postMessage({ type: 'rprx:height', height }, '*');
+        } catch {
+          /* noop */
+        }
+      }
     };
 
-    postHeight();
-    const ro = new ResizeObserver(() => postHeight());
-    ro.observe(document.body);
-    window.addEventListener('load', postHeight);
+    const schedule = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(postHeight);
+    };
+
+    // Initial measurement after layout settles
+    schedule();
+    const t = setTimeout(schedule, 100);
+
+    const ro = new ResizeObserver(schedule);
+    ro.observe(el);
+    window.addEventListener('load', schedule);
 
     return () => {
       ro.disconnect();
-      window.removeEventListener('load', postHeight);
+      window.removeEventListener('load', schedule);
+      clearTimeout(t);
+      if (rafId) cancelAnimationFrame(rafId);
     };
+  }, []);
+
+  // Force a fresh measurement on every step change
+  useEffect(() => {
+    if (!isEmbedded() || !rootRef.current) return;
+    const el = rootRef.current;
+    requestAnimationFrame(() => {
+      const height = Math.ceil(el.getBoundingClientRect().height);
+      try {
+        window.parent.postMessage({ type: 'rprx:height', height }, '*');
+      } catch {
+        /* noop */
+      }
+    });
   }, [currentStep]);
 
   return (
-    <div className="min-h-screen">
+    <div ref={rootRef}>
       {currentStep === 0 && <WelcomeScreen />}
       {currentStep > 0 && currentStep < 6 && (
         <div>
