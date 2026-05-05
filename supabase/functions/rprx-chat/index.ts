@@ -1428,6 +1428,27 @@ async function fetchPromptTemplate(serviceClient: any, templateId: string): Prom
   }
 }
 
+// ─── Engine config (admin-tunable) ──────────────────────────────────────────
+let _engineConfigCache: { value: any; loadedAt: number } | null = null;
+async function fetchEngineConfig(serviceClient: any): Promise<any> {
+  const now = Date.now();
+  if (_engineConfigCache && now - _engineConfigCache.loadedAt < 60_000) return _engineConfigCache.value;
+  try {
+    const { data } = await serviceClient
+      .from('prompt_engine_config')
+      .select('config')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const cfg = data?.config || {};
+    _engineConfigCache = { value: cfg, loadedAt: now };
+    return cfg;
+  } catch {
+    return {};
+  }
+}
+
 // =====================================================
 // KNOWLEDGE BASE FETCHING (scoped retrieval)
 // =====================================================
