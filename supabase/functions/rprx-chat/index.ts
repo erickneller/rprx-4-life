@@ -665,7 +665,7 @@ function buildStructuredPlan(
   if (headline) summaryParts.push(headline);
   if (cleanedExample) summaryParts.push(`Example: ${cleanedExample.split(/(?<=[.!?])\s+/)[0]}`);
   if (cleanedSavings && summaryParts.length < 3) summaryParts.push(`Why it matters: ${cleanedSavings.split(/(?<=[.!?])\s+/)[0]}`);
-  const summary = summaryParts.join(' ').slice(0, 700) || `Apply the ${s.title} strategy to reduce the impact of the ${horseman} horseman on your finances.`;
+  const summary = trimToSentenceBoundary(summaryParts.join(' '), 220) || `Apply the ${s.title} strategy to reduce the impact of the ${horseman} horseman on your finances.`;
 
   // STEPS: prefer DB-provided steps; otherwise build horseman-specific, action-led steps.
   const rawSteps = normalizeSteps(s.implementation_steps);
