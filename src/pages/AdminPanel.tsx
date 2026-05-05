@@ -699,6 +699,16 @@ export default function AdminPanel() {
           <TabsContent value="knowledge-base" className="space-y-4">
             <KnowledgeBaseTab />
           </TabsContent>
+
+          {/* ===== ASSISTANT ENGINE TAB ===== */}
+          <TabsContent value="assistant-engine" className="space-y-4">
+            <AssistantEngineTab />
+          </TabsContent>
+
+          {/* ===== ASSISTANT QUALITY TAB ===== */}
+          <TabsContent value="assistant-quality" className="space-y-4">
+            <AssistantQualityTab />
+          </TabsContent>
         </Tabs>
       </div>
 
