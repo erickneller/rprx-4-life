@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useAssessmentStore } from '@/store/healthAssessmentStore';
 import { WelcomeScreen } from '@/components/health-assessment/WelcomeScreen';
 import { ProgressBar } from '@/components/health-assessment/ProgressBar';
@@ -10,6 +11,29 @@ import { ResultsScreen } from '@/components/health-assessment/ResultsScreen';
 
 const HealthAssessment = () => {
   const currentStep = useAssessmentStore((state) => state.currentStep);
+
+  // Report height to parent window when embedded in an iframe (e.g. GoHighLevel)
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.parent === window) return;
+
+    const postHeight = () => {
+      const height = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      );
+      window.parent.postMessage({ type: 'rprx:height', height }, '*');
+    };
+
+    postHeight();
+    const ro = new ResizeObserver(() => postHeight());
+    ro.observe(document.body);
+    window.addEventListener('load', postHeight);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('load', postHeight);
+    };
+  }, [currentStep]);
 
   return (
     <div className="min-h-screen">
