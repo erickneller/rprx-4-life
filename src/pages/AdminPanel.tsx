@@ -443,6 +443,9 @@ export default function AdminPanel() {
             <TabsTrigger value="navigation" className="gap-1">
               <PanelLeft className="h-4 w-4" /> Navigation
             </TabsTrigger>
+            <TabsTrigger value="courses" className="gap-1">
+              <BookOpen className="h-4 w-4" /> Courses
+            </TabsTrigger>
             <TabsTrigger value="partners" className="gap-1">
               <Building2 className="h-4 w-4" /> Partners
             </TabsTrigger>
