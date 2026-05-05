@@ -1,5 +1,7 @@
 # Strategy Assistant → Implementation Plan: World-Class Upgrade
 
+Status: Parts 1, 2, 3, 5, 6 shipped. Part 4 (per-step Mark-done, Continue plan link, advisor packet actions) remaining.
+
 Goal: every paid request returns up to 3 ranked, structured strategies that render as save-ready plan cards with a clear path to implementation. Free tier returns 1 reliable templated plan. Everything is observable and admin-tunable.
 
 ## Part 1 — Lock the contract (reliability)
