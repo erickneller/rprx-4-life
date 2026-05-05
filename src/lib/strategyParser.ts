@@ -7,36 +7,21 @@ export interface RenderBlocks {
   risk_alerts?: string[];
 }
 
-interface ParsedStrategy {
+export interface ParsedStrategy {
   strategyId?: string;
   strategyName: string;
   content: PlanContent;
   renderBlocks?: RenderBlocks;
 }
 
-/**
- * Parses assistant messages for an embedded `plan_schema: "v1"` JSON block.
- * Strict: returns null unless a valid v1 plan with non-empty steps is found.
- * The legacy regex/marker fallback was removed in favor of a single contract.
- *
- * The `lenient` flag is preserved for callers but no longer changes behavior;
- * if no JSON v1 plan is present, the caller should build a fallback card
- * from the catalog/profile, not reconstruct one from prose.
- */
-export function parseStrategyFromMessage(messageContent: string, _lenient = false): ParsedStrategy | null {
-  const jsonBlockMatch = messageContent.match(/```json\s*\n([\s\S]*?)\n```/);
-  if (!jsonBlockMatch) return null;
+export interface ParsedMultiPlan {
+  overviewMd: string;
+  plans: ParsedStrategy[];
+}
 
-  let parsed: any;
-  try {
-    parsed = JSON.parse(jsonBlockMatch[1]);
-  } catch {
-    return null;
-  }
-
+function buildParsedFromV1(parsed: any): ParsedStrategy | null {
   if (!parsed || parsed.plan_schema !== 'v1') return null;
   if (!Array.isArray(parsed.steps) || parsed.steps.length === 0) return null;
-
   return {
     strategyId: typeof parsed.strategy_id === 'string' ? parsed.strategy_id : undefined,
     strategyName: typeof parsed.strategy_name === 'string' ? parsed.strategy_name : 'Implementation Plan',
@@ -63,5 +48,41 @@ export function parseStrategyFromMessage(messageContent: string, _lenient = fals
           risk_alerts: Array.isArray(parsed.render_blocks.risk_alerts) ? parsed.render_blocks.risk_alerts.map(String) : undefined,
         }
       : undefined,
+  };
+}
+
+function readJsonBlock(messageContent: string): any | null {
+  const jsonBlockMatch = messageContent.match(/```json\s*\n([\s\S]*?)\n```/);
+  if (!jsonBlockMatch) return null;
+  try { return JSON.parse(jsonBlockMatch[1]); } catch { return null; }
+}
+
+/**
+ * Parses assistant messages for an embedded `plan_schema: "v1"` JSON block.
+ * Returns the first plan if a `v1-multi` envelope is present.
+ */
+export function parseStrategyFromMessage(messageContent: string, _lenient = false): ParsedStrategy | null {
+  const parsed = readJsonBlock(messageContent);
+  if (!parsed) return null;
+  if (parsed.plan_schema === 'v1-multi' && Array.isArray(parsed.plans) && parsed.plans.length > 0) {
+    return buildParsedFromV1(parsed.plans[0]);
+  }
+  return buildParsedFromV1(parsed);
+}
+
+/**
+ * Parses the full multi-plan envelope from an assistant message.
+ * Returns null if the message is not a `v1-multi` envelope.
+ */
+export function parseMultiPlanFromMessage(messageContent: string): ParsedMultiPlan | null {
+  const parsed = readJsonBlock(messageContent);
+  if (!parsed || parsed.plan_schema !== 'v1-multi' || !Array.isArray(parsed.plans)) return null;
+  const plans = parsed.plans
+    .map((p: any) => buildParsedFromV1(p))
+    .filter((p: ParsedStrategy | null): p is ParsedStrategy => p !== null);
+  if (plans.length === 0) return null;
+  return {
+    overviewMd: typeof parsed.overview_md === 'string' ? parsed.overview_md : '',
+    plans,
   };
 }

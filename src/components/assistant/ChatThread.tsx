@@ -10,7 +10,7 @@ import { Loader2, User, Search, LucideIcon, ClipboardList } from 'lucide-react';
 import { AssistantAvatar } from './AssistantAvatar';
 import { Button } from '@/components/ui/button';
 import { useCreatePlan, usePlans } from '@/hooks/usePlans';
-import { parseStrategyFromMessage } from '@/lib/strategyParser';
+import { parseStrategyFromMessage, parseMultiPlanFromMessage } from '@/lib/strategyParser';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 
@@ -256,9 +256,12 @@ function AutoCreatePlanFooter({
 }: { 
   messages: Message[]; horseman: string | null | undefined; isCreating: boolean; onCreate: () => void 
 }) {
-  // Show button as soon as the assistant has responded.
+  // Show button as soon as the assistant has responded — but hide when the
+  // last assistant message is a v1-multi envelope (cards have their own Save buttons).
   const assistantMsgs = messages.filter(m => m.role === 'assistant');
   if (assistantMsgs.length === 0) return null;
+  const last = assistantMsgs[assistantMsgs.length - 1];
+  if (parseMultiPlanFromMessage(last.content)) return null;
 
   return (
     <div className="border-t p-4">

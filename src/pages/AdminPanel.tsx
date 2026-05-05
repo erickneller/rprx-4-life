@@ -38,6 +38,8 @@ import { NavigationTab } from '@/components/admin/NavigationTab';
 import { PartnersTab } from '@/components/admin/PartnersTab';
 import { LibraryTab } from '@/components/admin/LibraryTab';
 import { DataExportTab } from '@/components/admin/DataExportTab';
+import { AssistantEngineTab } from '@/components/admin/AssistantEngineTab';
+import { AssistantQualityTab } from '@/components/admin/AssistantQualityTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -449,6 +451,12 @@ export default function AdminPanel() {
             <TabsTrigger value="data-export" className="gap-1">
               <Database className="h-4 w-4" /> Data Export
             </TabsTrigger>
+            <TabsTrigger value="assistant-engine" className="gap-1">
+              <MessageSquare className="h-4 w-4" /> Assistant Engine
+            </TabsTrigger>
+            <TabsTrigger value="assistant-quality" className="gap-1">
+              <BarChart3 className="h-4 w-4" /> Assistant Quality
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
@@ -690,6 +698,16 @@ export default function AdminPanel() {
           {/* ===== KNOWLEDGE BASE TAB ===== */}
           <TabsContent value="knowledge-base" className="space-y-4">
             <KnowledgeBaseTab />
+          </TabsContent>
+
+          {/* ===== ASSISTANT ENGINE TAB ===== */}
+          <TabsContent value="assistant-engine" className="space-y-4">
+            <AssistantEngineTab />
+          </TabsContent>
+
+          {/* ===== ASSISTANT QUALITY TAB ===== */}
+          <TabsContent value="assistant-quality" className="space-y-4">
+            <AssistantQualityTab />
           </TabsContent>
         </Tabs>
       </div>
