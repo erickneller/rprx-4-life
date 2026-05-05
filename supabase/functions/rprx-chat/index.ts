@@ -2285,7 +2285,9 @@ serve(async (req) => {
       }
       const looksLikeStrategyList = /\b(show|list|see|view|give|browse|explore|what|which)\b.*\bstrateg/i.test(user_message)
         || /\bstrategies?\b/i.test(user_message);
-      if (requestedHorsemanFilter && !looksLikeStrategyList) {
+      const looksLikeReduceIntent = /\b(reduce|lower|cut|save\s+on|saving\s+on|minimize|optimize|pay\s+down|pay\s+off|eliminate|decrease)\b/i.test(user_message)
+        && /\b(tax|taxes|insurance|premium|premiums|education|tuition|college|student|debt|interest|loan|loans|apr)\b/i.test(user_message);
+      if (requestedHorsemanFilter && !looksLikeStrategyList && !looksLikeReduceIntent) {
         requestedHorsemanFilter = null;
       }
     }
