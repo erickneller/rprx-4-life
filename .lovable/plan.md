@@ -1,84 +1,30 @@
-## Goal
+## Course Banner: Spec + Scrim
 
-Make the sidebar fully data-driven so admins can add, edit, delete, reorder, and toggle visibility of sections and items from the Navigation tab — and seamlessly attach a course to any item.
+Two small changes, both presentation-only.
 
----
+### 1. Document the recommended thumbnail size
 
-## 1. Database changes
+- **Recommended:** 1600×400 px (4:1), JPG or PNG, <500KB
+- **Minimum:** 1280×320 px
+- **Why:** banner renders full-width up to ~1100px at 128–160px tall; portrait/square art gets cropped.
 
-Extend `sidebar_nav_config` to hold everything needed to render the sidebar:
+Surface this to admins in `CourseBuilder.tsx` next to the cover image upload field as small helper text ("Recommended: 1600×400 px, wide format").
 
-New columns:
-- `kind` text — `'section' | 'item'`
-- `parent_id` text nullable — section id (for items)
-- `icon` text nullable — lucide icon name (e.g. `"Target"`)
-- `url` text nullable — `/route`, `https://...`, or `#` for coming-soon
-- `link_type` text — `'route' | 'external' | 'course' | 'coming_soon'`
-- `is_system` boolean default false — protects built-in items from deletion (Dashboard, Profile, Admin link, etc.)
+### 2. Strengthen the gradient scrim in `CoursePage.tsx`
 
-`is_course` becomes a derived convenience flag (kept for back-compat) — driven by `link_type = 'course'`.
+Replace the current single `bg-gradient-to-t from-background to-transparent` overlay with a stronger, layered scrim so the title and description stay readable on any uploaded image:
 
-A seed migration inserts every currently hardcoded section/item with `is_system = true`, preserving existing ids so existing visibility rows and any course rows linked by `nav_config_id` keep working.
+- A darker bottom-up gradient (e.g. `from-background via-background/80 to-transparent`) covering ~70% of the banner height.
+- Title color forced to a high-contrast token (`text-foreground` with a subtle `drop-shadow`) and description switched from `text-muted-foreground` to a lighter on-scrim token so it doesn't disappear over busy images.
+- Keep banner heights as-is (`h-32 md:h-40`) and keep `object-cover` — no layout change.
 
-RLS stays the same (admin write, authenticated read).
+### Out of scope
 
----
+- No change to image cropping behavior (`object-contain`, separate title block).
+- No change to upload pipeline or storage.
+- No new fields on the `courses` table.
 
-## 2. Admin UI — rebuilt `NavigationTab`
+### Files touched
 
-Sections listed top-to-bottom; items nested under each. Each row has:
-- Label (inline editable)
-- Icon picker (full lucide-react search dialog)
-- Link type dropdown: Internal route / External link / Course / Coming Soon
-- URL field (hidden for course/coming-soon; route picker for internal)
-- Visibility switch
-- Up/Down arrows for sort order
-- Edit / Delete buttons (delete disabled when `is_system = true`)
-- For items with `link_type = 'course'`: a "Open Course Builder" shortcut
-
-Top of tab: "Add Section" and (per section) "Add Item" buttons.
-
----
-
-## 3. Sidebar rendering — `AppSidebar.tsx`
-
-Remove hardcoded `sections` and `navItems` arrays. Build the tree from `sidebar_nav_config` rows ordered by `sort_order`, grouped by `parent_id`. Resolve icons via a `lucide-react` name → component map.
-
-Behavior matrix:
-- `coming_soon` → non-clickable "(Coming Soon)" pill (existing style)
-- `route` → `<NavLink to={url}>`
-- `external` → `<a target="_blank">`
-- `course` → `<NavLink to={"/course/" + id}>` with "Course" badge
-
-System items (Strategy Assistant, Advisor CTA, Company Dashboard, Admin Panel) keep their special conditional rendering (feature flag / role checks) but their visibility row still controls hide/show.
-
----
-
-## 4. Course sync
-
-Courses already key off `nav_config_id`. When admin sets `link_type = 'course'` on an item:
-- A draft `courses` row is auto-created if none exists
-- "Open Course Builder" link surfaces inline
-- Switching away from `course` keeps the course row but hides it (course only renders when item is course-typed)
-- Deleting a non-system item cascades the course (handled by app-level delete that removes the course first, then the nav row)
-
----
-
-## 5. Files touched
-
-- **Migration** — extend `sidebar_nav_config`, seed system rows
-- **`useSidebarConfig.ts`** — return tree structure, add CRUD mutations (`useUpsertNavRow`, `useDeleteNavRow`, `useReorderNavRow`)
-- **`NavigationTab.tsx`** — full rewrite as editor
-- **`AppSidebar.tsx`** — render from DB tree, remove hardcoded arrays
-- **New `IconPicker.tsx`** — searchable lucide picker dialog
-- **New `lib/lucideIconMap.ts`** — name → component lookup with fallback
-
-No changes to `CoursesTab` / `CourseBuilder` — they keep working off `nav_config_id`.
-
----
-
-## Out of scope (call out for later)
-
-- Per-company sidebar overrides
-- Drag-and-drop reordering (using arrows for v1)
-- Sub-sub-sections (only one level of nesting)
+- `src/pages/CoursePage.tsx` — scrim + title contrast
+- `src/components/admin/course/CourseBuilder.tsx` — helper text under cover image input
