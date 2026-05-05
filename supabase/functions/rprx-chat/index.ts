@@ -2771,14 +2771,17 @@ Rules:
       console.log('Received OpenAI response, length:', assistantMessage.length);
     }
 
-    // ─── v1-multi envelope (auto mode only) ─────────────────────────────────
+    // ─── v1-multi envelope (auto + manual) ──────────────────────────────────
     // Wrap the primary plan + up to (maxPlans-1) deterministic alternates from
     // the ranker into a single multi-plan envelope so the UI can render them
     // as separate save-ready cards from one round-trip.
-    if (effectiveMode === 'auto') {
+    if (effectiveMode === 'auto' || effectiveMode === 'manual') {
       try {
         const cfg = await fetchEngineConfig(serviceClient);
-        const maxPlans = Math.max(1, Math.min(5, Number(cfg?.output?.auto_mode_multi_plans ?? cfg?.output?.auto_mode_results ?? 3)));
+        const capRaw = effectiveMode === 'auto'
+          ? (cfg?.output?.auto_mode_multi_plans ?? cfg?.output?.auto_mode_results ?? 3)
+          : (cfg?.output?.manual_mode_multi_plans ?? cfg?.output?.manual_mode_results ?? 3);
+        const maxPlans = Math.max(1, Math.min(5, Number(capRaw)));
         const diversify = cfg?.output?.diversify_horseman !== false;
         if (maxPlans > 1) {
           const fence = assistantMessage.match(/```json\s*\n([\s\S]*?)\n```/);
@@ -2803,19 +2806,22 @@ Rules:
               usedIds.add(sid);
               usedHorsemen.add(h);
             }
-            const overview = assistantMessage.replace(/```json\s*\n[\s\S]*?\n```/, '').trim();
-            const envelope = {
-              plan_schema: 'v1-multi',
-              overview_md: overview || `Here are your top ${1 + alternates.length} personalized strategies. Save the one that fits best, or activate more than one.`,
-              plans: [primaryPlan, ...alternates],
-            };
-            assistantMessage = '```json\n' + JSON.stringify(envelope, null, 2) + '\n```';
+            if (alternates.length > 0) {
+              const overview = assistantMessage.replace(/```json\s*\n[\s\S]*?\n```/, '').trim();
+              const envelope = {
+                plan_schema: 'v1-multi',
+                overview_md: overview || `Here are your top ${1 + alternates.length} personalized strategies. Save the one that fits best, or activate more than one.`,
+                plans: [primaryPlan, ...alternates],
+              };
+              assistantMessage = '```json\n' + JSON.stringify(envelope, null, 2) + '\n```';
+            }
           }
         }
       } catch (err) {
         console.error('v1-multi envelope build failed:', err);
       }
     }
+
 
     // Save assistant message (fire and forget)
     serviceClient.from('messages').insert({
