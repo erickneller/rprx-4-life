@@ -28,6 +28,7 @@ import NotFound from "./pages/NotFound";
 import Join from "./pages/Join";
 import Partners from "./pages/Partners";
 import Library from "./pages/Library";
+import CoursePage from "./pages/CoursePage";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import { WizardGuard } from "@/components/auth/WizardGuard";
