@@ -17,6 +17,7 @@ interface EngineConfig {
     auto_mode_results?: number;
     auto_mode_multi_plans?: number;
     manual_mode_results?: number;
+    manual_mode_multi_plans?: number;
     diversify_horseman?: boolean;
     max_steps_shown?: number;
   };
