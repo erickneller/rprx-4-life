@@ -225,8 +225,9 @@ function LessonEditorDialog({ moduleId, lesson, onClose }: { moduleId: string; l
     setSaving(true);
     try {
       await upsertLesson.mutateAsync({
-        ...lesson,
+        ...(lesson?.id ? { id: lesson.id } : {}),
         module_id: moduleId,
+        sort_order: lesson?.sort_order ?? 0,
         title,
         body_markdown: body,
         video_url: videoUrl || null,
