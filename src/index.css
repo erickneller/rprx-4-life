@@ -165,3 +165,13 @@
     50% { box-shadow: 0 0 20px 6px rgba(251, 191, 36, 0.6); }
   }
 }
+
+/* Iframe embed mode: collapse min-h-screen so content reports its true height */
+html.embed,
+html.embed body {
+  background: transparent;
+}
+html.embed .min-h-screen {
+  min-height: 0 !important;
+}
+
