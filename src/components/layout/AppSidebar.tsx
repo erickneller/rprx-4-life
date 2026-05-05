@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquare, FileText, Target, User, TrendingUp, GraduationCap, Rocket, DollarSign, ShieldCheck, HeartPulse, Landmark, RefreshCw, Wallet, Receipt, BadgeDollarSign, ClipboardList, Shield, Building2, Phone, Handshake, BookOpen, LucideIcon } from "lucide-react";
+import { Phone, Building2, Shield } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
@@ -7,7 +7,8 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useCompany } from "@/hooks/useCompany";
 import { useAdvisorLink } from "@/hooks/useAdvisorLink";
-import { useSidebarConfig } from "@/hooks/useSidebarConfig";
+import { useSidebarConfig, type NavConfigRow } from "@/hooks/useSidebarConfig";
+import { getIcon } from "@/lib/lucideIconMap";
 
 import {
   Sidebar,
@@ -20,55 +21,68 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-type NavItem = { title: string; url: string; icon: LucideIcon; comingSoon?: boolean; configId?: string };
+// Items gated by feature flag / role — hidden if these conditions aren't met,
+// regardless of visibility row state.
+const FEATURE_GATED: Record<string, (ctx: { chatEnabled: boolean }) => boolean> = {
+  'item:strategy_assistant': ({ chatEnabled }) => chatEnabled,
+};
 
-const sections: { label: string | null; configId?: string; items: NavItem[] }[] = [
-  {
-    label: null,
-    items: [{ title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, configId: "item:dashboard" }],
-  },
-  {
-    label: "Financial Stability",
-    configId: "section:financial_stability",
-    items: [
-      { title: "Debt Elimination System", url: "/debt-eliminator", icon: Target, configId: "item:debt_eliminator" },
-      { title: "Cash Flow Control System", url: "#", icon: Wallet, comingSoon: true, configId: "item:cash_flow_control" },
-      { title: "Tax Efficiency System", url: "#", icon: Receipt, comingSoon: true, configId: "item:tax_efficiency" },
-      { title: "Income Optimization Strategy", url: "#", icon: BadgeDollarSign, comingSoon: true, configId: "item:income_optimization" },
-    ],
-  },
-  {
-    label: "Financial Growth",
-    configId: "section:financial_growth",
-    items: [
-      { title: "Financial Freedom Strategy", url: "#", icon: TrendingUp, comingSoon: true, configId: "item:financial_freedom" },
-      { title: "Education Advantage Framework", url: "#", icon: GraduationCap, comingSoon: true, configId: "item:education_advantage" },
-      { title: "Strategic Wealth Moves", url: "#", icon: Rocket, comingSoon: true, configId: "item:strategic_wealth" },
-      { title: "Income Expansion Strategy", url: "#", icon: DollarSign, comingSoon: true, configId: "item:income_expansion" },
-    ],
-  },
-  {
-    label: "Financial Protection",
-    configId: "section:financial_protection",
-    items: [
-      { title: "Protection Alignment Strategy", url: "#", icon: ShieldCheck, comingSoon: true, configId: "item:protection_alignment" },
-      { title: "Health Cost Strategy", url: "#", icon: HeartPulse, comingSoon: true, configId: "item:health_cost" },
-      { title: "Legacy Continuity System", url: "#", icon: Landmark, comingSoon: true, configId: "item:legacy_continuity" },
-      { title: "Life Transition Strategy", url: "#", icon: RefreshCw, comingSoon: true, configId: "item:life_transition" },
-    ],
-  },
-];
+function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: boolean }) {
+  const Icon = getIcon(item.icon);
+  const linkType = item.link_type;
+  const url = linkType === 'course' ? `/course/${item.id}` : (item.url || '#');
 
-const chatItem: NavItem = { title: "Strategy Assistant", url: "/strategy-assistant", icon: MessageSquare, configId: "item:strategy_assistant" };
-const navItems: NavItem[] = [
-  { title: "My Assessments", url: "/assessments", icon: ClipboardList, configId: "item:my_assessments" },
-  { title: "My Plans", url: "/plans", icon: FileText, configId: "item:my_plans" },
-  { title: "RPRx Partners", url: "/partners", icon: Handshake, configId: "item:rprx_partners" },
-  { title: "RPRx Library", url: "/library", icon: BookOpen, configId: "library" },
-  { title: "My Profile", url: "/profile", icon: User, configId: "item:my_profile" },
-];
+  if (linkType === 'coming_soon') {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton tooltip={item.label} className="flex items-center gap-3 rounded-md px-3 py-2 text-foreground cursor-default hover:bg-foreground hover:text-background transition-colors">
+          <Icon className="h-5 w-5 shrink-0" />
+          <span className={isCollapsed ? "sr-only" : "text-sm"}>
+            {item.label} <span className="text-xs opacity-60">(Coming Soon)</span>
+          </span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  }
 
+  if (linkType === 'external') {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip={item.label}>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <Icon className="h-5 w-5 shrink-0" />
+            <span className={isCollapsed ? "sr-only" : "flex-1 text-sm"}>{item.label}</span>
+          </a>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  }
 
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild tooltip={item.label}>
+        <NavLink
+          to={url}
+          className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+          <span className={isCollapsed ? "sr-only" : "flex-1 text-sm"}>
+            {item.label}
+            {linkType === 'course' && (
+              <span className="ml-2 text-[10px] uppercase tracking-wide opacity-70">Course</span>
+            )}
+          </span>
+        </NavLink>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -78,7 +92,7 @@ export function AppSidebar() {
   const { membership } = useCompany();
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
   const { enabled: advisorEnabled, url: advisorUrl } = useAdvisorLink();
-  const { isVisible, isCourse } = useSidebarConfig();
+  const { isVisible, sections, itemsBySection, orphanItems } = useSidebarConfig();
 
   const resolveAdvisorHref = (url: string) => {
     const digits = url.replace(/\D/g, '');
@@ -86,103 +100,53 @@ export function AppSidebar() {
     return url;
   };
 
+  const showItem = (item: NavConfigRow) => {
+    if (!isVisible(item.id)) return false;
+    const gate = FEATURE_GATED[item.id];
+    if (gate && !gate({ chatEnabled })) return false;
+    return true;
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarContent className="pt-4">
-        {/* Compact gamification stats */}
         {!isCollapsed && (
           <div className="px-3 pb-2 space-y-2">
             <GamificationScoreCard compact />
             <StreakCounter compact />
           </div>
         )}
-        {sections.map((section, idx) => {
-          const sectionHidden = section.configId && !isVisible(section.configId);
-          if (sectionHidden) return null;
-          const visibleItems = section.items.filter(item => !item.configId || isVisible(item.configId));
-          if (visibleItems.length === 0 && section.label) return null;
+
+        {/* Orphan items (no section) — e.g. Dashboard */}
+        {orphanItems.filter(showItem).length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {orphanItems.filter(showItem).map(item => (
+                  <NavItemRow key={item.id} item={item} isCollapsed={isCollapsed} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {sections.map((section) => {
+          if (!isVisible(section.id)) return null;
+          const items = (itemsBySection.get(section.id) || []).filter(showItem);
+          if (items.length === 0) return null;
           return (
-            <SidebarGroup key={idx}>
-              {section.label && (
-                <SidebarGroupLabel className={isCollapsed ? "sr-only" : "text-sm font-bold text-foreground"}>
-                  {section.label}
-                </SidebarGroupLabel>
-              )}
+            <SidebarGroup key={section.id}>
+              <SidebarGroupLabel className={isCollapsed ? "sr-only" : "text-sm font-bold text-foreground"}>
+                {section.label}
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {visibleItems.map((item) => {
-                    const courseFlag = item.configId ? isCourse(item.configId) : false;
-                    const effectiveUrl = courseFlag && item.configId ? `/course/${item.configId}` : item.url;
-                    const showAsComingSoon = item.comingSoon && !courseFlag;
-                    return (
-                    <SidebarMenuItem key={item.title}>
-                      {showAsComingSoon ? (
-                        <SidebarMenuButton tooltip={item.title} className="flex items-center gap-3 rounded-md px-3 py-2 text-foreground cursor-default hover:bg-foreground hover:text-background transition-colors">
-                          <item.icon className="h-5 w-5 shrink-0" />
-                          <span className={isCollapsed ? "sr-only" : "text-sm"}>
-                            {item.title} <span className="text-xs opacity-60">(Coming Soon)</span>
-                          </span>
-                        </SidebarMenuButton>
-                      ) : (
-                        <SidebarMenuButton asChild tooltip={item.title}>
-                          <NavLink
-                            to={effectiveUrl}
-                            className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                          >
-                            <item.icon className="h-5 w-5 shrink-0" />
-                            <span className={isCollapsed ? "sr-only" : "flex-1 text-sm"}>
-                              {item.title}{courseFlag && <span className="ml-2 text-[10px] uppercase tracking-wide opacity-70">Course</span>}
-                            </span>
-                          </NavLink>
-                        </SidebarMenuButton>
-                      )}
-                    </SidebarMenuItem>
-                    );
-                  })}
+                  {items.map(item => <NavItemRow key={item.id} item={item} isCollapsed={isCollapsed} />)}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
           );
         })}
-
-        {/* Remaining nav items (to be organized in next step) */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {chatEnabled && isVisible('item:strategy_assistant') && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip={chatItem.title}>
-                    <NavLink
-                      to={chatItem.url}
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <chatItem.icon className="h-5 w-5 shrink-0" />
-                      <span className={isCollapsed ? "sr-only" : ""}>{chatItem.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {navItems.filter(item => !item.configId || isVisible(item.configId)).map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
-                    <NavLink
-                      to={item.url}
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      <span className={isCollapsed ? "sr-only" : ""}>
-                        {item.title}
-                      </span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
         {/* Advisor CTA */}
         {advisorEnabled && advisorUrl && isVisible('item:advisor_link') && (
@@ -207,7 +171,6 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Company dashboard - visible to company owners/admins */}
         {isCompanyAdmin && (
           <SidebarGroup>
             <SidebarGroupContent>
@@ -229,7 +192,6 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Admin link - only visible to admins */}
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupContent>
