@@ -1,70 +1,84 @@
+## Goal
 
-# Sidebar Mini-Courses
+Make the sidebar fully data-driven so admins can add, edit, delete, reorder, and toggle visibility of sections and items from the Navigation tab — and seamlessly attach a course to any item.
 
-Turn any sidebar item into a GHL-style mini-course (modules → lessons with video, files, links, and markdown body). Admin-authored only. User progress is tracked but does not award XP.
+---
 
-## 1. Data model (Supabase)
+## 1. Database changes
 
-New tables (all RLS-protected):
+Extend `sidebar_nav_config` to hold everything needed to render the sidebar:
 
-- **courses** — one per sidebar item flagged as a course
-  - `id` (uuid), `nav_config_id` (text, unique, references `sidebar_nav_config.id`), `title`, `description`, `cover_image_url` (nullable — falls back to default placeholder), `is_published`, timestamps
-- **course_modules** — sections within a course
-  - `id`, `course_id`, `title`, `description`, `sort_order`
-- **course_lessons** — sub-sections / lessons inside a module
-  - `id`, `module_id`, `title`, `body_markdown`, `video_url`, `sort_order`, `is_published`
-- **course_lesson_attachments** — files + links per lesson
-  - `id`, `lesson_id`, `kind` enum (`file` | `link` | `book_call`), `label`, `url` (for links / book-a-call — set per-attachment by admin), `file_path` (storage path for uploads), `sort_order`
-- **user_course_progress** — per-user lesson completion
-  - `id`, `user_id`, `lesson_id`, `completed_at`, unique(user_id, lesson_id)
+New columns:
+- `kind` text — `'section' | 'item'`
+- `parent_id` text nullable — section id (for items)
+- `icon` text nullable — lucide icon name (e.g. `"Target"`)
+- `url` text nullable — `/route`, `https://...`, or `#` for coming-soon
+- `link_type` text — `'route' | 'external' | 'course' | 'coming_soon'`
+- `is_system` boolean default false — protects built-in items from deletion (Dashboard, Profile, Admin link, etc.)
 
-Add to `sidebar_nav_config`: `is_course` boolean (default false). When true, the sidebar item routes to `/course/:navConfigId` instead of its `url` and shows a "Course" badge instead of "Coming Soon". Existing "Coming Soon" items stay unchanged until an admin explicitly flags them.
+`is_course` becomes a derived convenience flag (kept for back-compat) — driven by `link_type = 'course'`.
 
-New storage bucket: **`course-assets`** (public read, admin write) for cover images, lesson files, and uploaded MP4 videos.
+A seed migration inserts every currently hardcoded section/item with `is_system = true`, preserving existing ids so existing visibility rows and any course rows linked by `nav_config_id` keep working.
 
-RLS:
-- Authenticated users: SELECT on courses / modules / lessons / attachments where `is_published = true`
-- Admins: full ALL access on all course tables
-- `user_course_progress`: each user can SELECT / INSERT / DELETE only their own rows
+RLS stays the same (admin write, authenticated read).
 
-## 2. Admin authoring (`/admin` → new "Courses" tab)
+---
 
-- List of all sidebar items with an "Is course?" toggle (writes `sidebar_nav_config.is_course`)
-- For items toggled on, an "Edit course" button opens the **Course Builder**:
-  - Course header: title, description, optional cover image upload, published toggle
-  - Drag-to-reorder list of **Modules** (add / rename / delete)
-  - Inside each module, drag-to-reorder list of **Lessons**
-  - Lesson editor (drawer / modal):
-    - Title
-    - Markdown body (reuse existing markdown editor pattern from KnowledgeBaseTab / WizardCopyTab)
-    - Optional video: paste URL (YouTube / Vimeo / Loom auto-embed) OR upload MP4 to `course-assets`
-    - Attachments list: add file upload, external link, or "Book a call" link (label + URL set per-attachment by admin — no global default)
-    - Published toggle
+## 2. Admin UI — rebuilt `NavigationTab`
 
-`NavigationTab` stays for visibility; new `CoursesTab` handles the course flag + content. An item can be hidden via NavigationTab regardless of its course flag.
+Sections listed top-to-bottom; items nested under each. Each row has:
+- Label (inline editable)
+- Icon picker (full lucide-react search dialog)
+- Link type dropdown: Internal route / External link / Course / Coming Soon
+- URL field (hidden for course/coming-soon; route picker for internal)
+- Visibility switch
+- Up/Down arrows for sort order
+- Edit / Delete buttons (delete disabled when `is_system = true`)
+- For items with `link_type = 'course'`: a "Open Course Builder" shortcut
 
-## 3. User experience
+Top of tab: "Add Section" and (per section) "Add Item" buttons.
 
-- **Sidebar** (`AppSidebar.tsx`): when `isVisible(configId)` AND `is_course === true`, render the item as a normal NavLink to `/course/:navConfigId` with a small "Course" badge — overrides any "Coming Soon" placeholder.
-- **Course page** (`/course/:navConfigId`):
-  - Uses default cover-image placeholder when no upload exists
-  - Left rail: collapsible module / lesson tree with check marks for completed lessons and a course-level progress bar
-  - Main panel: current lesson — video player at top, markdown body, attachments list (files download, links open in new tab, book-a-call links open in new tab), Prev / Next buttons, "Mark complete" button
-  - Mobile: tree collapses into a top sheet
-- Progress: marking a lesson complete inserts into `user_course_progress`. Course % = completed / total published lessons. No XP, no badge triggers.
+---
 
-## 4. Routing & files
+## 3. Sidebar rendering — `AppSidebar.tsx`
 
-- New route in `src/App.tsx`: `/course/:navConfigId` → `src/pages/CoursePage.tsx`
-- New components: `src/components/courses/CourseSidebarTree.tsx`, `LessonViewer.tsx`, `LessonAttachments.tsx`, `VideoEmbed.tsx`
-- New admin: `src/components/admin/CoursesTab.tsx`, `src/components/admin/course/CourseBuilder.tsx`, `ModuleList.tsx`, `LessonEditor.tsx`
-- New hooks: `src/hooks/useCourse.ts`, `useCourseAdmin.ts`, `useCourseProgress.ts`
-- Default cover placeholder image added to `src/assets/`
+Remove hardcoded `sections` and `navItems` arrays. Build the tree from `sidebar_nav_config` rows ordered by `sort_order`, grouped by `parent_id`. Resolve icons via a `lucide-react` name → component map.
 
-## 5. Defaults confirmed
+Behavior matrix:
+- `coming_soon` → non-clickable "(Coming Soon)" pill (existing style)
+- `route` → `<NavLink to={url}>`
+- `external` → `<a target="_blank">`
+- `course` → `<NavLink to={"/course/" + id}>` with "Course" badge
 
-- Cover images: default placeholder, admin can upload later per course
-- "Book a call" target: per-attachment, set inside the course builder (no global Advisor reuse)
-- Coming Soon items: stay as-is until each is flagged as a course
-- Hiding the nav item also hides the course route (404 if accessed directly while hidden)
-- All courses are global in v1 (no company-scoped overrides)
+System items (Strategy Assistant, Advisor CTA, Company Dashboard, Admin Panel) keep their special conditional rendering (feature flag / role checks) but their visibility row still controls hide/show.
+
+---
+
+## 4. Course sync
+
+Courses already key off `nav_config_id`. When admin sets `link_type = 'course'` on an item:
+- A draft `courses` row is auto-created if none exists
+- "Open Course Builder" link surfaces inline
+- Switching away from `course` keeps the course row but hides it (course only renders when item is course-typed)
+- Deleting a non-system item cascades the course (handled by app-level delete that removes the course first, then the nav row)
+
+---
+
+## 5. Files touched
+
+- **Migration** — extend `sidebar_nav_config`, seed system rows
+- **`useSidebarConfig.ts`** — return tree structure, add CRUD mutations (`useUpsertNavRow`, `useDeleteNavRow`, `useReorderNavRow`)
+- **`NavigationTab.tsx`** — full rewrite as editor
+- **`AppSidebar.tsx`** — render from DB tree, remove hardcoded arrays
+- **New `IconPicker.tsx`** — searchable lucide picker dialog
+- **New `lib/lucideIconMap.ts`** — name → component lookup with fallback
+
+No changes to `CoursesTab` / `CourseBuilder` — they keep working off `nav_config_id`.
+
+---
+
+## Out of scope (call out for later)
+
+- Per-company sidebar overrides
+- Drag-and-drop reordering (using arrows for v1)
+- Sub-sub-sections (only one level of nesting)

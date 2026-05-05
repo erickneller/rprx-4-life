@@ -1301,27 +1301,45 @@ export type Database = {
       }
       sidebar_nav_config: {
         Row: {
+          icon: string | null
           id: string
           is_course: boolean
+          is_system: boolean
+          kind: string
           label: string
+          link_type: string
+          parent_id: string | null
           sort_order: number
           updated_at: string
+          url: string | null
           visible: boolean
         }
         Insert: {
+          icon?: string | null
           id: string
           is_course?: boolean
+          is_system?: boolean
+          kind?: string
           label: string
+          link_type?: string
+          parent_id?: string | null
           sort_order?: number
           updated_at?: string
+          url?: string | null
           visible?: boolean
         }
         Update: {
+          icon?: string | null
           id?: string
           is_course?: boolean
+          is_system?: boolean
+          kind?: string
           label?: string
+          link_type?: string
+          parent_id?: string | null
           sort_order?: number
           updated_at?: string
+          url?: string | null
           visible?: boolean
         }
         Relationships: []
