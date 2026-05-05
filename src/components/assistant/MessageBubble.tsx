@@ -46,14 +46,47 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         className={cn(
           'rounded-2xl px-4 py-3 min-w-0',
           isUser ? 'bg-primary text-primary-foreground max-w-[80%]' : 'bg-muted',
-          !isUser && parsedStrategy ? 'max-w-[92%] flex-1' : !isUser ? 'max-w-[80%]' : ''
+          !isUser && (parsedStrategy || multiPlan) ? 'max-w-[92%] flex-1' : !isUser ? 'max-w-[80%]' : ''
         )}
       >
         {isUser ? (
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         ) : (
           <div className="space-y-3">
-            {parsedStrategy && (
+            {multiPlan && (
+              <div className="space-y-4">
+                {multiPlan.overviewMd && (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown>{multiPlan.overviewMd}</ReactMarkdown>
+                  </div>
+                )}
+                {multiPlan.plans.map((plan, idx) => (
+                  <div key={`${plan.strategyId || 'plan'}-${idx}`} className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5">Option {idx + 1}</span>
+                      {idx === 0 && <span className="text-primary">Top match</span>}
+                    </div>
+                    <StrategyPlanCard
+                      strategyId={plan.strategyId}
+                      strategyName={plan.strategyName}
+                      content={plan.content}
+                      renderBlocks={plan.renderBlocks}
+                    />
+                    <div className="pt-1">
+                      <SavePlanButton
+                        strategyId={plan.strategyId}
+                        strategyName={plan.strategyName}
+                        content={plan.content}
+                        variant={idx === 0 ? 'default' : 'outline'}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {parsedStrategy && !multiPlan && (
               <StrategyPlanCard
                 strategyId={parsedStrategy.strategyId}
                 strategyName={parsedStrategy.strategyName}
@@ -61,6 +94,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 renderBlocks={parsedStrategy.renderBlocks}
               />
             )}
+
 
             {displayContent && (
               <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-1">
