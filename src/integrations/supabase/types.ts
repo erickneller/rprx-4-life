@@ -119,6 +119,45 @@ export type Database = {
           },
         ]
       }
+      assessment_submissions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          opportunity_index: number | null
+          personas: string[]
+          phone: string
+          responses: Json
+          scores: Json
+          tier: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          opportunity_index?: number | null
+          personas?: string[]
+          phone: string
+          responses?: Json
+          scores?: Json
+          tier?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          opportunity_index?: number | null
+          personas?: string[]
+          phone?: string
+          responses?: Json
+          scores?: Json
+          tier?: string | null
+        }
+        Relationships: []
+      }
       badge_definitions: {
         Row: {
           category: string
