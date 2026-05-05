@@ -2285,7 +2285,9 @@ serve(async (req) => {
       }
       const looksLikeStrategyList = /\b(show|list|see|view|give|browse|explore|what|which)\b.*\bstrateg/i.test(user_message)
         || /\bstrategies?\b/i.test(user_message);
-      if (requestedHorsemanFilter && !looksLikeStrategyList) {
+      const looksLikeReduceIntent = /\b(reduce|lower|cut|save\s+on|saving\s+on|minimize|optimize|pay\s+down|pay\s+off|eliminate|decrease)\b/i.test(user_message)
+        && /\b(tax|taxes|insurance|premium|premiums|education|tuition|college|student|debt|interest|loan|loans|apr)\b/i.test(user_message);
+      if (requestedHorsemanFilter && !looksLikeStrategyList && !looksLikeReduceIntent) {
         requestedHorsemanFilter = null;
       }
     }
@@ -2798,7 +2800,8 @@ Rules:
           ? (cfg?.output?.auto_mode_multi_plans ?? cfg?.output?.auto_mode_results ?? 3)
           : (cfg?.output?.manual_mode_multi_plans ?? cfg?.output?.manual_mode_results ?? 3);
         const maxPlans = Math.max(1, Math.min(5, Number(capRaw)));
-        const diversify = cfg?.output?.diversify_horseman !== false;
+        const intentHorseman = (requestedHorsemanFilter || promptHorseman.horseman || null) as string | null;
+        const diversify = intentHorseman ? false : (cfg?.output?.diversify_horseman !== false);
         if (maxPlans > 1) {
           const fence = assistantMessage.match(/```json\s*\n([\s\S]*?)\n```/);
           let primaryPlan: any = null;
@@ -2809,11 +2812,14 @@ Rules:
             const usedIds = new Set<string>([primaryPlan.strategy_id]);
             const usedHorsemen = new Set<string>([String(primaryPlan.horseman || '').toLowerCase()]);
             const alternates: any[] = [];
+            let inHorsemanCount = 0;
             for (const r of rankedStrategies) {
               if (alternates.length >= maxPlans - 1) break;
               const sid = r.strategy.strategy_id;
               if (usedIds.has(sid)) continue;
               const h = (r.strategy.horseman_type || '').toLowerCase();
+              // Lock alternates to the user's intended horseman when set.
+              if (intentHorseman && h !== intentHorseman.toLowerCase()) continue;
               if (diversify && usedHorsemen.has(h) && rankedStrategies.some(x => !usedIds.has(x.strategy.strategy_id) && !usedHorsemen.has((x.strategy.horseman_type || '').toLowerCase()))) {
                 continue;
               }
@@ -2821,7 +2827,9 @@ Rules:
               alternates.push(altPlan);
               usedIds.add(sid);
               usedHorsemen.add(h);
+              if (intentHorseman && h === intentHorseman.toLowerCase()) inHorsemanCount++;
             }
+            console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount}`);
             if (alternates.length > 0) {
               const overview = assistantMessage.replace(/```json\s*\n[\s\S]*?\n```/, '').trim();
               const envelope = {
