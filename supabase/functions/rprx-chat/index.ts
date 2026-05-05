@@ -1315,7 +1315,8 @@ function buildRenderBlocks(plan: StructuredPlan): RenderBlocks {
 function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
   if (!plan || plan.plan_schema !== 'v1') return plan;
   const strategyName = plan.strategy_name || '';
-  const horseman = (plan.horseman || '').toLowerCase();
+  const horsemanRaw = Array.isArray(plan.horseman) ? (plan.horseman[0] || '') : (plan.horseman || '');
+  const horseman = String(horsemanRaw).toLowerCase();
 
   let summary = trimSummary(plan.summary || '');
   // Hard cap at 260 chars and 2 sentences (already enforced); fallback if awkward.
