@@ -1319,11 +1319,12 @@ function normalizePlanReadability(plan: StructuredPlan): StructuredPlan {
   const horseman = String(horsemanRaw).toLowerCase();
 
   let summary = trimSummary(plan.summary || '');
-  // Hard cap at 260 chars and 2 sentences (already enforced); fallback if awkward.
+  // Sentence-boundary cut at ~220 chars; fall back to deterministic if awkward or empty.
   if (summaryNeedsFallback(summary)) {
     summary = buildDeterministicSummary(plan);
-  } else if (summary.length > 260) {
-    summary = summary.slice(0, 257).replace(/\s+\S*$/, '') + '...';
+  } else if (summary.length > 220) {
+    const trimmed = trimToSentenceBoundary(summary, 220);
+    summary = trimmed || buildDeterministicSummary(plan);
   }
 
   const cleanedSteps: StructuredPlanStep[] = (plan.steps || []).map((step, i) => {
