@@ -164,7 +164,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               </div>
             )}
             
-            {parsedStrategy && (
+            {parsedStrategy && !multiPlan && (
               <div className="pt-2 border-t border-border/50">
                 <SavePlanButton
                   strategyId={parsedStrategy.strategyId}
