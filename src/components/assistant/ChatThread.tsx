@@ -10,7 +10,7 @@ import { Loader2, User, Search, LucideIcon, ClipboardList } from 'lucide-react';
 import { AssistantAvatar } from './AssistantAvatar';
 import { Button } from '@/components/ui/button';
 import { useCreatePlan, usePlans } from '@/hooks/usePlans';
-import { parseStrategyFromMessage } from '@/lib/strategyParser';
+import { parseStrategyFromMessage, parseMultiPlanFromMessage } from '@/lib/strategyParser';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 
