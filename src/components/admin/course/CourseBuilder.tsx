@@ -130,7 +130,9 @@ export function CourseBuilder({ navConfigId, onClose }: Props) {
                   <Button variant="ghost" size="sm" onClick={() => handleCourseField({ cover_image_url: null })}>Clear</Button>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Leave blank to use the default placeholder.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Recommended: <strong>1600×400 px</strong> (4:1 wide format), JPG or PNG under 500KB. Minimum 1280×320. Leave blank to use the default placeholder.
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={course.is_published} onCheckedChange={(c) => handleCourseField({ is_published: c })} />
