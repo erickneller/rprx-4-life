@@ -40,6 +40,7 @@ import { LibraryTab } from '@/components/admin/LibraryTab';
 import { DataExportTab } from '@/components/admin/DataExportTab';
 import { AssistantEngineTab } from '@/components/admin/AssistantEngineTab';
 import { AssistantQualityTab } from '@/components/admin/AssistantQualityTab';
+import { CoursesTab } from '@/components/admin/CoursesTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
