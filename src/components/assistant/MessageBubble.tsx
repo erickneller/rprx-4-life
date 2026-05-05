@@ -5,7 +5,7 @@ import { Message } from '@/hooks/useMessages';
 import { User } from 'lucide-react';
 import { AssistantAvatar } from './AssistantAvatar';
 import { SavePlanButton } from '@/components/plans/SavePlanButton';
-import { parseStrategyFromMessage } from '@/lib/strategyParser';
+import { parseStrategyFromMessage, parseMultiPlanFromMessage } from '@/lib/strategyParser';
 import { StrategyPlanCard } from './StrategyPlanCard';
 
 interface MessageBubbleProps {
@@ -15,16 +15,22 @@ interface MessageBubbleProps {
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
-  const parsedStrategy = useMemo(() => {
+  const multiPlan = useMemo(() => {
     if (isUser) return null;
-    return parseStrategyFromMessage(message.content);
+    return parseMultiPlanFromMessage(message.content);
   }, [isUser, message.content]);
+
+  const parsedStrategy = useMemo(() => {
+    if (isUser || multiPlan) return null;
+    return parseStrategyFromMessage(message.content);
+  }, [isUser, multiPlan, message.content]);
 
   // Strip the raw JSON code block from the prose body when we have a structured plan to render.
   const displayContent = useMemo(() => {
+    if (multiPlan) return '';
     if (!parsedStrategy) return message.content;
     return message.content.replace(/```json\s*\n[\s\S]*?\n```/, '').replace(/\n{3,}/g, '\n\n').trim();
-  }, [parsedStrategy, message.content]);
+  }, [multiPlan, parsedStrategy, message.content]);
 
   return (
     <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
