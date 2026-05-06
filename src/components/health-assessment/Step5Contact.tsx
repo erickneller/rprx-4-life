@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { calculateHealthScore } from '@/utils/health/scoring';
-import { createSignedHeaders } from '@/utils/health/webhookSigner';
+
 
 const contactSchema = z.object({
   firstName: z.string().trim().min(1, 'First name is required').max(50),
