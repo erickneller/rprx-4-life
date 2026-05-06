@@ -21,9 +21,26 @@ export function FeaturesTab() {
   const advisorUpdate = useUpdateAdvisorLink();
   const [advisorInput, setAdvisorInput] = useState('');
 
+  const { embed: advisorEmbedValue, isLoading: embedLoading } = useAdvisorEmbed();
+  const embedUpdate = useUpdateAdvisorEmbed();
+  const [embedInput, setEmbedInput] = useState('');
+
   useEffect(() => {
     setAdvisorInput(advisorUrl);
   }, [advisorUrl]);
+
+  useEffect(() => {
+    setEmbedInput(advisorEmbedValue);
+  }, [advisorEmbedValue]);
+
+  const handleEmbedSave = async () => {
+    try {
+      await embedUpdate.mutateAsync(embedInput);
+      toast.success('Virtual Advisor embed updated');
+    } catch {
+      toast.error('Failed to save embed code');
+    }
+  };
 
   const handleToggle = async (checked: boolean) => {
     try {
