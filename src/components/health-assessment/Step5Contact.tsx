@@ -42,67 +42,47 @@ export function Step5Contact() {
 
       const scores = calculateHealthScore(basicProfile, healthHabits, screenings, goals);
 
-      const { error } = await (supabase.from('assessment_submissions') as any).insert({
+      const heightInMeters = basicProfile.heightFeet && basicProfile.heightInches !== undefined
+        ? ((basicProfile.heightFeet * 12 + basicProfile.heightInches) * 0.0254)
+        : undefined;
+      const bmi = heightInMeters && basicProfile.weight ? basicProfile.weight / Math.pow(heightInMeters, 2) : undefined;
+
+      const screeningGaps: string[] = [];
+      if (screenings.bloodPressureCheck === 'never' || screenings.bloodPressureCheck === 'over2years') screeningGaps.push('Blood Pressure');
+      if (screenings.cholesterolCheck === 'never' || screenings.cholesterolCheck === 'over5years') screeningGaps.push('Cholesterol');
+      if (screenings.hepCHIVScreening === 'no') screeningGaps.push('Hep C/HIV');
+
+      const insuranceGaps: string[] = [];
+      if (screenings.disabilityInsurance === 'no') insuranceGaps.push('Disability Insurance');
+      if (screenings.lifeInsurance === 'no') insuranceGaps.push('Life Insurance');
+
+      const submissionPayload = {
         name: `${validatedData.firstName} ${validatedData.lastName}`,
         email: validatedData.email,
         phone: validatedData.phone,
-        personas: [persona!],
+        persona: persona!,
+        age: basicProfile.age,
+        sex: basicProfile.sex,
+        bmi: bmi ? Math.round(bmi * 10) / 10 : undefined,
+        healthFlags: {
+          smoker: healthHabits.smoking === 'yes',
+          exerciseFrequency: healthHabits.exerciseDays !== undefined ? String(healthHabits.exerciseDays) : undefined,
+          screeningGaps,
+          insuranceGaps,
+        },
+        scores: { current: scores.current, improvement: scores.improvement, readiness: scores.readiness },
         responses: { basicProfile, healthHabits, screenings, goals },
-        scores: { current: scores.current, improvement: scores.improvement },
-        opportunity_index: scores.improvement,
-        tier: scores.readiness,
+      };
+
+      const { error } = await supabase.functions.invoke('submit-health-assessment', {
+        body: submissionPayload,
       });
 
       if (error) {
-        console.error('Supabase insert error:', error);
+        console.error('Submission error:', error);
         toast({ title: 'Error saving your results', description: "We couldn't save your assessment. Please try again.", variant: 'destructive' });
         setIsSubmitting(false);
         return;
-      }
-
-      try {
-        const heightInMeters = basicProfile.heightFeet && basicProfile.heightInches !== undefined
-          ? ((basicProfile.heightFeet * 12 + basicProfile.heightInches) * 0.0254)
-          : undefined;
-        const bmi = heightInMeters && basicProfile.weight ? basicProfile.weight / Math.pow(heightInMeters, 2) : undefined;
-
-        const screeningGaps: string[] = [];
-        if (screenings.bloodPressureCheck === 'never' || screenings.bloodPressureCheck === 'over2years') screeningGaps.push('Blood Pressure');
-        if (screenings.cholesterolCheck === 'never' || screenings.cholesterolCheck === 'over5years') screeningGaps.push('Cholesterol');
-        if (screenings.hepCHIVScreening === 'no') screeningGaps.push('Hep C/HIV');
-
-        const insuranceGaps: string[] = [];
-        if (screenings.disabilityInsurance === 'no') insuranceGaps.push('Disability Insurance');
-        if (screenings.lifeInsurance === 'no') insuranceGaps.push('Life Insurance');
-
-        const webhookPayload = {
-          name: `${validatedData.firstName} ${validatedData.lastName}`,
-          email: validatedData.email,
-          phone: validatedData.phone,
-          persona: persona!,
-          age: basicProfile.age,
-          sex: basicProfile.sex,
-          bmi: bmi ? Math.round(bmi * 10) / 10 : undefined,
-          healthFlags: {
-            smoker: healthHabits.smoking === 'yes',
-            exerciseFrequency: healthHabits.exerciseDays !== undefined ? String(healthHabits.exerciseDays) : undefined,
-            screeningGaps,
-            insuranceGaps,
-          },
-          scores: { current: scores.current, improvement: scores.improvement, readiness: scores.readiness },
-        };
-
-        const payloadString = JSON.stringify(webhookPayload);
-        const signedHeaders = await createSignedHeaders(payloadString);
-
-        const { error: webhookError } = await supabase.functions.invoke('send-to-ghl', {
-          body: webhookPayload,
-          headers: signedHeaders,
-        });
-
-        if (webhookError) console.error('Failed to send to GoHighLevel');
-      } catch (webhookErr) {
-        console.error('Webhook error');
       }
 
       setCurrentStep(6);

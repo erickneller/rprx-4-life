@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.send-to-ghl]
 verify_jwt = false
+
+[functions.submit-health-assessment]
+verify_jwt = false
