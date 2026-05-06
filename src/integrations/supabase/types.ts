@@ -130,6 +130,7 @@ export type Database = {
           phone: string
           responses: Json
           scores: Json
+          submitter_ip: unknown
           tier: string | null
         }
         Insert: {
@@ -142,6 +143,7 @@ export type Database = {
           phone: string
           responses?: Json
           scores?: Json
+          submitter_ip?: unknown
           tier?: string | null
         }
         Update: {
@@ -154,6 +156,7 @@ export type Database = {
           phone?: string
           responses?: Json
           scores?: Json
+          submitter_ip?: unknown
           tier?: string | null
         }
         Relationships: []
