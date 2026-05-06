@@ -1,10 +1,27 @@
-## Update Sidebar Advisor Link
+## Problem
 
-In `src/components/layout/AppSidebar.tsx` (lines ~151-172), update the sidebar Advisor CTA:
+The sidebar item the user sees ("Speak with an Advisor") is rendered from the `sidebar_nav_config` DB row `item:advisor_link`, not from the hardcoded Advisor CTA block I edited previously. That row currently has:
+- `label`: "Speak with an Advisor"
+- `url`: `null` (so clicking goes to `#` — does nothing)
+- `icon`: `null`
+- `link_type`: `route`
 
-- Change label "Speak with an Advisor" → "Speak With A Virtual Advisor" (both tooltip and visible span).
-- Replace the external `<a href={resolveAdvisorHref(advisorUrl)} target="_blank">` with a React Router `<NavLink to="/virtual-advisor">` so it routes to the in-app Virtual Advisor page.
-- Drop the `advisorUrl` requirement in the visibility condition — show the link whenever `advisorEnabled && isVisible('item:advisor_link')` is true (URL no longer needed since it links internally).
-- Keep the `Phone` icon and existing styling.
+That's why the label and behavior haven't changed.
 
-No other files change. The dashboard CTA card already says the right thing and links correctly.
+## Fix
+
+Single migration to update that row:
+
+```sql
+update public.sidebar_nav_config
+set label = 'Speak With A Virtual Advisor',
+    url = '/virtual-advisor',
+    icon = 'Mic',
+    link_type = 'route',
+    updated_at = now()
+where id = 'item:advisor_link';
+```
+
+That's it — `NavItemRow` already renders DB-driven label/icon/url and uses `NavLink` for `route` type, so it will navigate internally to `/virtual-advisor` and show a microphone icon.
+
+No component code changes needed.
