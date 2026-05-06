@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFeatureFlag, useToggleFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useAdvisorLink, useUpdateAdvisorLink } from '@/hooks/useAdvisorLink';
+import { useAdvisorEmbed, useUpdateAdvisorEmbed } from '@/hooks/useAdvisorEmbed';
 import { toast } from 'sonner';
-import { MessageSquare, FlaskConical, Phone } from 'lucide-react';
+import { MessageSquare, FlaskConical, Phone, Code2 } from 'lucide-react';
 
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');

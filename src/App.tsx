@@ -32,6 +32,7 @@ import CoursePage from "./pages/CoursePage";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import HealthAssessment from "./pages/HealthAssessment";
+import VirtualAdvisor from "./pages/VirtualAdvisor";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/health-assessment" element={<HealthAssessment />} />
+          <Route path="/virtual-advisor" element={<ProtectedRoute><WizardGuard><VirtualAdvisor /></WizardGuard></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
