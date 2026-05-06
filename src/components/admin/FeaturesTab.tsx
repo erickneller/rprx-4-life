@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFeatureFlag, useToggleFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useAdvisorLink, useUpdateAdvisorLink } from '@/hooks/useAdvisorLink';
+import { useAdvisorEmbed, useUpdateAdvisorEmbed } from '@/hooks/useAdvisorEmbed';
 import { toast } from 'sonner';
-import { MessageSquare, FlaskConical, Phone } from 'lucide-react';
+import { MessageSquare, FlaskConical, Phone, Code2 } from 'lucide-react';
 
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');
@@ -19,9 +21,26 @@ export function FeaturesTab() {
   const advisorUpdate = useUpdateAdvisorLink();
   const [advisorInput, setAdvisorInput] = useState('');
 
+  const { embed: advisorEmbedValue, isLoading: embedLoading } = useAdvisorEmbed();
+  const embedUpdate = useUpdateAdvisorEmbed();
+  const [embedInput, setEmbedInput] = useState('');
+
   useEffect(() => {
     setAdvisorInput(advisorUrl);
   }, [advisorUrl]);
+
+  useEffect(() => {
+    setEmbedInput(advisorEmbedValue);
+  }, [advisorEmbedValue]);
+
+  const handleEmbedSave = async () => {
+    try {
+      await embedUpdate.mutateAsync(embedInput);
+      toast.success('Virtual Advisor embed updated');
+    } catch {
+      toast.error('Failed to save embed code');
+    }
+  };
 
   const handleToggle = async (checked: boolean) => {
     try {
@@ -142,6 +161,36 @@ export function FeaturesTab() {
               disabled={advisorUpdate.isPending || advisorInput === advisorUrl}
             >
               Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Code2 className="h-5 w-5" />
+            Virtual Advisor Embed
+          </CardTitle>
+          <CardDescription>
+            Paste the embed snippet (e.g. LeadConnector chat widget) to display on the /virtual-advisor page. Scripts run in users' browsers — only paste trusted code.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            value={embedInput}
+            onChange={(e) => setEmbedInput(e.target.value)}
+            placeholder={`<script src="https://beta.leadconnectorhq.com/loader.js" data-resources-url="https://beta.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="..."></script>`}
+            rows={8}
+            className="font-mono text-xs"
+            disabled={embedLoading}
+          />
+          <div className="flex justify-end">
+            <Button
+              onClick={handleEmbedSave}
+              disabled={embedUpdate.isPending || embedInput === advisorEmbedValue}
+            >
+              Save Embed
             </Button>
           </div>
         </CardContent>
