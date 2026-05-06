@@ -165,6 +165,36 @@ export function FeaturesTab() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Code2 className="h-5 w-5" />
+            Virtual Advisor Embed
+          </CardTitle>
+          <CardDescription>
+            Paste the embed snippet (e.g. LeadConnector chat widget) to display on the /virtual-advisor page. Scripts run in users' browsers — only paste trusted code.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            value={embedInput}
+            onChange={(e) => setEmbedInput(e.target.value)}
+            placeholder={`<script src="https://beta.leadconnectorhq.com/loader.js" data-resources-url="https://beta.leadconnectorhq.com/chat-widget/loader.js" data-widget-id="..."></script>`}
+            rows={8}
+            className="font-mono text-xs"
+            disabled={embedLoading}
+          />
+          <div className="flex justify-end">
+            <Button
+              onClick={handleEmbedSave}
+              disabled={embedUpdate.isPending || embedInput === advisorEmbedValue}
+            >
+              Save Embed
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
