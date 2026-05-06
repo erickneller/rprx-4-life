@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
 
   const {
     name, email, phone, persona, age, sex, bmi, healthFlags, scores,
-    responses,
+    responses, snapshot,
   } = payload ?? {};
 
   // Validate required fields
@@ -66,6 +66,13 @@ Deno.serve(async (req) => {
       opportunity_index: improvement,
       tier: scores.readiness ?? null,
       submitter_ip: ip,
+      primary_horseman: snapshot?.primary_horseman ?? null,
+      secondary_horseman: snapshot?.secondary_horseman ?? null,
+      readiness_score: snapshot?.readiness_score ?? null,
+      readiness_label: snapshot?.readiness_label ?? null,
+      recommended_track: snapshot?.recommended_track ?? null,
+      quick_wins: snapshot?.quick_wins ?? null,
+      report_generated_at: snapshot ? new Date().toISOString() : null,
     } as any);
 
   if (insertError) {
@@ -75,7 +82,7 @@ Deno.serve(async (req) => {
 
   // Forward to GHL via existing function (best-effort)
   try {
-    const ghlPayload = { name, email, phone, persona, age, sex, bmi, healthFlags, scores };
+    const ghlPayload = { name, email, phone, persona, age, sex, bmi, healthFlags, scores, snapshot };
     const { error: ghlError } = await serviceClient.functions.invoke("send-to-ghl", {
       body: ghlPayload,
     });

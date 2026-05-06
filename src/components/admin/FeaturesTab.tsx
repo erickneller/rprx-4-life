@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useFeatureFlag, useToggleFeatureFlag } from '@/hooks/useFeatureFlag';
 import { useAdvisorLink, useUpdateAdvisorLink } from '@/hooks/useAdvisorLink';
 import { useAdvisorEmbed, useUpdateAdvisorEmbed } from '@/hooks/useAdvisorEmbed';
+import { useBookingUrl, useUpdateBookingUrl } from '@/hooks/useBookingUrl';
 import { toast } from 'sonner';
-import { MessageSquare, FlaskConical, Phone, Code2 } from 'lucide-react';
+import { MessageSquare, FlaskConical, Phone, Code2, CalendarCheck } from 'lucide-react';
 
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');
@@ -24,6 +25,11 @@ export function FeaturesTab() {
   const { embed: advisorEmbedValue, isLoading: embedLoading } = useAdvisorEmbed();
   const embedUpdate = useUpdateAdvisorEmbed();
   const [embedInput, setEmbedInput] = useState('');
+
+  const { url: bookingUrl, isLoading: bookingLoading } = useBookingUrl();
+  const bookingUpdate = useUpdateBookingUrl();
+  const [bookingInput, setBookingInput] = useState('');
+  useEffect(() => { setBookingInput(bookingUrl); }, [bookingUrl]);
 
   useEffect(() => {
     setAdvisorInput(advisorUrl);
@@ -191,6 +197,37 @@ export function FeaturesTab() {
               disabled={embedUpdate.isPending || embedInput === advisorEmbedValue}
             >
               Save Embed
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarCheck className="h-5 w-5" />
+            Physical Health Advisor Booking URL
+          </CardTitle>
+          <CardDescription>
+            URL used by the "Book My RPRx Physical Health Advisor Call" button on the Physical Health Snapshot report.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="https://calendly.com/..."
+              value={bookingInput}
+              onChange={(e) => setBookingInput(e.target.value)}
+              disabled={bookingLoading}
+            />
+            <Button
+              onClick={async () => {
+                try { await bookingUpdate.mutateAsync(bookingInput); toast.success('Booking URL updated'); }
+                catch { toast.error('Failed to save booking URL'); }
+              }}
+              disabled={bookingUpdate.isPending || bookingInput === bookingUrl}
+            >
+              Save
             </Button>
           </div>
         </CardContent>

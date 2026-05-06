@@ -7,7 +7,7 @@ import { Step2HealthHabits } from '@/components/health-assessment/Step2HealthHab
 import { Step3Screenings } from '@/components/health-assessment/Step3Screenings';
 import { Step4Goals } from '@/components/health-assessment/Step4Goals';
 import { Step5Contact } from '@/components/health-assessment/Step5Contact';
-import { ResultsScreen } from '@/components/health-assessment/ResultsScreen';
+import { PhysicalSnapshotReport } from '@/components/health-assessment/PhysicalSnapshotReport';
 
 const isEmbedded = () => {
   if (typeof window === 'undefined') return false;
@@ -98,7 +98,7 @@ const HealthAssessment = () => {
           {currentStep === 5 && <Step5Contact />}
         </div>
       )}
-      {currentStep === 6 && <ResultsScreen />}
+      {currentStep === 6 && <PhysicalSnapshotReport />}
     </div>
   );
 };
