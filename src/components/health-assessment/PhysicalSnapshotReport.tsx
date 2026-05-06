@@ -91,6 +91,21 @@ function CTASection({ url, onEmail, emailing }: { url: string; onEmail: () => vo
             {emailing ? 'Sending…' : 'Email Me My Results'}
           </Button>
         </div>
+        {/* Print-only booking URL (visible in PDF / printout) */}
+        <div className="hidden print:block pt-2 space-y-1">
+          <p className="text-sm font-semibold text-foreground">
+            Book Your RPRx Physical Health Advisor Call:
+          </p>
+          <a
+            href={url}
+            className="text-sm font-mono break-all underline text-primary"
+          >
+            {url}
+          </a>
+          <p className="text-xs text-muted-foreground">
+            Visit the link above to schedule your complimentary call.
+          </p>
+        </div>
         <p className="text-xs text-muted-foreground pt-1">
           This call is educational and wellness-focused. It is not a medical consultation.
         </p>
