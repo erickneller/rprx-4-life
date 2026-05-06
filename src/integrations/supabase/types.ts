@@ -128,8 +128,15 @@ export type Database = {
           opportunity_index: number | null
           personas: string[]
           phone: string
+          primary_horseman: string | null
+          quick_wins: Json | null
+          readiness_label: string | null
+          readiness_score: number | null
+          recommended_track: string | null
+          report_generated_at: string | null
           responses: Json
           scores: Json
+          secondary_horseman: string | null
           submitter_ip: unknown
           tier: string | null
         }
@@ -141,8 +148,15 @@ export type Database = {
           opportunity_index?: number | null
           personas?: string[]
           phone: string
+          primary_horseman?: string | null
+          quick_wins?: Json | null
+          readiness_label?: string | null
+          readiness_score?: number | null
+          recommended_track?: string | null
+          report_generated_at?: string | null
           responses?: Json
           scores?: Json
+          secondary_horseman?: string | null
           submitter_ip?: unknown
           tier?: string | null
         }
@@ -154,8 +168,15 @@ export type Database = {
           opportunity_index?: number | null
           personas?: string[]
           phone?: string
+          primary_horseman?: string | null
+          quick_wins?: Json | null
+          readiness_label?: string | null
+          readiness_score?: number | null
+          recommended_track?: string | null
+          report_generated_at?: string | null
           responses?: Json
           scores?: Json
+          secondary_horseman?: string | null
           submitter_ip?: unknown
           tier?: string | null
         }
