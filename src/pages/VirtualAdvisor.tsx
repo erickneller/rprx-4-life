@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Phone } from 'lucide-react';
+import { Loader2, Mic } from 'lucide-react';
 import { useAdvisorEmbed } from '@/hooks/useAdvisorEmbed';
 
 const VirtualAdvisor = () => {
@@ -48,11 +48,12 @@ const VirtualAdvisor = () => {
           <CardContent className="p-6">
             <div className="mb-6 flex items-center gap-3">
               <div className="rounded-full bg-primary/10 p-3">
-                <Phone className="h-6 w-6 text-primary" />
+                <Mic className="h-6 w-6 text-primary" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Speak With A Virtual Advisor</h1>
                 <p className="text-sm text-muted-foreground">Connect with an advisor right here in the app.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Make sure to allow your computer or phone to use your microphone if prompted.</p>
               </div>
             </div>
 
