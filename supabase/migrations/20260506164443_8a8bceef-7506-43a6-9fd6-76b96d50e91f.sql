@@ -1,0 +1,1 @@
+update public.sidebar_nav_config set label='Speak With A Virtual Advisor', url='/virtual-advisor', icon='Mic', link_type='route', updated_at=now() where id='item:advisor_link';
