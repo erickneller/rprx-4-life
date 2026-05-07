@@ -1,8 +1,10 @@
 import { Flame, Star } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 export function DashboardStreakBar() {
   const { profile } = useProfile();
+  const { enabled: xpVisible } = useFeatureFlag('xp_score_visible');
   const streak = profile?.current_streak ?? 0;
   const xp = profile?.total_points_earned ?? 0;
   const isActive = streak > 0;
