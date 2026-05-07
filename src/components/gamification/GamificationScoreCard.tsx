@@ -52,6 +52,7 @@ export function GamificationScoreCard({ compact = false }: GamificationScoreCard
   }, [score?.total]);
 
   if (!score) return null;
+  if (!rprxVisible && !xpVisible) return null;
 
   const radius = compact ? 32 : 54;
   const circumference = 2 * Math.PI * radius;
