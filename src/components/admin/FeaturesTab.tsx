@@ -237,6 +237,58 @@ export function FeaturesTab() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gauge className="h-5 w-5" />
+            Score Visibility
+          </CardTitle>
+          <CardDescription>
+            Independently show or hide the RPRx Score and XP Score across the sidebar, dashboard streak bar, and Gamification card.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="rprx-score-toggle" className="flex flex-col">
+              <span className="font-medium">RPRx Score</span>
+              <span className="text-xs text-muted-foreground">Financial wellness ring (0–100) and pillar breakdown</span>
+            </Label>
+            <Switch
+              id="rprx-score-toggle"
+              checked={rprxScoreVisible}
+              onCheckedChange={async (checked) => {
+                try {
+                  await rprxScoreToggle.mutateAsync(checked);
+                  toast.success(checked ? 'RPRx Score visible' : 'RPRx Score hidden');
+                } catch {
+                  toast.error('Failed to update RPRx Score visibility');
+                }
+              }}
+              disabled={rprxScoreLoading || rprxScoreToggle.isPending}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="xp-score-toggle" className="flex flex-col">
+              <span className="font-medium">XP Score</span>
+              <span className="text-xs text-muted-foreground">Engagement points total displayed in the streak bar and sidebar</span>
+            </Label>
+            <Switch
+              id="xp-score-toggle"
+              checked={xpScoreVisible}
+              onCheckedChange={async (checked) => {
+                try {
+                  await xpScoreToggle.mutateAsync(checked);
+                  toast.success(checked ? 'XP Score visible' : 'XP Score hidden');
+                } catch {
+                  toast.error('Failed to update XP Score visibility');
+                }
+              }}
+              disabled={xpScoreLoading || xpScoreToggle.isPending}
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
