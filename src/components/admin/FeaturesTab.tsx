@@ -18,6 +18,11 @@ export function FeaturesTab() {
   const { enabled: testModeEnabled, isLoading: testModeLoading } = useFeatureFlag('test_mode');
   const testModeToggle = useToggleFeatureFlag('test_mode');
 
+  const { enabled: rprxScoreVisible, isLoading: rprxScoreLoading } = useFeatureFlag('rprx_score_visible');
+  const rprxScoreToggle = useToggleFeatureFlag('rprx_score_visible');
+  const { enabled: xpScoreVisible, isLoading: xpScoreLoading } = useFeatureFlag('xp_score_visible');
+  const xpScoreToggle = useToggleFeatureFlag('xp_score_visible');
+
   const { enabled: advisorEnabled, url: advisorUrl, isLoading: advisorLoading } = useAdvisorLink();
   const advisorUpdate = useUpdateAdvisorLink();
   const [advisorInput, setAdvisorInput] = useState('');
