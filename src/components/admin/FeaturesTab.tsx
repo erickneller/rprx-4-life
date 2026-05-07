@@ -10,7 +10,7 @@ import { useAdvisorLink, useUpdateAdvisorLink } from '@/hooks/useAdvisorLink';
 import { useAdvisorEmbed, useUpdateAdvisorEmbed } from '@/hooks/useAdvisorEmbed';
 import { useBookingUrl, useUpdateBookingUrl } from '@/hooks/useBookingUrl';
 import { toast } from 'sonner';
-import { MessageSquare, FlaskConical, Phone, Code2, CalendarCheck } from 'lucide-react';
+import { MessageSquare, FlaskConical, Phone, Code2, CalendarCheck, Gauge } from 'lucide-react';
 
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');
