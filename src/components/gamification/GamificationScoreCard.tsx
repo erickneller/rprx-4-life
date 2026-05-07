@@ -29,6 +29,8 @@ interface GamificationScoreCardProps {
 export function GamificationScoreCard({ compact = false }: GamificationScoreCardProps) {
   const { score } = useRPRxScore();
   const { profile } = useProfile();
+  const { enabled: rprxVisible } = useFeatureFlag('rprx_score_visible');
+  const { enabled: xpVisible } = useFeatureFlag('xp_score_visible');
   const totalXP = profile?.total_points_earned ?? 0;
   const [displayScore, setDisplayScore] = useState(0);
 
