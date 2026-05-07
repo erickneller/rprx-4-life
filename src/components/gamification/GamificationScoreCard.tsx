@@ -101,56 +101,66 @@ export function GamificationScoreCard({ compact = false }: GamificationScoreCard
     <Card>
       <CardContent className="p-6 space-y-6">
         {/* Score ring + grade */}
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-          <div className="relative flex-shrink-0">
-            <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
-              <circle cx={center} cy={center} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={strokeWidth} />
-              <circle
-                cx={center} cy={center} r={radius} fill="none"
-                className={`${ringColor} transition-all duration-700`}
-                strokeWidth={strokeWidth} strokeLinecap="round"
-                strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
-                transform={`rotate(-90 ${center} ${center})`}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-bold text-foreground">{displayScore}</span>
-              <span className="text-xs text-muted-foreground">/100</span>
+        {rprxVisible && (
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="relative flex-shrink-0">
+              <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`}>
+                <circle cx={center} cy={center} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={strokeWidth} />
+                <circle
+                  cx={center} cy={center} r={radius} fill="none"
+                  className={`${ringColor} transition-all duration-700`}
+                  strokeWidth={strokeWidth} strokeLinecap="round"
+                  strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+                  transform={`rotate(-90 ${center} ${center})`}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-bold text-foreground">{displayScore}</span>
+                <span className="text-xs text-muted-foreground">/100</span>
+              </div>
+            </div>
+
+            <div className="text-center sm:text-left space-y-1">
+              <h3 className="text-lg font-semibold text-foreground">RPRx Score</h3>
+              <p className="text-2xl font-bold">{score.gradeIcon} {score.gradeLabel}</p>
             </div>
           </div>
+        )}
 
-          <div className="text-center sm:text-left space-y-1">
-            <h3 className="text-lg font-semibold text-foreground">RPRx Score</h3>
-            <p className="text-2xl font-bold">{score.gradeIcon} {score.gradeLabel}</p>
+        {xpVisible && (
+          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 p-4">
+            <span className="text-sm font-medium text-foreground">XP Score</span>
+            <span className="text-2xl font-bold text-foreground">{totalXP.toLocaleString()}</span>
           </div>
-        </div>
+        )}
 
         {/* Pillar breakdown */}
-        <div className="space-y-3">
-          {PILLAR_CONFIG.map(({ key, label, icon, max, barClass, mutedClass }) => {
-            const value = score[key];
-            const pct = Math.round((value / max) * 100);
-            // Reduce opacity for low scores
-            const opacity = pct < 30 ? 'opacity-60' : '';
-            return (
-              <div key={key} className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-foreground">{icon} {label}</span>
-                  <span className="text-muted-foreground">{value}/{max}</span>
+        {rprxVisible && (
+          <div className="space-y-3">
+            {PILLAR_CONFIG.map(({ key, label, icon, max, barClass, mutedClass }) => {
+              const value = score[key];
+              const pct = Math.round((value / max) * 100);
+              const opacity = pct < 30 ? 'opacity-60' : '';
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-foreground">{icon} {label}</span>
+                    <span className="text-muted-foreground">{value}/{max}</span>
+                  </div>
+                  <div className={`h-2 rounded-full ${mutedClass}`}>
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${barClass} ${opacity}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
                 </div>
-                <div className={`h-2 rounded-full ${mutedClass}`}>
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${barClass} ${opacity}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Insights */}
-        {score.insights.length > 0 && (
+        {rprxVisible && score.insights.length > 0 && (
           <div className="space-y-2">
             {score.insights.slice(0, 2).map((insight, i) => (
               <div key={i} className="flex items-start gap-2 rounded-lg bg-muted/50 p-3">
