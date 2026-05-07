@@ -4,6 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { Lightbulb } from 'lucide-react';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { useProfile } from '@/hooks/useProfile';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 const GRADE_RING_COLORS: Record<string, string> = {
   at_risk: 'stroke-red-500',
