@@ -1,23 +1,23 @@
 ## Goal
-Ensure the RPRx Physical Health Advisor booking link is visible in the downloadable/printed PDF version of the Physical Health Snapshot report.
+Make the **RPRx Score** and **XP Score** independently show/hide-able via admin feature flags. They appear in the sidebar (compact), the dashboard streak bar, and the dashboard's Gamification card.
 
-## Problem
-`PhysicalSnapshotReport.tsx` uses `window.print()` to generate the PDF. Both CTA sections render the booking button with `className="... print:hidden"`, so when the user prints/saves as PDF, the booking URL disappears entirely. The "Email Me My Results" and bottom Print buttons are also `print:hidden` (correct), but nothing replaces the booking CTA in print.
+## Changes
 
-## Change (single file: `src/components/health-assessment/PhysicalSnapshotReport.tsx`)
+### 1. Database — two new feature flags
+Migration to insert into `feature_flags`:
+- `rprx_score_visible` (default `true`) — controls visibility of the RPRx Score ring
+- `xp_score_visible` (default `true`) — controls visibility of the XP total
 
-In `CTASection`, add a print-only block that appears wherever the interactive button is hidden:
+### 2. Admin UI — `src/components/admin/FeaturesTab.tsx`
+Add a new "Score Visibility" card with two switches (RPRx Score, XP Score) using existing `useFeatureFlag` / `useToggleFeatureFlag` hooks.
 
-- Keep the existing `<Button asChild>` link as `print:hidden` (unchanged).
-- Add a sibling element shown only in print (`hidden print:block`) containing:
-  - Heading: "Book Your RPRx Physical Health Advisor Call"
-  - The full booking URL rendered as readable text (e.g. monospace, wrapped) so it's clickable in the PDF and legible if printed on paper.
-  - Short instruction line: "Visit the link above to schedule your complimentary call."
+### 3. Gating in the UI
+Read both flags and conditionally render each piece. If both are hidden, render nothing (return `null`) so layout collapses cleanly.
 
-Because `CTASection` is rendered twice (top and bottom of the report), the URL will appear twice in the PDF — acceptable and reinforces the CTA.
-
-No changes to logic, data persistence, edge functions, or the admin booking URL setting.
+- **`src/components/gamification/GamificationScoreCard.tsx`** — compact and full modes: hide the RPRx ring block when `rprx_score_visible` is false; hide the XP block when `xp_score_visible` is false. In full mode, also hide the pillar breakdown + insights when RPRx is hidden (those belong to the score).
+- **`src/components/dashboard/DashboardStreakBar.tsx`** — hide the XP pill when `xp_score_visible` is false. (Streak stays — it isn't part of this request.)
+- **`src/components/dashboard/DashboardCardRenderer.tsx`** — if the GamificationScoreCard renders nothing (both flags off), skip its wrapper too. Simpler: let the component return null and the wrapper render an empty card; acceptable since admin can also hide via existing dashboard config. No change needed unless we want stricter cleanup — will add a small guard.
 
 ## Out of scope
-- No changes to `pdfGenerator.ts` (legacy, not used by the new snapshot report).
-- No switch from `window.print()` to jsPDF.
+- The `RPRxScoreCard` on the results page and the `TierProgressBar` are not touched (results page is part of the assessment journey, not a dashboard widget). Confirm if you want those gated too.
+- Profile page stats and admin Users tab columns are unchanged.

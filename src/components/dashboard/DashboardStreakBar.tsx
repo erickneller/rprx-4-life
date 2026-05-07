@@ -1,8 +1,10 @@
 import { Flame, Star } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 export function DashboardStreakBar() {
   const { profile } = useProfile();
+  const { enabled: xpVisible } = useFeatureFlag('xp_score_visible');
   const streak = profile?.current_streak ?? 0;
   const xp = profile?.total_points_earned ?? 0;
   const isActive = streak > 0;
@@ -24,10 +26,12 @@ export function DashboardStreakBar() {
       </div>
 
       {/* XP */}
-      <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-sm font-semibold text-foreground">
-        <Star className="h-4 w-4 text-amber-500" />
-        <span>{xp.toLocaleString()} XP</span>
-      </div>
+      {xpVisible && (
+        <div className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-sm font-semibold text-foreground">
+          <Star className="h-4 w-4 text-amber-500" />
+          <span>{xp.toLocaleString()} XP</span>
+        </div>
+      )}
     </div>
   );
 }
