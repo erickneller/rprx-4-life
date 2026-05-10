@@ -199,52 +199,101 @@ function tokenizeQuery(message: string): string[] {
   // e.g. "set up a business" tokenizes to just ["business"], which can't tell
   // apart entity formation from "deduct business meals". Inject synonyms so
   // the catalog match favors strategies that actually fit the user's intent.
-  const boosts = phraseIntentBoosts(message);
-  for (const b of boosts) {
+  const info = phraseIntentInfo(message);
+  for (const b of [...info.primary, ...info.context]) {
     if (!seen.has(b)) {
       seen.add(b);
       tokens.push(b);
-      if (tokens.length >= 24) break;
+      if (tokens.length >= 28) break;
     }
   }
   return tokens;
 }
 
-// Maps colloquial multi-word intents to concept tokens that exist in the
-// strategy catalog. Order matters: more specific phrases first.
+// Backwards-compat: returns the flat boost token list (used in telemetry log).
 function phraseIntentBoosts(message: string): string[] {
-  if (!message) return [];
+  const info = phraseIntentInfo(message);
+  return [...info.primary, ...info.context];
+}
+
+interface PhraseIntentInfo {
+  // Short label for telemetry / topic priority lookup.
+  label: string | null;
+  // High-signal tokens scored ~3x in the lexical ranker.
+  primary: string[];
+  // Supporting tokens scored at normal weight.
+  context: string[];
+  // Topic-key priority list (see strategyTopicKey) used to promote the primary
+  // pick and order alternates so cards visibly cover the right angles.
+  preferredTopics: string[];
+}
+
+// Maps colloquial multi-word intents to concept tokens that exist in the
+// strategy catalog and the topic buckets we want surfaced first. Order
+// matters: more specific phrases first.
+function phraseIntentInfo(message: string): PhraseIntentInfo {
+  const empty: PhraseIntentInfo = { label: null, primary: [], context: [], preferredTopics: [] };
+  if (!message) return empty;
   const lower = message.toLowerCase();
-  const out = new Set<string>();
   const has = (re: RegExp) => re.test(lower);
+
   // Starting / forming a business
   if (has(/\b(set\s*up|start(ing)?|open(ing)?|launch(ing)?|form(ing)?|incorporate|register)\b.*\b(business|company|llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|self[-\s]?employ|freelance|contractor)\b/)
       || has(/\b(llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|entity|incorporation)\b/)) {
-    ['llc','s-corp','s corporation','entity','self-employment','sole proprietor','schedule c','startup','sep','solo 401','retirement plan','employer','small business','business credit','depreciation','section 179']
-      .forEach(t => out.add(t));
+    return {
+      label: 'set_up_business',
+      primary: ['llc','s-corp','s corporation','entity','sole proprietor','self-employment','self-employed','incorporate','schedule c','startup','start-up','small business'],
+      context: ['sep','solo 401','retirement plan','employer','business credit','depreciation','section 179','pension'],
+      preferredTopics: ['entity_formation','business_basics','retirement_plan','tax_credit'],
+    };
   }
   // Buying a house / mortgage
   if (has(/\b(buy(ing)?|save\s*for|saving\s*for|down\s*payment|first[-\s]*time)\b.*\b(house|home|condo|property)\b/)
       || has(/\b(mortgage|refinance|heloc|home\s*equity)\b/)) {
-    ['mortgage','refinance','heloc','home equity','down payment','first-time','points'].forEach(t => out.add(t));
+    return {
+      label: 'buy_house',
+      primary: ['mortgage','refinance','heloc','home equity','down payment','first-time','points'],
+      context: ['interest','tax deduction'],
+      preferredTopics: ['mortgage','debt_paydown'],
+    };
   }
   // Emergency fund / savings buffer
   if (has(/\b(emergency\s*fund|rainy\s*day|savings\s*cushion|buffer)\b/)) {
-    ['emergency','savings','high-yield','money market','automate'].forEach(t => out.add(t));
+    return {
+      label: 'emergency_fund',
+      primary: ['emergency','savings','high-yield','money market'],
+      context: ['automate','interest'],
+      preferredTopics: ['debt_paydown','health_account'],
+    };
   }
   // Raise / income / side hustle
   if (has(/\b(raise|side\s*hustle|side\s*gig|earn\s*more|increase\s*income|second\s*job|new\s*job)\b/)) {
-    ['withholding','w-4','self-employment','retirement plan','solo 401','sep','side'].forEach(t => out.add(t));
+    return {
+      label: 'income_increase',
+      primary: ['withholding','w-4','self-employment','side'],
+      context: ['retirement plan','solo 401','sep'],
+      preferredTopics: ['retirement_plan','business_basics','entity_formation'],
+    };
   }
   // Kids college / 529
   if (has(/\b(529|college|tuition|scholarship|grad\s*school|university|trade\s*school|fafsa)\b/)) {
-    ['529','coverdell','esa','scholarship','tuition','american opportunity','lifetime learning'].forEach(t => out.add(t));
+    return {
+      label: 'education_funding',
+      primary: ['529','coverdell','esa','scholarship','tuition'],
+      context: ['american opportunity','lifetime learning'],
+      preferredTopics: ['education_savings','tax_credit'],
+    };
   }
   // Insurance specifics
   if (has(/\b(life\s*insurance|term\s*life|whole\s*life|umbrella|annuity|annuities|long[-\s]*term\s*care|disability)\b/)) {
-    ['life insurance','term','whole life','umbrella','annuity','long-term care','disability'].forEach(t => out.add(t));
+    return {
+      label: 'insurance_protection',
+      primary: ['life insurance','term','whole life','umbrella','annuity','long-term care','disability'],
+      context: [],
+      preferredTopics: ['insurance_product','charitable_estate'],
+    };
   }
-  return Array.from(out);
+  return empty;
 }
 
 function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredStrategy[] {
