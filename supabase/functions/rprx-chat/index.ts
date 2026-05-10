@@ -3041,10 +3041,26 @@ Rules:
             const rejectedForTopicDup: string[] = [];
             let inHorsemanCount = 0;
 
+            // When the user has a phrase intent (e.g. "set up a business"),
+            // sort candidates by (preferredTopicRank, score) so alternates fill
+            // the next preferred buckets in priority order rather than
+            // whatever distinct bucket happens to come up first.
+            const intentPreferredTopics = intentInfo.preferredTopics;
+            const candidatePool = intentPreferredTopics.length > 0
+              ? [...rankedStrategies].sort((a, b) => {
+                  const ra = intentPreferredTopics.indexOf(strategyTopicKey(a.strategy));
+                  const rb = intentPreferredTopics.indexOf(strategyTopicKey(b.strategy));
+                  const na = ra < 0 ? 999 : ra;
+                  const nb = rb < 0 ? 999 : rb;
+                  if (na !== nb) return na - nb;
+                  return b.score - a.score;
+                })
+              : rankedStrategies;
+
             // Two-pass selection: first prefer distinct topic buckets, then fill remaining slots
             // ignoring topic dedup so we never end up returning fewer than maxPlans-1 alternates.
             const tryPick = (enforceTopicDedup: boolean) => {
-              for (const r of rankedStrategies) {
+              for (const r of candidatePool) {
                 if (alternates.length >= maxPlans - 1) break;
                 const sid = r.strategy.strategy_id;
                 if (usedIds.has(sid)) continue;
@@ -3069,7 +3085,7 @@ Rules:
             };
             tryPick(true);
             if (alternates.length < maxPlans - 1) tryPick(false);
-            console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount} | topic_keys_picked=${JSON.stringify(pickedTopics)} | rejected_for_topic_dup=${JSON.stringify(rejectedForTopicDup.slice(0, 8))}`);
+            console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | intent_label=${intentInfo.label || 'none'} | preferred_topics=${JSON.stringify(intentPreferredTopics)} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount} | topic_keys_picked=${JSON.stringify(pickedTopics)} | rejected_for_topic_dup=${JSON.stringify(rejectedForTopicDup.slice(0, 8))}`);
             if (alternates.length > 0) {
               const overview = assistantMessage.replace(/```json\s*\n[\s\S]*?\n```/, '').trim();
               // Acknowledge the user's typed request so they can tell the assistant heard them.
