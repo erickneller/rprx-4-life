@@ -139,6 +139,7 @@ export type Database = {
           secondary_horseman: string | null
           submitter_ip: unknown
           tier: string | null
+          webhook_sent: boolean
         }
         Insert: {
           created_at?: string
@@ -159,6 +160,7 @@ export type Database = {
           secondary_horseman?: string | null
           submitter_ip?: unknown
           tier?: string | null
+          webhook_sent?: boolean
         }
         Update: {
           created_at?: string
@@ -179,6 +181,7 @@ export type Database = {
           secondary_horseman?: string | null
           submitter_ip?: unknown
           tier?: string | null
+          webhook_sent?: boolean
         }
         Relationships: []
       }
