@@ -2932,25 +2932,44 @@ Rules:
           if (primaryPlan && primaryPlan.plan_schema === 'v1') {
             const usedIds = new Set<string>([primaryPlan.strategy_id]);
             const usedHorsemen = new Set<string>([String(primaryPlan.horseman || '').toLowerCase()]);
+            // Topic key for the primary so alternates can avoid being the same kind of thing.
+            const primaryRanked = rankedStrategies.find(r => r.strategy.strategy_id === primaryPlan.strategy_id);
+            const usedTopics = new Set<string>();
+            if (primaryRanked) usedTopics.add(strategyTopicKey(primaryRanked.strategy));
             const alternates: any[] = [];
+            const pickedTopics: string[] = primaryRanked ? [strategyTopicKey(primaryRanked.strategy)] : [];
+            const rejectedForTopicDup: string[] = [];
             let inHorsemanCount = 0;
-            for (const r of rankedStrategies) {
-              if (alternates.length >= maxPlans - 1) break;
-              const sid = r.strategy.strategy_id;
-              if (usedIds.has(sid)) continue;
-              const h = (r.strategy.horseman_type || '').toLowerCase();
-              // Lock alternates to the user's intended horseman when set.
-              if (intentHorseman && h !== intentHorseman.toLowerCase()) continue;
-              if (diversify && usedHorsemen.has(h) && rankedStrategies.some(x => !usedIds.has(x.strategy.strategy_id) && !usedHorsemen.has((x.strategy.horseman_type || '').toLowerCase()))) {
-                continue;
+
+            // Two-pass selection: first prefer distinct topic buckets, then fill remaining slots
+            // ignoring topic dedup so we never end up returning fewer than maxPlans-1 alternates.
+            const tryPick = (enforceTopicDedup: boolean) => {
+              for (const r of rankedStrategies) {
+                if (alternates.length >= maxPlans - 1) break;
+                const sid = r.strategy.strategy_id;
+                if (usedIds.has(sid)) continue;
+                const h = (r.strategy.horseman_type || '').toLowerCase();
+                if (intentHorseman && h !== intentHorseman.toLowerCase()) continue;
+                if (diversify && usedHorsemen.has(h) && rankedStrategies.some(x => !usedIds.has(x.strategy.strategy_id) && !usedHorsemen.has((x.strategy.horseman_type || '').toLowerCase()))) {
+                  continue;
+                }
+                const topic = strategyTopicKey(r.strategy);
+                if (enforceTopicDedup && usedTopics.has(topic)) {
+                  if (!rejectedForTopicDup.includes(sid)) rejectedForTopicDup.push(sid);
+                  continue;
+                }
+                const altPlan = normalizePlanReadability(buildStructuredPlan(r.strategy, profile, primaryHorseman));
+                alternates.push(altPlan);
+                usedIds.add(sid);
+                usedHorsemen.add(h);
+                usedTopics.add(topic);
+                pickedTopics.push(topic);
+                if (intentHorseman && h === intentHorseman.toLowerCase()) inHorsemanCount++;
               }
-              const altPlan = normalizePlanReadability(buildStructuredPlan(r.strategy, profile, primaryHorseman));
-              alternates.push(altPlan);
-              usedIds.add(sid);
-              usedHorsemen.add(h);
-              if (intentHorseman && h === intentHorseman.toLowerCase()) inHorsemanCount++;
-            }
-            console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount}`);
+            };
+            tryPick(true);
+            if (alternates.length < maxPlans - 1) tryPick(false);
+            console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount} | topic_keys_picked=${JSON.stringify(pickedTopics)} | rejected_for_topic_dup=${JSON.stringify(rejectedForTopicDup.slice(0, 8))}`);
             if (alternates.length > 0) {
               const overview = assistantMessage.replace(/```json\s*\n[\s\S]*?\n```/, '').trim();
               // Acknowledge the user's typed request so they can tell the assistant heard them.
@@ -2961,8 +2980,29 @@ Rules:
               const horsemanLabelMap: Record<string, string> = { interest: 'debt & cash flow', taxes: 'tax', insurance: 'insurance', education: 'education' };
               const ackHorseman = (intentHorseman || routingPrimaryHorseman || '').toLowerCase();
               const ackHorsemanLabel = horsemanLabelMap[ackHorseman] || null;
+              const topicLabelMap: Record<string, string> = {
+                entity_formation: 'entity formation',
+                retirement_plan: 'retirement plan',
+                health_account: 'HSA / FSA',
+                tax_credit: 'tax credit',
+                mortgage: 'mortgage',
+                education_savings: '529 / education savings',
+                insurance_product: 'insurance product',
+                charitable_estate: 'charitable / estate',
+                business_expense_deduction: 'business expense',
+                employee_benefit: 'employee benefit',
+                debt_paydown: 'debt paydown',
+                deduction_general: 'deduction',
+                claim_general: 'tax claim',
+              };
+              const distinctTopicLabels = Array.from(new Set(pickedTopics))
+                .map(t => topicLabelMap[t])
+                .filter(Boolean) as string[];
+              const matchedSummary = distinctTopicLabels.length > 0
+                ? ` Matched: **${distinctTopicLabels.slice(0, 3).join(', ')}**.`
+                : '';
               const ackLine = ackQuote
-                ? `You asked about: "${ackQuote}"${ackHorsemanLabel ? ` — that maps to your **${ackHorsemanLabel}** strategies. Here are the top ${1 + alternates.length} that fit best.` : `. Here are the top ${1 + alternates.length} strategies that fit best.`}`
+                ? `You asked about: "${ackQuote}"${ackHorsemanLabel ? ` — that maps to your **${ackHorsemanLabel}** strategies. Here are the top ${1 + alternates.length} that fit best.` : `. Here are the top ${1 + alternates.length} strategies that fit best.`}${matchedSummary}`
                 : `Here are your top ${1 + alternates.length} personalized strategies. Save the one that fits best, or activate more than one.`;
               const envelope = {
                 plan_schema: 'v1-multi',
