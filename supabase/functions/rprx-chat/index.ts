@@ -57,6 +57,8 @@ interface UserContext {
   completedStrategyIds: string[];
   activeStrategyIds: string[];
   mode: 'auto' | 'manual';
+  // Tokens extracted from the raw user message for lexical match against the catalog.
+  queryTokens?: string[];
 }
 
 // =====================================================
