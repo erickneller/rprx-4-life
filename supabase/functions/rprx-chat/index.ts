@@ -316,9 +316,11 @@ function strategyTopicKey(s: { title?: string; strategy_details?: string | null;
   if (/\b(529|coverdell|scholarship|tuition|education)\b/.test(t)) return 'education_savings';
   if (/\b(insurance|annuity|umbrella|long[-\s]*term\s*care|disability)\b/.test(t)) return 'insurance_product';
   if (/\b(charit|donat|gift|trust|estate|foundation)\b/.test(t)) return 'charitable_estate';
-  if (/\b(travel|meal|car|vehicle|mileage|commut|home\s*office)\b/.test(t)) return 'business_expense_deduction';
+  if (/\b(travel|meal|mileage|commut|home\s*office)\b/.test(t)) return 'business_expense_deduction';
   if (/\b(reimburs|fringe|cafeteria|wellness)\b/.test(t)) return 'employee_benefit';
   if (/\b(balance\s*transfer|consolidat|debt|payoff|interest\s*rate|credit\s*card)\b/.test(t)) return 'debt_paydown';
+  // Foundational small-business / self-employment guidance that doesn't mention LLC/S-corp/etc.
+  if (/\b(small\s*business|sole\s*proprietor|self[-\s]?employ(ed|ment)?|schedule\s*c|ein|start[-\s]?up\s*cost|new\s*business|own\s*business|side\s*business|freelance|contractor|1099)\b/.test(t)) return 'business_basics';
   if (/\bdeduct/.test(t)) return 'deduction_general';
   if (/\bclaim\b/.test(t)) return 'claim_general';
   return 'other';
