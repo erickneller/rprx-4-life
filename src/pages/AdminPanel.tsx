@@ -668,6 +668,11 @@ export default function AdminPanel() {
             <FeaturesTab />
           </TabsContent>
 
+          {/* ===== GHL MAPPING TAB ===== */}
+          <TabsContent value="ghl-mapping" className="space-y-4">
+            <GHLFieldMappingTab />
+          </TabsContent>
+
           {/* ===== COMPANIES TAB ===== */}
           <TabsContent value="companies" className="space-y-4">
             <CompaniesTab />
