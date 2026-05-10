@@ -165,6 +165,8 @@ function renderCard(card: DashboardCardConfig, props: DashboardCardRendererProps
       return <OnboardingCard />;
     case 'AdvisorCTACard':
       return <AdvisorCTACard />;
+    case 'VirtualAdvisorCard':
+      return <VirtualAdvisorCard />;
     default:
       return null;
   }
