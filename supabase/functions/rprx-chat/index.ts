@@ -2883,9 +2883,20 @@ Rules:
             console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount}`);
             if (alternates.length > 0) {
               const overview = assistantMessage.replace(/```json\s*\n[\s\S]*?\n```/, '').trim();
+              // Acknowledge the user's typed request so they can tell the assistant heard them.
+              const isProfileDump = /##\s+My\s+(Profile|Assessment\s+Results)/i.test(user_message);
+              const ackQuote = isProfileDump
+                ? null
+                : user_message.trim().replace(/\s+/g, ' ').slice(0, 140);
+              const horsemanLabelMap: Record<string, string> = { interest: 'debt & cash flow', taxes: 'tax', insurance: 'insurance', education: 'education' };
+              const ackHorseman = (intentHorseman || routingPrimaryHorseman || '').toLowerCase();
+              const ackHorsemanLabel = horsemanLabelMap[ackHorseman] || null;
+              const ackLine = ackQuote
+                ? `You asked about: "${ackQuote}"${ackHorsemanLabel ? ` — that maps to your **${ackHorsemanLabel}** strategies. Here are the top ${1 + alternates.length} that fit best.` : `. Here are the top ${1 + alternates.length} strategies that fit best.`}`
+                : `Here are your top ${1 + alternates.length} personalized strategies. Save the one that fits best, or activate more than one.`;
               const envelope = {
                 plan_schema: 'v1-multi',
-                overview_md: overview || `Here are your top ${1 + alternates.length} personalized strategies. Save the one that fits best, or activate more than one.`,
+                overview_md: overview ? `${ackLine}\n\n${overview}` : ackLine,
                 plans: [primaryPlan, ...alternates],
               };
               assistantMessage = '```json\n' + JSON.stringify(envelope, null, 2) + '\n```';
