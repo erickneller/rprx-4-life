@@ -1,102 +1,56 @@
-# Strategy Assistant — Make It Respond to the Typed Request
+## Why "set up a business" returned near-identical plans
 
-## What's happening today
+Confirmed from the live log (`tax_topic_account` selected, 2 alternates in horseman):
 
-I traced a real example from the logs and DB:
+1. **Top pick is wrong.** `tax_topic_account` is *"Account for future taxes when there is a transfer of shares in the family business as part of a divorce settlement."* — it just happens to contain "business". A user typing "set up a business" expects entity formation (LLC / S‑corp), self‑employment tax, retirement plans for owners, startup‑cost deductions, business credits.
 
-- User typed: **"set up a business"**
-- Edge log: `prompt_horseman_reason: none:{"interest":0,"taxes":0,"insurance":0,"education":0}`
-- Result: 3 debt-payoff plans (`int_topic_assets`, `int_balance_transfer`, …)
+2. **The 3 plans look nearly identical because they are.** Once we lock to `taxes` horseman and rank by lexical match on the single token `["business"]`, the top results collapse into a cluster of *"Deduct business X / business taxpayers can…"* entries that all share `goal_tags=["Reduce Taxes"]` and very similar wording. There is no intra‑horseman diversification — the multi‑plan envelope only diversifies *across* horsemen, and that's disabled when intent is set.
 
-The assistant returned debt strategies because the user's message contained zero of the hard-coded keywords in `detectPromptHorseman()`, so the router silently fell back to the assessment's primary horseman (`interest`). The user's actual request was ignored.
+3. **Lexical match is too shallow.** `tokenizeQuery("set up a business")` → `["business"]` after stopwords. "Set up" is dropped, so the ranker can't tell apart *forming* a business from *deducting business expenses inside an existing one*.
 
-## Root causes (in `supabase/functions/rprx-chat/index.ts`)
+## Proposed fix (scoped, no schema changes)
 
-1. **Intent detection is pure regex.** `detectPromptHorseman` only scores the four horseman buckets (interest / taxes / insurance / education) against a fixed keyword list. Anything outside that vocabulary — "start a business", "save for a house", "should I buy a car", "build an emergency fund", "increase my income" — scores 0 and is treated as "no intent".
+### A. Smarter lexical signal for "set up a business" class of intents
+In `supabase/functions/rprx-chat/index.ts`:
 
-2. **Silent fallback to assessment.** When prompt intent is `none`, `routingPrimaryHorseman` collapses to the assessment's `primary_horseman`. The user gets the same answer no matter what they typed.
+- Keep stopwords, but add a small **phrase‑intent boost** that runs before tokenization:
+  - `set up | start | starting | open | launch | form | forming | incorporate | register + business|company|llc|s-corp|s corp|c-corp|sole prop|self-employed|freelance` → boost intent tokens `["llc", "s-corp", "self-employment", "entity", "startup", "schedule c", "sep ira", "solo 401k", "business credit"]`.
+  - Same pattern for adjacent intents already partially handled (house, car, emergency fund, raise) — make them additive boosts rather than only horseman hints.
+- Score each candidate against the boosted token set so `tax_topic_account` (divorce/share transfer) loses to entity‑formation, SE‑tax, and retirement‑plan strategies.
 
-3. **Strategy is locked before the LLM sees the message.** In `paid-openai-strict-json` the top-ranked strategy is injected as a `LOCKED STRATEGY (DO NOT CHANGE)` block. Even GPT-4o-mini can't correct course when the rank is wrong, because the contract forces it to write the locked plan.
+### B. Intra‑horseman diversification in the multi‑plan envelope
+Around lines 2854‑2882:
 
-4. **No semantic match against the catalog.** 478 strategies exist, but ranking only uses horseman bucket + goal tags + difficulty. The user's literal words are never compared to strategy `title` / `strategy_details`.
+- When `intentHorseman` is set (so cross‑horseman diversification is off), add a **topic key** per candidate built from:
+  - first content word of `title` after a verb (e.g. "Deduct", "Claim", "Establish", "Use") → group by *what the strategy does* (deduction vs credit vs entity choice vs retirement plan)
+  - plus a coarse bucket inferred from keywords in `title`+`strategy_details`: `entity_formation`, `retirement_plan`, `deduction`, `credit`, `expense_reimbursement`, `payroll_tax`, `other`.
+- While picking alternates, skip a candidate whose topic key matches the primary or any already‑picked alternate, *unless* we run out of distinct topics.
+- Result: the 3 plans cover different *kinds* of tax strategies for the user's intent instead of three "deduct business X" cards.
 
-5. **Always 3 plans, never a conversation.** The output contract is `v1-multi` with 3 plans, so even a question like "how do I set up a business?" comes back as three pre-baked plan cards instead of an answer.
+### C. Acknowledgment line shows what we matched
+Already present, but extend the ack to surface the matched concept words:
+> *"You asked about: 'set up a business' — matched **entity formation, self‑employment, retirement plan**. Top 3 tax strategies that fit."*
 
-## Proposed improvements
+This makes a wrong match obvious to the user instead of hiding it.
 
-### A. Replace regex intent with a small LLM intent step (paid tier) + heuristic boost (free tier)
+### D. Telemetry
+Extend the existing `intent_classifier` log with:
+- `boosted_tokens=[…]`
+- `topic_keys_picked=[entity_formation, retirement_plan, credit]`
+- `rejected_for_topic_dup=[strategy_id, …]`
 
-Add a fast pre-pass (gpt-4o-mini, ~1 short call, JSON-only) before ranking:
+So the next time we see "near‑identical plans" we can confirm in one log line whether diversification kicked in.
 
-```text
-Input:  user_message + last 4 messages + horseman list + top-level catalog topics
-Output: {
-  intent: "strategy_request" | "question" | "intake_followup" | "out_of_scope",
-  horseman: "interest" | "taxes" | "insurance" | "education" | null,
-  query_terms: ["business formation", "S-corp", "self-employment tax"],
-  user_goal_summary: "Wants to start a business and lower tax burden"
-}
-```
+## Out of scope
+- Vector embeddings on the catalog (cleaner long‑term fix, needs schema + sync).
+- Reclassifying mis‑bucketed strategies (already excluded by the integrity check).
+- Changing the multi‑plan UI cards.
 
-- If `horseman` is null AND `intent === "question"`, skip the locked-plan path entirely and answer conversationally.
-- If `horseman` is set, use it as the primary routing signal — assessment becomes a tiebreaker, not the default.
-
-Free tier keeps the regex but expands keywords for common adjacent intents (business / LLC / S-corp → taxes; house / mortgage / down payment → interest; emergency fund / savings → interest; raise / income / side hustle → taxes).
-
-### B. Add lexical match against the catalog to ranking
-
-In `scoreStrategy`, add a 6th component (max ~25 pts):
-
-- Tokenize the user message, drop stopwords.
-- Score overlap with `title` + `strategy_details` + `goal_tags` of each strategy.
-- This lets a query like "balance transfer" surface `int_balance_transfer` even when horseman tied.
-
-### C. Loosen the "LOCKED STRATEGY" contract
-
-Two modes instead of one:
-
-1. **Locked mode** — only when the user explicitly accepted a strategy or clicked a CTA that passes `auto=1`.
-2. **Candidate mode** (new default for free-typed messages) — pass top 3-5 ranked candidates to the LLM with: "Pick the single best one for this exact request, or say none fit and answer conversationally." The contract still requires `strategy_id` to come from the candidate list, so we keep DB consistency, but the LLM can reject a bad rank.
-
-### D. Conversational fallback when no strategy fits
-
-When intent classifier returns `out_of_scope` or no candidate scores above a floor (e.g. 30):
-
-- Skip the multi-plan JSON contract.
-- Return a short markdown answer that (a) acknowledges the request, (b) maps it to the closest horseman if any, (c) offers 1-2 adjacent strategies as suggestions, (d) asks a clarifying question.
-
-### E. Acknowledge the typed message in every response
-
-Even in locked mode, prepend a one-sentence "You asked about X — here's the best fit" line so the user can tell the assistant heard them. This is a small `overview_md` change in the JSON contract.
-
-### F. Telemetry
-
-Add structured logs that make this debuggable:
-
-```text
-intent_classifier | user_msg_preview="set up a business" | classified_intent=question | classified_horseman=taxes | candidates=[tax_business_entity, tax_se_health, ...] | selected=tax_business_entity | route=candidate-mode
-```
-
-Right now the only log is `prompt_horseman_reason: none:{...}` which hides the failure.
-
-## Scope of changes
-
-| File | Change |
-|---|---|
-| `supabase/functions/rprx-chat/index.ts` | Add `classifyUserIntent()` (LLM call, paid only), expand `detectPromptHorseman` keywords (free), add lexical-match score in `scoreStrategy`, split `paid-openai-strict-json` into `locked` vs `candidate` sub-branches, add conversational-fallback path when no strategy clears floor, prepend acknowledgment to `overview_md`, add structured telemetry |
-| `src/components/assistant/MessageBubble.tsx` | No change — already renders both prose and structured plans |
-| `src/lib/strategyParser.ts` | Verify it still parses the new conversational responses (no JSON block) — likely already does, but worth a read |
-
-## Out of scope (ask before doing)
-
-- Vector embeddings on the catalog (would solve C/B more cleanly but needs schema + sync work).
-- Replacing GPT-4o-mini with a larger model.
-- Changing the multi-plan UI cards.
+## Files touched
+- `supabase/functions/rprx-chat/index.ts` only.
 
 ## Validation after build
-
-1. Manually send: "set up a business" → expect taxes-bucket strategy + acknowledgment, not debt plans.
-2. "how do I lower my insurance premium" → insurance horseman, not assessment fallback.
-3. "what's the weather" → conversational out-of-scope reply, no plan card.
-4. "show me debt strategies" → existing manual paginated flow still works.
-5. Check `branch=` and new `intent_classifier` logs for each.
+1. "set up a business" → primary is an entity‑formation or SE strategy; alternates are from different topic buckets (e.g. retirement plan, business credit) — not three "deduct business X".
+2. "save for a house" → still works, mortgage/HELOC variety.
+3. "show me debt strategies" → unchanged manual paginated flow.
+4. Check new telemetry fields populate.

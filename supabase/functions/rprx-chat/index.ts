@@ -183,7 +183,56 @@ function tokenizeQuery(message: string): string[] {
     tokens.push(t);
     if (tokens.length >= 12) break;
   }
+  // Phrase-intent boosts: add concept tokens that disambiguate short prompts.
+  // e.g. "set up a business" tokenizes to just ["business"], which can't tell
+  // apart entity formation from "deduct business meals". Inject synonyms so
+  // the catalog match favors strategies that actually fit the user's intent.
+  const boosts = phraseIntentBoosts(message);
+  for (const b of boosts) {
+    if (!seen.has(b)) {
+      seen.add(b);
+      tokens.push(b);
+      if (tokens.length >= 24) break;
+    }
+  }
   return tokens;
+}
+
+// Maps colloquial multi-word intents to concept tokens that exist in the
+// strategy catalog. Order matters: more specific phrases first.
+function phraseIntentBoosts(message: string): string[] {
+  if (!message) return [];
+  const lower = message.toLowerCase();
+  const out = new Set<string>();
+  const has = (re: RegExp) => re.test(lower);
+  // Starting / forming a business
+  if (has(/\b(set\s*up|start(ing)?|open(ing)?|launch(ing)?|form(ing)?|incorporate|register)\b.*\b(business|company|llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|self[-\s]?employ|freelance|contractor)\b/)
+      || has(/\b(llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|entity|incorporation)\b/)) {
+    ['llc','s-corp','s corporation','entity','self-employment','sole proprietor','schedule c','startup','sep','solo 401','retirement plan','employer','small business','business credit','depreciation','section 179']
+      .forEach(t => out.add(t));
+  }
+  // Buying a house / mortgage
+  if (has(/\b(buy(ing)?|save\s*for|saving\s*for|down\s*payment|first[-\s]*time)\b.*\b(house|home|condo|property)\b/)
+      || has(/\b(mortgage|refinance|heloc|home\s*equity)\b/)) {
+    ['mortgage','refinance','heloc','home equity','down payment','first-time','points'].forEach(t => out.add(t));
+  }
+  // Emergency fund / savings buffer
+  if (has(/\b(emergency\s*fund|rainy\s*day|savings\s*cushion|buffer)\b/)) {
+    ['emergency','savings','high-yield','money market','automate'].forEach(t => out.add(t));
+  }
+  // Raise / income / side hustle
+  if (has(/\b(raise|side\s*hustle|side\s*gig|earn\s*more|increase\s*income|second\s*job|new\s*job)\b/)) {
+    ['withholding','w-4','self-employment','retirement plan','solo 401','sep','side'].forEach(t => out.add(t));
+  }
+  // Kids college / 529
+  if (has(/\b(529|college|tuition|scholarship|grad\s*school|university|trade\s*school|fafsa)\b/)) {
+    ['529','coverdell','esa','scholarship','tuition','american opportunity','lifetime learning'].forEach(t => out.add(t));
+  }
+  // Insurance specifics
+  if (has(/\b(life\s*insurance|term\s*life|whole\s*life|umbrella|annuity|annuities|long[-\s]*term\s*care|disability)\b/)) {
+    ['life insurance','term','whole life','umbrella','annuity','long-term care','disability'].forEach(t => out.add(t));
+  }
+  return Array.from(out);
 }
 
 function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredStrategy[] {
@@ -191,6 +240,27 @@ function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredS
     .map(strategy => ({ strategy, score: scoreStrategy(strategy, context) }))
     .filter(s => s.score >= 0)
     .sort((a, b) => b.score - a.score);
+}
+
+// Coarse intra-horseman topic bucket used to diversify the multi-plan envelope
+// so we don't return three "Deduct business X" cards in a row.
+function strategyTopicKey(s: { title?: string; strategy_details?: string | null; horseman_type?: string | null }): string {
+  const t = `${s.title || ''} ${s.strategy_details || ''}`.toLowerCase();
+  // Order matters: most specific buckets first.
+  if (/\b(llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|incorporate|entity|partnership)\b/.test(t)) return 'entity_formation';
+  if (/\b(401\s*k|403\s*b|sep|simple\s*ira|solo\s*401|ira|roth|pension|retirement\s*plan)\b/.test(t)) return 'retirement_plan';
+  if (/\b(hsa|fsa|health\s*savings|flexible\s*spending|medical\s*expense)\b/.test(t)) return 'health_account';
+  if (/\b(credit)\b/.test(t) && /\btax\s*credit|work\s*opportunity|renewal|disabled\s*access|child\s*tax|earned\s*income\b/.test(t)) return 'tax_credit';
+  if (/\b(mortgage|refinance|heloc|home\s*equity|points)\b/.test(t)) return 'mortgage';
+  if (/\b(529|coverdell|scholarship|tuition|education)\b/.test(t)) return 'education_savings';
+  if (/\b(insurance|annuity|umbrella|long[-\s]*term\s*care|disability)\b/.test(t)) return 'insurance_product';
+  if (/\b(charit|donat|gift|trust|estate|foundation)\b/.test(t)) return 'charitable_estate';
+  if (/\b(travel|meal|car|vehicle|mileage|commut|home\s*office)\b/.test(t)) return 'business_expense_deduction';
+  if (/\b(reimburs|fringe|cafeteria|wellness)\b/.test(t)) return 'employee_benefit';
+  if (/\b(balance\s*transfer|consolidat|debt|payoff|interest\s*rate|credit\s*card)\b/.test(t)) return 'debt_paydown';
+  if (/\bdeduct/.test(t)) return 'deduction_general';
+  if (/\bclaim\b/.test(t)) return 'claim_general';
+  return 'other';
 }
 
 type Horseman = 'interest' | 'taxes' | 'insurance' | 'education';
@@ -2433,7 +2503,8 @@ serve(async (req) => {
       ? [selectedStrategyForRequest, ...rankedStrategiesRaw.filter(s => s.strategy.id !== selectedStrategyForRequest!.strategy.id)]
       : rankedStrategiesRaw;
     const userMsgPreview = user_message.replace(/\s+/g, ' ').slice(0, 120);
-    console.log(`intent_classifier | user_msg_preview="${userMsgPreview}" | classified_horseman=${promptHorseman.horseman || 'none'} | query_tokens=${JSON.stringify(queryTokens)} | route=${requestedHorsemanFilter ? 'horseman-filter' : (isShowMore ? 'show-more' : (effectiveMode === 'auto' ? 'auto' : 'manual'))}`);
+    const boostedTokens = phraseIntentBoosts(user_message);
+    console.log(`intent_classifier | user_msg_preview="${userMsgPreview}" | classified_horseman=${promptHorseman.horseman || 'none'} | query_tokens=${JSON.stringify(queryTokens)} | boosted_tokens=${JSON.stringify(boostedTokens)} | route=${requestedHorsemanFilter ? 'horseman-filter' : (isShowMore ? 'show-more' : (effectiveMode === 'auto' ? 'auto' : 'manual'))}`);
     console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}, primary_horseman: ${intentHorseman || routingPrimaryHorseman || 'none'}, selected_horseman: ${rankedStrategies[0]?.strategy.horseman_type || 'none'}, selected_strategy_id: ${rankedStrategies[0]?.strategy.strategy_id || 'none'}, score: ${rankedStrategies[0]?.score ?? 'none'}, prompt_horseman_reason: ${promptHorseman.reason}, override_allowed: ${horsemanOverrideLogged}`);
     const selectedStrategyMetadata = {
       primary_horseman: intentHorseman || routingPrimaryHorseman || null,
@@ -2862,25 +2933,44 @@ Rules:
           if (primaryPlan && primaryPlan.plan_schema === 'v1') {
             const usedIds = new Set<string>([primaryPlan.strategy_id]);
             const usedHorsemen = new Set<string>([String(primaryPlan.horseman || '').toLowerCase()]);
+            // Topic key for the primary so alternates can avoid being the same kind of thing.
+            const primaryRanked = rankedStrategies.find(r => r.strategy.strategy_id === primaryPlan.strategy_id);
+            const usedTopics = new Set<string>();
+            if (primaryRanked) usedTopics.add(strategyTopicKey(primaryRanked.strategy));
             const alternates: any[] = [];
+            const pickedTopics: string[] = primaryRanked ? [strategyTopicKey(primaryRanked.strategy)] : [];
+            const rejectedForTopicDup: string[] = [];
             let inHorsemanCount = 0;
-            for (const r of rankedStrategies) {
-              if (alternates.length >= maxPlans - 1) break;
-              const sid = r.strategy.strategy_id;
-              if (usedIds.has(sid)) continue;
-              const h = (r.strategy.horseman_type || '').toLowerCase();
-              // Lock alternates to the user's intended horseman when set.
-              if (intentHorseman && h !== intentHorseman.toLowerCase()) continue;
-              if (diversify && usedHorsemen.has(h) && rankedStrategies.some(x => !usedIds.has(x.strategy.strategy_id) && !usedHorsemen.has((x.strategy.horseman_type || '').toLowerCase()))) {
-                continue;
+
+            // Two-pass selection: first prefer distinct topic buckets, then fill remaining slots
+            // ignoring topic dedup so we never end up returning fewer than maxPlans-1 alternates.
+            const tryPick = (enforceTopicDedup: boolean) => {
+              for (const r of rankedStrategies) {
+                if (alternates.length >= maxPlans - 1) break;
+                const sid = r.strategy.strategy_id;
+                if (usedIds.has(sid)) continue;
+                const h = (r.strategy.horseman_type || '').toLowerCase();
+                if (intentHorseman && h !== intentHorseman.toLowerCase()) continue;
+                if (diversify && usedHorsemen.has(h) && rankedStrategies.some(x => !usedIds.has(x.strategy.strategy_id) && !usedHorsemen.has((x.strategy.horseman_type || '').toLowerCase()))) {
+                  continue;
+                }
+                const topic = strategyTopicKey(r.strategy);
+                if (enforceTopicDedup && usedTopics.has(topic)) {
+                  if (!rejectedForTopicDup.includes(sid)) rejectedForTopicDup.push(sid);
+                  continue;
+                }
+                const altPlan = normalizePlanReadability(buildStructuredPlan(r.strategy, profile, primaryHorseman));
+                alternates.push(altPlan);
+                usedIds.add(sid);
+                usedHorsemen.add(h);
+                usedTopics.add(topic);
+                pickedTopics.push(topic);
+                if (intentHorseman && h === intentHorseman.toLowerCase()) inHorsemanCount++;
               }
-              const altPlan = normalizePlanReadability(buildStructuredPlan(r.strategy, profile, primaryHorseman));
-              alternates.push(altPlan);
-              usedIds.add(sid);
-              usedHorsemen.add(h);
-              if (intentHorseman && h === intentHorseman.toLowerCase()) inHorsemanCount++;
-            }
-            console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount}`);
+            };
+            tryPick(true);
+            if (alternates.length < maxPlans - 1) tryPick(false);
+            console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount} | topic_keys_picked=${JSON.stringify(pickedTopics)} | rejected_for_topic_dup=${JSON.stringify(rejectedForTopicDup.slice(0, 8))}`);
             if (alternates.length > 0) {
               const overview = assistantMessage.replace(/```json\s*\n[\s\S]*?\n```/, '').trim();
               // Acknowledge the user's typed request so they can tell the assistant heard them.
@@ -2891,8 +2981,29 @@ Rules:
               const horsemanLabelMap: Record<string, string> = { interest: 'debt & cash flow', taxes: 'tax', insurance: 'insurance', education: 'education' };
               const ackHorseman = (intentHorseman || routingPrimaryHorseman || '').toLowerCase();
               const ackHorsemanLabel = horsemanLabelMap[ackHorseman] || null;
+              const topicLabelMap: Record<string, string> = {
+                entity_formation: 'entity formation',
+                retirement_plan: 'retirement plan',
+                health_account: 'HSA / FSA',
+                tax_credit: 'tax credit',
+                mortgage: 'mortgage',
+                education_savings: '529 / education savings',
+                insurance_product: 'insurance product',
+                charitable_estate: 'charitable / estate',
+                business_expense_deduction: 'business expense',
+                employee_benefit: 'employee benefit',
+                debt_paydown: 'debt paydown',
+                deduction_general: 'deduction',
+                claim_general: 'tax claim',
+              };
+              const distinctTopicLabels = Array.from(new Set(pickedTopics))
+                .map(t => topicLabelMap[t])
+                .filter(Boolean) as string[];
+              const matchedSummary = distinctTopicLabels.length > 0
+                ? ` Matched: **${distinctTopicLabels.slice(0, 3).join(', ')}**.`
+                : '';
               const ackLine = ackQuote
-                ? `You asked about: "${ackQuote}"${ackHorsemanLabel ? ` — that maps to your **${ackHorsemanLabel}** strategies. Here are the top ${1 + alternates.length} that fit best.` : `. Here are the top ${1 + alternates.length} strategies that fit best.`}`
+                ? `You asked about: "${ackQuote}"${ackHorsemanLabel ? ` — that maps to your **${ackHorsemanLabel}** strategies. Here are the top ${1 + alternates.length} that fit best.` : `. Here are the top ${1 + alternates.length} strategies that fit best.`}${matchedSummary}`
                 : `Here are your top ${1 + alternates.length} personalized strategies. Save the one that fits best, or activate more than one.`;
               const envelope = {
                 plan_schema: 'v1-multi',
