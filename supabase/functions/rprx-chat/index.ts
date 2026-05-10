@@ -146,18 +146,25 @@ function scoreStrategy(strategy: DBStrategy, context: UserContext): number {
   else if (impact.trim()) score += 6;
   else score += 4;
 
-  // 6) Lexical match against the user's literal query (max 25)
+  // 6) Lexical match against the user's literal query (max 35)
   // Lets queries like "balance transfer", "S-corp", "529 plan" surface the right
   // strategy even when the horseman bucket alone doesn't disambiguate.
+  // Primary tokens (from phrase-intent boosts that match the user's literal intent
+  // — "llc", "entity", "mortgage") count for ~3x a regular hit so a clean
+  // entity-formation strategy outranks a pension-credit one stuffed with retirement keywords.
   if (context.queryTokens && context.queryTokens.length > 0) {
     const corpus = `${strategy.title} ${strategy.strategy_details || ''} ${(strategy.goal_tags || []).join(' ')} ${strategy.example || ''}`.toLowerCase();
-    let hits = 0;
+    const primarySet = new Set(context.primaryQueryTokens || []);
+    let weightedHits = 0;
+    let weightedTotal = 0;
     for (const tok of context.queryTokens) {
-      if (corpus.includes(tok)) hits++;
+      const w = primarySet.has(tok) ? 3 : 1;
+      weightedTotal += w;
+      if (corpus.includes(tok)) weightedHits += w;
     }
-    if (hits > 0) {
-      const ratio = hits / context.queryTokens.length;
-      score += Math.round(Math.min(25, 8 + ratio * 17));
+    if (weightedHits > 0 && weightedTotal > 0) {
+      const ratio = weightedHits / weightedTotal;
+      score += Math.round(Math.min(35, 8 + ratio * 27));
     }
   }
 
