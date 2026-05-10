@@ -32,6 +32,7 @@ import { MyStrategiesCard } from './MyStrategiesCard';
 import { RecentBadges } from '@/components/gamification/RecentBadges';
 import { OnboardingCard } from '@/components/onboarding/OnboardingCard';
 import { AdvisorCTACard } from './AdvisorCTACard';
+import { VirtualAdvisorCard } from './VirtualAdvisorCard';
 
 interface DashboardCardRendererProps {
   cards: DashboardCardConfig[];
