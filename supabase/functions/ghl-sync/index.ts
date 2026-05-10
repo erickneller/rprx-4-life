@@ -8,70 +8,144 @@ const corsHeaders = {
 
 const GHL_API_BASE = "https://services.leadconnectorhq.com";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+const STANDARD_KEYS = new Set([
+  "firstName", "lastName", "name", "email", "phone",
+  "companyName", "address1", "city", "state", "postalCode", "country",
+  "website", "dateOfBirth",
+]);
+
+function applyTransform(value: unknown, transform: string): unknown {
+  if (value === null || value === undefined) return undefined;
+  switch (transform) {
+    case "split_first_name": {
+      const s = String(value).trim();
+      return s ? s.split(/\s+/)[0] : undefined;
+    }
+    case "split_last_name": {
+      const s = String(value).trim();
+      const parts = s ? s.split(/\s+/) : [];
+      return parts.length > 1 ? parts.slice(1).join(" ") : undefined;
+    }
+    case "join_comma":
+      return Array.isArray(value) ? value.join(", ") : String(value);
+    case "boolean_yesno":
+      return value ? "Yes" : "No";
+    case "number": {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    case "lowercase":
+      return String(value).toLowerCase();
+    case "none":
+    default:
+      return value;
   }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Validate auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const supabase = createClient(
+    const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = user.id;
-    const email = user.email as string;
+    const body = await req.json().catch(() => ({}));
+    if (body?.source === "ghl-webhook") {
+      return new Response(JSON.stringify({ skipped: true, reason: "webhook origin" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const dryRun: boolean = !!body?.dryRun;
 
-    // Get GHL secrets
     const GHL_API_KEY = Deno.env.get("GHL_API_KEY");
     const GHL_LOCATION_ID = Deno.env.get("GHL_LOCATION_ID");
-
     if (!GHL_API_KEY || !GHL_LOCATION_ID) {
-      console.error("GHL_API_KEY or GHL_LOCATION_ID not configured");
-      return new Response(
-        JSON.stringify({ error: "GHL integration not configured" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: "GHL integration not configured" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Parse the contact fields from the request body
-    const { full_name, phone, source } = await req.json();
+    const service = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    // Prevent sync loops — skip if this update came from the GHL webhook
-    if (source === "ghl-webhook") {
-      return new Response(
-        JSON.stringify({ skipped: true, reason: "webhook origin" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Load profile
+    const { data: profile } = await service
+      .from("profiles").select("*").eq("id", user.id).maybeSingle();
+
+    // Load latest assessment for derived fields
+    const { data: latestAssessment } = await (service
+      .from("assessment_submissions") as any)
+      .select("primary_horseman, secondary_horseman, readiness_label, recommended_track")
+      .eq("email", (user.email ?? "").toLowerCase())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Load mappings
+    const { data: mappings } = await service
+      .from("ghl_field_mappings").select("*").eq("is_active", true).order("sort_order");
+
+    // Source value resolver
+    const sourceValues: Record<string, unknown> = {
+      ...(profile ?? {}),
+      email: user.email,
+      primary_horseman: latestAssessment?.primary_horseman ?? null,
+      secondary_horseman: latestAssessment?.secondary_horseman ?? null,
+      readiness_label: latestAssessment?.readiness_label ?? null,
+      recommended_track: latestAssessment?.recommended_track ?? null,
+    };
+
+    const standardFields: Record<string, unknown> = {};
+    const customFields: Array<{ key: string; field_value: unknown }> = [];
+    const tags: string[] = [];
+
+    for (const m of (mappings ?? []) as any[]) {
+      const raw = sourceValues[m.profile_field];
+      const transformed = applyTransform(raw, m.transform || "none");
+      if (transformed === undefined || transformed === null || transformed === "") continue;
+
+      if (m.ghl_target_type === "standard") {
+        const key = STANDARD_KEYS.has(m.ghl_field_key) ? m.ghl_field_key : m.ghl_field_key;
+        standardFields[key] = transformed;
+      } else if (m.ghl_target_type === "custom_field") {
+        customFields.push({ key: m.ghl_field_key, field_value: transformed });
+      } else if (m.ghl_target_type === "tag") {
+        const tpl = m.ghl_field_key || "{value}";
+        tags.push(tpl.replace("{value}", String(transformed)));
+      }
     }
 
-    // Split full_name into first/last for GHL
-    const nameParts = (full_name || "").trim().split(/\s+/);
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.slice(1).join(" ") || "";
+    const ghlPayload: Record<string, unknown> = {
+      locationId: GHL_LOCATION_ID,
+      ...standardFields,
+    };
+    if (!ghlPayload.email && user.email) ghlPayload.email = user.email;
+    if (customFields.length) ghlPayload.customFields = customFields;
+    if (tags.length) ghlPayload.tags = tags;
 
-    // Upsert contact in GHL
+    if (dryRun) {
+      return new Response(JSON.stringify({ success: true, dryRun: true, payload: ghlPayload }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const ghlResponse = await fetch(`${GHL_API_BASE}/contacts/upsert`, {
       method: "POST",
       headers: {
@@ -79,57 +153,33 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
         Version: "2021-07-28",
       },
-      body: JSON.stringify({
-        email,
-        firstName,
-        lastName,
-        phone: phone || undefined,
-        locationId: GHL_LOCATION_ID,
-      }),
+      body: JSON.stringify(ghlPayload),
     });
 
     if (!ghlResponse.ok) {
       const errBody = await ghlResponse.text();
       console.error(`GHL upsert failed [${ghlResponse.status}]: ${errBody}`);
       return new Response(
-        JSON.stringify({
-          error: "GHL sync failed",
-          status: ghlResponse.status,
-        }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "GHL sync failed", status: ghlResponse.status, detail: errBody }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const ghlData = await ghlResponse.json();
     const contactId = ghlData?.contact?.id;
-
-    // Store ghl_contact_id on profile if we got one
     if (contactId) {
-      const serviceClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-      await serviceClient
-        .from("profiles")
-        .update({ ghl_contact_id: contactId })
-        .eq("id", userId);
+      await service.from("profiles").update({ ghl_contact_id: contactId }).eq("id", user.id);
     }
 
     return new Response(
-      JSON.stringify({ success: true, contactId }),
+      JSON.stringify({ success: true, contactId, payload: ghlPayload }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("ghl-sync error:", err);
     return new Response(
       JSON.stringify({ error: (err as Error).message || "Internal error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
