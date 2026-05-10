@@ -462,6 +462,9 @@ export default function AdminPanel() {
             <TabsTrigger value="assistant-quality" className="gap-1">
               <BarChart3 className="h-4 w-4" /> Assistant Quality
             </TabsTrigger>
+            <TabsTrigger value="ghl-mapping" className="gap-1">
+              <Database className="h-4 w-4" /> GHL Mapping
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
