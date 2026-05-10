@@ -242,6 +242,27 @@ function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredS
     .sort((a, b) => b.score - a.score);
 }
 
+// Coarse intra-horseman topic bucket used to diversify the multi-plan envelope
+// so we don't return three "Deduct business X" cards in a row.
+function strategyTopicKey(s: { title?: string; strategy_details?: string | null; horseman_type?: string | null }): string {
+  const t = `${s.title || ''} ${s.strategy_details || ''}`.toLowerCase();
+  // Order matters: most specific buckets first.
+  if (/\b(llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|incorporate|entity|partnership)\b/.test(t)) return 'entity_formation';
+  if (/\b(401\s*k|403\s*b|sep|simple\s*ira|solo\s*401|ira|roth|pension|retirement\s*plan)\b/.test(t)) return 'retirement_plan';
+  if (/\b(hsa|fsa|health\s*savings|flexible\s*spending|medical\s*expense)\b/.test(t)) return 'health_account';
+  if (/\b(credit)\b/.test(t) && /\btax\s*credit|work\s*opportunity|renewal|disabled\s*access|child\s*tax|earned\s*income\b/.test(t)) return 'tax_credit';
+  if (/\b(mortgage|refinance|heloc|home\s*equity|points)\b/.test(t)) return 'mortgage';
+  if (/\b(529|coverdell|scholarship|tuition|education)\b/.test(t)) return 'education_savings';
+  if (/\b(insurance|annuity|umbrella|long[-\s]*term\s*care|disability)\b/.test(t)) return 'insurance_product';
+  if (/\b(charit|donat|gift|trust|estate|foundation)\b/.test(t)) return 'charitable_estate';
+  if (/\b(travel|meal|car|vehicle|mileage|commut|home\s*office)\b/.test(t)) return 'business_expense_deduction';
+  if (/\b(reimburs|fringe|cafeteria|wellness)\b/.test(t)) return 'employee_benefit';
+  if (/\b(balance\s*transfer|consolidat|debt|payoff|interest\s*rate|credit\s*card)\b/.test(t)) return 'debt_paydown';
+  if (/\bdeduct/.test(t)) return 'deduction_general';
+  if (/\bclaim\b/.test(t)) return 'claim_general';
+  return 'other';
+}
+
 type Horseman = 'interest' | 'taxes' | 'insurance' | 'education';
 
 const HORSEMEN: Horseman[] = ['interest', 'taxes', 'insurance', 'education'];
