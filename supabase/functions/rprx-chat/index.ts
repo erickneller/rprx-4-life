@@ -2522,6 +2522,7 @@ serve(async (req) => {
     const routingPrimaryHorseman = promptHorseman.horseman || normalizeHorseman(primaryHorseman) || null;
     const assessmentPrimaryHorseman = normalizeHorseman(primaryHorseman);
     const queryTokens = tokenizeQuery(user_message);
+    const intentInfo = phraseIntentInfo(user_message);
 
     const userContext: UserContext = {
       primaryHorseman: routingPrimaryHorseman,
@@ -2536,6 +2537,7 @@ serve(async (req) => {
       activeStrategyIds,
       mode: effectiveMode,
       queryTokens,
+      primaryQueryTokens: intentInfo.primary,
     };
 
     // Apply horseman pre-filter (when user explicitly requested a horseman) BEFORE ranking
@@ -2562,12 +2564,46 @@ serve(async (req) => {
         }
       }
     }
+
+    // Primary-topic promotion: if a phrase intent is detected and the current
+    // primary's topic key isn't in the preferred topic list, walk the ranked
+    // list and promote the first candidate whose topic is in the preferred set
+    // (preferring earlier entries in the list). Prevents "set up a business"
+    // from locking on a pension-credit strategy when entity-formation candidates
+    // exist with a respectable score.
+    let primaryPromoted = false;
+    let promotedFrom: string | null = null;
+    if (intentInfo.preferredTopics.length > 0 && selectedStrategyForRequest && rankedStrategiesRaw.length > 0) {
+      const currentTopic = strategyTopicKey(selectedStrategyForRequest.strategy);
+      if (!intentInfo.preferredTopics.includes(currentTopic)) {
+        const minScore = Math.max(20, selectedStrategyForRequest.score - 35);
+        let bestPromotion: { cand: ScoredStrategy; rank: number } | null = null;
+        for (const r of rankedStrategiesRaw) {
+          if (r.strategy.id === selectedStrategyForRequest.strategy.id) continue;
+          if (intentHorseman && r.strategy.horseman_type !== intentHorseman) continue;
+          if (r.score < minScore) continue;
+          const tk = strategyTopicKey(r.strategy);
+          const rank = intentInfo.preferredTopics.indexOf(tk);
+          if (rank < 0) continue;
+          if (!bestPromotion || rank < bestPromotion.rank || (rank === bestPromotion.rank && r.score > bestPromotion.cand.score)) {
+            bestPromotion = { cand: r, rank };
+          }
+        }
+        if (bestPromotion) {
+          promotedFrom = selectedStrategyForRequest.strategy.strategy_id;
+          selectedStrategyForRequest = bestPromotion.cand;
+          primaryPromoted = true;
+        }
+      }
+    }
+
     const rankedStrategies = selectedStrategyForRequest
       ? [selectedStrategyForRequest, ...rankedStrategiesRaw.filter(s => s.strategy.id !== selectedStrategyForRequest!.strategy.id)]
       : rankedStrategiesRaw;
     const userMsgPreview = user_message.replace(/\s+/g, ' ').slice(0, 120);
     const boostedTokens = phraseIntentBoosts(user_message);
-    console.log(`intent_classifier | user_msg_preview="${userMsgPreview}" | classified_horseman=${promptHorseman.horseman || 'none'} | query_tokens=${JSON.stringify(queryTokens)} | boosted_tokens=${JSON.stringify(boostedTokens)} | route=${requestedHorsemanFilter ? 'horseman-filter' : (isShowMore ? 'show-more' : (effectiveMode === 'auto' ? 'auto' : 'manual'))}`);
+    const primaryTopicKey = rankedStrategies[0] ? strategyTopicKey(rankedStrategies[0].strategy) : 'none';
+    console.log(`intent_classifier | user_msg_preview="${userMsgPreview}" | classified_horseman=${promptHorseman.horseman || 'none'} | intent_label=${intentInfo.label || 'none'} | preferred_topics=${JSON.stringify(intentInfo.preferredTopics)} | query_tokens=${JSON.stringify(queryTokens)} | primary_tokens=${JSON.stringify(intentInfo.primary)} | boosted_tokens=${JSON.stringify(boostedTokens)} | primary_topic=${primaryTopicKey} | primary_promoted=${primaryPromoted} | promoted_from=${promotedFrom || 'none'} | route=${requestedHorsemanFilter ? 'horseman-filter' : (isShowMore ? 'show-more' : (effectiveMode === 'auto' ? 'auto' : 'manual'))}`);
     console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}, primary_horseman: ${intentHorseman || routingPrimaryHorseman || 'none'}, selected_horseman: ${rankedStrategies[0]?.strategy.horseman_type || 'none'}, selected_strategy_id: ${rankedStrategies[0]?.strategy.strategy_id || 'none'}, score: ${rankedStrategies[0]?.score ?? 'none'}, prompt_horseman_reason: ${promptHorseman.reason}, override_allowed: ${horsemanOverrideLogged}`);
     const selectedStrategyMetadata = {
       primary_horseman: intentHorseman || routingPrimaryHorseman || null,
