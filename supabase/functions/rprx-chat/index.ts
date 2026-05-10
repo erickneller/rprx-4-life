@@ -141,10 +141,49 @@ function scoreStrategy(strategy: DBStrategy, context: UserContext): number {
   else if (impact.trim()) score += 6;
   else score += 4;
 
+  // 6) Lexical match against the user's literal query (max 25)
+  // Lets queries like "balance transfer", "S-corp", "529 plan" surface the right
+  // strategy even when the horseman bucket alone doesn't disambiguate.
+  if (context.queryTokens && context.queryTokens.length > 0) {
+    const corpus = `${strategy.title} ${strategy.strategy_details || ''} ${(strategy.goal_tags || []).join(' ')} ${strategy.example || ''}`.toLowerCase();
+    let hits = 0;
+    for (const tok of context.queryTokens) {
+      if (corpus.includes(tok)) hits++;
+    }
+    if (hits > 0) {
+      const ratio = hits / context.queryTokens.length;
+      score += Math.round(Math.min(25, 8 + ratio * 17));
+    }
+  }
+
   // Penalties
   if (context.activeStrategyIds.includes(strategy.id)) score -= 20;
 
   return Math.max(score, 0);
+}
+
+// Strip stopwords, normalize, dedupe — used for lexical scoring.
+const QUERY_STOPWORDS = new Set([
+  'the','a','an','and','or','but','if','then','to','of','in','on','for','with','by','at','from','as','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','should','could','can','may','might','must','i','me','my','we','our','you','your','he','she','it','they','them','this','that','these','those','what','which','who','how','why','when','where','about','some','any','all','more','most','less','few','best','good','bad','help','need','want','like','really','please','just','get','make','set','up','out','off','down','over','into','via','also','too','very','much','many','one','two','three','now','today','soon','already','still','plan','plans','strategy','strategies','tip','tips','idea','ideas','option','options','thing','things','way','ways','here','there','show','tell','give','need',
+]);
+function tokenizeQuery(message: string): string[] {
+  if (!message) return [];
+  const cleaned = message.toLowerCase()
+    .replace(/```[\s\S]*?```/g, ' ')   // strip embedded code blocks (assessment dumps)
+    .replace(/##\s+my\s+(profile|assessment\s+results)[\s\S]*$/i, ' ') // strip auto-injected profile blob
+    .replace(/[^a-z0-9\s-]/g, ' ');
+  const seen = new Set<string>();
+  const tokens: string[] = [];
+  for (const raw of cleaned.split(/\s+/)) {
+    const t = raw.trim();
+    if (!t || t.length < 3) continue;
+    if (QUERY_STOPWORDS.has(t)) continue;
+    if (seen.has(t)) continue;
+    seen.add(t);
+    tokens.push(t);
+    if (tokens.length >= 12) break;
+  }
+  return tokens;
 }
 
 function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredStrategy[] {
