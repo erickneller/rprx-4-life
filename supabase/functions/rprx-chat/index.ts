@@ -183,7 +183,56 @@ function tokenizeQuery(message: string): string[] {
     tokens.push(t);
     if (tokens.length >= 12) break;
   }
+  // Phrase-intent boosts: add concept tokens that disambiguate short prompts.
+  // e.g. "set up a business" tokenizes to just ["business"], which can't tell
+  // apart entity formation from "deduct business meals". Inject synonyms so
+  // the catalog match favors strategies that actually fit the user's intent.
+  const boosts = phraseIntentBoosts(message);
+  for (const b of boosts) {
+    if (!seen.has(b)) {
+      seen.add(b);
+      tokens.push(b);
+      if (tokens.length >= 24) break;
+    }
+  }
   return tokens;
+}
+
+// Maps colloquial multi-word intents to concept tokens that exist in the
+// strategy catalog. Order matters: more specific phrases first.
+function phraseIntentBoosts(message: string): string[] {
+  if (!message) return [];
+  const lower = message.toLowerCase();
+  const out = new Set<string>();
+  const has = (re: RegExp) => re.test(lower);
+  // Starting / forming a business
+  if (has(/\b(set\s*up|start(ing)?|open(ing)?|launch(ing)?|form(ing)?|incorporate|register)\b.*\b(business|company|llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|self[-\s]?employ|freelance|contractor)\b/)
+      || has(/\b(llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|entity|incorporation)\b/)) {
+    ['llc','s-corp','s corporation','entity','self-employment','sole proprietor','schedule c','startup','sep','solo 401','retirement plan','employer','small business','business credit','depreciation','section 179']
+      .forEach(t => out.add(t));
+  }
+  // Buying a house / mortgage
+  if (has(/\b(buy(ing)?|save\s*for|saving\s*for|down\s*payment|first[-\s]*time)\b.*\b(house|home|condo|property)\b/)
+      || has(/\b(mortgage|refinance|heloc|home\s*equity)\b/)) {
+    ['mortgage','refinance','heloc','home equity','down payment','first-time','points'].forEach(t => out.add(t));
+  }
+  // Emergency fund / savings buffer
+  if (has(/\b(emergency\s*fund|rainy\s*day|savings\s*cushion|buffer)\b/)) {
+    ['emergency','savings','high-yield','money market','automate'].forEach(t => out.add(t));
+  }
+  // Raise / income / side hustle
+  if (has(/\b(raise|side\s*hustle|side\s*gig|earn\s*more|increase\s*income|second\s*job|new\s*job)\b/)) {
+    ['withholding','w-4','self-employment','retirement plan','solo 401','sep','side'].forEach(t => out.add(t));
+  }
+  // Kids college / 529
+  if (has(/\b(529|college|tuition|scholarship|grad\s*school|university|trade\s*school|fafsa)\b/)) {
+    ['529','coverdell','esa','scholarship','tuition','american opportunity','lifetime learning'].forEach(t => out.add(t));
+  }
+  // Insurance specifics
+  if (has(/\b(life\s*insurance|term\s*life|whole\s*life|umbrella|annuity|annuities|long[-\s]*term\s*care|disability)\b/)) {
+    ['life insurance','term','whole life','umbrella','annuity','long-term care','disability'].forEach(t => out.add(t));
+  }
+  return Array.from(out);
 }
 
 function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredStrategy[] {
