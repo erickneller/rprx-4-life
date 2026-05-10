@@ -688,6 +688,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_field_mappings: {
+        Row: {
+          created_at: string
+          ghl_field_key: string
+          ghl_target_type: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          profile_field: string
+          sort_order: number
+          transform: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ghl_field_key: string
+          ghl_target_type: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          profile_field: string
+          sort_order?: number
+          transform?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ghl_field_key?: string
+          ghl_target_type?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          profile_field?: string
+          sort_order?: number
+          transform?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       knowledge_base: {
         Row: {
           content: string
