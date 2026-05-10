@@ -30,6 +30,7 @@ import { PageHelpTab } from '@/components/admin/PageHelpTab';
 import { ActivityXpTab } from '@/components/admin/ActivityXpTab';
 import { WizardCopyTab } from '@/components/admin/WizardCopyTab';
 import { FeaturesTab } from '@/components/admin/FeaturesTab';
+import { GHLFieldMappingTab } from '@/components/admin/GHLFieldMappingTab';
 import { CompaniesTab } from '@/components/admin/CompaniesTab';
 import { FeedbackTab } from '@/components/admin/FeedbackTab';
 import { UserGuideTab } from '@/components/admin/UserGuideTab';
@@ -461,6 +462,9 @@ export default function AdminPanel() {
             <TabsTrigger value="assistant-quality" className="gap-1">
               <BarChart3 className="h-4 w-4" /> Assistant Quality
             </TabsTrigger>
+            <TabsTrigger value="ghl-mapping" className="gap-1">
+              <Database className="h-4 w-4" /> GHL Mapping
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
@@ -662,6 +666,11 @@ export default function AdminPanel() {
           {/* ===== FEATURES TAB ===== */}
           <TabsContent value="features" className="space-y-4">
             <FeaturesTab />
+          </TabsContent>
+
+          {/* ===== GHL MAPPING TAB ===== */}
+          <TabsContent value="ghl-mapping" className="space-y-4">
+            <GHLFieldMappingTab />
           </TabsContent>
 
           {/* ===== COMPANIES TAB ===== */}

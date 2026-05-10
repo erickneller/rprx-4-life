@@ -164,15 +164,11 @@ export function useProfile() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] });
 
-      // Sync contact fields to GHL if name, phone, or email changed
-      const contactFields = ['full_name', 'phone'];
-      const hasContactChange = contactFields.some((f) => f in variables);
-      if (hasContactChange && data) {
+      // Sync to GHL if any updated field is in the active mapping list
+      if (data && variables && Object.keys(variables).length > 0) {
+        const changedKeys = Object.keys(variables);
         supabase.functions.invoke('ghl-sync', {
-          body: {
-            full_name: data.full_name,
-            phone: data.phone,
-          },
+          body: { changedKeys },
         }).catch((err) => {
           console.warn('GHL sync failed (non-blocking):', err);
         });
