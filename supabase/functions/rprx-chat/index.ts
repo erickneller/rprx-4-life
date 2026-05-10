@@ -2503,7 +2503,8 @@ serve(async (req) => {
       ? [selectedStrategyForRequest, ...rankedStrategiesRaw.filter(s => s.strategy.id !== selectedStrategyForRequest!.strategy.id)]
       : rankedStrategiesRaw;
     const userMsgPreview = user_message.replace(/\s+/g, ' ').slice(0, 120);
-    console.log(`intent_classifier | user_msg_preview="${userMsgPreview}" | classified_horseman=${promptHorseman.horseman || 'none'} | query_tokens=${JSON.stringify(queryTokens)} | route=${requestedHorsemanFilter ? 'horseman-filter' : (isShowMore ? 'show-more' : (effectiveMode === 'auto' ? 'auto' : 'manual'))}`);
+    const boostedTokens = phraseIntentBoosts(user_message);
+    console.log(`intent_classifier | user_msg_preview="${userMsgPreview}" | classified_horseman=${promptHorseman.horseman || 'none'} | query_tokens=${JSON.stringify(queryTokens)} | boosted_tokens=${JSON.stringify(boostedTokens)} | route=${requestedHorsemanFilter ? 'horseman-filter' : (isShowMore ? 'show-more' : (effectiveMode === 'auto' ? 'auto' : 'manual'))}`);
     console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}, primary_horseman: ${intentHorseman || routingPrimaryHorseman || 'none'}, selected_horseman: ${rankedStrategies[0]?.strategy.horseman_type || 'none'}, selected_strategy_id: ${rankedStrategies[0]?.strategy.strategy_id || 'none'}, score: ${rankedStrategies[0]?.score ?? 'none'}, prompt_horseman_reason: ${promptHorseman.reason}, override_allowed: ${horsemanOverrideLogged}`);
     const selectedStrategyMetadata = {
       primary_horseman: intentHorseman || routingPrimaryHorseman || null,
