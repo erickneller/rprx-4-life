@@ -3111,7 +3111,17 @@ Rules:
                 deduction_general: 'deduction',
                 claim_general: 'tax claim',
               };
-              const distinctTopicLabels = Array.from(new Set(pickedTopics))
+              const distinctTopics = Array.from(new Set(pickedTopics));
+              // If a phrase intent gave us a preferred-topic priority list, surface
+              // matched topics in that order (e.g. entity formation first), so the
+              // user sees the *most relevant* concept named first.
+              const orderedTopics = intentInfo.preferredTopics.length > 0
+                ? [
+                    ...intentInfo.preferredTopics.filter(t => distinctTopics.includes(t)),
+                    ...distinctTopics.filter(t => !intentInfo.preferredTopics.includes(t)),
+                  ]
+                : distinctTopics;
+              const distinctTopicLabels = orderedTopics
                 .map(t => topicLabelMap[t])
                 .filter(Boolean) as string[];
               const matchedSummary = distinctTopicLabels.length > 0
