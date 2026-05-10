@@ -1,56 +1,71 @@
-## Why "set up a business" returned near-identical plans
+## What the user is seeing
 
-Confirmed from the live log (`tax_topic_account` selected, 2 alternates in horseman):
+Even though the log shows three distinct topic buckets (`retirement_plan`, `deduction_general`, `entity_formation`), the actual strategies returned for "set up a business" are all narrow tax tactics for an *already-existing* small business:
 
-1. **Top pick is wrong.** `tax_topic_account` is *"Account for future taxes when there is a transfer of shares in the family business as part of a divorce settlement."* — it just happens to contain "business". A user typing "set up a business" expects entity formation (LLC / S‑corp), self‑employment tax, retirement plans for owners, startup‑cost deductions, business credits.
+- **Primary:** `tax_topic_claim_5` — *"Claim a general business tax credit for the cost of establishing a new small employer pension plan."*
+- **Alternates:** likely `tax_topic_establish` (set up retirement plans for owner & family) and `tax_c_corp_5` (S-corp status is attractive to start-ups) or similar.
 
-2. **The 3 plans look nearly identical because they are.** Once we lock to `taxes` horseman and rank by lexical match on the single token `["business"]`, the top results collapse into a cluster of *"Deduct business X / business taxpayers can…"* entries that all share `goal_tags=["Reduce Taxes"]` and very similar wording. There is no intra‑horseman diversification — the multi‑plan envelope only diversifies *across* horsemen, and that's disabled when intent is set.
+To a real user typing "set up a business", these read as three slight variations on "set up a retirement plan inside your business" — the foundational entity-formation guidance they expected (LLC vs S-corp vs sole prop, EIN, Schedule C, startup deductions) never makes the top spot.
 
-3. **Lexical match is too shallow.** `tokenizeQuery("set up a business")` → `["business"]` after stopwords. "Set up" is dropped, so the ranker can't tell apart *forming* a business from *deducting business expenses inside an existing one*.
+## Root causes
 
-## Proposed fix (scoped, no schema changes)
+1. **Boost tokens are flat-weighted.** `phraseIntentBoosts` pushes `["llc","s-corp","entity","sole proprietor", … ,"retirement plan","employer","sep","solo 401","section 179"]` into the ranker with equal weight. Strategies that mention *several* retirement/pension/employer terms (very common in the catalog) score higher than a single clean entity-formation strategy.
+2. **No intent → primary-topic enforcement.** Topic dedup runs only on alternates; the primary is whatever the lexical ranker picks. For "set up a business" we never require the #1 to come from the `entity_formation` (or new `business_basics`) bucket.
+3. **Topic key for the primary was `retirement_plan`**, not `entity_formation`, even though the intent is clearly entity formation. The current bucket order in `strategyTopicKey` puts `entity_formation` first only if the strategy text matches LLC/S-corp/etc. — `tax_topic_claim_5` doesn't, so it falls into `retirement_plan`. Fine — but nothing pulled an entity-formation row to the top.
+4. **Plans feel "identical" visually** because three picks all touch retirement plans / pension credits / S-corp tax election → similar tone, similar step language, all about "set up a plan and contribute".
 
-### A. Smarter lexical signal for "set up a business" class of intents
-In `supabase/functions/rprx-chat/index.ts`:
+## Proposed fix (edge function only, `supabase/functions/rprx-chat/index.ts`)
 
-- Keep stopwords, but add a small **phrase‑intent boost** that runs before tokenization:
-  - `set up | start | starting | open | launch | form | forming | incorporate | register + business|company|llc|s-corp|s corp|c-corp|sole prop|self-employed|freelance` → boost intent tokens `["llc", "s-corp", "self-employment", "entity", "startup", "schedule c", "sep ira", "solo 401k", "business credit"]`.
-  - Same pattern for adjacent intents already partially handled (house, car, emergency fund, raise) — make them additive boosts rather than only horseman hints.
-- Score each candidate against the boosted token set so `tax_topic_account` (divorce/share transfer) loses to entity‑formation, SE‑tax, and retirement‑plan strategies.
+### A. Tier the boost tokens (primary vs context)
+Change `phraseIntentBoosts` to return a structured object:
+```ts
+{ primary: ["llc","s-corp","s corporation","entity","sole proprietor","self-employment","incorporate","schedule c","startup"],
+  context: ["sep","solo 401","retirement plan","employer","small business","business credit","section 179","depreciation"] }
+```
+Update `scoreStrategy`'s lexical-match component so a primary-token hit is worth ~3× a context-token hit (e.g. +9 vs +3, capped). This pulls genuine entity-formation strategies above pension-credit strategies for the "set up a business" class.
 
-### B. Intra‑horseman diversification in the multi‑plan envelope
-Around lines 2854‑2882:
+### B. Map intent → preferred primary topic; enforce on the locked strategy
+Add a small map:
+```ts
+const INTENT_PRIMARY_TOPIC: Record<string, string[]> = {
+  set_up_business: ['entity_formation','business_basics','retirement_plan'],
+  buy_house:       ['mortgage','debt_paydown'],
+  emergency_fund:  ['debt_paydown','health_account'],
+  // …
+};
+```
+After ranking, if the user's phrase intent is detected and the top ranked strategy's `strategyTopicKey` is *not* in the preferred list, walk down the ranked list and promote the first candidate whose topic key matches the highest-priority preferred bucket (and still exceeds a minimum score floor). This becomes the locked strategy ID handed to the LLM and the primary in the v1-multi envelope.
 
-- When `intentHorseman` is set (so cross‑horseman diversification is off), add a **topic key** per candidate built from:
-  - first content word of `title` after a verb (e.g. "Deduct", "Claim", "Establish", "Use") → group by *what the strategy does* (deduction vs credit vs entity choice vs retirement plan)
-  - plus a coarse bucket inferred from keywords in `title`+`strategy_details`: `entity_formation`, `retirement_plan`, `deduction`, `credit`, `expense_reimbursement`, `payroll_tax`, `other`.
-- While picking alternates, skip a candidate whose topic key matches the primary or any already‑picked alternate, *unless* we run out of distinct topics.
-- Result: the 3 plans cover different *kinds* of tax strategies for the user's intent instead of three "deduct business X" cards.
+### C. Add a `business_basics` topic bucket
+Extend `strategyTopicKey` so strategies mentioning *"start-up costs", "small business", "sole proprietor", "schedule c", "EIN", "self-employed"* without LLC/S-corp wording bucket into `business_basics` instead of falling through to `deduction_general`. This gives the diversifier a real third lane for this intent (entity_formation, business_basics, retirement_plan) so the three cards visibly differ.
 
-### C. Acknowledgment line shows what we matched
-Already present, but extend the ack to surface the matched concept words:
-> *"You asked about: 'set up a business' — matched **entity formation, self‑employment, retirement plan**. Top 3 tax strategies that fit."*
+### D. Primary-topic-aware alternate ordering
+When `intentHorseman` is set AND we have a preferred topic list, sort candidates inside each pass by `(preferredTopicRank, score)` instead of pure score. Result: alternates fill the *next* preferred buckets in order, not just whatever distinct bucket happens to come up.
 
-This makes a wrong match obvious to the user instead of hiding it.
+### E. Telemetry
+Extend the existing `multi-plan envelope` log line with:
+- `intent_label` (e.g. `set_up_business`)
+- `preferred_topics=[entity_formation,business_basics,retirement_plan]`
+- `primary_topic=<key>` and `primary_promoted=true|false` (whether step B replaced the lexical #1)
 
-### D. Telemetry
-Extend the existing `intent_classifier` log with:
-- `boosted_tokens=[…]`
-- `topic_keys_picked=[entity_formation, retirement_plan, credit]`
-- `rejected_for_topic_dup=[strategy_id, …]`
+So a future regression is one log line away from being diagnosed.
 
-So the next time we see "near‑identical plans" we can confirm in one log line whether diversification kicked in.
+### F. Acknowledgment line uses the matched topics in priority order
+Already shows "Matched: retirement plan, deduction, entity formation". Reorder to reflect the *priority* (entity formation first), and only list buckets that actually appear in the picks.
 
 ## Out of scope
-- Vector embeddings on the catalog (cleaner long‑term fix, needs schema + sync).
-- Reclassifying mis‑bucketed strategies (already excluded by the integrity check).
-- Changing the multi‑plan UI cards.
 
-## Files touched
-- `supabase/functions/rprx-chat/index.ts` only.
+- Adding new rows to `strategy_catalog_v2` (e.g. a real "How to form an LLC" entry) — separate content task.
+- Vector embeddings.
+- Changes to the LLM strict-JSON prompt or UI cards.
 
 ## Validation after build
-1. "set up a business" → primary is an entity‑formation or SE strategy; alternates are from different topic buckets (e.g. retirement plan, business credit) — not three "deduct business X".
-2. "save for a house" → still works, mortgage/HELOC variety.
-3. "show me debt strategies" → unchanged manual paginated flow.
-4. Check new telemetry fields populate.
+
+1. `"set up a business"` → primary topic = `entity_formation` or `business_basics`; the three cards visibly cover three different angles (e.g. choose entity → SEP/solo 401k → small employer pension credit).
+2. `"buy a house"` → primary topic = `mortgage`.
+3. `"show me debt strategies"` → unchanged (no phrase intent → no promotion).
+4. New telemetry fields populate; `primary_promoted=true` appears for the business case.
+
+## Files touched
+
+- `supabase/functions/rprx-chat/index.ts` only.

@@ -59,6 +59,11 @@ interface UserContext {
   mode: 'auto' | 'manual';
   // Tokens extracted from the raw user message for lexical match against the catalog.
   queryTokens?: string[];
+  // Subset of queryTokens that came from high-signal phrase-intent boosts (e.g. "llc",
+  // "entity", "mortgage"). Hits on these tokens score ~3x a regular token hit so the
+  // ranker actually prefers entity-formation strategies when the user typed
+  // "set up a business" instead of pension/credit strategies that mention more keywords.
+  primaryQueryTokens?: string[];
 }
 
 // =====================================================
@@ -141,18 +146,25 @@ function scoreStrategy(strategy: DBStrategy, context: UserContext): number {
   else if (impact.trim()) score += 6;
   else score += 4;
 
-  // 6) Lexical match against the user's literal query (max 25)
+  // 6) Lexical match against the user's literal query (max 35)
   // Lets queries like "balance transfer", "S-corp", "529 plan" surface the right
   // strategy even when the horseman bucket alone doesn't disambiguate.
+  // Primary tokens (from phrase-intent boosts that match the user's literal intent
+  // — "llc", "entity", "mortgage") count for ~3x a regular hit so a clean
+  // entity-formation strategy outranks a pension-credit one stuffed with retirement keywords.
   if (context.queryTokens && context.queryTokens.length > 0) {
     const corpus = `${strategy.title} ${strategy.strategy_details || ''} ${(strategy.goal_tags || []).join(' ')} ${strategy.example || ''}`.toLowerCase();
-    let hits = 0;
+    const primarySet = new Set(context.primaryQueryTokens || []);
+    let weightedHits = 0;
+    let weightedTotal = 0;
     for (const tok of context.queryTokens) {
-      if (corpus.includes(tok)) hits++;
+      const w = primarySet.has(tok) ? 3 : 1;
+      weightedTotal += w;
+      if (corpus.includes(tok)) weightedHits += w;
     }
-    if (hits > 0) {
-      const ratio = hits / context.queryTokens.length;
-      score += Math.round(Math.min(25, 8 + ratio * 17));
+    if (weightedHits > 0 && weightedTotal > 0) {
+      const ratio = weightedHits / weightedTotal;
+      score += Math.round(Math.min(35, 8 + ratio * 27));
     }
   }
 
@@ -187,52 +199,101 @@ function tokenizeQuery(message: string): string[] {
   // e.g. "set up a business" tokenizes to just ["business"], which can't tell
   // apart entity formation from "deduct business meals". Inject synonyms so
   // the catalog match favors strategies that actually fit the user's intent.
-  const boosts = phraseIntentBoosts(message);
-  for (const b of boosts) {
+  const info = phraseIntentInfo(message);
+  for (const b of [...info.primary, ...info.context]) {
     if (!seen.has(b)) {
       seen.add(b);
       tokens.push(b);
-      if (tokens.length >= 24) break;
+      if (tokens.length >= 28) break;
     }
   }
   return tokens;
 }
 
-// Maps colloquial multi-word intents to concept tokens that exist in the
-// strategy catalog. Order matters: more specific phrases first.
+// Backwards-compat: returns the flat boost token list (used in telemetry log).
 function phraseIntentBoosts(message: string): string[] {
-  if (!message) return [];
+  const info = phraseIntentInfo(message);
+  return [...info.primary, ...info.context];
+}
+
+interface PhraseIntentInfo {
+  // Short label for telemetry / topic priority lookup.
+  label: string | null;
+  // High-signal tokens scored ~3x in the lexical ranker.
+  primary: string[];
+  // Supporting tokens scored at normal weight.
+  context: string[];
+  // Topic-key priority list (see strategyTopicKey) used to promote the primary
+  // pick and order alternates so cards visibly cover the right angles.
+  preferredTopics: string[];
+}
+
+// Maps colloquial multi-word intents to concept tokens that exist in the
+// strategy catalog and the topic buckets we want surfaced first. Order
+// matters: more specific phrases first.
+function phraseIntentInfo(message: string): PhraseIntentInfo {
+  const empty: PhraseIntentInfo = { label: null, primary: [], context: [], preferredTopics: [] };
+  if (!message) return empty;
   const lower = message.toLowerCase();
-  const out = new Set<string>();
   const has = (re: RegExp) => re.test(lower);
+
   // Starting / forming a business
   if (has(/\b(set\s*up|start(ing)?|open(ing)?|launch(ing)?|form(ing)?|incorporate|register)\b.*\b(business|company|llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|self[-\s]?employ|freelance|contractor)\b/)
       || has(/\b(llc|s[-\s]?corp|c[-\s]?corp|sole\s*prop|entity|incorporation)\b/)) {
-    ['llc','s-corp','s corporation','entity','self-employment','sole proprietor','schedule c','startup','sep','solo 401','retirement plan','employer','small business','business credit','depreciation','section 179']
-      .forEach(t => out.add(t));
+    return {
+      label: 'set_up_business',
+      primary: ['llc','s-corp','s corporation','entity','sole proprietor','self-employment','self-employed','incorporate','schedule c','startup','start-up','small business'],
+      context: ['sep','solo 401','retirement plan','employer','business credit','depreciation','section 179','pension'],
+      preferredTopics: ['entity_formation','business_basics','retirement_plan','tax_credit'],
+    };
   }
   // Buying a house / mortgage
   if (has(/\b(buy(ing)?|save\s*for|saving\s*for|down\s*payment|first[-\s]*time)\b.*\b(house|home|condo|property)\b/)
       || has(/\b(mortgage|refinance|heloc|home\s*equity)\b/)) {
-    ['mortgage','refinance','heloc','home equity','down payment','first-time','points'].forEach(t => out.add(t));
+    return {
+      label: 'buy_house',
+      primary: ['mortgage','refinance','heloc','home equity','down payment','first-time','points'],
+      context: ['interest','tax deduction'],
+      preferredTopics: ['mortgage','debt_paydown'],
+    };
   }
   // Emergency fund / savings buffer
   if (has(/\b(emergency\s*fund|rainy\s*day|savings\s*cushion|buffer)\b/)) {
-    ['emergency','savings','high-yield','money market','automate'].forEach(t => out.add(t));
+    return {
+      label: 'emergency_fund',
+      primary: ['emergency','savings','high-yield','money market'],
+      context: ['automate','interest'],
+      preferredTopics: ['debt_paydown','health_account'],
+    };
   }
   // Raise / income / side hustle
   if (has(/\b(raise|side\s*hustle|side\s*gig|earn\s*more|increase\s*income|second\s*job|new\s*job)\b/)) {
-    ['withholding','w-4','self-employment','retirement plan','solo 401','sep','side'].forEach(t => out.add(t));
+    return {
+      label: 'income_increase',
+      primary: ['withholding','w-4','self-employment','side'],
+      context: ['retirement plan','solo 401','sep'],
+      preferredTopics: ['retirement_plan','business_basics','entity_formation'],
+    };
   }
   // Kids college / 529
   if (has(/\b(529|college|tuition|scholarship|grad\s*school|university|trade\s*school|fafsa)\b/)) {
-    ['529','coverdell','esa','scholarship','tuition','american opportunity','lifetime learning'].forEach(t => out.add(t));
+    return {
+      label: 'education_funding',
+      primary: ['529','coverdell','esa','scholarship','tuition'],
+      context: ['american opportunity','lifetime learning'],
+      preferredTopics: ['education_savings','tax_credit'],
+    };
   }
   // Insurance specifics
   if (has(/\b(life\s*insurance|term\s*life|whole\s*life|umbrella|annuity|annuities|long[-\s]*term\s*care|disability)\b/)) {
-    ['life insurance','term','whole life','umbrella','annuity','long-term care','disability'].forEach(t => out.add(t));
+    return {
+      label: 'insurance_protection',
+      primary: ['life insurance','term','whole life','umbrella','annuity','long-term care','disability'],
+      context: [],
+      preferredTopics: ['insurance_product','charitable_estate'],
+    };
   }
-  return Array.from(out);
+  return empty;
 }
 
 function rankStrategies(strategies: DBStrategy[], context: UserContext): ScoredStrategy[] {
@@ -255,9 +316,11 @@ function strategyTopicKey(s: { title?: string; strategy_details?: string | null;
   if (/\b(529|coverdell|scholarship|tuition|education)\b/.test(t)) return 'education_savings';
   if (/\b(insurance|annuity|umbrella|long[-\s]*term\s*care|disability)\b/.test(t)) return 'insurance_product';
   if (/\b(charit|donat|gift|trust|estate|foundation)\b/.test(t)) return 'charitable_estate';
-  if (/\b(travel|meal|car|vehicle|mileage|commut|home\s*office)\b/.test(t)) return 'business_expense_deduction';
+  if (/\b(travel|meal|mileage|commut|home\s*office)\b/.test(t)) return 'business_expense_deduction';
   if (/\b(reimburs|fringe|cafeteria|wellness)\b/.test(t)) return 'employee_benefit';
   if (/\b(balance\s*transfer|consolidat|debt|payoff|interest\s*rate|credit\s*card)\b/.test(t)) return 'debt_paydown';
+  // Foundational small-business / self-employment guidance that doesn't mention LLC/S-corp/etc.
+  if (/\b(small\s*business|sole\s*proprietor|self[-\s]?employ(ed|ment)?|schedule\s*c|ein|start[-\s]?up\s*cost|new\s*business|own\s*business|side\s*business|freelance|contractor|1099)\b/.test(t)) return 'business_basics';
   if (/\bdeduct/.test(t)) return 'deduction_general';
   if (/\bclaim\b/.test(t)) return 'claim_general';
   return 'other';
@@ -2459,6 +2522,7 @@ serve(async (req) => {
     const routingPrimaryHorseman = promptHorseman.horseman || normalizeHorseman(primaryHorseman) || null;
     const assessmentPrimaryHorseman = normalizeHorseman(primaryHorseman);
     const queryTokens = tokenizeQuery(user_message);
+    const intentInfo = phraseIntentInfo(user_message);
 
     const userContext: UserContext = {
       primaryHorseman: routingPrimaryHorseman,
@@ -2473,6 +2537,7 @@ serve(async (req) => {
       activeStrategyIds,
       mode: effectiveMode,
       queryTokens,
+      primaryQueryTokens: intentInfo.primary,
     };
 
     // Apply horseman pre-filter (when user explicitly requested a horseman) BEFORE ranking
@@ -2499,12 +2564,46 @@ serve(async (req) => {
         }
       }
     }
+
+    // Primary-topic promotion: if a phrase intent is detected and the current
+    // primary's topic key isn't in the preferred topic list, walk the ranked
+    // list and promote the first candidate whose topic is in the preferred set
+    // (preferring earlier entries in the list). Prevents "set up a business"
+    // from locking on a pension-credit strategy when entity-formation candidates
+    // exist with a respectable score.
+    let primaryPromoted = false;
+    let promotedFrom: string | null = null;
+    if (intentInfo.preferredTopics.length > 0 && selectedStrategyForRequest && rankedStrategiesRaw.length > 0) {
+      const currentTopic = strategyTopicKey(selectedStrategyForRequest.strategy);
+      if (!intentInfo.preferredTopics.includes(currentTopic)) {
+        const minScore = Math.max(20, selectedStrategyForRequest.score - 35);
+        let bestPromotion: { cand: ScoredStrategy; rank: number } | null = null;
+        for (const r of rankedStrategiesRaw) {
+          if (r.strategy.id === selectedStrategyForRequest.strategy.id) continue;
+          if (intentHorseman && r.strategy.horseman_type !== intentHorseman) continue;
+          if (r.score < minScore) continue;
+          const tk = strategyTopicKey(r.strategy);
+          const rank = intentInfo.preferredTopics.indexOf(tk);
+          if (rank < 0) continue;
+          if (!bestPromotion || rank < bestPromotion.rank || (rank === bestPromotion.rank && r.score > bestPromotion.cand.score)) {
+            bestPromotion = { cand: r, rank };
+          }
+        }
+        if (bestPromotion) {
+          promotedFrom = selectedStrategyForRequest.strategy.strategy_id;
+          selectedStrategyForRequest = bestPromotion.cand;
+          primaryPromoted = true;
+        }
+      }
+    }
+
     const rankedStrategies = selectedStrategyForRequest
       ? [selectedStrategyForRequest, ...rankedStrategiesRaw.filter(s => s.strategy.id !== selectedStrategyForRequest!.strategy.id)]
       : rankedStrategiesRaw;
     const userMsgPreview = user_message.replace(/\s+/g, ' ').slice(0, 120);
     const boostedTokens = phraseIntentBoosts(user_message);
-    console.log(`intent_classifier | user_msg_preview="${userMsgPreview}" | classified_horseman=${promptHorseman.horseman || 'none'} | query_tokens=${JSON.stringify(queryTokens)} | boosted_tokens=${JSON.stringify(boostedTokens)} | route=${requestedHorsemanFilter ? 'horseman-filter' : (isShowMore ? 'show-more' : (effectiveMode === 'auto' ? 'auto' : 'manual'))}`);
+    const primaryTopicKey = rankedStrategies[0] ? strategyTopicKey(rankedStrategies[0].strategy) : 'none';
+    console.log(`intent_classifier | user_msg_preview="${userMsgPreview}" | classified_horseman=${promptHorseman.horseman || 'none'} | intent_label=${intentInfo.label || 'none'} | preferred_topics=${JSON.stringify(intentInfo.preferredTopics)} | query_tokens=${JSON.stringify(queryTokens)} | primary_tokens=${JSON.stringify(intentInfo.primary)} | boosted_tokens=${JSON.stringify(boostedTokens)} | primary_topic=${primaryTopicKey} | primary_promoted=${primaryPromoted} | promoted_from=${promotedFrom || 'none'} | route=${requestedHorsemanFilter ? 'horseman-filter' : (isShowMore ? 'show-more' : (effectiveMode === 'auto' ? 'auto' : 'manual'))}`);
     console.log(`Ranked ${rankedStrategies.length} strategies, mode: ${effectiveMode}, page: ${page}, filter: ${requestedHorsemanFilter || 'none'}, primary_horseman: ${intentHorseman || routingPrimaryHorseman || 'none'}, selected_horseman: ${rankedStrategies[0]?.strategy.horseman_type || 'none'}, selected_strategy_id: ${rankedStrategies[0]?.strategy.strategy_id || 'none'}, score: ${rankedStrategies[0]?.score ?? 'none'}, prompt_horseman_reason: ${promptHorseman.reason}, override_allowed: ${horsemanOverrideLogged}`);
     const selectedStrategyMetadata = {
       primary_horseman: intentHorseman || routingPrimaryHorseman || null,
@@ -2942,10 +3041,26 @@ Rules:
             const rejectedForTopicDup: string[] = [];
             let inHorsemanCount = 0;
 
+            // When the user has a phrase intent (e.g. "set up a business"),
+            // sort candidates by (preferredTopicRank, score) so alternates fill
+            // the next preferred buckets in priority order rather than
+            // whatever distinct bucket happens to come up first.
+            const intentPreferredTopics = intentInfo.preferredTopics;
+            const candidatePool = intentPreferredTopics.length > 0
+              ? [...rankedStrategies].sort((a, b) => {
+                  const ra = intentPreferredTopics.indexOf(strategyTopicKey(a.strategy));
+                  const rb = intentPreferredTopics.indexOf(strategyTopicKey(b.strategy));
+                  const na = ra < 0 ? 999 : ra;
+                  const nb = rb < 0 ? 999 : rb;
+                  if (na !== nb) return na - nb;
+                  return b.score - a.score;
+                })
+              : rankedStrategies;
+
             // Two-pass selection: first prefer distinct topic buckets, then fill remaining slots
             // ignoring topic dedup so we never end up returning fewer than maxPlans-1 alternates.
             const tryPick = (enforceTopicDedup: boolean) => {
-              for (const r of rankedStrategies) {
+              for (const r of candidatePool) {
                 if (alternates.length >= maxPlans - 1) break;
                 const sid = r.strategy.strategy_id;
                 if (usedIds.has(sid)) continue;
@@ -2970,7 +3085,7 @@ Rules:
             };
             tryPick(true);
             if (alternates.length < maxPlans - 1) tryPick(false);
-            console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount} | topic_keys_picked=${JSON.stringify(pickedTopics)} | rejected_for_topic_dup=${JSON.stringify(rejectedForTopicDup.slice(0, 8))}`);
+            console.log(`multi-plan envelope | intent_horseman=${intentHorseman || 'none'} | intent_label=${intentInfo.label || 'none'} | preferred_topics=${JSON.stringify(intentPreferredTopics)} | diversify=${diversify} | alternates_total=${alternates.length} | alternates_in_horseman=${inHorsemanCount} | topic_keys_picked=${JSON.stringify(pickedTopics)} | rejected_for_topic_dup=${JSON.stringify(rejectedForTopicDup.slice(0, 8))}`);
             if (alternates.length > 0) {
               const overview = assistantMessage.replace(/```json\s*\n[\s\S]*?\n```/, '').trim();
               // Acknowledge the user's typed request so they can tell the assistant heard them.
@@ -2983,6 +3098,7 @@ Rules:
               const ackHorsemanLabel = horsemanLabelMap[ackHorseman] || null;
               const topicLabelMap: Record<string, string> = {
                 entity_formation: 'entity formation',
+                business_basics: 'small business basics',
                 retirement_plan: 'retirement plan',
                 health_account: 'HSA / FSA',
                 tax_credit: 'tax credit',
@@ -2996,7 +3112,17 @@ Rules:
                 deduction_general: 'deduction',
                 claim_general: 'tax claim',
               };
-              const distinctTopicLabels = Array.from(new Set(pickedTopics))
+              const distinctTopics = Array.from(new Set(pickedTopics));
+              // If a phrase intent gave us a preferred-topic priority list, surface
+              // matched topics in that order (e.g. entity formation first), so the
+              // user sees the *most relevant* concept named first.
+              const orderedTopics = intentInfo.preferredTopics.length > 0
+                ? [
+                    ...intentInfo.preferredTopics.filter(t => distinctTopics.includes(t)),
+                    ...distinctTopics.filter(t => !intentInfo.preferredTopics.includes(t)),
+                  ]
+                : distinctTopics;
+              const distinctTopicLabels = orderedTopics
                 .map(t => topicLabelMap[t])
                 .filter(Boolean) as string[];
               const matchedSummary = distinctTopicLabels.length > 0
