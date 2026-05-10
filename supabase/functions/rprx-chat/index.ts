@@ -59,6 +59,11 @@ interface UserContext {
   mode: 'auto' | 'manual';
   // Tokens extracted from the raw user message for lexical match against the catalog.
   queryTokens?: string[];
+  // Subset of queryTokens that came from high-signal phrase-intent boosts (e.g. "llc",
+  // "entity", "mortgage"). Hits on these tokens score ~3x a regular token hit so the
+  // ranker actually prefers entity-formation strategies when the user typed
+  // "set up a business" instead of pension/credit strategies that mention more keywords.
+  primaryQueryTokens?: string[];
 }
 
 // =====================================================
