@@ -3098,6 +3098,7 @@ Rules:
               const ackHorsemanLabel = horsemanLabelMap[ackHorseman] || null;
               const topicLabelMap: Record<string, string> = {
                 entity_formation: 'entity formation',
+                business_basics: 'small business basics',
                 retirement_plan: 'retirement plan',
                 health_account: 'HSA / FSA',
                 tax_credit: 'tax credit',
