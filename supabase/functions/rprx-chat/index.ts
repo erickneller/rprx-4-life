@@ -175,9 +175,15 @@ function detectPromptHorseman(message: string): { horseman: Horseman | null; rea
   };
 
   add('taxes', 4, [/\b(tax|taxes|taxation|irs|1040|w-?4|withholding|deduction|deductible|refund)\b/, /\breduce\s+tax(es)?\b/, /\btax\s+(credit|return|prep|planning)\b/]);
+  // Business / self-employment / income strategies overwhelmingly map to tax planning.
+  add('taxes', 4, [/\b(business|llc|s[-\s]?corp|c[-\s]?corp|sole\s+prop|self[-\s]?employ(ed|ment)?|1099|contractor|side\s+(hustle|gig|business)|freelance|entrepreneur|incorporate|set\s+up\s+a\s+business|start\s+a\s+business|own\s+business|small\s+business)\b/, /\b(retirement|401k|403b|ira|roth|sep|simple\s+ira|hsa|fsa)\b/, /\b(raise|bonus|new\s+job|salary\s+increase|more\s+income|increase\s+income|earn\s+more)\b/]);
   add('interest', 4, [/\b(interest|debt|debts|apr|credit\s+card|balance\s+transfer|payoff|loan|loans|refinance|consolidat(e|ion))\b/, /\bmonthly\s+cash\s+flow\b/, /\bincrease\s+cash\s+flow\b/]);
+  // Mortgages / housing / cash savings → debt + cash-flow / interest bucket.
+  add('interest', 4, [/\b(mortgage|home\s+loan|house|home\s+buy|buying\s+a\s+home|down\s+payment|heloc|home\s+equity|car\s+loan|auto\s+loan|buy\s+a\s+car)\b/, /\b(emergency\s+fund|save\s+money|savings|build\s+savings|nest\s+egg|sinking\s+fund)\b/, /\b(budget|budgeting|spending|expenses|cut\s+spending)\b/]);
   add('insurance', 4, [/\b(insurance|premium|premiums|coverage|policy|policies|deductible|life\s+insurance|disability|long[-\s]?term\s+care)\b/]);
+  add('insurance', 4, [/\b(umbrella\s+policy|term\s+life|whole\s+life|annuity|annuities|medicare|medicaid|health\s+plan|hmo|ppo|auto\s+insurance|home(owners)?\s+insurance|renters\s+insurance)\b/]);
   add('education', 4, [/\b(education|college|tuition|529|coverdell|student\s+aid|financial\s+aid|scholarship|fafsa)\b/, /\bsave\s+for\s+education\b/]);
+  add('education', 4, [/\b(school|university|grad\s+school|trade\s+school|kids?\s+college|child(ren)?\s+education|esa|education\s+savings)\b/]);
 
   // Avoid letting generic words override explicit tax/education/insurance intent.
   if (/\btax\s+credit\b/.test(lower)) scores.interest = Math.max(0, scores.interest - 2);
