@@ -2388,6 +2388,7 @@ serve(async (req) => {
     const promptHorseman = detectPromptHorseman(user_message);
     const routingPrimaryHorseman = promptHorseman.horseman || normalizeHorseman(primaryHorseman) || null;
     const assessmentPrimaryHorseman = normalizeHorseman(primaryHorseman);
+    const queryTokens = tokenizeQuery(user_message);
 
     const userContext: UserContext = {
       primaryHorseman: routingPrimaryHorseman,
@@ -2401,6 +2402,7 @@ serve(async (req) => {
       completedStrategyIds,
       activeStrategyIds,
       mode: effectiveMode,
+      queryTokens,
     };
 
     // Apply horseman pre-filter (when user explicitly requested a horseman) BEFORE ranking
