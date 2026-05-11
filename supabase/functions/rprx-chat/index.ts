@@ -1470,6 +1470,16 @@ function summaryNeedsFallback(s: string): boolean {
   return false;
 }
 
+function shortenHeadline(text: string): string {
+  let t = (text || '').replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, '');
+  if (t.length > 80) {
+    const cut = t.slice(0, 80);
+    const lastSpace = cut.lastIndexOf(' ');
+    t = (lastSpace > 50 ? cut.slice(0, lastSpace) : cut).trim();
+  }
+  return t;
+}
+
 function buildHeadline(plan: StructuredPlan): string {
   const key = curatedKey(plan.horseman);
   // Prefer first sentence of summary, but only if clean and short enough.
@@ -1480,18 +1490,19 @@ function buildHeadline(plan: StructuredPlan): string {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/[.!?]+$/, '');
-  // Strip strategy name leak
+  // Strip strategy name leak from summary-derived candidate
   const sname = (plan.strategy_name || '').toLowerCase();
   if (sname && candidate.toLowerCase().includes(sname)) candidate = '';
   if (!candidate || candidate.length > 80 || candidate.split(/\s+/).length < 4) {
-    candidate = HORSEMAN_FALLBACK_HEADLINE[key].replace(/[.!?]+$/, '');
+    // PREFER strategy_name as the fallback so each card has a distinct, real label.
+    const nameCandidate = shortenHeadline(plan.strategy_name || '');
+    if (nameCandidate && nameCandidate.split(/\s+/).length >= 3) {
+      candidate = nameCandidate;
+    } else {
+      candidate = HORSEMAN_FALLBACK_HEADLINE[key].replace(/[.!?]+$/, '');
+    }
   }
-  if (candidate.length > 80) {
-    const cut = candidate.slice(0, 80);
-    const lastSpace = cut.lastIndexOf(' ');
-    candidate = (lastSpace > 50 ? cut.slice(0, lastSpace) : cut).trim();
-  }
-  return candidate;
+  return shortenHeadline(candidate);
 }
 
 function buildRenderBlocks(plan: StructuredPlan): RenderBlocks {
@@ -3030,6 +3041,8 @@ Rules:
             try { primaryPlan = JSON.parse(fence[1]); } catch { /* ignore */ }
           }
           if (primaryPlan && primaryPlan.plan_schema === 'v1') {
+            // Re-normalize so primary uses the same headline rules as alternates.
+            primaryPlan = normalizePlanReadability(primaryPlan as StructuredPlan);
             const usedIds = new Set<string>([primaryPlan.strategy_id]);
             const usedHorsemen = new Set<string>([String(primaryPlan.horseman || '').toLowerCase()]);
             // Topic key for the primary so alternates can avoid being the same kind of thing.
@@ -3131,10 +3144,26 @@ Rules:
               const ackLine = ackQuote
                 ? `You asked about: "${ackQuote}"${ackHorsemanLabel ? ` — that maps to your **${ackHorsemanLabel}** strategies. Here are the top ${1 + alternates.length} that fit best.` : `. Here are the top ${1 + alternates.length} strategies that fit best.`}${matchedSummary}`
                 : `Here are your top ${1 + alternates.length} personalized strategies. Save the one that fits best, or activate more than one.`;
+              const allPlans = [primaryPlan, ...alternates];
+              // Dedupe headlines: if two plans share a headline, swap dups for cleaned strategy_name.
+              const seen = new Map<string, number>();
+              for (const p of allPlans) {
+                const h = (p?.render_blocks?.headline || '').toLowerCase().trim();
+                if (!h) continue;
+                seen.set(h, (seen.get(h) || 0) + 1);
+              }
+              for (const p of allPlans) {
+                if (!p?.render_blocks) continue;
+                const h = (p.render_blocks.headline || '').toLowerCase().trim();
+                if (h && (seen.get(h) || 0) > 1) {
+                  const replacement = shortenHeadline(p.strategy_name || '');
+                  if (replacement) p.render_blocks.headline = replacement;
+                }
+              }
               const envelope = {
                 plan_schema: 'v1-multi',
                 overview_md: overview ? `${ackLine}\n\n${overview}` : ackLine,
-                plans: [primaryPlan, ...alternates],
+                plans: allPlans,
               };
               assistantMessage = '```json\n' + JSON.stringify(envelope, null, 2) + '\n```';
             }

@@ -66,8 +66,25 @@ function CollapsibleSection({ icon, title, items, defaultOpen = false }: Section
   );
 }
 
+const GENERIC_HEADLINES = new Set([
+  'lower your tax bill with a few targeted moves',
+  'cut interest costs and free up monthly cash flow',
+  'stretch your education savings with smarter contributions',
+  'right-size your insurance coverage and premiums',
+  'make a measurable improvement to your finances',
+]);
+
+function isGenericHeadline(h: string): boolean {
+  const norm = h.toLowerCase().replace(/[.!?]+$/, '').trim();
+  return GENERIC_HEADLINES.has(norm);
+}
+
 export function StrategyPlanCard({ strategyId, strategyName, content, renderBlocks }: StrategyPlanCardProps) {
-  const headline = clean(renderBlocks?.headline) || clean(strategyName);
+  const rawHeadline = clean(renderBlocks?.headline);
+  const cleanedName = clean(strategyName);
+  const headline = (!rawHeadline || isGenericHeadline(rawHeadline)) && cleanedName
+    ? cleanedName
+    : (rawHeadline || cleanedName);
   const summary = clean(content.summary);
   const quickWin = clean(renderBlocks?.quick_win) ||
     (content.expected_result
