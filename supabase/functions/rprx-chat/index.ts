@@ -3144,10 +3144,26 @@ Rules:
               const ackLine = ackQuote
                 ? `You asked about: "${ackQuote}"${ackHorsemanLabel ? ` — that maps to your **${ackHorsemanLabel}** strategies. Here are the top ${1 + alternates.length} that fit best.` : `. Here are the top ${1 + alternates.length} strategies that fit best.`}${matchedSummary}`
                 : `Here are your top ${1 + alternates.length} personalized strategies. Save the one that fits best, or activate more than one.`;
+              const allPlans = [primaryPlan, ...alternates];
+              // Dedupe headlines: if two plans share a headline, swap dups for cleaned strategy_name.
+              const seen = new Map<string, number>();
+              for (const p of allPlans) {
+                const h = (p?.render_blocks?.headline || '').toLowerCase().trim();
+                if (!h) continue;
+                seen.set(h, (seen.get(h) || 0) + 1);
+              }
+              for (const p of allPlans) {
+                if (!p?.render_blocks) continue;
+                const h = (p.render_blocks.headline || '').toLowerCase().trim();
+                if (h && (seen.get(h) || 0) > 1) {
+                  const replacement = shortenHeadline(p.strategy_name || '');
+                  if (replacement) p.render_blocks.headline = replacement;
+                }
+              }
               const envelope = {
                 plan_schema: 'v1-multi',
                 overview_md: overview ? `${ackLine}\n\n${overview}` : ackLine,
-                plans: [primaryPlan, ...alternates],
+                plans: allPlans,
               };
               assistantMessage = '```json\n' + JSON.stringify(envelope, null, 2) + '\n```';
             }
