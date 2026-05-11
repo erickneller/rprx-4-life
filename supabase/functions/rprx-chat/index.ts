@@ -1470,6 +1470,16 @@ function summaryNeedsFallback(s: string): boolean {
   return false;
 }
 
+function shortenHeadline(text: string): string {
+  let t = (text || '').replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, '');
+  if (t.length > 80) {
+    const cut = t.slice(0, 80);
+    const lastSpace = cut.lastIndexOf(' ');
+    t = (lastSpace > 50 ? cut.slice(0, lastSpace) : cut).trim();
+  }
+  return t;
+}
+
 function buildHeadline(plan: StructuredPlan): string {
   const key = curatedKey(plan.horseman);
   // Prefer first sentence of summary, but only if clean and short enough.
@@ -1480,18 +1490,19 @@ function buildHeadline(plan: StructuredPlan): string {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/[.!?]+$/, '');
-  // Strip strategy name leak
+  // Strip strategy name leak from summary-derived candidate
   const sname = (plan.strategy_name || '').toLowerCase();
   if (sname && candidate.toLowerCase().includes(sname)) candidate = '';
   if (!candidate || candidate.length > 80 || candidate.split(/\s+/).length < 4) {
-    candidate = HORSEMAN_FALLBACK_HEADLINE[key].replace(/[.!?]+$/, '');
+    // PREFER strategy_name as the fallback so each card has a distinct, real label.
+    const nameCandidate = shortenHeadline(plan.strategy_name || '');
+    if (nameCandidate && nameCandidate.split(/\s+/).length >= 3) {
+      candidate = nameCandidate;
+    } else {
+      candidate = HORSEMAN_FALLBACK_HEADLINE[key].replace(/[.!?]+$/, '');
+    }
   }
-  if (candidate.length > 80) {
-    const cut = candidate.slice(0, 80);
-    const lastSpace = cut.lastIndexOf(' ');
-    candidate = (lastSpace > 50 ? cut.slice(0, lastSpace) : cut).trim();
-  }
-  return candidate;
+  return shortenHeadline(candidate);
 }
 
 function buildRenderBlocks(plan: StructuredPlan): RenderBlocks {
