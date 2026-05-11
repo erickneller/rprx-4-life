@@ -3041,6 +3041,8 @@ Rules:
             try { primaryPlan = JSON.parse(fence[1]); } catch { /* ignore */ }
           }
           if (primaryPlan && primaryPlan.plan_schema === 'v1') {
+            // Re-normalize so primary uses the same headline rules as alternates.
+            primaryPlan = normalizePlanReadability(primaryPlan as StructuredPlan);
             const usedIds = new Set<string>([primaryPlan.strategy_id]);
             const usedHorsemen = new Set<string>([String(primaryPlan.horseman || '').toLowerCase()]);
             // Topic key for the primary so alternates can avoid being the same kind of thing.
