@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Plus, Trash2, Save, Play } from 'lucide-react';
+import { Plus, Trash2, Save, Play, Download, FileText, FileType } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { downloadGhlSpecCsv, downloadGhlSpecMarkdown } from '@/lib/ghlFieldSpecExport';
 
 type Mapping = {
   id: string;
@@ -115,6 +117,21 @@ export function GHLFieldMappingTab() {
           <div className="flex flex-wrap gap-2">
             <Button onClick={addRow} size="sm" variant="outline"><Plus className="h-4 w-4 mr-1" /> Add mapping</Button>
             <Button onClick={runTest} size="sm" variant="secondary"><Play className="h-4 w-4 mr-1" /> Test sync (dry run, my user)</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" disabled={isLoading || mappings.length === 0}>
+                  <Download className="h-4 w-4 mr-1" /> Download GHL spec
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => { downloadGhlSpecCsv(mappings); toast.success('CSV downloaded'); }}>
+                  <FileType className="h-4 w-4 mr-2" /> CSV (for GHL admin)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { downloadGhlSpecMarkdown(mappings); toast.success('Markdown downloaded'); }}>
+                  <FileText className="h-4 w-4 mr-2" /> Markdown setup guide
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="rounded-md border overflow-x-auto">
