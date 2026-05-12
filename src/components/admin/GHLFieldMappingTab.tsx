@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Plus, Trash2, Save, Play } from 'lucide-react';
+import { Plus, Trash2, Save, Play, Download, FileText, FileType } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { downloadGhlSpecCsv, downloadGhlSpecMarkdown } from '@/lib/ghlFieldSpecExport';
 
 type Mapping = {
   id: string;
