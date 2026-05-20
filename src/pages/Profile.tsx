@@ -731,8 +731,9 @@ export default function Profile() {
             )}
 
             {/* Financial Goals */}
+            {isVisible('financial_goals') && (
             <div className="space-y-3">
-              <Label>Financial Goals <span className="text-destructive">*</span> <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
+              <Label>Financial Goals {isRequired('financial_goals') && <span className="text-destructive">*</span>} <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
               <div className="space-y-2">
                 {FINANCIAL_GOALS.map((goal) => (
                   <div
@@ -752,6 +753,7 @@ export default function Profile() {
               </div>
               {validationErrors.financialGoals && <p className="text-xs text-destructive">{validationErrors.financialGoals}</p>}
             </div>
+            )}
           </CardContent>
         </Card>
 
