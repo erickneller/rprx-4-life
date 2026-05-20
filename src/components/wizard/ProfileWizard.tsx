@@ -4,6 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useCompany } from '@/hooks/useCompany';
 import { useWizardContent } from '@/hooks/useWizardContent';
+import { useProfileFieldSettings } from '@/hooks/useProfileFieldSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
