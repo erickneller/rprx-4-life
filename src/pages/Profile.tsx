@@ -780,6 +780,7 @@ export default function Profile() {
         </Card>
 
         {/* 🌊 Emergency Savings */}
+        {isVisible('emergency_fund_balance') && (
         <Card>
           <CardHeader>
             <CardTitle>🌊 Emergency Savings</CardTitle>
@@ -787,7 +788,7 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="emergencyFundBalance">Emergency Fund Balance <span className="text-destructive">*</span></Label>
+              <Label htmlFor="emergencyFundBalance">Emergency Fund Balance {isRequired('emergency_fund_balance') && <span className="text-destructive">*</span>}</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -805,6 +806,7 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* 🏞️ Retirement Planning */}
         <Card>
