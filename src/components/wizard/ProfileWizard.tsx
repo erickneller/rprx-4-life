@@ -150,6 +150,7 @@ export function ProfileWizard() {
   const { data: assessments } = useAssessmentHistory();
   const { createCompany, createCompanyPending } = useCompany();
   const { contentMap, isLoading: contentLoading } = useWizardContent();
+  const { isVisible, isRequired } = useProfileFieldSettings();
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
