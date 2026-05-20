@@ -42,6 +42,7 @@ import { DataExportTab } from '@/components/admin/DataExportTab';
 import { AssistantEngineTab } from '@/components/admin/AssistantEngineTab';
 import { AssistantQualityTab } from '@/components/admin/AssistantQualityTab';
 import { CoursesTab } from '@/components/admin/CoursesTab';
+import { ProfileFieldsTab } from '@/components/admin/ProfileFieldsTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -426,6 +427,9 @@ export default function AdminPanel() {
             <TabsTrigger value="wizard-copy" className="gap-1">
               <GraduationCap className="h-4 w-4" /> Wizard Copy
             </TabsTrigger>
+            <TabsTrigger value="profile-fields" className="gap-1">
+              <Users className="h-4 w-4" /> Profile Fields
+            </TabsTrigger>
             <TabsTrigger value="features" className="gap-1">
               <Zap className="h-4 w-4" /> Features
             </TabsTrigger>
@@ -661,6 +665,11 @@ export default function AdminPanel() {
           {/* ===== WIZARD COPY TAB ===== */}
           <TabsContent value="wizard-copy" className="space-y-4">
             <WizardCopyTab />
+          </TabsContent>
+
+          {/* ===== PROFILE FIELDS TAB ===== */}
+          <TabsContent value="profile-fields" className="space-y-4">
+            <ProfileFieldsTab />
           </TabsContent>
 
           {/* ===== FEATURES TAB ===== */}

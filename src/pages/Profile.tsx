@@ -25,6 +25,7 @@ import { GamificationScoreCard } from '@/components/gamification/GamificationSco
 import { useGamification } from '@/hooks/useGamification';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
+import { useProfileFieldSettings } from '@/hooks/useProfileFieldSettings';
 
 const EMPLOYER_MATCH_OPTIONS = [
   { value: 'yes', label: 'Yes — I get the full match' },
@@ -157,6 +158,7 @@ export default function Profile() {
   const { refreshScore } = useRPRxScore();
   const { company: userCompany, membership: userMembership } = useCompany();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isVisible, isRequired } = useProfileFieldSettings();
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -472,34 +474,37 @@ export default function Profile() {
     stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling,
   ]);
 
-  // Validation: all fields required
+  // Validation: honor admin Profile Field Settings (show/required)
   const validationErrors = useMemo(() => {
     const errors: Record<string, string> = {};
-    if (!fullName.trim()) errors.fullName = 'Full name is required';
-    if (!phone.trim()) errors.phone = 'Phone number is required';
-    if (!monthlyIncome) errors.monthlyIncome = 'Monthly income is required';
-    if (!monthlyDebtPayments && monthlyDebtPayments !== '0') errors.monthlyDebtPayments = 'Debt payments is required';
-    if (!monthlyHousing) errors.monthlyHousing = 'Housing cost is required';
-    if (!monthlyInsurance && monthlyInsurance !== '0') errors.monthlyInsurance = 'Insurance cost is required';
-    if (!monthlyLivingExpenses) errors.monthlyLivingExpenses = 'Living expenses is required';
-    if (profileTypes.length === 0) errors.profileTypes = 'Select at least one profile type';
-    if (financialGoals.length === 0) errors.financialGoals = 'Select at least one financial goal';
-    if (!filingStatus) errors.filingStatus = 'Filing status is required';
-    if (!yearsUntilRetirement) errors.yearsUntilRetirement = 'Years until retirement is required';
-    if (!desiredRetirementIncome) errors.desiredRetirementIncome = 'Desired retirement income is required';
-    if (!retirementBalanceTotal && retirementBalanceTotal !== '0') errors.retirementBalanceTotal = 'Retirement balance is required';
-    if (!retirementContributionMonthly && retirementContributionMonthly !== '0') errors.retirementContributionMonthly = 'Monthly contribution is required';
-    if (!healthInsurance && !lifeInsurance && !disabilityInsurance && !longTermCareInsurance && !noInsurance) {
+    const req = (key: string) => isVisible(key) && isRequired(key);
+    if (req('full_name') && !fullName.trim()) errors.fullName = 'Full name is required';
+    if (req('phone') && !phone.trim()) errors.phone = 'Phone number is required';
+    if (req('monthly_income') && !monthlyIncome) errors.monthlyIncome = 'Monthly income is required';
+    if (req('monthly_debt_payments') && !monthlyDebtPayments && monthlyDebtPayments !== '0') errors.monthlyDebtPayments = 'Debt payments is required';
+    if (req('monthly_housing') && !monthlyHousing) errors.monthlyHousing = 'Housing cost is required';
+    if (req('monthly_insurance') && !monthlyInsurance && monthlyInsurance !== '0') errors.monthlyInsurance = 'Insurance cost is required';
+    if (req('monthly_living_expenses') && !monthlyLivingExpenses) errors.monthlyLivingExpenses = 'Living expenses is required';
+    if (req('profile_type') && profileTypes.length === 0) errors.profileTypes = 'Select at least one profile type';
+    if (req('financial_goals') && financialGoals.length === 0) errors.financialGoals = 'Select at least one financial goal';
+    if (req('filing_status') && !filingStatus) errors.filingStatus = 'Filing status is required';
+    if (req('years_until_retirement') && !yearsUntilRetirement) errors.yearsUntilRetirement = 'Years until retirement is required';
+    if (req('desired_retirement_income') && !desiredRetirementIncome) errors.desiredRetirementIncome = 'Desired retirement income is required';
+    if (req('retirement_balance_total') && !retirementBalanceTotal && retirementBalanceTotal !== '0') errors.retirementBalanceTotal = 'Retirement balance is required';
+    if (req('retirement_contribution_monthly') && !retirementContributionMonthly && retirementContributionMonthly !== '0') errors.retirementContributionMonthly = 'Monthly contribution is required';
+    const insuranceRequired = req('health_insurance') || req('life_insurance') || req('disability_insurance') || req('long_term_care_insurance') || req('no_insurance');
+    const insuranceVisible = isVisible('health_insurance') || isVisible('life_insurance') || isVisible('disability_insurance') || isVisible('long_term_care_insurance') || isVisible('no_insurance');
+    if (insuranceVisible && insuranceRequired && !healthInsurance && !lifeInsurance && !disabilityInsurance && !longTermCareInsurance && !noInsurance) {
       errors.insurance = 'Select at least one insurance option or "I don\'t have any insurance"';
     }
-    if (!emergencyFundBalance && emergencyFundBalance !== '0') errors.emergencyFundBalance = 'Emergency fund balance is required';
-    if (!employerMatchCaptured) errors.employerMatchCaptured = 'Employer match status is required';
-    if (taxAdvantagedAccounts.length === 0) errors.taxAdvantagedAccounts = 'Select at least one account or indicate none';
-    if (!stressMoneyWorry) errors.stressMoneyWorry = 'This question is required';
-    if (!stressEmergencyConfidence) errors.stressEmergencyConfidence = 'This question is required';
-    if (!stressControlFeeling) errors.stressControlFeeling = 'This question is required';
+    if (req('emergency_fund_balance') && !emergencyFundBalance && emergencyFundBalance !== '0') errors.emergencyFundBalance = 'Emergency fund balance is required';
+    if (req('employer_match_captured') && !employerMatchCaptured) errors.employerMatchCaptured = 'Employer match status is required';
+    if (req('tax_advantaged_accounts') && taxAdvantagedAccounts.length === 0) errors.taxAdvantagedAccounts = 'Select at least one account or indicate none';
+    if (req('stress_money_worry') && !stressMoneyWorry) errors.stressMoneyWorry = 'This question is required';
+    if (req('stress_emergency_confidence') && !stressEmergencyConfidence) errors.stressEmergencyConfidence = 'This question is required';
+    if (req('stress_control_feeling') && !stressControlFeeling) errors.stressControlFeeling = 'This question is required';
     return errors;
-  }, [fullName, phone, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileTypes, financialGoals, filingStatus, yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly, healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance, emergencyFundBalance, employerMatchCaptured, taxAdvantagedAccounts, stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling]);
+  }, [isVisible, isRequired, fullName, phone, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileTypes, financialGoals, filingStatus, yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly, healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance, emergencyFundBalance, employerMatchCaptured, taxAdvantagedAccounts, stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling]);
 
   const isValid = Object.keys(validationErrors).length === 0;
 
@@ -610,22 +615,26 @@ export default function Profile() {
             <CardTitle>Personal Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {isVisible('full_name') && (
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name <span className="text-destructive">*</span></Label>
+              <Label htmlFor="fullName">Full Name {isRequired('full_name') && <span className="text-destructive">*</span>}</Label>
               <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter your name" className={validationErrors.fullName ? 'border-destructive' : ''} />
               {validationErrors.fullName && <p className="text-xs text-destructive">{validationErrors.fullName}</p>}
             </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" value={user?.email || ''} disabled className="bg-muted" />
             </div>
 
+            {isVisible('phone') && (
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone <span className="text-destructive">*</span></Label>
+              <Label htmlFor="phone">Phone {isRequired('phone') && <span className="text-destructive">*</span>}</Label>
               <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Enter your phone number" className={validationErrors.phone ? 'border-destructive' : ''} />
               {validationErrors.phone && <p className="text-xs text-destructive">{validationErrors.phone}</p>}
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -640,8 +649,9 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Profile Type - Multi-select */}
+            {isVisible('profile_type') && (
             <div className="space-y-2">
-              <Label>I am a: <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <Label>I am a: {isRequired('profile_type') && <span className="text-destructive">*</span>} <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
               <div className="space-y-2">
                 {PROFILE_TYPES.map((type) => (
                   <div
@@ -662,11 +672,13 @@ export default function Profile() {
               </div>
               {validationErrors.profileTypes && <p className="text-xs text-destructive">{validationErrors.profileTypes}</p>}
             </div>
+            )}
 
             {/* Filing Status */}
+            {isVisible('filing_status') && (
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
-                <Label htmlFor="filingStatus">Filing Status <span className="text-destructive">*</span></Label>
+                <Label htmlFor="filingStatus">Filing Status {isRequired('filing_status') && <span className="text-destructive">*</span>}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -690,15 +702,18 @@ export default function Profile() {
               </Select>
               {validationErrors.filingStatus && <p className="text-xs text-destructive">{validationErrors.filingStatus}</p>}
             </div>
+            )}
 
             {/* Number of Children */}
+            {isVisible('num_children') && (
             <div className="space-y-2">
-              <Label htmlFor="numChildren">Number of Children <span className="text-destructive">*</span></Label>
+              <Label htmlFor="numChildren">Number of Children {isRequired('num_children') && <span className="text-destructive">*</span>}</Label>
               <Input id="numChildren" type="number" min={0} max={10} value={numChildren} onChange={(e) => setNumChildren(parseInt(e.target.value) || 0)} placeholder="0" className="w-24" />
             </div>
+            )}
 
             {/* Dynamic Children Ages */}
-            {numChildren > 0 && (
+            {isVisible('children_ages') && numChildren > 0 && (
               <div className="space-y-3">
                 <Label>Children's Ages</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -716,8 +731,9 @@ export default function Profile() {
             )}
 
             {/* Financial Goals */}
+            {isVisible('financial_goals') && (
             <div className="space-y-3">
-              <Label>Financial Goals <span className="text-destructive">*</span> <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
+              <Label>Financial Goals {isRequired('financial_goals') && <span className="text-destructive">*</span>} <span className="text-xs font-normal text-muted-foreground">(select all that apply)</span></Label>
               <div className="space-y-2">
                 {FINANCIAL_GOALS.map((goal) => (
                   <div
@@ -737,6 +753,7 @@ export default function Profile() {
               </div>
               {validationErrors.financialGoals && <p className="text-xs text-destructive">{validationErrors.financialGoals}</p>}
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -763,6 +780,7 @@ export default function Profile() {
         </Card>
 
         {/* 🌊 Emergency Savings */}
+        {isVisible('emergency_fund_balance') && (
         <Card>
           <CardHeader>
             <CardTitle>🌊 Emergency Savings</CardTitle>
@@ -770,7 +788,7 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="emergencyFundBalance">Emergency Fund Balance <span className="text-destructive">*</span></Label>
+              <Label htmlFor="emergencyFundBalance">Emergency Fund Balance {isRequired('emergency_fund_balance') && <span className="text-destructive">*</span>}</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -788,84 +806,60 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* 🏞️ Retirement Planning */}
+        {(isVisible('years_until_retirement') || isVisible('desired_retirement_income') || isVisible('retirement_balance_total') || isVisible('retirement_contribution_monthly') || isVisible('employer_match_captured')) && (
         <Card>
           <CardHeader>
-            <CardTitle>🏞️ Your Lake — Retirement <span className="text-destructive">*</span></CardTitle>
+            <CardTitle>🏞️ Your Lake — Retirement</CardTitle>
             <CardDescription>Help us understand your retirement outlook</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {isVisible('years_until_retirement') && (
             <div className="space-y-1.5">
-              <Label htmlFor="yearsUntilRetirement">Years Until Retirement <span className="text-destructive">*</span></Label>
-              <Input
-                id="yearsUntilRetirement"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={80}
-                value={yearsUntilRetirement}
-                onChange={(e) => setYearsUntilRetirement(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="0"
-                className={`w-32 ${validationErrors.yearsUntilRetirement ? 'border-destructive' : ''}`}
-              />
+              <Label htmlFor="yearsUntilRetirement">Years Until Retirement {isRequired('years_until_retirement') && <span className="text-destructive">*</span>}</Label>
+              <Input id="yearsUntilRetirement" type="number" inputMode="numeric" min={0} max={80} value={yearsUntilRetirement} onChange={(e) => setYearsUntilRetirement(e.target.value.replace(/[^0-9]/g, ''))} placeholder="0" className={`w-32 ${validationErrors.yearsUntilRetirement ? 'border-destructive' : ''}`} />
               {validationErrors.yearsUntilRetirement && <p className="text-xs text-destructive">{validationErrors.yearsUntilRetirement}</p>}
             </div>
+            )}
 
+            {isVisible('desired_retirement_income') && (
             <div className="space-y-1.5">
-              <Label htmlFor="desiredRetirementIncome">Desired Retirement Income (annual) <span className="text-destructive">*</span></Label>
+              <Label htmlFor="desiredRetirementIncome">Desired Retirement Income (annual) {isRequired('desired_retirement_income') && <span className="text-destructive">*</span>}</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="desiredRetirementIncome"
-                  type="text"
-                  inputMode="numeric"
-                  value={desiredRetirementIncome ? Number(desiredRetirementIncome).toLocaleString() : ''}
-                  onChange={(e) => setDesiredRetirementIncome(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="0"
-                  className={`pl-9 ${validationErrors.desiredRetirementIncome ? 'border-destructive' : ''}`}
-                />
+                <Input id="desiredRetirementIncome" type="text" inputMode="numeric" value={desiredRetirementIncome ? Number(desiredRetirementIncome).toLocaleString() : ''} onChange={(e) => setDesiredRetirementIncome(e.target.value.replace(/[^0-9]/g, ''))} placeholder="0" className={`pl-9 ${validationErrors.desiredRetirementIncome ? 'border-destructive' : ''}`} />
               </div>
               {validationErrors.desiredRetirementIncome && <p className="text-xs text-destructive">{validationErrors.desiredRetirementIncome}</p>}
             </div>
+            )}
 
+            {isVisible('retirement_balance_total') && (
             <div className="space-y-1.5">
-              <Label htmlFor="retirementBalanceTotal">Retirement Balance Total <span className="text-destructive">*</span></Label>
+              <Label htmlFor="retirementBalanceTotal">Retirement Balance Total {isRequired('retirement_balance_total') && <span className="text-destructive">*</span>}</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="retirementBalanceTotal"
-                  type="text"
-                  inputMode="numeric"
-                  value={retirementBalanceTotal ? Number(retirementBalanceTotal).toLocaleString() : ''}
-                  onChange={(e) => setRetirementBalanceTotal(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="0"
-                  className={`pl-9 ${validationErrors.retirementBalanceTotal ? 'border-destructive' : ''}`}
-                />
+                <Input id="retirementBalanceTotal" type="text" inputMode="numeric" value={retirementBalanceTotal ? Number(retirementBalanceTotal).toLocaleString() : ''} onChange={(e) => setRetirementBalanceTotal(e.target.value.replace(/[^0-9]/g, ''))} placeholder="0" className={`pl-9 ${validationErrors.retirementBalanceTotal ? 'border-destructive' : ''}`} />
               </div>
               {validationErrors.retirementBalanceTotal && <p className="text-xs text-destructive">{validationErrors.retirementBalanceTotal}</p>}
             </div>
+            )}
 
+            {isVisible('retirement_contribution_monthly') && (
             <div className="space-y-1.5">
-              <Label htmlFor="retirementContributionMonthly">Monthly Retirement Contribution <span className="text-destructive">*</span></Label>
+              <Label htmlFor="retirementContributionMonthly">Monthly Retirement Contribution {isRequired('retirement_contribution_monthly') && <span className="text-destructive">*</span>}</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="retirementContributionMonthly"
-                  type="text"
-                  inputMode="numeric"
-                  value={retirementContributionMonthly ? Number(retirementContributionMonthly).toLocaleString() : ''}
-                  onChange={(e) => setRetirementContributionMonthly(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="0"
-                  className={`pl-9 ${validationErrors.retirementContributionMonthly ? 'border-destructive' : ''}`}
-                />
+                <Input id="retirementContributionMonthly" type="text" inputMode="numeric" value={retirementContributionMonthly ? Number(retirementContributionMonthly).toLocaleString() : ''} onChange={(e) => setRetirementContributionMonthly(e.target.value.replace(/[^0-9]/g, ''))} placeholder="0" className={`pl-9 ${validationErrors.retirementContributionMonthly ? 'border-destructive' : ''}`} />
               </div>
               {validationErrors.retirementContributionMonthly && <p className="text-xs text-destructive">{validationErrors.retirementContributionMonthly}</p>}
             </div>
+            )}
 
-            {/* Employer Match - new field */}
+            {isVisible('employer_match_captured') && (
             <div className="space-y-1.5">
-              <Label htmlFor="employerMatchCaptured">Employer Match Captured <span className="text-destructive">*</span></Label>
+              <Label htmlFor="employerMatchCaptured">Employer Match Captured {isRequired('employer_match_captured') && <span className="text-destructive">*</span>}</Label>
               <Select value={employerMatchCaptured} onValueChange={setEmployerMatchCaptured}>
                 <SelectTrigger id="employerMatchCaptured" className={validationErrors.employerMatchCaptured ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select..." />
@@ -879,8 +873,10 @@ export default function Profile() {
               <p className="text-xs text-muted-foreground">Is your employer matching your retirement contributions?</p>
               {validationErrors.employerMatchCaptured && <p className="text-xs text-destructive">{validationErrors.employerMatchCaptured}</p>}
             </div>
+            )}
           </CardContent>
         </Card>
+        )}
 
         {/* 💰 Tax Efficiency */}
         <Card>

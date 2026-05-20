@@ -1126,6 +1126,39 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_field_settings: {
+        Row: {
+          created_at: string
+          field_key: string
+          label: string
+          required: boolean
+          section: string
+          sort_order: number
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          label: string
+          required?: boolean
+          section?: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          label?: string
+          required?: boolean
+          section?: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

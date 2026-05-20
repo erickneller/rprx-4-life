@@ -4,6 +4,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useCompany } from '@/hooks/useCompany';
 import { useWizardContent } from '@/hooks/useWizardContent';
+import { useProfileFieldSettings } from '@/hooks/useProfileFieldSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -149,6 +150,7 @@ export function ProfileWizard() {
   const { data: assessments } = useAssessmentHistory();
   const { createCompany, createCompanyPending } = useCompany();
   const { contentMap, isLoading: contentLoading } = useWizardContent();
+  const { isVisible, isRequired } = useProfileFieldSettings();
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -232,33 +234,35 @@ export function ProfileWizard() {
 
   const validateStep = (s: number): Record<string, string> => {
     const e: Record<string, string> = {};
+    const req = (key: string) => isVisible(key) && isRequired(key);
     if (s === 1) {
-      if (form.monthly_income === null || form.monthly_income <= 0) e.monthly_income = 'Required';
-      if (form.monthly_debt_payments === null) e.monthly_debt_payments = 'Required (0 is valid)';
-      if (form.monthly_housing === null || form.monthly_housing <= 0) e.monthly_housing = 'Required';
-      if (form.monthly_insurance === null) e.monthly_insurance = 'Required (0 is valid)';
-      if (form.monthly_living_expenses === null || form.monthly_living_expenses <= 0) e.monthly_living_expenses = 'Required';
-      if (form.emergency_fund_balance === null) e.emergency_fund_balance = 'Required (0 is valid)';
-      if (!form.filing_status) e.filing_status = 'Required';
-      if (!form.employer_match_captured) e.employer_match_captured = 'Required';
-      if (!form.tax_advantaged_accounts.length) e.tax_advantaged_accounts = 'Select at least one account or indicate none';
+      if (req('monthly_income') && (form.monthly_income === null || form.monthly_income <= 0)) e.monthly_income = 'Required';
+      if (req('monthly_debt_payments') && form.monthly_debt_payments === null) e.monthly_debt_payments = 'Required (0 is valid)';
+      if (req('monthly_housing') && (form.monthly_housing === null || form.monthly_housing <= 0)) e.monthly_housing = 'Required';
+      if (req('monthly_insurance') && form.monthly_insurance === null) e.monthly_insurance = 'Required (0 is valid)';
+      if (req('monthly_living_expenses') && (form.monthly_living_expenses === null || form.monthly_living_expenses <= 0)) e.monthly_living_expenses = 'Required';
+      if (req('emergency_fund_balance') && form.emergency_fund_balance === null) e.emergency_fund_balance = 'Required (0 is valid)';
+      if (req('filing_status') && !form.filing_status) e.filing_status = 'Required';
+      if (req('employer_match_captured') && !form.employer_match_captured) e.employer_match_captured = 'Required';
+      if (req('tax_advantaged_accounts') && !form.tax_advantaged_accounts.length) e.tax_advantaged_accounts = 'Select at least one account or indicate none';
     } else if (s === 2) {
-      if (form.num_children === null) e.num_children = 'Required (0 is valid)';
+      if (req('num_children') && form.num_children === null) e.num_children = 'Required (0 is valid)';
+      const anyInsuranceVisible = isVisible('health_insurance') || isVisible('life_insurance') || isVisible('disability_insurance') || isVisible('long_term_care_insurance') || isVisible('no_insurance');
+      const insuranceRequired = req('health_insurance') || req('life_insurance') || req('disability_insurance') || req('long_term_care_insurance') || req('no_insurance');
       const anyInsurance = form.health_insurance || form.life_insurance || form.disability_insurance || form.long_term_care_insurance || form.no_insurance;
-      if (!anyInsurance) e.insurance = 'Select at least one';
-      if (!form.financial_goals.length) e.financial_goals = 'Select at least one';
-      if (!form.profile_type.length) e.profile_type = 'Select at least one profile type';
+      if (anyInsuranceVisible && insuranceRequired && !anyInsurance) e.insurance = 'Select at least one';
+      if (req('financial_goals') && !form.financial_goals.length) e.financial_goals = 'Select at least one';
+      if (req('profile_type') && !form.profile_type.length) e.profile_type = 'Select at least one profile type';
     } else if (s === 3) {
-      if (form.years_until_retirement === null) e.years_until_retirement = 'Required';
-      if (form.desired_retirement_income === null || form.desired_retirement_income <= 0) e.desired_retirement_income = 'Required';
-      if (form.retirement_balance_total === null) e.retirement_balance_total = 'Required (0 is valid)';
-      if (form.retirement_contribution_monthly === null) e.retirement_contribution_monthly = 'Required (0 is valid)';
+      if (req('years_until_retirement') && form.years_until_retirement === null) e.years_until_retirement = 'Required';
+      if (req('desired_retirement_income') && (form.desired_retirement_income === null || form.desired_retirement_income <= 0)) e.desired_retirement_income = 'Required';
+      if (req('retirement_balance_total') && form.retirement_balance_total === null) e.retirement_balance_total = 'Required (0 is valid)';
+      if (req('retirement_contribution_monthly') && form.retirement_contribution_monthly === null) e.retirement_contribution_monthly = 'Required (0 is valid)';
     } else if (s === 4) {
-      if (!form.stress_money_worry) e.stress_money_worry = 'Required';
-      if (!form.stress_emergency_confidence) e.stress_emergency_confidence = 'Required';
-      if (!form.stress_control_feeling) e.stress_control_feeling = 'Required';
+      if (req('stress_money_worry') && !form.stress_money_worry) e.stress_money_worry = 'Required';
+      if (req('stress_emergency_confidence') && !form.stress_emergency_confidence) e.stress_emergency_confidence = 'Required';
+      if (req('stress_control_feeling') && !form.stress_control_feeling) e.stress_control_feeling = 'Required';
     } else if (s === 5) {
-      // Business owner company step — only shown when profile_type includes 'business_owner'
       if (!companyName.trim()) e.companyName = 'Company name is required';
     }
     return e;
@@ -365,12 +369,13 @@ export function ProfileWizard() {
         {/* Step content */}
         {step === 1 && (
           <div className="space-y-4">
-            <DollarInput label="Monthly take-home income" value={form.monthly_income} onChange={v => set('monthly_income', v)} error={errors.monthly_income} />
-            <DollarInput label="Monthly debt payments" value={form.monthly_debt_payments} onChange={v => set('monthly_debt_payments', v)} allowZero error={errors.monthly_debt_payments} />
-            <DollarInput label="Monthly housing — rent or mortgage" value={form.monthly_housing} onChange={v => set('monthly_housing', v)} error={errors.monthly_housing} />
-            <DollarInput label="Monthly insurance premiums total" value={form.monthly_insurance} onChange={v => set('monthly_insurance', v)} allowZero error={errors.monthly_insurance} />
-            <DollarInput label="Monthly living expenses — food, transport, utilities" value={form.monthly_living_expenses} onChange={v => set('monthly_living_expenses', v)} error={errors.monthly_living_expenses} />
-            <DollarInput label="Current emergency fund balance" value={form.emergency_fund_balance} onChange={v => set('emergency_fund_balance', v)} allowZero error={errors.emergency_fund_balance} />
+            {isVisible('monthly_income') && <DollarInput label="Monthly take-home income" value={form.monthly_income} onChange={v => set('monthly_income', v)} error={errors.monthly_income} />}
+            {isVisible('monthly_debt_payments') && <DollarInput label="Monthly debt payments" value={form.monthly_debt_payments} onChange={v => set('monthly_debt_payments', v)} allowZero error={errors.monthly_debt_payments} />}
+            {isVisible('monthly_housing') && <DollarInput label="Monthly housing — rent or mortgage" value={form.monthly_housing} onChange={v => set('monthly_housing', v)} error={errors.monthly_housing} />}
+            {isVisible('monthly_insurance') && <DollarInput label="Monthly insurance premiums total" value={form.monthly_insurance} onChange={v => set('monthly_insurance', v)} allowZero error={errors.monthly_insurance} />}
+            {isVisible('monthly_living_expenses') && <DollarInput label="Monthly living expenses — food, transport, utilities" value={form.monthly_living_expenses} onChange={v => set('monthly_living_expenses', v)} error={errors.monthly_living_expenses} />}
+            {isVisible('emergency_fund_balance') && <DollarInput label="Current emergency fund balance" value={form.emergency_fund_balance} onChange={v => set('emergency_fund_balance', v)} allowZero error={errors.emergency_fund_balance} />}
+            {isVisible('filing_status') && (
             <div className="space-y-1">
               <Label>How do you file taxes?</Label>
               <Select value={form.filing_status} onValueChange={v => set('filing_status', v)}>
@@ -379,6 +384,8 @@ export function ProfileWizard() {
               </Select>
               {errors.filing_status && <p className="text-xs text-destructive">{errors.filing_status}</p>}
             </div>
+            )}
+            {isVisible('employer_match_captured') && (
             <div className="space-y-1">
               <Label>Capturing your full employer 401k match?</Label>
               <Select value={form.employer_match_captured} onValueChange={v => set('employer_match_captured', v)}>
@@ -387,10 +394,12 @@ export function ProfileWizard() {
               </Select>
               {errors.employer_match_captured && <p className="text-xs text-destructive">{errors.employer_match_captured}</p>}
             </div>
+            )}
 
             {/* Tax-Advantaged Accounts */}
+            {isVisible('tax_advantaged_accounts') && (
             <div className="space-y-2">
-              <Label>Tax-Advantaged Accounts <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <Label>Tax-Advantaged Accounts {isRequired('tax_advantaged_accounts') && <span className="text-destructive">*</span>} <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
               <div className="space-y-2">
                 {TAX_ACCOUNT_OPTIONS.map((opt) => (
                   <label key={opt.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
@@ -412,14 +421,16 @@ export function ProfileWizard() {
               </div>
               {errors.tax_advantaged_accounts && <p className="text-xs text-destructive">{errors.tax_advantaged_accounts}</p>}
             </div>
+            )}
           </div>
         )}
 
         {step === 2 && (
           <div className="space-y-6">
             {/* Profile Type */}
+            {isVisible('profile_type') && (
             <div className="space-y-2">
-              <Label>I am a: <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <Label>I am a: {isRequired('profile_type') && <span className="text-destructive">*</span>} <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
               <div className="space-y-2">
                 {PROFILE_TYPES.map((type) => (
                   <label key={type.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
@@ -438,9 +449,11 @@ export function ProfileWizard() {
               </div>
               {errors.profile_type && <p className="text-xs text-destructive">{errors.profile_type}</p>}
             </div>
+            )}
 
-            <NumberInput label="Number of dependent children" value={form.num_children} onChange={v => set('num_children', v)} error={errors.num_children} />
+            {isVisible('num_children') && <NumberInput label="Number of dependent children" value={form.num_children} onChange={v => set('num_children', v)} error={errors.num_children} />}
 
+            {(isVisible('health_insurance') || isVisible('life_insurance') || isVisible('disability_insurance') || isVisible('long_term_care_insurance') || isVisible('no_insurance')) && (
             <div className="space-y-2">
               <Label>Insurance coverage currently held</Label>
               {[
@@ -449,7 +462,7 @@ export function ProfileWizard() {
                 { key: 'disability_insurance' as const, label: 'Disability Insurance' },
                 { key: 'long_term_care_insurance' as const, label: 'Long-Term Care' },
                 { key: 'no_insurance' as const, label: 'None of the above' },
-              ].map(({ key, label }) => (
+              ].filter(({ key }) => isVisible(key)).map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
                   <Checkbox
                     checked={form[key]}
@@ -474,9 +487,11 @@ export function ProfileWizard() {
               ))}
               {errors.insurance && <p className="text-xs text-destructive">{errors.insurance}</p>}
             </div>
+            )}
 
+            {isVisible('financial_goals') && (
             <div className="space-y-2">
-              <Label>Top financial goals (select at least 1)</Label>
+              <Label>Top financial goals {isRequired('financial_goals') && <span className="text-xs text-muted-foreground">(select at least 1)</span>}</Label>
               {FINANCIAL_GOALS.map(goal => (
                 <label key={goal.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
                   <Checkbox
@@ -493,21 +508,23 @@ export function ProfileWizard() {
               ))}
               {errors.financial_goals && <p className="text-xs text-destructive">{errors.financial_goals}</p>}
             </div>
+            )}
           </div>
         )}
 
         {step === 3 && (
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground italic">Not sure? Use your best estimate — you can update this anytime in your profile</p>
-            <NumberInput label="Years until you plan to retire" value={form.years_until_retirement} onChange={v => set('years_until_retirement', v)} error={errors.years_until_retirement} />
-            <DollarInput label="Desired annual retirement income" value={form.desired_retirement_income} onChange={v => set('desired_retirement_income', v)} error={errors.desired_retirement_income} />
-            <DollarInput label="Current total retirement savings balance" value={form.retirement_balance_total} onChange={v => set('retirement_balance_total', v)} allowZero error={errors.retirement_balance_total} />
-            <DollarInput label="Monthly retirement contribution" value={form.retirement_contribution_monthly} onChange={v => set('retirement_contribution_monthly', v)} allowZero error={errors.retirement_contribution_monthly} />
+            {isVisible('years_until_retirement') && <NumberInput label="Years until you plan to retire" value={form.years_until_retirement} onChange={v => set('years_until_retirement', v)} error={errors.years_until_retirement} />}
+            {isVisible('desired_retirement_income') && <DollarInput label="Desired annual retirement income" value={form.desired_retirement_income} onChange={v => set('desired_retirement_income', v)} error={errors.desired_retirement_income} />}
+            {isVisible('retirement_balance_total') && <DollarInput label="Current total retirement savings balance" value={form.retirement_balance_total} onChange={v => set('retirement_balance_total', v)} allowZero error={errors.retirement_balance_total} />}
+            {isVisible('retirement_contribution_monthly') && <DollarInput label="Monthly retirement contribution" value={form.retirement_contribution_monthly} onChange={v => set('retirement_contribution_monthly', v)} allowZero error={errors.retirement_contribution_monthly} />}
           </div>
         )}
 
         {step === 4 && (
           <div className="space-y-6">
+            {isVisible('stress_money_worry') && (
             <div className="space-y-2">
               <Label>How often do you worry about money?</Label>
               <div className="space-y-2">
@@ -517,6 +534,8 @@ export function ProfileWizard() {
               </div>
               {errors.stress_money_worry && <p className="text-xs text-destructive">{errors.stress_money_worry}</p>}
             </div>
+            )}
+            {isVisible('stress_emergency_confidence') && (
             <div className="space-y-2">
               <Label>How confident are you handling an unexpected $2,000 expense?</Label>
               <div className="space-y-2">
@@ -526,6 +545,8 @@ export function ProfileWizard() {
               </div>
               {errors.stress_emergency_confidence && <p className="text-xs text-destructive">{errors.stress_emergency_confidence}</p>}
             </div>
+            )}
+            {isVisible('stress_control_feeling') && (
             <div className="space-y-2">
               <Label>How much control do you feel over your finances?</Label>
               <div className="space-y-2">
@@ -535,8 +556,10 @@ export function ProfileWizard() {
               </div>
               {errors.stress_control_feeling && <p className="text-xs text-destructive">{errors.stress_control_feeling}</p>}
             </div>
+            )}
           </div>
         )}
+
 
         {/* Step 5 — Business owner company setup (only shown if profile_type includes 'business_owner') */}
         {step === 5 && isBusinessOwner && (
