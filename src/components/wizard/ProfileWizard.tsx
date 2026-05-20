@@ -234,33 +234,35 @@ export function ProfileWizard() {
 
   const validateStep = (s: number): Record<string, string> => {
     const e: Record<string, string> = {};
+    const req = (key: string) => isVisible(key) && isRequired(key);
     if (s === 1) {
-      if (form.monthly_income === null || form.monthly_income <= 0) e.monthly_income = 'Required';
-      if (form.monthly_debt_payments === null) e.monthly_debt_payments = 'Required (0 is valid)';
-      if (form.monthly_housing === null || form.monthly_housing <= 0) e.monthly_housing = 'Required';
-      if (form.monthly_insurance === null) e.monthly_insurance = 'Required (0 is valid)';
-      if (form.monthly_living_expenses === null || form.monthly_living_expenses <= 0) e.monthly_living_expenses = 'Required';
-      if (form.emergency_fund_balance === null) e.emergency_fund_balance = 'Required (0 is valid)';
-      if (!form.filing_status) e.filing_status = 'Required';
-      if (!form.employer_match_captured) e.employer_match_captured = 'Required';
-      if (!form.tax_advantaged_accounts.length) e.tax_advantaged_accounts = 'Select at least one account or indicate none';
+      if (req('monthly_income') && (form.monthly_income === null || form.monthly_income <= 0)) e.monthly_income = 'Required';
+      if (req('monthly_debt_payments') && form.monthly_debt_payments === null) e.monthly_debt_payments = 'Required (0 is valid)';
+      if (req('monthly_housing') && (form.monthly_housing === null || form.monthly_housing <= 0)) e.monthly_housing = 'Required';
+      if (req('monthly_insurance') && form.monthly_insurance === null) e.monthly_insurance = 'Required (0 is valid)';
+      if (req('monthly_living_expenses') && (form.monthly_living_expenses === null || form.monthly_living_expenses <= 0)) e.monthly_living_expenses = 'Required';
+      if (req('emergency_fund_balance') && form.emergency_fund_balance === null) e.emergency_fund_balance = 'Required (0 is valid)';
+      if (req('filing_status') && !form.filing_status) e.filing_status = 'Required';
+      if (req('employer_match_captured') && !form.employer_match_captured) e.employer_match_captured = 'Required';
+      if (req('tax_advantaged_accounts') && !form.tax_advantaged_accounts.length) e.tax_advantaged_accounts = 'Select at least one account or indicate none';
     } else if (s === 2) {
-      if (form.num_children === null) e.num_children = 'Required (0 is valid)';
+      if (req('num_children') && form.num_children === null) e.num_children = 'Required (0 is valid)';
+      const anyInsuranceVisible = isVisible('health_insurance') || isVisible('life_insurance') || isVisible('disability_insurance') || isVisible('long_term_care_insurance') || isVisible('no_insurance');
+      const insuranceRequired = req('health_insurance') || req('life_insurance') || req('disability_insurance') || req('long_term_care_insurance') || req('no_insurance');
       const anyInsurance = form.health_insurance || form.life_insurance || form.disability_insurance || form.long_term_care_insurance || form.no_insurance;
-      if (!anyInsurance) e.insurance = 'Select at least one';
-      if (!form.financial_goals.length) e.financial_goals = 'Select at least one';
-      if (!form.profile_type.length) e.profile_type = 'Select at least one profile type';
+      if (anyInsuranceVisible && insuranceRequired && !anyInsurance) e.insurance = 'Select at least one';
+      if (req('financial_goals') && !form.financial_goals.length) e.financial_goals = 'Select at least one';
+      if (req('profile_type') && !form.profile_type.length) e.profile_type = 'Select at least one profile type';
     } else if (s === 3) {
-      if (form.years_until_retirement === null) e.years_until_retirement = 'Required';
-      if (form.desired_retirement_income === null || form.desired_retirement_income <= 0) e.desired_retirement_income = 'Required';
-      if (form.retirement_balance_total === null) e.retirement_balance_total = 'Required (0 is valid)';
-      if (form.retirement_contribution_monthly === null) e.retirement_contribution_monthly = 'Required (0 is valid)';
+      if (req('years_until_retirement') && form.years_until_retirement === null) e.years_until_retirement = 'Required';
+      if (req('desired_retirement_income') && (form.desired_retirement_income === null || form.desired_retirement_income <= 0)) e.desired_retirement_income = 'Required';
+      if (req('retirement_balance_total') && form.retirement_balance_total === null) e.retirement_balance_total = 'Required (0 is valid)';
+      if (req('retirement_contribution_monthly') && form.retirement_contribution_monthly === null) e.retirement_contribution_monthly = 'Required (0 is valid)';
     } else if (s === 4) {
-      if (!form.stress_money_worry) e.stress_money_worry = 'Required';
-      if (!form.stress_emergency_confidence) e.stress_emergency_confidence = 'Required';
-      if (!form.stress_control_feeling) e.stress_control_feeling = 'Required';
+      if (req('stress_money_worry') && !form.stress_money_worry) e.stress_money_worry = 'Required';
+      if (req('stress_emergency_confidence') && !form.stress_emergency_confidence) e.stress_emergency_confidence = 'Required';
+      if (req('stress_control_feeling') && !form.stress_control_feeling) e.stress_control_feeling = 'Required';
     } else if (s === 5) {
-      // Business owner company step — only shown when profile_type includes 'business_owner'
       if (!companyName.trim()) e.companyName = 'Company name is required';
     }
     return e;
