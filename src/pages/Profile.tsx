@@ -809,82 +809,57 @@ export default function Profile() {
         )}
 
         {/* 🏞️ Retirement Planning */}
+        {(isVisible('years_until_retirement') || isVisible('desired_retirement_income') || isVisible('retirement_balance_total') || isVisible('retirement_contribution_monthly') || isVisible('employer_match_captured')) && (
         <Card>
           <CardHeader>
-            <CardTitle>🏞️ Your Lake — Retirement <span className="text-destructive">*</span></CardTitle>
+            <CardTitle>🏞️ Your Lake — Retirement</CardTitle>
             <CardDescription>Help us understand your retirement outlook</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {isVisible('years_until_retirement') && (
             <div className="space-y-1.5">
-              <Label htmlFor="yearsUntilRetirement">Years Until Retirement <span className="text-destructive">*</span></Label>
-              <Input
-                id="yearsUntilRetirement"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={80}
-                value={yearsUntilRetirement}
-                onChange={(e) => setYearsUntilRetirement(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="0"
-                className={`w-32 ${validationErrors.yearsUntilRetirement ? 'border-destructive' : ''}`}
-              />
+              <Label htmlFor="yearsUntilRetirement">Years Until Retirement {isRequired('years_until_retirement') && <span className="text-destructive">*</span>}</Label>
+              <Input id="yearsUntilRetirement" type="number" inputMode="numeric" min={0} max={80} value={yearsUntilRetirement} onChange={(e) => setYearsUntilRetirement(e.target.value.replace(/[^0-9]/g, ''))} placeholder="0" className={`w-32 ${validationErrors.yearsUntilRetirement ? 'border-destructive' : ''}`} />
               {validationErrors.yearsUntilRetirement && <p className="text-xs text-destructive">{validationErrors.yearsUntilRetirement}</p>}
             </div>
+            )}
 
+            {isVisible('desired_retirement_income') && (
             <div className="space-y-1.5">
-              <Label htmlFor="desiredRetirementIncome">Desired Retirement Income (annual) <span className="text-destructive">*</span></Label>
+              <Label htmlFor="desiredRetirementIncome">Desired Retirement Income (annual) {isRequired('desired_retirement_income') && <span className="text-destructive">*</span>}</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="desiredRetirementIncome"
-                  type="text"
-                  inputMode="numeric"
-                  value={desiredRetirementIncome ? Number(desiredRetirementIncome).toLocaleString() : ''}
-                  onChange={(e) => setDesiredRetirementIncome(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="0"
-                  className={`pl-9 ${validationErrors.desiredRetirementIncome ? 'border-destructive' : ''}`}
-                />
+                <Input id="desiredRetirementIncome" type="text" inputMode="numeric" value={desiredRetirementIncome ? Number(desiredRetirementIncome).toLocaleString() : ''} onChange={(e) => setDesiredRetirementIncome(e.target.value.replace(/[^0-9]/g, ''))} placeholder="0" className={`pl-9 ${validationErrors.desiredRetirementIncome ? 'border-destructive' : ''}`} />
               </div>
               {validationErrors.desiredRetirementIncome && <p className="text-xs text-destructive">{validationErrors.desiredRetirementIncome}</p>}
             </div>
+            )}
 
+            {isVisible('retirement_balance_total') && (
             <div className="space-y-1.5">
-              <Label htmlFor="retirementBalanceTotal">Retirement Balance Total <span className="text-destructive">*</span></Label>
+              <Label htmlFor="retirementBalanceTotal">Retirement Balance Total {isRequired('retirement_balance_total') && <span className="text-destructive">*</span>}</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="retirementBalanceTotal"
-                  type="text"
-                  inputMode="numeric"
-                  value={retirementBalanceTotal ? Number(retirementBalanceTotal).toLocaleString() : ''}
-                  onChange={(e) => setRetirementBalanceTotal(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="0"
-                  className={`pl-9 ${validationErrors.retirementBalanceTotal ? 'border-destructive' : ''}`}
-                />
+                <Input id="retirementBalanceTotal" type="text" inputMode="numeric" value={retirementBalanceTotal ? Number(retirementBalanceTotal).toLocaleString() : ''} onChange={(e) => setRetirementBalanceTotal(e.target.value.replace(/[^0-9]/g, ''))} placeholder="0" className={`pl-9 ${validationErrors.retirementBalanceTotal ? 'border-destructive' : ''}`} />
               </div>
               {validationErrors.retirementBalanceTotal && <p className="text-xs text-destructive">{validationErrors.retirementBalanceTotal}</p>}
             </div>
+            )}
 
+            {isVisible('retirement_contribution_monthly') && (
             <div className="space-y-1.5">
-              <Label htmlFor="retirementContributionMonthly">Monthly Retirement Contribution <span className="text-destructive">*</span></Label>
+              <Label htmlFor="retirementContributionMonthly">Monthly Retirement Contribution {isRequired('retirement_contribution_monthly') && <span className="text-destructive">*</span>}</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="retirementContributionMonthly"
-                  type="text"
-                  inputMode="numeric"
-                  value={retirementContributionMonthly ? Number(retirementContributionMonthly).toLocaleString() : ''}
-                  onChange={(e) => setRetirementContributionMonthly(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="0"
-                  className={`pl-9 ${validationErrors.retirementContributionMonthly ? 'border-destructive' : ''}`}
-                />
+                <Input id="retirementContributionMonthly" type="text" inputMode="numeric" value={retirementContributionMonthly ? Number(retirementContributionMonthly).toLocaleString() : ''} onChange={(e) => setRetirementContributionMonthly(e.target.value.replace(/[^0-9]/g, ''))} placeholder="0" className={`pl-9 ${validationErrors.retirementContributionMonthly ? 'border-destructive' : ''}`} />
               </div>
               {validationErrors.retirementContributionMonthly && <p className="text-xs text-destructive">{validationErrors.retirementContributionMonthly}</p>}
             </div>
+            )}
 
-            {/* Employer Match - new field */}
+            {isVisible('employer_match_captured') && (
             <div className="space-y-1.5">
-              <Label htmlFor="employerMatchCaptured">Employer Match Captured <span className="text-destructive">*</span></Label>
+              <Label htmlFor="employerMatchCaptured">Employer Match Captured {isRequired('employer_match_captured') && <span className="text-destructive">*</span>}</Label>
               <Select value={employerMatchCaptured} onValueChange={setEmployerMatchCaptured}>
                 <SelectTrigger id="employerMatchCaptured" className={validationErrors.employerMatchCaptured ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select..." />
@@ -898,8 +873,10 @@ export default function Profile() {
               <p className="text-xs text-muted-foreground">Is your employer matching your retirement contributions?</p>
               {validationErrors.employerMatchCaptured && <p className="text-xs text-destructive">{validationErrors.employerMatchCaptured}</p>}
             </div>
+            )}
           </CardContent>
         </Card>
+        )}
 
         {/* 💰 Tax Efficiency */}
         <Card>
