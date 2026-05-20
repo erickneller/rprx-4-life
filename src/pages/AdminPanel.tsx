@@ -667,6 +667,11 @@ export default function AdminPanel() {
             <WizardCopyTab />
           </TabsContent>
 
+          {/* ===== PROFILE FIELDS TAB ===== */}
+          <TabsContent value="profile-fields" className="space-y-4">
+            <ProfileFieldsTab />
+          </TabsContent>
+
           {/* ===== FEATURES TAB ===== */}
           <TabsContent value="features" className="space-y-4">
             <FeaturesTab />
