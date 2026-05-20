@@ -474,34 +474,37 @@ export default function Profile() {
     stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling,
   ]);
 
-  // Validation: all fields required
+  // Validation: honor admin Profile Field Settings (show/required)
   const validationErrors = useMemo(() => {
     const errors: Record<string, string> = {};
-    if (!fullName.trim()) errors.fullName = 'Full name is required';
-    if (!phone.trim()) errors.phone = 'Phone number is required';
-    if (!monthlyIncome) errors.monthlyIncome = 'Monthly income is required';
-    if (!monthlyDebtPayments && monthlyDebtPayments !== '0') errors.monthlyDebtPayments = 'Debt payments is required';
-    if (!monthlyHousing) errors.monthlyHousing = 'Housing cost is required';
-    if (!monthlyInsurance && monthlyInsurance !== '0') errors.monthlyInsurance = 'Insurance cost is required';
-    if (!monthlyLivingExpenses) errors.monthlyLivingExpenses = 'Living expenses is required';
-    if (profileTypes.length === 0) errors.profileTypes = 'Select at least one profile type';
-    if (financialGoals.length === 0) errors.financialGoals = 'Select at least one financial goal';
-    if (!filingStatus) errors.filingStatus = 'Filing status is required';
-    if (!yearsUntilRetirement) errors.yearsUntilRetirement = 'Years until retirement is required';
-    if (!desiredRetirementIncome) errors.desiredRetirementIncome = 'Desired retirement income is required';
-    if (!retirementBalanceTotal && retirementBalanceTotal !== '0') errors.retirementBalanceTotal = 'Retirement balance is required';
-    if (!retirementContributionMonthly && retirementContributionMonthly !== '0') errors.retirementContributionMonthly = 'Monthly contribution is required';
-    if (!healthInsurance && !lifeInsurance && !disabilityInsurance && !longTermCareInsurance && !noInsurance) {
+    const req = (key: string) => isVisible(key) && isRequired(key);
+    if (req('full_name') && !fullName.trim()) errors.fullName = 'Full name is required';
+    if (req('phone') && !phone.trim()) errors.phone = 'Phone number is required';
+    if (req('monthly_income') && !monthlyIncome) errors.monthlyIncome = 'Monthly income is required';
+    if (req('monthly_debt_payments') && !monthlyDebtPayments && monthlyDebtPayments !== '0') errors.monthlyDebtPayments = 'Debt payments is required';
+    if (req('monthly_housing') && !monthlyHousing) errors.monthlyHousing = 'Housing cost is required';
+    if (req('monthly_insurance') && !monthlyInsurance && monthlyInsurance !== '0') errors.monthlyInsurance = 'Insurance cost is required';
+    if (req('monthly_living_expenses') && !monthlyLivingExpenses) errors.monthlyLivingExpenses = 'Living expenses is required';
+    if (req('profile_type') && profileTypes.length === 0) errors.profileTypes = 'Select at least one profile type';
+    if (req('financial_goals') && financialGoals.length === 0) errors.financialGoals = 'Select at least one financial goal';
+    if (req('filing_status') && !filingStatus) errors.filingStatus = 'Filing status is required';
+    if (req('years_until_retirement') && !yearsUntilRetirement) errors.yearsUntilRetirement = 'Years until retirement is required';
+    if (req('desired_retirement_income') && !desiredRetirementIncome) errors.desiredRetirementIncome = 'Desired retirement income is required';
+    if (req('retirement_balance_total') && !retirementBalanceTotal && retirementBalanceTotal !== '0') errors.retirementBalanceTotal = 'Retirement balance is required';
+    if (req('retirement_contribution_monthly') && !retirementContributionMonthly && retirementContributionMonthly !== '0') errors.retirementContributionMonthly = 'Monthly contribution is required';
+    const insuranceRequired = req('health_insurance') || req('life_insurance') || req('disability_insurance') || req('long_term_care_insurance') || req('no_insurance');
+    const insuranceVisible = isVisible('health_insurance') || isVisible('life_insurance') || isVisible('disability_insurance') || isVisible('long_term_care_insurance') || isVisible('no_insurance');
+    if (insuranceVisible && insuranceRequired && !healthInsurance && !lifeInsurance && !disabilityInsurance && !longTermCareInsurance && !noInsurance) {
       errors.insurance = 'Select at least one insurance option or "I don\'t have any insurance"';
     }
-    if (!emergencyFundBalance && emergencyFundBalance !== '0') errors.emergencyFundBalance = 'Emergency fund balance is required';
-    if (!employerMatchCaptured) errors.employerMatchCaptured = 'Employer match status is required';
-    if (taxAdvantagedAccounts.length === 0) errors.taxAdvantagedAccounts = 'Select at least one account or indicate none';
-    if (!stressMoneyWorry) errors.stressMoneyWorry = 'This question is required';
-    if (!stressEmergencyConfidence) errors.stressEmergencyConfidence = 'This question is required';
-    if (!stressControlFeeling) errors.stressControlFeeling = 'This question is required';
+    if (req('emergency_fund_balance') && !emergencyFundBalance && emergencyFundBalance !== '0') errors.emergencyFundBalance = 'Emergency fund balance is required';
+    if (req('employer_match_captured') && !employerMatchCaptured) errors.employerMatchCaptured = 'Employer match status is required';
+    if (req('tax_advantaged_accounts') && taxAdvantagedAccounts.length === 0) errors.taxAdvantagedAccounts = 'Select at least one account or indicate none';
+    if (req('stress_money_worry') && !stressMoneyWorry) errors.stressMoneyWorry = 'This question is required';
+    if (req('stress_emergency_confidence') && !stressEmergencyConfidence) errors.stressEmergencyConfidence = 'This question is required';
+    if (req('stress_control_feeling') && !stressControlFeeling) errors.stressControlFeeling = 'This question is required';
     return errors;
-  }, [fullName, phone, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileTypes, financialGoals, filingStatus, yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly, healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance, emergencyFundBalance, employerMatchCaptured, taxAdvantagedAccounts, stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling]);
+  }, [isVisible, isRequired, fullName, phone, monthlyIncome, monthlyDebtPayments, monthlyHousing, monthlyInsurance, monthlyLivingExpenses, profileTypes, financialGoals, filingStatus, yearsUntilRetirement, desiredRetirementIncome, retirementBalanceTotal, retirementContributionMonthly, healthInsurance, lifeInsurance, disabilityInsurance, longTermCareInsurance, noInsurance, emergencyFundBalance, employerMatchCaptured, taxAdvantagedAccounts, stressMoneyWorry, stressEmergencyConfidence, stressControlFeeling]);
 
   const isValid = Object.keys(validationErrors).length === 0;
 
