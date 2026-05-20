@@ -615,22 +615,26 @@ export default function Profile() {
             <CardTitle>Personal Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {isVisible('full_name') && (
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name <span className="text-destructive">*</span></Label>
+              <Label htmlFor="fullName">Full Name {isRequired('full_name') && <span className="text-destructive">*</span>}</Label>
               <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter your name" className={validationErrors.fullName ? 'border-destructive' : ''} />
               {validationErrors.fullName && <p className="text-xs text-destructive">{validationErrors.fullName}</p>}
             </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" value={user?.email || ''} disabled className="bg-muted" />
             </div>
 
+            {isVisible('phone') && (
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone <span className="text-destructive">*</span></Label>
+              <Label htmlFor="phone">Phone {isRequired('phone') && <span className="text-destructive">*</span>}</Label>
               <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Enter your phone number" className={validationErrors.phone ? 'border-destructive' : ''} />
               {validationErrors.phone && <p className="text-xs text-destructive">{validationErrors.phone}</p>}
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -645,8 +649,9 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Profile Type - Multi-select */}
+            {isVisible('profile_type') && (
             <div className="space-y-2">
-              <Label>I am a: <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <Label>I am a: {isRequired('profile_type') && <span className="text-destructive">*</span>} <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
               <div className="space-y-2">
                 {PROFILE_TYPES.map((type) => (
                   <div
@@ -667,11 +672,13 @@ export default function Profile() {
               </div>
               {validationErrors.profileTypes && <p className="text-xs text-destructive">{validationErrors.profileTypes}</p>}
             </div>
+            )}
 
             {/* Filing Status */}
+            {isVisible('filing_status') && (
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
-                <Label htmlFor="filingStatus">Filing Status <span className="text-destructive">*</span></Label>
+                <Label htmlFor="filingStatus">Filing Status {isRequired('filing_status') && <span className="text-destructive">*</span>}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -695,15 +702,18 @@ export default function Profile() {
               </Select>
               {validationErrors.filingStatus && <p className="text-xs text-destructive">{validationErrors.filingStatus}</p>}
             </div>
+            )}
 
             {/* Number of Children */}
+            {isVisible('num_children') && (
             <div className="space-y-2">
-              <Label htmlFor="numChildren">Number of Children <span className="text-destructive">*</span></Label>
+              <Label htmlFor="numChildren">Number of Children {isRequired('num_children') && <span className="text-destructive">*</span>}</Label>
               <Input id="numChildren" type="number" min={0} max={10} value={numChildren} onChange={(e) => setNumChildren(parseInt(e.target.value) || 0)} placeholder="0" className="w-24" />
             </div>
+            )}
 
             {/* Dynamic Children Ages */}
-            {numChildren > 0 && (
+            {isVisible('children_ages') && numChildren > 0 && (
               <div className="space-y-3">
                 <Label>Children's Ages</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
