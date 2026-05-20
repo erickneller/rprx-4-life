@@ -369,12 +369,13 @@ export function ProfileWizard() {
         {/* Step content */}
         {step === 1 && (
           <div className="space-y-4">
-            <DollarInput label="Monthly take-home income" value={form.monthly_income} onChange={v => set('monthly_income', v)} error={errors.monthly_income} />
-            <DollarInput label="Monthly debt payments" value={form.monthly_debt_payments} onChange={v => set('monthly_debt_payments', v)} allowZero error={errors.monthly_debt_payments} />
-            <DollarInput label="Monthly housing — rent or mortgage" value={form.monthly_housing} onChange={v => set('monthly_housing', v)} error={errors.monthly_housing} />
-            <DollarInput label="Monthly insurance premiums total" value={form.monthly_insurance} onChange={v => set('monthly_insurance', v)} allowZero error={errors.monthly_insurance} />
-            <DollarInput label="Monthly living expenses — food, transport, utilities" value={form.monthly_living_expenses} onChange={v => set('monthly_living_expenses', v)} error={errors.monthly_living_expenses} />
-            <DollarInput label="Current emergency fund balance" value={form.emergency_fund_balance} onChange={v => set('emergency_fund_balance', v)} allowZero error={errors.emergency_fund_balance} />
+            {isVisible('monthly_income') && <DollarInput label="Monthly take-home income" value={form.monthly_income} onChange={v => set('monthly_income', v)} error={errors.monthly_income} />}
+            {isVisible('monthly_debt_payments') && <DollarInput label="Monthly debt payments" value={form.monthly_debt_payments} onChange={v => set('monthly_debt_payments', v)} allowZero error={errors.monthly_debt_payments} />}
+            {isVisible('monthly_housing') && <DollarInput label="Monthly housing — rent or mortgage" value={form.monthly_housing} onChange={v => set('monthly_housing', v)} error={errors.monthly_housing} />}
+            {isVisible('monthly_insurance') && <DollarInput label="Monthly insurance premiums total" value={form.monthly_insurance} onChange={v => set('monthly_insurance', v)} allowZero error={errors.monthly_insurance} />}
+            {isVisible('monthly_living_expenses') && <DollarInput label="Monthly living expenses — food, transport, utilities" value={form.monthly_living_expenses} onChange={v => set('monthly_living_expenses', v)} error={errors.monthly_living_expenses} />}
+            {isVisible('emergency_fund_balance') && <DollarInput label="Current emergency fund balance" value={form.emergency_fund_balance} onChange={v => set('emergency_fund_balance', v)} allowZero error={errors.emergency_fund_balance} />}
+            {isVisible('filing_status') && (
             <div className="space-y-1">
               <Label>How do you file taxes?</Label>
               <Select value={form.filing_status} onValueChange={v => set('filing_status', v)}>
@@ -383,6 +384,8 @@ export function ProfileWizard() {
               </Select>
               {errors.filing_status && <p className="text-xs text-destructive">{errors.filing_status}</p>}
             </div>
+            )}
+            {isVisible('employer_match_captured') && (
             <div className="space-y-1">
               <Label>Capturing your full employer 401k match?</Label>
               <Select value={form.employer_match_captured} onValueChange={v => set('employer_match_captured', v)}>
@@ -391,10 +394,12 @@ export function ProfileWizard() {
               </Select>
               {errors.employer_match_captured && <p className="text-xs text-destructive">{errors.employer_match_captured}</p>}
             </div>
+            )}
 
             {/* Tax-Advantaged Accounts */}
+            {isVisible('tax_advantaged_accounts') && (
             <div className="space-y-2">
-              <Label>Tax-Advantaged Accounts <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <Label>Tax-Advantaged Accounts {isRequired('tax_advantaged_accounts') && <span className="text-destructive">*</span>} <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
               <div className="space-y-2">
                 {TAX_ACCOUNT_OPTIONS.map((opt) => (
                   <label key={opt.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
@@ -416,6 +421,7 @@ export function ProfileWizard() {
               </div>
               {errors.tax_advantaged_accounts && <p className="text-xs text-destructive">{errors.tax_advantaged_accounts}</p>}
             </div>
+            )}
           </div>
         )}
 
