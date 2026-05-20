@@ -158,6 +158,7 @@ export default function Profile() {
   const { refreshScore } = useRPRxScore();
   const { company: userCompany, membership: userMembership } = useCompany();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { isVisible, isRequired } = useProfileFieldSettings();
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
