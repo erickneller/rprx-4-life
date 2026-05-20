@@ -428,8 +428,9 @@ export function ProfileWizard() {
         {step === 2 && (
           <div className="space-y-6">
             {/* Profile Type */}
+            {isVisible('profile_type') && (
             <div className="space-y-2">
-              <Label>I am a: <span className="text-destructive">*</span> <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
+              <Label>I am a: {isRequired('profile_type') && <span className="text-destructive">*</span>} <span className="text-muted-foreground text-xs font-normal">(select all that apply)</span></Label>
               <div className="space-y-2">
                 {PROFILE_TYPES.map((type) => (
                   <label key={type.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
@@ -448,9 +449,11 @@ export function ProfileWizard() {
               </div>
               {errors.profile_type && <p className="text-xs text-destructive">{errors.profile_type}</p>}
             </div>
+            )}
 
-            <NumberInput label="Number of dependent children" value={form.num_children} onChange={v => set('num_children', v)} error={errors.num_children} />
+            {isVisible('num_children') && <NumberInput label="Number of dependent children" value={form.num_children} onChange={v => set('num_children', v)} error={errors.num_children} />}
 
+            {(isVisible('health_insurance') || isVisible('life_insurance') || isVisible('disability_insurance') || isVisible('long_term_care_insurance') || isVisible('no_insurance')) && (
             <div className="space-y-2">
               <Label>Insurance coverage currently held</Label>
               {[
@@ -459,7 +462,7 @@ export function ProfileWizard() {
                 { key: 'disability_insurance' as const, label: 'Disability Insurance' },
                 { key: 'long_term_care_insurance' as const, label: 'Long-Term Care' },
                 { key: 'no_insurance' as const, label: 'None of the above' },
-              ].map(({ key, label }) => (
+              ].filter(({ key }) => isVisible(key)).map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
                   <Checkbox
                     checked={form[key]}
@@ -484,9 +487,11 @@ export function ProfileWizard() {
               ))}
               {errors.insurance && <p className="text-xs text-destructive">{errors.insurance}</p>}
             </div>
+            )}
 
+            {isVisible('financial_goals') && (
             <div className="space-y-2">
-              <Label>Top financial goals (select at least 1)</Label>
+              <Label>Top financial goals {isRequired('financial_goals') && <span className="text-xs text-muted-foreground">(select at least 1)</span>}</Label>
               {FINANCIAL_GOALS.map(goal => (
                 <label key={goal.value} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer">
                   <Checkbox
@@ -503,21 +508,23 @@ export function ProfileWizard() {
               ))}
               {errors.financial_goals && <p className="text-xs text-destructive">{errors.financial_goals}</p>}
             </div>
+            )}
           </div>
         )}
 
         {step === 3 && (
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground italic">Not sure? Use your best estimate — you can update this anytime in your profile</p>
-            <NumberInput label="Years until you plan to retire" value={form.years_until_retirement} onChange={v => set('years_until_retirement', v)} error={errors.years_until_retirement} />
-            <DollarInput label="Desired annual retirement income" value={form.desired_retirement_income} onChange={v => set('desired_retirement_income', v)} error={errors.desired_retirement_income} />
-            <DollarInput label="Current total retirement savings balance" value={form.retirement_balance_total} onChange={v => set('retirement_balance_total', v)} allowZero error={errors.retirement_balance_total} />
-            <DollarInput label="Monthly retirement contribution" value={form.retirement_contribution_monthly} onChange={v => set('retirement_contribution_monthly', v)} allowZero error={errors.retirement_contribution_monthly} />
+            {isVisible('years_until_retirement') && <NumberInput label="Years until you plan to retire" value={form.years_until_retirement} onChange={v => set('years_until_retirement', v)} error={errors.years_until_retirement} />}
+            {isVisible('desired_retirement_income') && <DollarInput label="Desired annual retirement income" value={form.desired_retirement_income} onChange={v => set('desired_retirement_income', v)} error={errors.desired_retirement_income} />}
+            {isVisible('retirement_balance_total') && <DollarInput label="Current total retirement savings balance" value={form.retirement_balance_total} onChange={v => set('retirement_balance_total', v)} allowZero error={errors.retirement_balance_total} />}
+            {isVisible('retirement_contribution_monthly') && <DollarInput label="Monthly retirement contribution" value={form.retirement_contribution_monthly} onChange={v => set('retirement_contribution_monthly', v)} allowZero error={errors.retirement_contribution_monthly} />}
           </div>
         )}
 
         {step === 4 && (
           <div className="space-y-6">
+            {isVisible('stress_money_worry') && (
             <div className="space-y-2">
               <Label>How often do you worry about money?</Label>
               <div className="space-y-2">
@@ -527,6 +534,8 @@ export function ProfileWizard() {
               </div>
               {errors.stress_money_worry && <p className="text-xs text-destructive">{errors.stress_money_worry}</p>}
             </div>
+            )}
+            {isVisible('stress_emergency_confidence') && (
             <div className="space-y-2">
               <Label>How confident are you handling an unexpected $2,000 expense?</Label>
               <div className="space-y-2">
@@ -536,6 +545,8 @@ export function ProfileWizard() {
               </div>
               {errors.stress_emergency_confidence && <p className="text-xs text-destructive">{errors.stress_emergency_confidence}</p>}
             </div>
+            )}
+            {isVisible('stress_control_feeling') && (
             <div className="space-y-2">
               <Label>How much control do you feel over your finances?</Label>
               <div className="space-y-2">
@@ -545,8 +556,10 @@ export function ProfileWizard() {
               </div>
               {errors.stress_control_feeling && <p className="text-xs text-destructive">{errors.stress_control_feeling}</p>}
             </div>
+            )}
           </div>
         )}
+
 
         {/* Step 5 — Business owner company setup (only shown if profile_type includes 'business_owner') */}
         {step === 5 && isBusinessOwner && (
