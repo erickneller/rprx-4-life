@@ -8,6 +8,8 @@ import { Step3Screenings } from '@/components/health-assessment/Step3Screenings'
 import { Step4Goals } from '@/components/health-assessment/Step4Goals';
 import { Step5Contact } from '@/components/health-assessment/Step5Contact';
 import { PhysicalSnapshotReport } from '@/components/health-assessment/PhysicalSnapshotReport';
+import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
+import { useAuth } from '@/hooks/useAuth';
 
 const isEmbedded = () => {
   if (typeof window === 'undefined') return false;
@@ -85,7 +87,10 @@ const HealthAssessment = () => {
     });
   }, [currentStep]);
 
-  return (
+  const { user } = useAuth();
+  const embedded = isEmbedded();
+
+  const content = (
     <div ref={rootRef}>
       {currentStep === 0 && <WelcomeScreen />}
       {currentStep > 0 && currentStep < 6 && (
@@ -101,6 +106,12 @@ const HealthAssessment = () => {
       {currentStep === 6 && <PhysicalSnapshotReport />}
     </div>
   );
+
+  if (!embedded && user) {
+    return <AuthenticatedLayout title="Health Assessment">{content}</AuthenticatedLayout>;
+  }
+
+  return content;
 };
 
 export default HealthAssessment;
