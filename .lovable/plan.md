@@ -1,24 +1,18 @@
-## Goal
+## Problem
 
-When a signed-in user opens `/health-assessment` inside the app, render it with the same left sidebar + header chrome as Dashboard, Profile, etc. Keep the existing iframe/embed behavior working for external sites.
+`isEmbedded()` treats any iframe context as "embedded" — but the Lovable preview/editor renders the app inside an iframe too. So even when you're signed in and viewing `/health-assessment` in the app, it's detected as embedded and the sidebar layout is skipped.
 
-## Changes
+## Fix
 
-**`src/App.tsx`**
-- Wrap the `/health-assessment` route in `ProtectedRoute` + `WizardGuard` (matching peers like `/assessments`).
+**`src/pages/HealthAssessment.tsx`** — tighten `isEmbedded()` so it only returns true when explicitly embedded externally:
 
-**`src/pages/HealthAssessment.tsx`**
-- Detect embed mode (existing `isEmbedded()` check — iframe or `?embed` query param).
-- If embedded: render exactly as today (no chrome, postMessage height reporting intact).
-- If not embedded: wrap the wizard in `<AuthenticatedLayout title="Health Assessment">` so the sidebar and breadcrumbs appear.
-- Keep all current step rendering, progress bar, and store logic unchanged.
+- Require the `?embed=1` query param (or `?embed`) as the sole signal for embed mode.
+- Drop the `window.parent !== window` check (it produces false positives in Lovable preview, dev tools, and any host iframe).
 
-## Out of scope
-- No changes to the wizard steps, scoring, or submission flow.
-- No new sidebar nav entry (existing nav config already controls visibility).
-- No styling changes inside the wizard itself.
+External embedders just need to add `?embed=1` to the iframe `src` (which is the documented embed pattern anyway).
 
 ## Verification
-- Visit `/health-assessment` while signed in → sidebar + breadcrumb visible, wizard renders in main content area.
-- Visit `/health-assessment?embed=1` (or inside an iframe) → no chrome, height postMessage still fires on step change.
-- Signed-out visit → redirected to `/auth` (via ProtectedRoute), matching other internal pages.
+
+- Signed-in visit to `/health-assessment` in the app → sidebar + header chrome render.
+- `/health-assessment?embed=1` (or inside a real external iframe with that param) → no chrome, postMessage height events still fire.
+- Signed-out visit → page still renders (route remains public).

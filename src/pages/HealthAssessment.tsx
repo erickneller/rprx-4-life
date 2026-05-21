@@ -13,11 +13,6 @@ import { useAuth } from '@/hooks/useAuth';
 
 const isEmbedded = () => {
   if (typeof window === 'undefined') return false;
-  try {
-    if (window.parent !== window) return true;
-  } catch {
-    return true;
-  }
   return new URLSearchParams(window.location.search).has('embed');
 };
 
