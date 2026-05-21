@@ -87,7 +87,10 @@ const HealthAssessment = () => {
     });
   }, [currentStep]);
 
-  return (
+  const { user } = useAuth();
+  const embedded = isEmbedded();
+
+  const content = (
     <div ref={rootRef}>
       {currentStep === 0 && <WelcomeScreen />}
       {currentStep > 0 && currentStep < 6 && (
@@ -103,6 +106,12 @@ const HealthAssessment = () => {
       {currentStep === 6 && <PhysicalSnapshotReport />}
     </div>
   );
+
+  if (!embedded && user) {
+    return <AuthenticatedLayout title="Health Assessment">{content}</AuthenticatedLayout>;
+  }
+
+  return content;
 };
 
 export default HealthAssessment;
