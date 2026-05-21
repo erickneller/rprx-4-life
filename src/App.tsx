@@ -73,6 +73,7 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/health-assessment" element={<HealthAssessment />} />
+          <Route path="/health-assessment/app" element={<ProtectedRoute><WizardGuard><HealthAssessment /></WizardGuard></ProtectedRoute>} />
           <Route path="/virtual-advisor" element={<ProtectedRoute><WizardGuard><VirtualAdvisor /></WizardGuard></ProtectedRoute>} />
           <Route path="/rprx-w2" element={<RprxW2 />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
