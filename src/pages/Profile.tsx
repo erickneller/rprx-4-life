@@ -26,6 +26,7 @@ import { useGamification } from '@/hooks/useGamification';
 import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
 import { useProfileFieldSettings } from '@/hooks/useProfileFieldSettings';
+import { BillingCard } from '@/components/billing/BillingCard';
 
 const EMPLOYER_MATCH_OPTIONS = [
   { value: 'yes', label: 'Yes — I get the full match' },
