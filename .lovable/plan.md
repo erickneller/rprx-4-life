@@ -1,18 +1,18 @@
-## Problem
+## Make Daily Check-In optional on the dashboard
 
-`isEmbedded()` treats any iframe context as "embedded" — but the Lovable preview/editor renders the app inside an iframe too. So even when you're signed in and viewing `/health-assessment` in the app, it's detected as embedded and the sidebar layout is skipped.
+Currently the "Did you make progress on your strategy today?" card (`DailyCheckIn`) is hardcoded into `DashboardContent.tsx` and always renders when a user has an active strategy. Admins can't turn it off, and users can't reorder it like the other cards.
 
-## Fix
+### Changes
 
-**`src/pages/HealthAssessment.tsx`** — tighten `isEmbedded()` so it only returns true when explicitly embedded externally:
+1. **Register `DailyCheckIn` as a configurable dashboard card**
+   - Add a migration inserting a row into `dashboard_card_config` with `component_key = 'DailyCheckIn'`, default visible, sort_order near the top.
+   - Add a `case 'DailyCheckIn'` branch in `DashboardCardRenderer.tsx` that renders `<DailyCheckIn />`.
 
-- Require the `?embed=1` query param (or `?embed`) as the sole signal for embed mode.
-- Drop the `window.parent !== window` check (it produces false positives in Lovable preview, dev tools, and any host iframe).
+2. **Remove the hardcoded render**
+   - In `src/components/dashboard/DashboardContent.tsx`, remove the standalone `<DailyCheckIn />` (line 145) so it only appears via the config-driven renderer.
 
-External embedders just need to add `?embed=1` to the iframe `src` (which is the documented embed pattern anyway).
-
-## Verification
-
-- Signed-in visit to `/health-assessment` in the app → sidebar + header chrome render.
-- `/health-assessment?embed=1` (or inside a real external iframe with that param) → no chrome, postMessage height events still fire.
-- Signed-out visit → page still renders (route remains public).
+3. **Result**
+   - Admins toggle visibility from Admin Panel → Dashboard tab (existing UI, no changes needed).
+   - Users can reorder/hide it alongside other cards.
+   - If hidden, it disappears for everyone immediately.
+   - Self-hiding logic inside `DailyCheckIn` (no active strategy / already checked in / dismissed) still applies.
