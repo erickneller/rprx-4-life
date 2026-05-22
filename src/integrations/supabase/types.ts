@@ -524,36 +524,54 @@ export type Database = {
       }
       dashboard_card_config: {
         Row: {
+          audience_company_ids: string[]
+          audience_tiers: string[]
           component_key: string
+          content: Json
+          content_type: string | null
           created_at: string
           default_size: string
           description: string | null
           display_name: string
           id: string
+          is_custom: boolean
           is_visible: boolean
           sort_order: number
+          title: string | null
           updated_at: string
         }
         Insert: {
+          audience_company_ids?: string[]
+          audience_tiers?: string[]
           component_key: string
+          content?: Json
+          content_type?: string | null
           created_at?: string
           default_size?: string
           description?: string | null
           display_name: string
           id: string
+          is_custom?: boolean
           is_visible?: boolean
           sort_order?: number
+          title?: string | null
           updated_at?: string
         }
         Update: {
+          audience_company_ids?: string[]
+          audience_tiers?: string[]
           component_key?: string
+          content?: Json
+          content_type?: string | null
           created_at?: string
           default_size?: string
           description?: string | null
           display_name?: string
           id?: string
+          is_custom?: boolean
           is_visible?: boolean
           sort_order?: number
+          title?: string | null
           updated_at?: string
         }
         Relationships: []
