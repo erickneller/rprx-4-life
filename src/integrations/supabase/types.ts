@@ -1966,28 +1966,59 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          billing_interval: string | null
+          cancel_at_period_end: boolean
+          current_period_end: string | null
+          email: string | null
           expires_at: string | null
           id: string
           started_at: string
+          status: string | null
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
+          tier_override: Database["public"]["Enums"]["subscription_tier"] | null
           updated_at: string
           updated_by: string | null
           user_id: string
         }
         Insert: {
+          billing_interval?: string | null
+          cancel_at_period_end?: boolean
+          current_period_end?: string | null
+          email?: string | null
           expires_at?: string | null
           id?: string
           started_at?: string
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
+          tier_override?:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
           updated_at?: string
           updated_by?: string | null
           user_id: string
         }
         Update: {
+          billing_interval?: string | null
+          cancel_at_period_end?: boolean
+          current_period_end?: string | null
+          email?: string | null
           expires_at?: string | null
           id?: string
           started_at?: string
+          status?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
+          tier_override?:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
           updated_at?: string
           updated_by?: string | null
           user_id?: string
@@ -2169,7 +2200,7 @@ export type Database = {
       payment_type: "payment" | "balance_update"
       plan_status: "not_started" | "in_progress" | "completed"
       question_type: "slider" | "single_choice" | "yes_no" | "range_select"
-      subscription_tier: "free" | "paid"
+      subscription_tier: "free" | "paid" | "partner" | "pro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2314,7 +2345,7 @@ export const Constants = {
       payment_type: ["payment", "balance_update"],
       plan_status: ["not_started", "in_progress", "completed"],
       question_type: ["slider", "single_choice", "yes_no", "range_select"],
-      subscription_tier: ["free", "paid"],
+      subscription_tier: ["free", "paid", "partner", "pro"],
     },
   },
 } as const
