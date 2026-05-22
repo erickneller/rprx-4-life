@@ -168,6 +168,8 @@ function renderCard(card: DashboardCardConfig, props: DashboardCardRendererProps
       return <AdvisorCTACard />;
     case 'VirtualAdvisorCard':
       return <VirtualAdvisorCard />;
+    case 'DailyCheckIn':
+      return <DailyCheckIn />;
     default:
       return null;
   }
