@@ -19,7 +19,7 @@ import { Loader2, MessageCircle, RotateCcw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { DailyCheckIn } from './DailyCheckIn';
+
 import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 export function DashboardContent() {
