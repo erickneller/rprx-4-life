@@ -34,6 +34,9 @@ import { OnboardingCard } from '@/components/onboarding/OnboardingCard';
 import { AdvisorCTACard } from './AdvisorCTACard';
 import { VirtualAdvisorCard } from './VirtualAdvisorCard';
 import { DailyCheckIn } from './DailyCheckIn';
+import { CustomCard } from './CustomCard';
+import { useCompany } from '@/hooks/useCompany';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface DashboardCardRendererProps {
   cards: DashboardCardConfig[];
@@ -74,7 +77,16 @@ function SortableCard({ id, children }: { id: string; children: ReactNode }) {
 }
 
 export function DashboardCardRenderer({ cards, cardProps, onReorder }: DashboardCardRendererProps) {
-  const visibleCards = cards.filter(c => c.is_visible);
+  const { company } = useCompany();
+  const { tier } = useSubscription();
+  const visibleCards = cards.filter(c => {
+    if (!c.is_visible) return false;
+    const companyIds = c.audience_company_ids ?? [];
+    if (companyIds.length > 0 && (!company || !companyIds.includes(company.id))) return false;
+    const tiers = c.audience_tiers ?? [];
+    if (tiers.length > 0 && !tiers.includes(tier)) return false;
+    return true;
+  });
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
@@ -119,6 +131,9 @@ export function DashboardCardRenderer({ cards, cardProps, onReorder }: Dashboard
 }
 
 function renderCard(card: DashboardCardConfig, props: DashboardCardRendererProps['cardProps']): ReactNode | null {
+  if (card.is_custom || card.component_key === 'CustomCard') {
+    return <CustomCard card={card} />;
+  }
   switch (card.component_key) {
     case 'MotivationCard':
       return props.motivation ? (
