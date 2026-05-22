@@ -3,11 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useAdmin } from './useAdmin';
 
+export type SubscriptionTier = 'free' | 'paid' | 'partner' | 'pro';
+
 export function useSubscription() {
   const { user } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
 
-  const { data: tier = 'free', isLoading: subLoading } = useQuery({
+  const { data: rawTier = 'free', isLoading: subLoading } = useQuery({
     queryKey: ['subscription-tier', user?.id],
     queryFn: async () => {
       if (!user) return 'free';
@@ -22,12 +24,21 @@ export function useSubscription() {
     enabled: !!user && !isAdmin,
   });
 
-  const effectiveTier = isAdmin ? 'paid' : tier;
+  // Admins get top tier
+  const tier = (isAdmin ? 'pro' : rawTier) as SubscriptionTier;
+
+  const isFree = tier === 'free';
+  const isPartner = tier === 'partner';
+  const isPro = tier === 'pro';
+  // Backward-compat: any paying tier counts as "paid"
+  const isPaid = tier === 'paid' || isPartner || isPro;
 
   return {
-    tier: effectiveTier as 'free' | 'paid',
-    isFree: effectiveTier === 'free',
-    isPaid: effectiveTier === 'paid',
+    tier,
+    isFree,
+    isPartner,
+    isPro,
+    isPaid,
     isLoading: adminLoading || (!isAdmin && subLoading),
   };
 }
