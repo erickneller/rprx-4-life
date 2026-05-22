@@ -551,8 +551,10 @@ export default function Profile() {
   return (
     <AuthenticatedLayout title="Profile">
       <div className="container max-w-2xl py-8 space-y-6">
+        <BillingCard />
         {/* Profile Photo Card */}
         <Card>
+
           <CardHeader>
             <CardTitle>Profile Photo</CardTitle>
           </CardHeader>
