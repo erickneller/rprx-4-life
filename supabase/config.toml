@@ -26,3 +26,12 @@ verify_jwt = false
 
 [functions.submit-health-assessment]
 verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
