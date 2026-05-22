@@ -33,6 +33,7 @@ import { RecentBadges } from '@/components/gamification/RecentBadges';
 import { OnboardingCard } from '@/components/onboarding/OnboardingCard';
 import { AdvisorCTACard } from './AdvisorCTACard';
 import { VirtualAdvisorCard } from './VirtualAdvisorCard';
+import { DailyCheckIn } from './DailyCheckIn';
 
 interface DashboardCardRendererProps {
   cards: DashboardCardConfig[];
@@ -167,6 +168,8 @@ function renderCard(card: DashboardCardConfig, props: DashboardCardRendererProps
       return <AdvisorCTACard />;
     case 'VirtualAdvisorCard':
       return <VirtualAdvisorCard />;
+    case 'DailyCheckIn':
+      return <DailyCheckIn />;
     default:
       return null;
   }
