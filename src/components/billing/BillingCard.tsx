@@ -1,16 +1,31 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, ExternalLink, Sparkles } from 'lucide-react';
+import { Loader2, ExternalLink, Sparkles, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
 export function BillingCard() {
   const { tier, isFree, isLoading } = useSubscription();
+  const { user } = useAuth();
   const [opening, setOpening] = useState(false);
+  const [source, setSource] = useState<'stripe' | 'ghl' | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await (supabase
+        .from('user_subscriptions') as any)
+        .select('source')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (data?.source) setSource(data.source);
+    })();
+  }, [user]);
 
   const openPortal = async () => {
     setOpening(true);
@@ -25,6 +40,7 @@ export function BillingCard() {
   };
 
   const tierLabel = tier === 'pro' ? 'Pro' : tier === 'partner' ? 'Partner' : tier === 'paid' ? 'Paid' : 'Free';
+  const isGhl = !isFree && source === 'ghl';
 
   return (
     <Card className="p-6">
@@ -48,6 +64,20 @@ export function BillingCard() {
           <Link to="/#pricing">
             <Button>Upgrade Plan</Button>
           </Link>
+        ) : isGhl ? (
+          <>
+            <a href="mailto:support@rprx4life.com?subject=Subscription%20change%20request">
+              <Button variant="outline">
+                <Mail className="h-4 w-4 mr-2" />
+                Manage via Support
+              </Button>
+            </a>
+            <p className="text-xs text-muted-foreground w-full">
+              Your subscription was purchased through an external checkout. Email{' '}
+              <a href="mailto:support@rprx4life.com" className="underline">support@rprx4life.com</a>{' '}
+              to update payment, change plan, or cancel.
+            </p>
+          </>
         ) : (
           <Button onClick={openPortal} disabled={opening || isLoading}>
             {opening ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ExternalLink className="h-4 w-4 mr-2" />}

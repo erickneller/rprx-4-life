@@ -43,6 +43,7 @@ import { AssistantEngineTab } from '@/components/admin/AssistantEngineTab';
 import { AssistantQualityTab } from '@/components/admin/AssistantQualityTab';
 import { CoursesTab } from '@/components/admin/CoursesTab';
 import { ProfileFieldsTab } from '@/components/admin/ProfileFieldsTab';
+import { GhlProductMapTab } from '@/components/admin/GhlProductMapTab';
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
@@ -469,6 +470,9 @@ export default function AdminPanel() {
             <TabsTrigger value="ghl-mapping" className="gap-1">
               <Database className="h-4 w-4" /> GHL Mapping
             </TabsTrigger>
+            <TabsTrigger value="ghl-products" className="gap-1">
+              <Database className="h-4 w-4" /> GHL Products
+            </TabsTrigger>
           </TabsList>
 
           {/* ===== STRATEGIES TAB ===== */}
@@ -734,6 +738,11 @@ export default function AdminPanel() {
           {/* ===== ASSISTANT QUALITY TAB ===== */}
           <TabsContent value="assistant-quality" className="space-y-4">
             <AssistantQualityTab />
+          </TabsContent>
+
+          {/* ===== GHL PRODUCTS TAB ===== */}
+          <TabsContent value="ghl-products" className="space-y-4">
+            <GhlProductMapTab />
           </TabsContent>
         </Tabs>
       </div>
