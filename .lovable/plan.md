@@ -1,77 +1,140 @@
-# BYOK Stripe Integration Plan
+## Goal
 
-Build Stripe billing on top of your existing Supabase project (no Lovable Cloud switch). You manage products/prices/promo codes in your own Stripe dashboard; the app reads from Stripe via edge functions and gates features by tier.
+Two checkout paths into the same `user_subscriptions` row shape so `useSubscription` and gating stay unchanged:
 
-## Tiers (final)
+1. **In-app upgrade** → Stripe Checkout (already built).
+2. **External landing pages** → GHL order forms → GHL webhook → Supabase edge function → `user_subscriptions`.
 
-- **Free** — $0
-- **Partner** — $49.97/mo or $497/yr
-- **Pro** — $997/mo or $9,997/yr
+## Decisions locked in
 
-Tax automation: **off** (option 3 — you handle taxes yourself).
+- GHL recurring billing is supported → treat GHL subs like Stripe subs (tier + period end).
+- New buyers without an account → email them a one-click "claim your account" magic link.
+- Cancellation → drop to `free` immediately (no grace period).
+- Refund → drop to `free` immediately, same path as cancellation.
 
-## What gets built
+## Architecture
 
-### 1. Stripe setup (you do this in Stripe dashboard)
-- Create 2 Products: `Partner`, `Pro`
-- Each product gets 2 recurring Prices (monthly + yearly) — 4 prices total
-- Create any promo codes you want (Stripe Dashboard → Coupons → Promotion codes); customers enter them at checkout
-- Grab your **Secret Key** (sk_live_… or sk_test_…) and **Webhook Signing Secret** (created in step 3 below)
+```text
+              IN-APP PATH                       EXTERNAL PATH
+              (logged-in users)                 (cold traffic / LPs)
 
-### 2. Secrets added to Supabase
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
+              Pricing page                      Webflow / WP / LP
+                    |                                  |
+                    v                                  v
+              create-checkout                    GHL order form
+              (Stripe)                           (recurring product)
+                    |                                  |
+                    v                                  v
+              Stripe Checkout                    GHL processes payment
+                    |                                  |
+                    v                                  v
+              stripe-webhook                     GHL workflow -> webhook
+                    |                                  |
+                    +-------------+   +----------------+
+                                  |   |
+                                  v   v
+                        user_subscriptions (Supabase)
+                                  |
+                                  v
+                        get_subscription_tier RPC -> useSubscription
+```
 
-### 3. Database (migration)
-New table `subscribers`:
-- `user_id` (uuid, unique, FK-style to auth.users)
-- `email`
-- `stripe_customer_id`
-- `stripe_subscription_id`
-- `tier` — enum-like text: `free` | `partner` | `pro`
-- `billing_interval` — `month` | `year` | null
-- `status` — `active` | `trialing` | `past_due` | `canceled` | `incomplete`
-- `current_period_end` (timestamptz)
-- `cancel_at_period_end` (bool)
-- timestamps
+## What we build
 
-RLS: users can SELECT their own row; only edge functions (service role) write.
+### 1. Migration — extend `user_subscriptions`, add 2 tables
 
-Update `get_subscription_tier()` RPC to read from `subscribers` and return `free` | `partner` | `pro` (currently returns `free`/`paid`).
+`user_subscriptions` new columns:
+- `source` text not null default `'stripe'` — `'stripe'` | `'ghl'`
+- `ghl_contact_id` text
+- `ghl_subscription_id` text
+- `ghl_product_id` text
+- Unique index on `ghl_subscription_id` where not null
 
-### 4. Edge functions (3 new)
-- **`create-checkout`** — authenticated. Input: `{ priceId }`. Creates/reuses Stripe customer, returns Checkout Session URL. `allow_promotion_codes: true` so customers can enter discount codes.
-- **`customer-portal`** — authenticated. Returns Stripe Billing Portal URL so users self-manage subscriptions, payment methods, cancellations.
-- **`stripe-webhook`** — public (verifies Stripe signature). Handles `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.payment_failed`. Upserts `subscribers` row, maps Stripe price → tier via a `PRICE_TIER_MAP` env-driven config.
+New table `pending_ghl_subscriptions`:
+- `email` text pk (lowercased)
+- `tier` text, `billing_interval` text
+- `ghl_contact_id`, `ghl_subscription_id`, `ghl_product_id`
+- `current_period_end` timestamptz
+- `claim_token` uuid default gen_random_uuid()
+- `claimed_at` timestamptz
+- `created_at` timestamptz
 
-Webhook URL to register in Stripe: `https://wkzgjvnpnhyluxvclymh.supabase.co/functions/v1/stripe-webhook`
+RLS: service role only (function writes; client never reads).
 
-### 5. Frontend
-- **`useSubscription` hook** — extend to return `tier: 'free' | 'partner' | 'pro'`, `isPartner`, `isPro`, `interval`. Update all existing `isPaid` callers to use new tier (Partner+ = paid).
-- **Landing `Pricing.tsx`** — rewrite 3 cards with new tiers, monthly/yearly toggle, "Save with annual" badge. CTA → `create-checkout`.
-- **Account/Billing area** — small section on `/profile` (or new `/billing`) showing current tier, renewal date, "Manage Subscription" button → `customer-portal`, and upgrade CTAs.
-- **Success/Cancel handling** — checkout returns to `/dashboard?checkout=success|cancelled` with a toast.
+New table `ghl_product_tier_map` (admin-editable):
+- `ghl_product_id` text pk
+- `tier` text (`partner` | `pro`)
+- `billing_interval` text (`month` | `year`)
+- `is_active` boolean
 
-### 6. Admin Payments tab (in `/admin`)
-Read-only Stripe management surface (no product CRUD in-app — Stripe dashboard is the source of truth, which is the right pattern):
-- **Subscribers table**: list `subscribers` rows with tier, status, renewal, link to Stripe customer
-- **Quick links**: deep links to Stripe dashboard sections (Products, Coupons, Promotion codes, Customers)
-- **Manual override**: admin can set a user's tier (comp accounts) — writes to a `tier_override` column on `subscribers`; `get_subscription_tier()` honors override first
+RLS: admins manage, authenticated read.
 
-### 7. W2 landing config
-Update `src/lib/w2Config.ts` `CHECKOUT_ANNUAL_URL` / `CHECKOUT_MONTHLY_URL` to point at the new Partner annual/monthly Stripe Checkout (via `create-checkout` flow rather than static Payment Links, so promo codes + auth work).
+### 2. Edge function — `ghl-checkout-webhook` (new)
 
-## Out of scope (per your direction)
-- No Stripe Tax / tax automation
-- No in-app product or coupon creation UI (managed in Stripe dashboard)
-- No proration UI beyond what Billing Portal provides
+Public POST endpoint. GHL workflows hit it on order success, subscription updated, cancelled, refunded.
 
-## Order of execution
-1. Confirm plan → add 2 secrets
-2. DB migration (`subscribers` + updated RPC)
-3. Edge functions (checkout, portal, webhook)
-4. You create products/prices in Stripe + register webhook → paste price IDs back to me
-5. Frontend (hook update, Pricing, billing UI, admin tab)
-6. End-to-end test in Stripe test mode
+- Verify shared secret via `X-Webhook-Secret` header against `GHL_CHECKOUT_WEBHOOK_SECRET`.
+- Parse: `email`, `contact_id`, `subscription_id`, `product_id`, `status`, `current_period_end`, `event_type`.
+- Map `product_id` → tier via `ghl_product_tier_map` (fallback to hardcoded map if row missing).
+- Resolve user:
+  - email matches `auth.users` → upsert `user_subscriptions` with `source='ghl'`, `tier=<mapped>`, `status='active'`.
+  - no match → upsert `pending_ghl_subscriptions` and call `claim-account-email` (see #3).
+- Cancellation / refund / failed events → set tier `free`, status `canceled`. Same logic for matched user or pending row (delete pending).
+- Idempotent on `ghl_subscription_id`.
 
-Ready to proceed?
+### 3. Edge function — `send-claim-account-email` (new)
+
+Called by `ghl-checkout-webhook` when buyer has no account.
+- Generates Supabase magic link for that email (using service-role admin API) with redirect `https://app.rprx4life.com/auth/callback?claim=<token>`.
+- Sends branded email via existing transactional infrastructure: "You just upgraded to <Tier>. Click here to activate your account."
+- Token = `pending_ghl_subscriptions.claim_token`.
+
+### 4. Auth callback — claim pending subscription
+
+In `AuthCallback.tsx` (and/or right after `onAuthStateChange` SIGNED_IN):
+- After session is established, if `?claim=<token>` is present OR always-check by email:
+  - Call new edge function `claim-ghl-subscription` (or RPC) that:
+    - Looks up `pending_ghl_subscriptions` by email = `auth.user.email`.
+    - If found, copies row into `user_subscriptions` (`source='ghl'`, `user_id=auth.uid()`), marks `claimed_at`, deletes pending row.
+- Idempotent — safe to call on every sign-in.
+
+### 5. Frontend touches
+
+- `BillingCard.tsx`: when `source === 'ghl'`, hide Stripe "Manage Subscription" button. Show "Manage subscription via your purchase confirmation email" + link to `mailto:support@rprx4life.com`. (GHL has no equivalent of Stripe Customer Portal.)
+- `useSubscription`: no change — reads tier via RPC which already abstracts source.
+- Pricing page: unchanged. External LPs link to GHL forms directly.
+
+### 6. Admin panel — `ghl_product_tier_map` editor
+
+Small table editor under `/admin` Payments tab so non-devs can wire new GHL products to tiers without a deploy.
+
+### 7. GHL configuration (you do this in GHL)
+
+For each plan (Partner monthly/yearly, Pro monthly/yearly):
+1. Create recurring product + price in GHL Payments.
+2. Build one order form per plan (or one form with plan selector).
+3. Workflows:
+   - **Order completed (paid)** → POST to `ghl-checkout-webhook` with `event_type: 'subscription.active'`, email, contact_id, subscription_id, product_id, current_period_end, and `X-Webhook-Secret`.
+   - **Subscription renewed** → same webhook with `subscription.renewed` (updates `current_period_end`).
+   - **Subscription cancelled / failed** → `subscription.canceled`.
+   - **Order refunded** → `subscription.refunded`.
+
+I will give you the exact webhook URL, secret header name, and JSON body schema to paste into each GHL workflow.
+
+## Order of work
+
+1. Migration (new columns + 2 tables + RLS).
+2. Add secret `GHL_CHECKOUT_WEBHOOK_SECRET`.
+3. Edge function: `ghl-checkout-webhook` (with hardcoded product map fallback so we can test before admin UI exists).
+4. Edge function: `send-claim-account-email` (uses existing transactional email infra).
+5. Claim logic in auth callback + edge function `claim-ghl-subscription`.
+6. `BillingCard` source-aware branching.
+7. Admin Payments tab: `ghl_product_tier_map` editor.
+8. You configure 1 GHL product + workflow → end-to-end test with a test card.
+9. Roll out remaining 3 products.
+
+## Out of scope (v1)
+
+- Reconciliation cron against GHL API (add later if drift shows up).
+- Proration/upgrades between GHL plans (cancel-and-rebuy via GHL is fine for now).
+- Cross-source upgrades (Stripe customer buying via GHL or vice versa) — we'll just take the most recent active row.
