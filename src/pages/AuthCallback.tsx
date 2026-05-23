@@ -7,23 +7,36 @@ const AuthCallback = () => {
   const handled = useRef(false);
 
   useEffect(() => {
+    const claimPending = async () => {
+      try {
+        const { data } = await (supabase.rpc as any)('claim_pending_ghl_subscription');
+        if (data?.claimed) {
+          console.log('Claimed pending GHL subscription', data);
+        }
+      } catch (e) {
+        console.warn('claim_pending_ghl_subscription failed', e);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (handled.current) return;
         if (event === 'SIGNED_IN' && session) {
           handled.current = true;
-          // Signal parent window (popup flow)
-          localStorage.setItem('oauth-complete', Date.now().toString());
-          if (window.opener) {
-            window.opener.postMessage(
-              { type: 'oauth-complete' },
-              window.location.origin
-            );
-            window.close();
-          } else {
-            // Full-page redirect flow
-            navigate('/', { replace: true });
-          }
+          // Always try to claim any pending GHL purchase tied to this email
+          claimPending().finally(() => {
+            // Signal parent window (popup flow)
+            localStorage.setItem('oauth-complete', Date.now().toString());
+            if (window.opener) {
+              window.opener.postMessage(
+                { type: 'oauth-complete' },
+                window.location.origin
+              );
+              window.close();
+            } else {
+              navigate('/', { replace: true });
+            }
+          });
         }
       }
     );
