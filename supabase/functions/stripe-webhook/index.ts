@@ -10,9 +10,17 @@ const corsHeaders = {
 
 // Map a Stripe price ID to a tier. Configured via PRICE_TIER_MAP env var
 // as JSON: { "price_xxx": "partner", "price_yyy": "pro", ... }
+const DEFAULT_PRICE_MAP: Record<string, "partner" | "pro"> = {
+  "price_1Ta02rEPcfQ6mR62bgmQQV8M": "partner", // Partner monthly
+  "price_1Ta0DDEPcfQ6mR626ln3KP1e": "partner", // Partner yearly
+  "price_1Ta0CpEPcfQ6mR62NOWJrAZr": "pro",     // Pro monthly
+  "price_1Ta0CpEPcfQ6mR62Vd5p4R2qz": "pro",    // Pro yearly
+};
+
 function loadPriceMap(): Record<string, "partner" | "pro"> {
-  const raw = Deno.env.get("PRICE_TIER_MAP") || "{}";
-  try { return JSON.parse(raw); } catch { return {}; }
+  const raw = Deno.env.get("PRICE_TIER_MAP");
+  if (!raw) return DEFAULT_PRICE_MAP;
+  try { return { ...DEFAULT_PRICE_MAP, ...JSON.parse(raw) }; } catch { return DEFAULT_PRICE_MAP; }
 }
 
 function intervalFromPrice(price: Stripe.Price | null | undefined): string | null {
