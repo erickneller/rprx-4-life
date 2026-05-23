@@ -748,6 +748,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_product_tier_map: {
+        Row: {
+          billing_interval: string
+          created_at: string
+          ghl_product_id: string
+          is_active: boolean
+          notes: string | null
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          billing_interval?: string
+          created_at?: string
+          ghl_product_id: string
+          is_active?: boolean
+          notes?: string | null
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          billing_interval?: string
+          created_at?: string
+          ghl_product_id?: string
+          is_active?: boolean
+          notes?: string | null
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       knowledge_base: {
         Row: {
           content: string
@@ -1095,6 +1125,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pending_ghl_subscriptions: {
+        Row: {
+          billing_interval: string | null
+          claim_token: string
+          claimed_at: string | null
+          created_at: string
+          current_period_end: string | null
+          email: string
+          ghl_contact_id: string | null
+          ghl_product_id: string | null
+          ghl_subscription_id: string | null
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          billing_interval?: string | null
+          claim_token?: string
+          claimed_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          email: string
+          ghl_contact_id?: string | null
+          ghl_product_id?: string | null
+          ghl_subscription_id?: string | null
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          billing_interval?: string | null
+          claim_token?: string
+          claimed_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          email?: string
+          ghl_contact_id?: string | null
+          ghl_product_id?: string | null
+          ghl_subscription_id?: string | null
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       plan_generation_events: {
         Row: {
@@ -1971,7 +2043,11 @@ export type Database = {
           current_period_end: string | null
           email: string | null
           expires_at: string | null
+          ghl_contact_id: string | null
+          ghl_product_id: string | null
+          ghl_subscription_id: string | null
           id: string
+          source: string
           started_at: string
           status: string | null
           stripe_customer_id: string | null
@@ -1989,7 +2065,11 @@ export type Database = {
           current_period_end?: string | null
           email?: string | null
           expires_at?: string | null
+          ghl_contact_id?: string | null
+          ghl_product_id?: string | null
+          ghl_subscription_id?: string | null
           id?: string
+          source?: string
           started_at?: string
           status?: string | null
           stripe_customer_id?: string | null
@@ -2009,7 +2089,11 @@ export type Database = {
           current_period_end?: string | null
           email?: string | null
           expires_at?: string | null
+          ghl_contact_id?: string | null
+          ghl_product_id?: string | null
+          ghl_subscription_id?: string | null
           id?: string
+          source?: string
           started_at?: string
           status?: string | null
           stripe_customer_id?: string | null
@@ -2140,6 +2224,7 @@ export type Database = {
           total_points_earned: number
         }[]
       }
+      claim_pending_ghl_subscription: { Args: never; Returns: Json }
       company_dashboard_stats: {
         Args: { _company_id: string }
         Returns: {
