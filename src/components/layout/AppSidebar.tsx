@@ -1,4 +1,4 @@
-import { Phone, Building2, Shield } from "lucide-react";
+import { Phone, Building2, Shield, Lock } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
@@ -9,6 +9,8 @@ import { useCompany } from "@/hooks/useCompany";
 import { useAdvisorLink } from "@/hooks/useAdvisorLink";
 import { useSidebarConfig, type NavConfigRow } from "@/hooks/useSidebarConfig";
 import { getIcon } from "@/lib/lucideIconMap";
+import { useUpgradeGate } from "@/contexts/UpgradeGateContext";
+import { NAV_ITEM_FEATURE } from "@/lib/upgradeFeatures";
 
 import {
   Sidebar,
@@ -31,6 +33,10 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
   const Icon = getIcon(item.icon);
   const linkType = item.link_type;
   const url = linkType === 'course' ? `/course/${item.id}` : (item.url || '#');
+  const { isLocked, requireUpgrade } = useUpgradeGate();
+
+  const featureKey = NAV_ITEM_FEATURE[item.id];
+  const locked = featureKey ? isLocked(featureKey) : false;
 
   if (linkType === 'coming_soon') {
     return (
@@ -58,6 +64,24 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
             <Icon className="h-5 w-5 shrink-0" />
             <span className={isCollapsed ? "sr-only" : "flex-1 text-sm"}>{item.label}</span>
           </a>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  }
+
+  if (locked && featureKey) {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          tooltip={`${item.label} — Upgrade required`}
+          onClick={() => requireUpgrade({ feature: featureKey })}
+          className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+          <span className={isCollapsed ? "sr-only" : "flex-1 text-sm flex items-center gap-2"}>
+            <span className="truncate">{item.label}</span>
+            <Lock className="h-3 w-3 opacity-70 ml-auto shrink-0" />
+          </span>
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
