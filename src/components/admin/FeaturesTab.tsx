@@ -10,7 +10,10 @@ import { useAdvisorLink, useUpdateAdvisorLink } from '@/hooks/useAdvisorLink';
 import { useAdvisorEmbed, useUpdateAdvisorEmbed } from '@/hooks/useAdvisorEmbed';
 import { useBookingUrl, useUpdateBookingUrl } from '@/hooks/useBookingUrl';
 import { toast } from 'sonner';
-import { MessageSquare, FlaskConical, Phone, Code2, CalendarCheck, Gauge } from 'lucide-react';
+import { MessageSquare, FlaskConical, Phone, Code2, CalendarCheck, Gauge, Route } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useFirstLoginFlow, useSetFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
+import { FIRST_LOGIN_FLOW_OPTIONS, type FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
 
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');
@@ -22,6 +25,9 @@ export function FeaturesTab() {
   const rprxScoreToggle = useToggleFeatureFlag('rprx_score_visible');
   const { enabled: xpScoreVisible, isLoading: xpScoreLoading } = useFeatureFlag('xp_score_visible');
   const xpScoreToggle = useToggleFeatureFlag('xp_score_visible');
+
+  const { preset: firstLoginPreset, isLoading: firstLoginLoading } = useFirstLoginFlow();
+  const firstLoginSet = useSetFirstLoginFlow();
 
   const { enabled: advisorEnabled, url: advisorUrl, isLoading: advisorLoading } = useAdvisorLink();
   const advisorUpdate = useUpdateAdvisorLink();
@@ -138,6 +144,48 @@ export function FeaturesTab() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Route className="h-5 w-5" />
+            First-Login Flow
+          </CardTitle>
+          <CardDescription>
+            Choose where new users are sent after signing in for the first time, and what they must complete before reaching the dashboard. Phone capture is always required for Google sign-ups.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup
+            value={firstLoginPreset}
+            onValueChange={async (value) => {
+              try {
+                await firstLoginSet.mutateAsync(value as FirstLoginFlowPreset);
+                toast.success('First-login flow updated');
+              } catch {
+                toast.error('Failed to update flow');
+              }
+            }}
+            disabled={firstLoginLoading || firstLoginSet.isPending}
+            className="space-y-3"
+          >
+            {FIRST_LOGIN_FLOW_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                htmlFor={`flow-${opt.value}`}
+                className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+              >
+                <RadioGroupItem value={opt.value} id={`flow-${opt.value}`} className="mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-medium text-sm">{opt.label}</div>
+                  <div className="text-xs text-muted-foreground">{opt.description}</div>
+                </div>
+              </label>
+            ))}
+          </RadioGroup>
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader>

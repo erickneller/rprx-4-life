@@ -5,6 +5,8 @@ import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useCompany } from '@/hooks/useCompany';
 import { useWizardContent } from '@/hooks/useWizardContent';
 import { useProfileFieldSettings } from '@/hooks/useProfileFieldSettings';
+import { useFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
+import { getPostWizardDestination } from '@/lib/firstLoginFlow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -148,6 +150,7 @@ export function ProfileWizard() {
   const navigate = useNavigate();
   const { profile, updateProfile, isProfileComplete } = useProfile();
   const { data: assessments } = useAssessmentHistory();
+  const { preset: firstLoginPreset } = useFirstLoginFlow();
   const { createCompany, createCompanyPending } = useCompany();
   const { contentMap, isLoading: contentLoading } = useWizardContent();
   const { isVisible, isRequired } = useProfileFieldSettings();
@@ -338,13 +341,16 @@ export function ProfileWizard() {
 
   // Completion screen
   if (step > totalSteps) {
+    const hasCompletedAssessment = (assessments || []).some(a => a.completed_at);
+    const dest = getPostWizardDestination(firstLoginPreset, hasCompletedAssessment);
+    const ctaLabel = dest === '/assessment' ? 'Start My Assessment →' : 'Go to Dashboard →';
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-[480px] text-center space-y-6">
           <h1 className="text-2xl font-bold">{content?.title || 'Your profile is complete 🎉'}</h1>
           <p className="text-muted-foreground">{content?.subtitle || ''}</p>
-          <Button size="lg" className="gap-2" onClick={() => navigate('/assessment')}>
-            <Rocket className="h-5 w-5" /> Start My Assessment →
+          <Button size="lg" className="gap-2" onClick={() => navigate(dest)}>
+            <Rocket className="h-5 w-5" /> {ctaLabel}
           </Button>
         </div>
       </div>
