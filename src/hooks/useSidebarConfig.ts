@@ -16,6 +16,7 @@ export interface NavConfigRow {
   url: string | null;
   link_type: LinkType;
   is_system: boolean;
+  required_tier: 'free' | 'partner' | 'pro';
 }
 
 export function useSidebarConfig() {
