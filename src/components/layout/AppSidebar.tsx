@@ -10,7 +10,8 @@ import { useAdvisorLink } from "@/hooks/useAdvisorLink";
 import { useSidebarConfig, type NavConfigRow } from "@/hooks/useSidebarConfig";
 import { getIcon } from "@/lib/lucideIconMap";
 import { useUpgradeGate } from "@/contexts/UpgradeGateContext";
-import { NAV_ITEM_FEATURE } from "@/lib/upgradeFeatures";
+import { NAV_ITEM_FEATURE, normalizeRequiredTier, tierMeets } from "@/lib/upgradeFeatures";
+import { useSubscription } from "@/hooks/useSubscription";
 
 import {
   Sidebar,
