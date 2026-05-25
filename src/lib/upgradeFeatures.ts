@@ -38,7 +38,9 @@ export const NAV_ITEM_FEATURE: Record<string, FeatureKey> = {
   'item:plans':              'plans',
   'item:debt_eliminator':    'debt-eliminator',
   'item:partners':           'partners-directory',
+  'item:rprx_partners':      'partners-directory',
   'item:library':            'library',
+  'library':                 'library', // legacy seed id
   'item:virtual_advisor':    'virtual-advisor',
   'item:advisor_link':       'virtual-advisor',
 };

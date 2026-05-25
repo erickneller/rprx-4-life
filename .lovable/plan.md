@@ -1,44 +1,31 @@
-## Problem
+Root cause found: the database row for RPRx Library is `id = 'library'`, but the route guard currently looks for `item:library`. Because it cannot find the DB row, it falls back to the old hardcoded rule where `library` requires `partner`, so the upgrade popup still appears even though the admin setting is Free.
 
-When an admin sets the RPRx Library (or any other nav item) to **Free** in the Navigation/Library admin tabs, clicking the sidebar link still opens the Upgrade modal. The DB-driven `required_tier='free'` is being ignored in favor of the legacy hardcoded gating.
+Answer to your tier question: yes, the access model should be consistently aligned as Free, Partner, and Pro. The old `paid` value should remain only as a legacy alias for Partner so existing users do not break.
 
-## Root cause
+Plan:
 
-Two places fall back to the legacy `FEATURE_TIER` map (which has `library: 'partner'`) even when the DB row explicitly says `free`:
+1. Make route gating DB-driven by URL and aliases
+   - Update `UpgradeRouteGuard` so it finds a sidebar row by:
+     - known nav ID alias, and
+     - matching route URL like `/library`
+   - This will make `/library` respect the actual `sidebar_nav_config.required_tier = free` row.
 
-1. **`src/components/layout/AppSidebar.tsx`** — `NavItemRow`:
-   ```ts
-   const locked = dbTier !== 'free'
-     ? !tierMeets(tier, dbTier)
-     : (featureKey ? isLocked(featureKey) : false); // ← legacy fallback fires when admin chose Free
-   ```
-2. **`src/components/auth/UpgradeRouteGuard.tsx`** — uses only the hardcoded `FEATURE_TIER`, so even after fixing the sidebar, navigating directly to `/library` (or any guarded route) redirects to dashboard and opens the modal.
+2. Normalize user tiers everywhere
+   - Add a helper that normalizes user access to `free | partner | pro`.
+   - Treat legacy `paid` as `partner`.
+   - Keep the hierarchy: `free < partner < pro`.
 
-## Fix
+3. Fix sidebar feature mapping for existing DB IDs
+   - Add support for both old and current nav IDs, including `library` and `item:library`.
+   - Add the same robustness for partners/advisor IDs where relevant.
 
-1. **AppSidebar** — Treat the DB `required_tier` as authoritative for any row that has the column. Compute `locked = !tierMeets(tier, dbTier)` directly. Drop the legacy `isLocked(featureKey)` fallback. Pass `requiredTier: dbTier` to `requireUpgrade` unconditionally.
+4. Fix direct sidebar-only gating gaps
+   - The special “Speak With A Virtual Advisor” sidebar CTA is currently rendered separately from the admin nav config, so it can bypass DB-driven tier rules.
+   - Update it to use the same required-tier logic as other left-side links.
 
-2. **UpgradeRouteGuard** — Accept an optional DB-driven tier override. For routes backed by a sidebar nav row (Library, Plans, Partners, Strategy Assistant, Debt Eliminator, Virtual Advisor), look up the corresponding `sidebar_nav_config.required_tier` via `useSidebarConfig` and use it instead of `FEATURE_TIER[feature]`. Fall back to `FEATURE_TIER` only when no DB row exists.
+5. Keep library video gating per-video
+   - Library page access will be controlled by the Library sidebar item tier.
+   - Individual videos will continue to use each video’s own `required_tier`.
+   - Free videos stay open; Partner/Pro videos show the upgrade prompt only when the user is below that tier.
 
-   Concretely: add a small helper `useRouteRequiredTier(feature)` that:
-   - Reverses `NAV_ITEM_FEATURE` to find the nav row id for the feature.
-   - Reads that row from `useSidebarConfig` and returns its normalized `required_tier`.
-   - Returns `FEATURE_TIER[feature]` as fallback.
-
-   Then `UpgradeRouteGuard` uses that hook for `required` and skips the redirect when `required === 'free'`.
-
-3. No DB or admin-UI changes needed — the existing "Required Tier" dropdown already writes the correct value.
-
-## Files touched
-
-- `src/components/layout/AppSidebar.tsx` — simplify `locked` computation in `NavItemRow`.
-- `src/components/auth/UpgradeRouteGuard.tsx` — consume DB-driven tier.
-- `src/lib/upgradeFeatures.ts` *(optional)* — export a `FEATURE_NAV_ITEM` reverse map for the new hook.
-- `src/hooks/useSidebarConfig.ts` *(optional, only if a tier lookup helper is added here)*.
-
-## Verification
-
-- Set Library `required_tier = free` in admin → free user clicks sidebar Library → page loads, no modal.
-- Set Library `required_tier = partner` → free user clicks → modal opens with Partner preselected; Partner user loads page.
-- Set Library `required_tier = pro` → Partner user sees lock + modal with Pro preselected.
-- Direct URL `/library` honors the same DB tier (no redirect when Free).
+No database migration should be needed unless you want to remove the legacy `paid` tier later; for now, mapping `paid` to Partner is the safest compatibility path.
