@@ -30,6 +30,7 @@ export function VideoPlayer({ url, title, className, ratio = 16 / 9 }: VideoPlay
       <AspectRatio ratio={ratio} className={className}>
         <video
           controls
+          playsInline
           preload="metadata"
           className="w-full h-full object-contain bg-black"
         >
