@@ -1,16 +1,18 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useUpgradeGate } from '@/contexts/UpgradeGateContext';
 import { Sparkles, Mail, ArrowUpCircle } from 'lucide-react';
-import { UpgradeModal } from '@/components/billing/UpgradeModal';
 
 export function BillingCard() {
-  const { tier, isFree } = useSubscription();
-  const [modalOpen, setModalOpen] = useState(false);
+  const { tier, isFree, isPartner } = useSubscription();
+  const { requireUpgrade } = useUpgradeGate();
 
   const tierLabel = tier === 'pro' ? 'Pro' : tier === 'partner' ? 'Partner' : tier === 'paid' ? 'Paid' : 'Free';
+
+  // Free → suggest Partner; Partner → suggest Pro upgrade.
+  const targetFeature = isPartner ? 'virtual-advisor' : 'strategy-assistant';
 
   return (
     <Card className="p-6">
@@ -30,7 +32,7 @@ export function BillingCard() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Button onClick={() => setModalOpen(true)}>
+        <Button onClick={() => requireUpgrade({ feature: targetFeature })}>
           <ArrowUpCircle className="h-4 w-4 mr-2" />
           {isFree ? 'Upgrade Plan' : 'Change Plan'}
         </Button>
@@ -50,8 +52,6 @@ export function BillingCard() {
           <a href="mailto:support@rprx4life.com" className="underline">support@rprx4life.com</a>.
         </p>
       )}
-
-      <UpgradeModal open={modalOpen} onOpenChange={setModalOpen} />
     </Card>
   );
 }

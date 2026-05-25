@@ -1,123 +1,112 @@
-# Pivot: GHL-only checkout + affiliate program
+# Global Upgrade Gate (GHL embed everywhere)
 
-No existing subscribers → clean rip-out, no migration of live Stripe subs needed.
+Reuse the existing `UpgradeModal` (GHL iframe + affiliate/email/user_id prefill) and trigger it from a single global context so every paywall in the app opens the same popup.
 
-## Why
-
-Affiliates only get tracked on orders through GHL. Running Stripe in parallel would create commissionable and non-commissionable revenue in two ledgers. Single funnel = single source of truth for revenue, commissions, refunds.
-
-## End-state architecture
+## End-state flow
 
 ```text
-  Cold traffic                      Logged-in Free user clicks Upgrade
-       |                                        |
-       v                                        v
-  GHL funnel page                   In-app modal embeds GHL order form
-  (?ref=AFF on link)                (?ref=AFF + email + user_id prefilled)
-       |                                        |
-       +--------------------+-------------------+
-                            v
-                  GHL processes payment + affiliate commission
-                            |
-                            v
-                  GHL workflow -> ghl-checkout-webhook
-                            |
-                            v
-                  user_subscriptions -> useSubscription
+  Free user clicks anything gated
+            |
+            v
+  requireUpgrade({ feature, requiredTier })
+            |
+            v
+  UpgradeGateProvider opens <UpgradeModal />
+  (plan preselected: 'pro' if Pro-only, else 'partner')
+            |
+            v
+  GHL form submits -> webhook -> tier flips -> modal auto-closes
 ```
 
-## Scope
+## What gets built
 
-### 1. Delete Stripe entirely
+### 1. `UpgradeGateProvider` (new)
+`src/contexts/UpgradeGateContext.tsx` — wraps the app (mount inside `AuthenticatedLayout` + landing as needed). Exposes:
 
-- Delete `supabase/functions/create-checkout/`, `stripe-webhook/`, `customer-portal/`
-- Delete `src/lib/stripeConfig.ts`
-- Remove `VITE_STRIPE_PRICE_*` from `.env`
-- Remove Stripe function blocks from `supabase/config.toml`
-- Remove Stripe branch from `BillingCard.tsx`
-- Delete secrets: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+```ts
+const { requireUpgrade, isLocked } = useUpgradeGate();
 
-Migration:
-- Drop columns `stripe_customer_id`, `stripe_subscription_id`, `stripe_price_id` from `user_subscriptions` (safe — no rows).
-- Set `source` default to `'ghl'`.
+requireUpgrade({
+  feature: 'strategy-assistant',   // for analytics/copy
+  requiredTier: 'partner' | 'pro', // controls preselected tab
+  interval?: 'month' | 'year',     // optional
+});
 
-### 2. In-app upgrade = GHL form in modal
+isLocked(requiredTier) // true if current tier < required
+```
 
-New: `src/components/billing/UpgradeModal.tsx`
-- Plan + interval tabs (Partner/Pro × monthly/yearly) → swap iframe `src`.
-- Iframe URL = `<GHL_FORM_URL>?email=<user.email>&user_id=<user.id>&ref=<aff>`.
-- While open, poll `subscription-tier` query every 3s; on tier change → toast + close.
+Internally renders one `<UpgradeModal />` instance and stores `{plan, interval}` in state. Replaces the per-component modal instances in `Pricing.tsx` and `BillingCard.tsx` (they call `requireUpgrade` instead).
 
-New config: `src/lib/ghlCheckoutConfig.ts` — 4 GHL order form URLs (you provide).
+### 2. Feature → tier registry
+`src/lib/upgradeFeatures.ts` — single source of truth so we don't sprinkle tier logic across the codebase:
 
-### 3. Affiliate attribution
+```ts
+export const FEATURE_TIER = {
+  'strategy-assistant': 'partner',
+  'plans':              'partner',
+  'debt-eliminator':    'partner',
+  'virtual-advisor':    'pro',
+  'family-overview':    'pro',
+  'partners-directory': 'partner',
+  // …extend as needed
+} as const;
+```
 
-New table `affiliate_attributions` (user_id pk, affiliate_id, landing_path, captured_at). RLS: own-read, service-write.
+### 3. `<LockedButton />` + `<UpgradeGate />` wrappers
+`src/components/billing/LockedButton.tsx` — drop-in replacement for gated CTAs:
 
-New hook `src/hooks/useAffiliateCapture.ts`:
-- On mount, read `?ref=` from URL → store in `localStorage` (90-day TTL).
-- On sign-in, upsert to `affiliate_attributions` (first-touch wins).
+```tsx
+<LockedButton feature="virtual-advisor">Book advisor session</LockedButton>
+```
 
-Pass-through: `UpgradeModal` + logged-out Pricing buttons append `?ref=` to GHL URLs.
+If user has access → renders children as a normal button.
+If locked → renders with a small lock icon + opens modal on click (preselects Pro for `virtual-advisor`).
 
-Webhook: add optional `affiliate_id` field → store on `user_subscriptions.affiliate_id` (new column) for reconciliation.
+`<UpgradeGate feature="..." fallback={...}>{children}</UpgradeGate>` — wraps any region; shows fallback (blurred preview / "Unlock with Partner" card) for free users.
 
-### 4. Pricing page — dual mode
+### 4. Sidebar lock affordance
+`src/components/layout/AppSidebar.tsx` — for each nav item flagged `requiredTier`:
+- Free user sees the item with a small lock icon and muted styling.
+- Click intercepts navigation and calls `requireUpgrade({ feature, requiredTier })` instead of routing.
+- Keeps discovery (users see what's behind the paywall) without dead links.
 
-`src/components/landing/Pricing.tsx`:
-- Logged-out → external link to GHL funnel with `?ref=`.
-- Logged-in → opens `UpgradeModal`.
-- Remove all `create-checkout` calls.
+Nav config gets an optional `requiredTier?: 'partner' | 'pro'` field per item. Lookup defaults via `FEATURE_TIER` when omitted.
 
-### 5. BillingCard simplification
+### 5. Route-level guard
+`src/components/auth/UpgradeRouteGuard.tsx` — wrap paid routes in `App.tsx`:
 
-Single view: tier badge, period end, "Upgrade / Change plan" → opens `UpgradeModal`, "Manage via support" mailto for paid users. No Stripe portal.
+```tsx
+<Route element={<UpgradeRouteGuard requiredTier="pro" feature="virtual-advisor" />}>
+  <Route path="/virtual-advisor" element={<VirtualAdvisor />} />
+</Route>
+```
 
-### 6. Webhook update
+If user lacks the tier: render the page underneath (so they see context) + auto-open the upgrade modal. On close without upgrade → redirect to `/dashboard`. Prevents direct-URL bypass.
 
-`ghl-checkout-webhook/index.ts`:
-- Parse + persist `affiliate_id`.
-- Match user by `email` OR `user_id` (whichever GHL passes through).
+### 6. Refactor existing callers
+- `Pricing.tsx`: drop local modal state, call `requireUpgrade` from the plan buttons.
+- `BillingCard.tsx`: same.
+- Any existing "Upgrade to Pro" CTAs scattered in components (Strategy Assistant intake, Plans, etc.) → replace with `requireUpgrade` calls.
 
 ## Technical details
 
-Migration SQL:
-```sql
-alter table user_subscriptions
-  drop column if exists stripe_customer_id,
-  drop column if exists stripe_subscription_id,
-  drop column if exists stripe_price_id,
-  add column if not exists affiliate_id text,
-  alter column source set default 'ghl';
-
-create table public.affiliate_attributions (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  affiliate_id text not null,
-  landing_path text,
-  captured_at timestamptz not null default now()
-);
-alter table public.affiliate_attributions enable row level security;
-create policy "own read" on public.affiliate_attributions
-  for select using (auth.uid() = user_id);
--- writes via service role only
-```
-
-GHL postMessage isn't guaranteed → polling fallback is the contract.
-
-## Order of work
-
-1. Migration (drop Stripe cols, add `affiliate_id`, create `affiliate_attributions`).
-2. Delete Stripe edge functions + config.toml blocks + frontend code + env vars + secrets.
-3. `ghlCheckoutConfig.ts` + `UpgradeModal` (tabs + iframe + polling).
-4. `useAffiliateCapture` hook + wire into app root.
-5. Rewrite `Pricing.tsx` (logged-out external, logged-in modal).
-6. Simplify `BillingCard.tsx` (single view + Upgrade button).
-7. Update `ghl-checkout-webhook` (affiliate_id + user_id match).
-8. You provide 4 GHL order form URLs + GHL funnel URL → paste into config.
-9. End-to-end test: cold traffic `?ref=` → GHL → webhook → tier active + affiliate stored.
+- `useSubscription().tier` already exposes `'free' | 'partner' | 'pro'`. Tier ranking: `free < partner < pro`. Centralize comparator in `upgradeFeatures.ts`.
+- `UpgradeModal` already accepts `initialPlan` + `initialInterval`. No changes needed there besides exposing it via context.
+- Provider mounts once, so the iframe isn't re-created when navigating — but it only renders when `open=true`, so no idle cost.
+- Analytics hook (optional, future): log `{feature, requiredTier, action: 'gate_shown' | 'gate_dismissed' | 'gate_converted'}`.
 
 ## Out of scope (v1)
 
-- In-app affiliate dashboard (GHL has its own).
-- Multi-touch attribution (first-touch only).
-- Cross-source upgrades (no Stripe to coexist with).
+- Re-styling existing gated UIs beyond adding the lock icon + intercept.
+- Per-feature custom upsell copy inside the modal (single generic modal for now; can add `feature` prop later to vary the title/subtitle).
+- Soft trial / one-time peek flows.
+
+## Order of work
+
+1. `upgradeFeatures.ts` (registry + tier comparator).
+2. `UpgradeGateContext.tsx` + provider mount in `AuthenticatedLayout`.
+3. `LockedButton.tsx` + `UpgradeGate.tsx` wrappers.
+4. `UpgradeRouteGuard.tsx` and wire into `App.tsx` paid routes.
+5. Extend `AppSidebar` nav config with `requiredTier`, render lock + intercept.
+6. Refactor `Pricing.tsx`, `BillingCard.tsx`, and other inline upgrade CTAs to use `requireUpgrade`.
+7. Smoke test: free user clicks each gated nav item, gated button, and types in a paid URL — modal opens with correct plan tab; upgrade flips tier and auto-closes.
