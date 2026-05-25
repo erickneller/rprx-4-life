@@ -10,7 +10,8 @@ import { useAdvisorLink } from "@/hooks/useAdvisorLink";
 import { useSidebarConfig, type NavConfigRow } from "@/hooks/useSidebarConfig";
 import { getIcon } from "@/lib/lucideIconMap";
 import { useUpgradeGate } from "@/contexts/UpgradeGateContext";
-import { NAV_ITEM_FEATURE } from "@/lib/upgradeFeatures";
+import { NAV_ITEM_FEATURE, normalizeRequiredTier, tierMeets } from "@/lib/upgradeFeatures";
+import { useSubscription } from "@/hooks/useSubscription";
 
 import {
   Sidebar,
@@ -34,9 +35,14 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
   const linkType = item.link_type;
   const url = linkType === 'course' ? `/course/${item.id}` : (item.url || '#');
   const { isLocked, requireUpgrade } = useUpgradeGate();
+  const { tier } = useSubscription();
 
+  // DB-driven gating wins; fall back to hardcoded NAV_ITEM_FEATURE for legacy items.
+  const dbTier = normalizeRequiredTier(item.required_tier);
   const featureKey = NAV_ITEM_FEATURE[item.id];
-  const locked = featureKey ? isLocked(featureKey) : false;
+  const locked = dbTier !== 'free'
+    ? !tierMeets(tier, dbTier)
+    : (featureKey ? isLocked(featureKey) : false);
 
   if (linkType === 'coming_soon') {
     return (
@@ -69,12 +75,12 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
     );
   }
 
-  if (locked && featureKey) {
+  if (locked) {
     return (
       <SidebarMenuItem>
         <SidebarMenuButton
           tooltip={`${item.label} — Upgrade required`}
-          onClick={() => requireUpgrade({ feature: featureKey })}
+          onClick={() => requireUpgrade({ feature: featureKey ?? item.id, requiredTier: dbTier !== 'free' ? dbTier : undefined })}
           className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <Icon className="h-5 w-5 shrink-0" />

@@ -19,6 +19,7 @@ export interface LibraryVideo {
   thumbnail_url: string | null;
   sort_order: number;
   is_active: boolean;
+  required_tier: 'free' | 'partner' | 'pro';
   created_at: string;
   updated_at: string;
 }

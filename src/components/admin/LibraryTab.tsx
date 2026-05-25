@@ -41,7 +41,7 @@ export function LibraryTab() {
   // Video form
   const [vidDialogOpen, setVidDialogOpen] = useState(false);
   const [vidForm, setVidForm] = useState<Partial<LibraryVideo> & { title: string; category_id: string }>({
-    title: '', category_id: '', description: '', video_url: '', thumbnail_url: '', sort_order: 0, is_active: true,
+    title: '', category_id: '', description: '', video_url: '', thumbnail_url: '', sort_order: 0, is_active: true, required_tier: 'free',
   });
   const [vidEditing, setVidEditing] = useState(false);
   const [deleteVidId, setDeleteVidId] = useState<string | null>(null);
@@ -75,12 +75,12 @@ export function LibraryTab() {
   // Video handlers
   const openCreateVid = () => {
     setVidEditing(false);
-    setVidForm({ title: '', category_id: categories[0]?.id ?? '', description: '', video_url: '', thumbnail_url: '', sort_order: 0, is_active: true });
+    setVidForm({ title: '', category_id: categories[0]?.id ?? '', description: '', video_url: '', thumbnail_url: '', sort_order: 0, is_active: true, required_tier: 'free' });
     setVidDialogOpen(true);
   };
   const openEditVid = (v: LibraryVideo) => {
     setVidEditing(true);
-    setVidForm({ id: v.id, title: v.title, category_id: v.category_id, description: v.description, video_url: v.video_url, thumbnail_url: v.thumbnail_url || '', sort_order: v.sort_order, is_active: v.is_active });
+    setVidForm({ id: v.id, title: v.title, category_id: v.category_id, description: v.description, video_url: v.video_url, thumbnail_url: v.thumbnail_url || '', sort_order: v.sort_order, is_active: v.is_active, required_tier: v.required_tier ?? 'free' });
     setVidDialogOpen(true);
   };
   const saveVid = async () => {
@@ -142,6 +142,9 @@ export function LibraryTab() {
               <div className="min-w-0">
                 <span className="font-medium">{v.title}</span>
                 <span className="text-xs text-muted-foreground ml-2">{categories.find(c => c.id === v.category_id)?.name}</span>
+                <span className={`text-[10px] uppercase ml-2 px-1.5 py-0.5 rounded ${v.required_tier === 'pro' ? 'bg-primary/15 text-primary' : v.required_tier === 'partner' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  {v.required_tier ?? 'free'}
+                </span>
                 {!v.is_active && <span className="text-xs text-destructive ml-2">Inactive</span>}
               </div>
               <div className="flex gap-1 shrink-0">
@@ -196,6 +199,18 @@ export function LibraryTab() {
               </div>
             )}
             <div><Label>Thumbnail URL (optional)</Label><Input value={vidForm.thumbnail_url || ''} onChange={e => setVidForm(f => ({ ...f, thumbnail_url: e.target.value }))} placeholder="https://..." /></div>
+            <div>
+              <Label>Required Tier</Label>
+              <Select value={vidForm.required_tier ?? 'free'} onValueChange={(v) => setVidForm(f => ({ ...f, required_tier: v as any }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free (everyone)</SelectItem>
+                  <SelectItem value="partner">Partner & Pro</SelectItem>
+                  <SelectItem value="pro">Pro only</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Lower tiers will see a lock with an upgrade prompt.</p>
+            </div>
             <div><Label>Sort Order</Label><Input type="number" value={vidForm.sort_order ?? 0} onChange={e => setVidForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} /></div>
             <div className="flex items-center gap-2"><Switch checked={vidForm.is_active ?? true} onCheckedChange={v => setVidForm(f => ({ ...f, is_active: v }))} /><Label>Active</Label></div>
             <Button onClick={saveVid} disabled={upsertVideo.isPending} className="w-full">{upsertVideo.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Save</Button>

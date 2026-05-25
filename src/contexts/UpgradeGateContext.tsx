@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { UpgradeModal } from '@/components/billing/UpgradeModal';
 import { useSubscription } from '@/hooks/useSubscription';
 import {
+  FEATURE_TIER,
   featureRequiredTier,
   tierMeets,
   type FeatureKey,
@@ -10,7 +11,8 @@ import {
 import type { IntervalKey, PlanKey } from '@/lib/ghlCheckoutConfig';
 
 interface RequireUpgradeArgs {
-  feature: FeatureKey;
+  /** Optional analytics/registry feature key. Used as fallback for requiredTier when provided. */
+  feature?: FeatureKey | string;
   /** Overrides the registry default. */
   requiredTier?: RequiredTier;
   interval?: IntervalKey;
@@ -34,7 +36,12 @@ export function UpgradeGateProvider({ children }: { children: ReactNode }) {
 
   const requireUpgrade = useCallback(
     ({ feature, requiredTier, interval: ivl }: RequireUpgradeArgs) => {
-      const need = requiredTier ?? featureRequiredTier(feature);
+      let need: RequiredTier =
+        requiredTier ??
+        (feature && (feature as FeatureKey) in FEATURE_TIER
+          ? featureRequiredTier(feature as FeatureKey)
+          : 'partner');
+      if (need === 'free') return; // nothing to gate
       setPlan(need === 'pro' ? 'pro' : 'partner');
       if (ivl) setInterval(ivl);
       setOpen(true);

@@ -95,6 +95,7 @@ export function NavigationTab() {
         visible: true,
         sort_order: nextOrder,
         is_system: false,
+        required_tier: 'free',
       },
     });
   };
@@ -123,6 +124,9 @@ export function NavigationTab() {
         <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
         <span className="text-sm flex-1 truncate">{item.label}</span>
         <span className="text-[10px] uppercase text-muted-foreground">{item.link_type}</span>
+        <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded ${item.required_tier === 'pro' ? 'bg-primary/15 text-primary' : item.required_tier === 'partner' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+          {item.required_tier ?? 'free'}
+        </span>
         {item.link_type === 'course' && (
           <Button asChild size="sm" variant="ghost" className="h-7 px-2">
             <Link to="#" onClick={(e) => { e.preventDefault(); document.querySelector<HTMLButtonElement>('[data-tab="courses"]')?.click(); }}>
@@ -246,6 +250,21 @@ export function NavigationTab() {
                       />
                     </div>
                   )}
+                  <div>
+                    <Label>Required Tier</Label>
+                    <Select
+                      value={e.required_tier ?? 'free'}
+                      onValueChange={(v) => setEditor({ ...editor, row: { ...e, required_tier: v as any } })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">Free (everyone)</SelectItem>
+                        <SelectItem value="partner">Partner & Pro</SelectItem>
+                        <SelectItem value="pro">Pro only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Locked items show a lock icon and open the upgrade modal.</p>
+                  </div>
                   {e.parent_id && (
                     <div>
                       <Label>Section</Label>
