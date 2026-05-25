@@ -95,6 +95,7 @@ export function NavigationTab() {
         visible: true,
         sort_order: nextOrder,
         is_system: false,
+        required_tier: 'free',
       },
     });
   };
