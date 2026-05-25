@@ -77,9 +77,12 @@ const Pricing = () => {
       window.location.href = buildPublicFunnelUrl(ref);
       return;
     }
-    // Logged-in → embed GHL form in modal
-    setModalPlan(planKey);
-    setModalOpen(true);
+    // Logged-in → open global upgrade modal
+    requireUpgrade({
+      feature: planKey === 'pro' ? 'virtual-advisor' : 'strategy-assistant',
+      requiredTier: planKey,
+      interval,
+    });
   };
 
   const formatPrice = (n: number) => {
