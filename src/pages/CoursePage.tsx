@@ -30,7 +30,7 @@ function VideoEmbed({ url }: { url: string }) {
     );
   }
   return (
-    <video src={url} controls className="w-full aspect-video rounded-lg bg-black" />
+    <video src={url} controls playsInline className="w-full aspect-video rounded-lg bg-black" />
   );
 }
 
