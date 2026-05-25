@@ -41,7 +41,7 @@ export function LibraryTab() {
   // Video form
   const [vidDialogOpen, setVidDialogOpen] = useState(false);
   const [vidForm, setVidForm] = useState<Partial<LibraryVideo> & { title: string; category_id: string }>({
-    title: '', category_id: '', description: '', video_url: '', thumbnail_url: '', sort_order: 0, is_active: true,
+    title: '', category_id: '', description: '', video_url: '', thumbnail_url: '', sort_order: 0, is_active: true, required_tier: 'free',
   });
   const [vidEditing, setVidEditing] = useState(false);
   const [deleteVidId, setDeleteVidId] = useState<string | null>(null);
