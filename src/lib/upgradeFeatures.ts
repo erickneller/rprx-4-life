@@ -3,7 +3,13 @@
 
 import type { SubscriptionTier } from '@/hooks/useSubscription';
 
-export type RequiredTier = 'partner' | 'pro';
+export type RequiredTier = 'free' | 'partner' | 'pro';
+
+export function normalizeRequiredTier(value: unknown): RequiredTier {
+  return value === 'pro' || value === 'partner' || value === 'free'
+    ? (value as RequiredTier)
+    : 'free';
+}
 
 // Feature keys — short, kebab-case, used in analytics + UI lookup.
 export type FeatureKey =
