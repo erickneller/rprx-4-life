@@ -125,7 +125,13 @@ export function AppSidebar() {
   const { membership } = useCompany();
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
   const { enabled: advisorEnabled, url: advisorUrl } = useAdvisorLink();
-  const { isVisible, sections, itemsBySection, orphanItems } = useSidebarConfig();
+  const { rows, isVisible, sections, itemsBySection, orphanItems } = useSidebarConfig();
+  const { tier } = useSubscription();
+  const { requireUpgrade } = useUpgradeGate();
+
+  const advisorRow = rows.find(r => r.id === 'item:advisor_link' || r.url === '/virtual-advisor');
+  const advisorRequired = normalizeRequiredTier(advisorRow?.required_tier);
+  const advisorLocked = !tierMeets(tier, advisorRequired);
 
   const resolveAdvisorHref = (url: string) => {
     const digits = url.replace(/\D/g, '');
