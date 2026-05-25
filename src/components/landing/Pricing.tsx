@@ -206,13 +206,6 @@ const Pricing = () => {
           })}
         </div>
       </div>
-
-      <UpgradeModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        initialPlan={modalPlan}
-        initialInterval={interval}
-      />
     </section>
   );
 };
