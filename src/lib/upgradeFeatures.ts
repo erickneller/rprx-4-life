@@ -53,7 +53,7 @@ export const ROUTE_FEATURE: Record<string, FeatureKey> = {
   '/virtual-advisor':    'virtual-advisor',
 };
 
-const TIER_RANK: Record<SubscriptionTier, number> = {
+const TIER_RANK: Record<SubscriptionTier | RequiredTier, number> = {
   free:    0,
   partner: 1,
   paid:    1, // legacy — treat as partner-equivalent
@@ -61,6 +61,7 @@ const TIER_RANK: Record<SubscriptionTier, number> = {
 };
 
 export function tierMeets(current: SubscriptionTier, required: RequiredTier): boolean {
+  if (required === 'free') return true;
   return (TIER_RANK[current] ?? 0) >= (TIER_RANK[required] ?? 99);
 }
 
