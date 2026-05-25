@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, MoreHorizontal, ShieldCheck, ShieldOff, KeyRound, Lock, Unlock, Trash2, Search, Eye } from 'lucide-react';
+import { Loader2, MoreHorizontal, ShieldCheck, ShieldOff, KeyRound, Lock, Unlock, Trash2, Search, Eye, Library as LibraryIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AdminUser {
@@ -48,6 +48,7 @@ interface AdminUser {
   rprx_grade: string | null;
   // computed
   is_admin: boolean;
+  is_library_admin: boolean;
   tier: 'free' | 'paid';
 }
 
@@ -66,11 +67,13 @@ function useAdminUsers() {
       if (subsErr) throw subsErr;
 
       const adminIds = new Set((roles || []).filter(r => r.role === 'admin').map(r => r.user_id));
+      const libraryAdminIds = new Set((roles || []).filter(r => (r.role as any) === 'library_admin').map(r => r.user_id));
       const tierMap = new Map((subs || []).map((s: any) => [s.user_id, s.tier]));
 
       return (users || []).map((u: any) => ({
         ...u,
         is_admin: adminIds.has(u.id),
+        is_library_admin: libraryAdminIds.has(u.id),
         tier: (tierMap.get(u.id) || 'free') as 'free' | 'paid',
       })) as AdminUser[];
     },
@@ -109,6 +112,22 @@ function useToggleAdmin() {
   });
 }
 
+function useToggleLibraryAdmin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, make }: { userId: string; make: boolean }) => {
+      if (make) {
+        const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: 'library_admin' as any });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', 'library_admin' as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  });
+}
+
 function useAdminAction() {
   const qc = useQueryClient();
   return useMutation({
@@ -140,6 +159,7 @@ const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString() : 'â€
 export function UsersTab() {
   const { data: users = [], isLoading } = useAdminUsers();
   const toggleAdmin = useToggleAdmin();
+  const toggleLibraryAdmin = useToggleLibraryAdmin();
   const toggleTier = useToggleTier();
   const adminAction = useAdminAction();
 
@@ -269,6 +289,8 @@ export function UsersTab() {
                   <TableCell>
                     {u.is_admin ? (
                       <Badge className="bg-primary/10 text-primary border-primary/20">Admin</Badge>
+                    ) : u.is_library_admin ? (
+                      <Badge className="bg-accent/10 text-accent-foreground border-accent/20">Library Admin</Badge>
                     ) : (
                       <Badge variant="secondary">User</Badge>
                     )}
