@@ -10,10 +10,11 @@ import { useAdvisorLink, useUpdateAdvisorLink } from '@/hooks/useAdvisorLink';
 import { useAdvisorEmbed, useUpdateAdvisorEmbed } from '@/hooks/useAdvisorEmbed';
 import { useBookingUrl, useUpdateBookingUrl } from '@/hooks/useBookingUrl';
 import { toast } from 'sonner';
-import { MessageSquare, FlaskConical, Phone, Code2, CalendarCheck, Gauge, Route } from 'lucide-react';
+import { MessageSquare, FlaskConical, Phone, Code2, CalendarCheck, Gauge, Route, CreditCard } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useFirstLoginFlow, useSetFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
 import { FIRST_LOGIN_FLOW_OPTIONS, type FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
+import { useBillingCardSettings, useSetBillingCardSettings, DEFAULT_BILLING_CARD_COPY, type BillingCardCopy } from '@/hooks/useBillingCardSettings';
 
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');
@@ -41,6 +42,12 @@ export function FeaturesTab() {
   const bookingUpdate = useUpdateBookingUrl();
   const [bookingInput, setBookingInput] = useState('');
   useEffect(() => { setBookingInput(bookingUrl); }, [bookingUrl]);
+
+  const { enabled: billingEnabled, copy: billingCopy, isLoading: billingLoading } = useBillingCardSettings();
+  const billingSet = useSetBillingCardSettings();
+  const [billingDraft, setBillingDraft] = useState<BillingCardCopy>(DEFAULT_BILLING_CARD_COPY);
+  useEffect(() => { setBillingDraft(billingCopy); }, [billingCopy]);
+  const billingDirty = JSON.stringify(billingDraft) !== JSON.stringify(billingCopy);
 
   useEffect(() => {
     setAdvisorInput(advisorUrl);
