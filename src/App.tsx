@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminRoute } from "@/components/auth/AdminRoute";
+import { LibraryAdminRoute } from "@/components/auth/LibraryAdminRoute";
+import LibraryAdmin from "./pages/LibraryAdmin";
 import { NavigationBlockerProvider } from "@/contexts/NavigationBlockerContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -88,6 +90,7 @@ const App = () => (
           <Route path="/company-dashboard" element={<ProtectedRoute><WizardGuard><CompanyDashboard /></WizardGuard></ProtectedRoute>} />
           <Route path="/course/:navConfigId" element={<ProtectedRoute><WizardGuard><CoursePage /></WizardGuard></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+          <Route path="/library-admin" element={<LibraryAdminRoute><LibraryAdmin /></LibraryAdminRoute>} />
           {/* /join — no ProtectedRoute; handles auth inline */}
           <Route path="/join" element={<Join />} />
           <Route path="/privacy" element={<Privacy />} />
