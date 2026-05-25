@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { UpgradeModal } from '@/components/billing/UpgradeModal';
 import { useSubscription } from '@/hooks/useSubscription';
 import {
+  FEATURE_TIER,
   featureRequiredTier,
   tierMeets,
   type FeatureKey,
