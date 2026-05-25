@@ -124,6 +124,9 @@ export function NavigationTab() {
         <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
         <span className="text-sm flex-1 truncate">{item.label}</span>
         <span className="text-[10px] uppercase text-muted-foreground">{item.link_type}</span>
+        <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded ${item.required_tier === 'pro' ? 'bg-primary/15 text-primary' : item.required_tier === 'partner' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+          {item.required_tier ?? 'free'}
+        </span>
         {item.link_type === 'course' && (
           <Button asChild size="sm" variant="ghost" className="h-7 px-2">
             <Link to="#" onClick={(e) => { e.preventDefault(); document.querySelector<HTMLButtonElement>('[data-tab="courses"]')?.click(); }}>
