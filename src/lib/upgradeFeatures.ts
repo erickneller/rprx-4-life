@@ -43,6 +43,15 @@ export const NAV_ITEM_FEATURE: Record<string, FeatureKey> = {
   'item:advisor_link':       'virtual-advisor',
 };
 
+// Reverse map: feature key → sidebar nav row id (for DB-driven tier lookups by route).
+export const FEATURE_NAV_ITEM: Record<FeatureKey, string> = Object.entries(NAV_ITEM_FEATURE).reduce(
+  (acc, [navId, feature]) => {
+    if (!(feature in acc)) acc[feature] = navId;
+    return acc;
+  },
+  {} as Record<FeatureKey, string>,
+);
+
 // Map route paths → feature key (used by UpgradeRouteGuard).
 export const ROUTE_FEATURE: Record<string, FeatureKey> = {
   '/strategy-assistant': 'strategy-assistant',
