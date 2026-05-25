@@ -52,6 +52,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <NavigationBlockerProvider>
+        <AffiliateCaptureBridge />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
