@@ -132,10 +132,18 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Try to find the auth user by email
+  // Resolve auth user — try passed user_id first (most reliable), then email lookup
   let userId: string | null = null;
-  {
-    // Search auth.users via admin API; iterate pages until found or exhausted
+  let resolvedEmail: string = email;
+
+  if (passed_user_id) {
+    const { data: u } = await admin.auth.admin.getUserById(passed_user_id);
+    if (u?.user) {
+      userId = u.user.id;
+      resolvedEmail = (u.user.email ?? email).toLowerCase();
+    }
+  }
+  if (!userId && email) {
     let page = 1;
     while (page <= 10) {
       const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
@@ -153,13 +161,12 @@ Deno.serve(async (req) => {
     eventType === "subscription.failed";
 
   if (userId) {
-    // Direct upsert into user_subscriptions
     if (isCancelLike) {
       const { error } = await admin
         .from("user_subscriptions")
         .upsert({
           user_id: userId,
-          email,
+          email: resolvedEmail,
           tier: "free",
           status: "canceled",
           source: "ghl",
@@ -174,7 +181,7 @@ Deno.serve(async (req) => {
         .from("user_subscriptions")
         .upsert({
           user_id: userId,
-          email,
+          email: resolvedEmail,
           tier,
           status: "active",
           source: "ghl",
@@ -182,10 +189,18 @@ Deno.serve(async (req) => {
           ghl_contact_id: ghl_contact_id ?? null,
           ghl_subscription_id: ghl_subscription_id ?? null,
           ghl_product_id: ghl_product_id ?? null,
+          affiliate_id,
           current_period_end,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
       if (error) console.error("active upsert failed", error);
+
+      // Mirror affiliate attribution (first-touch wins)
+      if (affiliate_id) {
+        await admin.from("affiliate_attributions")
+          .insert({ user_id: userId, affiliate_id, landing_path: 'ghl-checkout' })
+          .then(() => {}, () => {}); // ignore conflict
+      }
     }
 
     return new Response(JSON.stringify({ ok: true, matched_user: userId, tier, event: eventType }), {
