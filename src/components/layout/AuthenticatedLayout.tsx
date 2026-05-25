@@ -8,7 +8,6 @@ import rprxLogo from "@/assets/rprx-logo.png";
 import { PageHelpButton } from "@/components/help/PageHelpButton";
 import { PageFeedbackWidget } from "@/components/feedback/PageFeedbackWidget";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { UpgradeGateProvider } from "@/contexts/UpgradeGateContext";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -46,56 +45,54 @@ export function AuthenticatedLayout({ children, title, breadcrumbs }: Authentica
   })();
 
   return (
-    <UpgradeGateProvider>
-      <SidebarProvider defaultOpen={!isMobile}>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
+    <SidebarProvider defaultOpen={!isMobile}>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
 
-          <div className="flex flex-1 flex-col min-w-0">
-            {/* Header */}
-            <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4">
-              <div className="flex items-center gap-3">
-                <SidebarTrigger className="-ml-1" />
-                <img src={rprxLogo} alt="RPRx 4 Life" className="h-8 w-auto" />
-                <Breadcrumb>
-                  <BreadcrumbList>
-                    {crumbs.map((crumb, index) => {
-                      const isLast = index === crumbs.length - 1;
-                      return (
-                        <BreadcrumbItem key={index}>
-                          {index > 0 && <BreadcrumbSeparator />}
-                          {isLast ? (
-                            <BreadcrumbPage className="text-lg font-semibold">
-                              {crumb.label}
-                            </BreadcrumbPage>
-                          ) : (
-                            <BreadcrumbLink asChild>
-                              <Link to={crumb.href!}>{crumb.label}</Link>
-                            </BreadcrumbLink>
-                          )}
-                        </BreadcrumbItem>
-                      );
-                    })}
-                  </BreadcrumbList>
-                </Breadcrumb>
-              </div>
+        <div className="flex flex-1 flex-col min-w-0">
+          {/* Header */}
+          <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="-ml-1" />
+              <img src={rprxLogo} alt="RPRx 4 Life" className="h-8 w-auto" />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  {crumbs.map((crumb, index) => {
+                    const isLast = index === crumbs.length - 1;
+                    return (
+                      <BreadcrumbItem key={index}>
+                        {index > 0 && <BreadcrumbSeparator />}
+                        {isLast ? (
+                          <BreadcrumbPage className="text-lg font-semibold">
+                            {crumb.label}
+                          </BreadcrumbPage>
+                        ) : (
+                          <BreadcrumbLink asChild>
+                            <Link to={crumb.href!}>{crumb.label}</Link>
+                          </BreadcrumbLink>
+                        )}
+                      </BreadcrumbItem>
+                    );
+                  })}
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
 
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
-                <ProfileAvatar />
-              </div>
-            </header>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <ProfileAvatar />
+            </div>
+          </header>
 
-            {/* Main content */}
-            <main className="flex-1">
-              {children}
-            </main>
+          {/* Main content */}
+          <main className="flex-1">
+            {children}
+          </main>
 
-            <PageHelpButton />
-            <PageFeedbackWidget />
-          </div>
+          <PageHelpButton />
+          <PageFeedbackWidget />
         </div>
-      </SidebarProvider>
-    </UpgradeGateProvider>
+      </div>
+    </SidebarProvider>
   );
 }
