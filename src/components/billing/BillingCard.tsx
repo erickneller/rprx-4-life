@@ -1,46 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { Loader2, ExternalLink, Sparkles, Mail } from 'lucide-react';
-import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
+import { Sparkles, Mail, ArrowUpCircle } from 'lucide-react';
+import { UpgradeModal } from '@/components/billing/UpgradeModal';
 
 export function BillingCard() {
-  const { tier, isFree, isLoading } = useSubscription();
-  const { user } = useAuth();
-  const [opening, setOpening] = useState(false);
-  const [source, setSource] = useState<'stripe' | 'ghl' | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data } = await (supabase
-        .from('user_subscriptions') as any)
-        .select('source')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (data?.source) setSource(data.source);
-    })();
-  }, [user]);
-
-  const openPortal = async () => {
-    setOpening(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      if (error) throw error;
-      if (data?.url) window.location.href = data.url;
-    } catch (err: any) {
-      toast.error(err?.message || 'Could not open billing portal');
-      setOpening(false);
-    }
-  };
+  const { tier, isFree } = useSubscription();
+  const [modalOpen, setModalOpen] = useState(false);
 
   const tierLabel = tier === 'pro' ? 'Pro' : tier === 'partner' ? 'Partner' : tier === 'paid' ? 'Paid' : 'Free';
-  const isGhl = !isFree && source === 'ghl';
 
   return (
     <Card className="p-6">
@@ -51,7 +21,7 @@ export function BillingCard() {
             Billing & Subscription
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your RPRx plan, payment method, and invoices.
+            Manage your RPRx plan.
           </p>
         </div>
         <Badge variant={isFree ? 'secondary' : 'default'} className="capitalize">
@@ -60,31 +30,28 @@ export function BillingCard() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        {isFree ? (
-          <Link to="/#pricing">
-            <Button>Upgrade Plan</Button>
-          </Link>
-        ) : isGhl ? (
-          <>
-            <a href="mailto:support@rprx4life.com?subject=Subscription%20change%20request">
-              <Button variant="outline">
-                <Mail className="h-4 w-4 mr-2" />
-                Manage via Support
-              </Button>
-            </a>
-            <p className="text-xs text-muted-foreground w-full">
-              Your subscription was purchased through an external checkout. Email{' '}
-              <a href="mailto:support@rprx4life.com" className="underline">support@rprx4life.com</a>{' '}
-              to update payment, change plan, or cancel.
-            </p>
-          </>
-        ) : (
-          <Button onClick={openPortal} disabled={opening || isLoading}>
-            {opening ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ExternalLink className="h-4 w-4 mr-2" />}
-            Manage Subscription
-          </Button>
+        <Button onClick={() => setModalOpen(true)}>
+          <ArrowUpCircle className="h-4 w-4 mr-2" />
+          {isFree ? 'Upgrade Plan' : 'Change Plan'}
+        </Button>
+        {!isFree && (
+          <a href="mailto:support@rprx4life.com?subject=Subscription%20change%20request">
+            <Button variant="outline">
+              <Mail className="h-4 w-4 mr-2" />
+              Manage via Support
+            </Button>
+          </a>
         )}
       </div>
+
+      {!isFree && (
+        <p className="text-xs text-muted-foreground mt-3">
+          To cancel or change payment method, email{' '}
+          <a href="mailto:support@rprx4life.com" className="underline">support@rprx4life.com</a>.
+        </p>
+      )}
+
+      <UpgradeModal open={modalOpen} onOpenChange={setModalOpen} />
     </Card>
   );
 }
