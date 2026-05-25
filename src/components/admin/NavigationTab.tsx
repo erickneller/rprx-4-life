@@ -250,6 +250,21 @@ export function NavigationTab() {
                       />
                     </div>
                   )}
+                  <div>
+                    <Label>Required Tier</Label>
+                    <Select
+                      value={e.required_tier ?? 'free'}
+                      onValueChange={(v) => setEditor({ ...editor, row: { ...e, required_tier: v as any } })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">Free (everyone)</SelectItem>
+                        <SelectItem value="partner">Partner & Pro</SelectItem>
+                        <SelectItem value="pro">Pro only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Locked items show a lock icon and open the upgrade modal.</p>
+                  </div>
                   {e.parent_id && (
                     <div>
                       <Label>Section</Label>
