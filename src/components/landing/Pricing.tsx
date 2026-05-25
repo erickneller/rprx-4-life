@@ -1,28 +1,30 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Check, Loader2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useSubscription } from '@/hooks/useSubscription';
+import { UpgradeModal } from '@/components/billing/UpgradeModal';
+import { buildPublicFunnelUrl } from '@/lib/ghlCheckoutConfig';
+import { getStoredAffiliateRef } from '@/lib/affiliateStorage';
+import type { PlanKey, IntervalKey } from '@/lib/ghlCheckoutConfig';
 
-// Stripe Price IDs — set these in src/lib/stripeConfig.ts after creating prices in Stripe.
-import { STRIPE_PRICES } from '@/lib/stripeConfig';
-
-type Interval = 'month' | 'year';
+type Interval = IntervalKey;
 
 const Pricing = () => {
   const { user } = useAuth();
+  const { tier } = useSubscription();
   const navigate = useNavigate();
   const [interval, setInterval] = useState<Interval>('month');
-  const [loadingPrice, setLoadingPrice] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalPlan, setModalPlan] = useState<PlanKey>('partner');
 
   const plans = [
     {
       name: 'Free',
+      key: 'free' as const,
       monthly: 0,
       yearly: 0,
-      priceId: { month: null, year: null },
       description: 'Get started with financial awareness.',
       features: [
         'Financial Success Assessment',
@@ -36,9 +38,9 @@ const Pricing = () => {
     },
     {
       name: 'Partner',
+      key: 'partner' as const,
       monthly: 49.97,
       yearly: 497,
-      priceId: { month: STRIPE_PRICES.partner.month, year: STRIPE_PRICES.partner.year },
       description: 'Personalized strategies and deeper insight.',
       features: [
         'Everything in Free',
@@ -53,9 +55,9 @@ const Pricing = () => {
     },
     {
       name: 'Pro',
+      key: 'pro' as const,
       monthly: 997,
       yearly: 9997,
-      priceId: { month: STRIPE_PRICES.pro.month, year: STRIPE_PRICES.pro.year },
       description: 'Full advisor coordination and unlimited access.',
       features: [
         'Everything in Partner',
@@ -70,31 +72,16 @@ const Pricing = () => {
     },
   ];
 
-  const handleCheckout = async (priceId: string | null, planName: string) => {
-    if (!priceId) {
-      navigate('/auth');
-      return;
-    }
+  const handlePaidClick = (planKey: PlanKey) => {
     if (!user) {
-      navigate('/auth?redirect=pricing');
+      // Cold traffic → send to public GHL funnel with affiliate ref appended
+      const ref = getStoredAffiliateRef();
+      window.location.href = buildPublicFunnelUrl(ref);
       return;
     }
-    setLoadingPrice(priceId);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL returned');
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || `Couldn't start ${planName} checkout`);
-      setLoadingPrice(null);
-    }
+    // Logged-in → embed GHL form in modal
+    setModalPlan(planKey);
+    setModalOpen(true);
   };
 
   const formatPrice = (n: number) => {
@@ -117,7 +104,6 @@ const Pricing = () => {
           </p>
         </div>
 
-        {/* Interval toggle */}
         <div className="flex justify-center mb-12">
           <div className="inline-flex items-center bg-muted rounded-full p-1">
             <button
@@ -139,13 +125,11 @@ const Pricing = () => {
           </div>
         </div>
 
-        {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {plans.map((plan) => {
             const amount = interval === 'month' ? plan.monthly : plan.yearly;
-            const priceId = interval === 'month' ? plan.priceId.month : plan.priceId.year;
-            const isLoading = loadingPrice === priceId;
             const period = plan.monthly === 0 ? 'forever' : interval === 'month' ? '/month' : '/year';
+            const isCurrent = user && tier === plan.key;
 
             return (
               <div
@@ -196,23 +180,24 @@ const Pricing = () => {
                   ))}
                 </ul>
 
-                {plan.monthly === 0 ? (
+                {plan.key === 'free' ? (
                   <Link to="/auth">
                     <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                       {plan.cta}
                     </Button>
                   </Link>
+                ) : isCurrent ? (
+                  <Button disabled className="w-full" variant="secondary">Current Plan</Button>
                 ) : (
                   <Button
-                    onClick={() => handleCheckout(priceId, plan.name)}
-                    disabled={isLoading || !priceId}
+                    onClick={() => handlePaidClick(plan.key as PlanKey)}
                     className={`w-full ${
                       plan.highlighted
                         ? 'bg-accent hover:bg-accent/90 text-accent-foreground'
                         : 'bg-primary hover:bg-primary/90 text-primary-foreground'
                     }`}
                   >
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : plan.cta}
+                    {plan.cta}
                   </Button>
                 )}
               </div>
@@ -220,6 +205,13 @@ const Pricing = () => {
           })}
         </div>
       </div>
+
+      <UpgradeModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        initialPlan={modalPlan}
+        initialInterval={interval}
+      />
     </section>
   );
 };
