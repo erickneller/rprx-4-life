@@ -75,7 +75,7 @@ export function LibraryTab() {
   // Video handlers
   const openCreateVid = () => {
     setVidEditing(false);
-    setVidForm({ title: '', category_id: categories[0]?.id ?? '', description: '', video_url: '', thumbnail_url: '', sort_order: 0, is_active: true });
+    setVidForm({ title: '', category_id: categories[0]?.id ?? '', description: '', video_url: '', thumbnail_url: '', sort_order: 0, is_active: true, required_tier: 'free' });
     setVidDialogOpen(true);
   };
   const openEditVid = (v: LibraryVideo) => {
