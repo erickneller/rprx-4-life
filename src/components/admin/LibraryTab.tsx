@@ -196,6 +196,18 @@ export function LibraryTab() {
               </div>
             )}
             <div><Label>Thumbnail URL (optional)</Label><Input value={vidForm.thumbnail_url || ''} onChange={e => setVidForm(f => ({ ...f, thumbnail_url: e.target.value }))} placeholder="https://..." /></div>
+            <div>
+              <Label>Required Tier</Label>
+              <Select value={vidForm.required_tier ?? 'free'} onValueChange={(v) => setVidForm(f => ({ ...f, required_tier: v as any }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free (everyone)</SelectItem>
+                  <SelectItem value="partner">Partner & Pro</SelectItem>
+                  <SelectItem value="pro">Pro only</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">Lower tiers will see a lock with an upgrade prompt.</p>
+            </div>
             <div><Label>Sort Order</Label><Input type="number" value={vidForm.sort_order ?? 0} onChange={e => setVidForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} /></div>
             <div className="flex items-center gap-2"><Switch checked={vidForm.is_active ?? true} onCheckedChange={v => setVidForm(f => ({ ...f, is_active: v }))} /><Label>Active</Label></div>
             <Button onClick={saveVid} disabled={upsertVideo.isPending} className="w-full">{upsertVideo.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Save</Button>
