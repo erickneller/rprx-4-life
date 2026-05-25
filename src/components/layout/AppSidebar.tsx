@@ -35,9 +35,14 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
   const linkType = item.link_type;
   const url = linkType === 'course' ? `/course/${item.id}` : (item.url || '#');
   const { isLocked, requireUpgrade } = useUpgradeGate();
+  const { tier } = useSubscription();
 
+  // DB-driven gating wins; fall back to hardcoded NAV_ITEM_FEATURE for legacy items.
+  const dbTier = normalizeRequiredTier(item.required_tier);
   const featureKey = NAV_ITEM_FEATURE[item.id];
-  const locked = featureKey ? isLocked(featureKey) : false;
+  const locked = dbTier !== 'free'
+    ? !tierMeets(tier, dbTier)
+    : (featureKey ? isLocked(featureKey) : false);
 
   if (linkType === 'coming_soon') {
     return (
