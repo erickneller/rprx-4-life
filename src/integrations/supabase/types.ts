@@ -869,6 +869,7 @@ export type Database = {
           description: string
           id: string
           is_active: boolean
+          required_tier: string
           sort_order: number
           thumbnail_url: string | null
           title: string
@@ -881,6 +882,7 @@ export type Database = {
           description?: string
           id?: string
           is_active?: boolean
+          required_tier?: string
           sort_order?: number
           thumbnail_url?: string | null
           title: string
@@ -893,6 +895,7 @@ export type Database = {
           description?: string
           id?: string
           is_active?: boolean
+          required_tier?: string
           sort_order?: number
           thumbnail_url?: string | null
           title?: string
@@ -1558,6 +1561,7 @@ export type Database = {
           label: string
           link_type: string
           parent_id: string | null
+          required_tier: string
           sort_order: number
           updated_at: string
           url: string | null
@@ -1572,6 +1576,7 @@ export type Database = {
           label: string
           link_type?: string
           parent_id?: string | null
+          required_tier?: string
           sort_order?: number
           updated_at?: string
           url?: string | null
@@ -1586,6 +1591,7 @@ export type Database = {
           label?: string
           link_type?: string
           parent_id?: string | null
+          required_tier?: string
           sort_order?: number
           updated_at?: string
           url?: string | null
