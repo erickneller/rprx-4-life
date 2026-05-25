@@ -76,9 +76,15 @@ Deno.serve(async (req) => {
   const current_period_end_raw = pick<string | number>(
     payload, "current_period_end", "currentPeriodEnd", "next_billing_date", "subscription.next_payment_date",
   );
+  const affiliate_id = pick<string>(
+    payload, "affiliate_id", "affiliateId", "ref", "affiliate.id", "affiliate.code",
+  ) ?? null;
+  const passed_user_id = pick<string>(
+    payload, "user_id", "userId", "metadata.user_id", "custom_fields.user_id",
+  ) ?? null;
 
-  if (!email) {
-    return new Response(JSON.stringify({ ok: false, error: "missing_email" }), {
+  if (!email && !passed_user_id) {
+    return new Response(JSON.stringify({ ok: false, error: "missing_email_or_user_id" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
