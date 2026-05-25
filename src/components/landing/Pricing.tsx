@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { UpgradeModal } from '@/components/billing/UpgradeModal';
+import { useUpgradeGate } from '@/contexts/UpgradeGateContext';
 import { buildPublicFunnelUrl } from '@/lib/ghlCheckoutConfig';
 import { getStoredAffiliateRef } from '@/lib/affiliateStorage';
 import type { PlanKey, IntervalKey } from '@/lib/ghlCheckoutConfig';
@@ -14,10 +14,8 @@ type Interval = IntervalKey;
 const Pricing = () => {
   const { user } = useAuth();
   const { tier } = useSubscription();
-  const navigate = useNavigate();
+  const { requireUpgrade } = useUpgradeGate();
   const [interval, setInterval] = useState<Interval>('month');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalPlan, setModalPlan] = useState<PlanKey>('partner');
 
   const plans = [
     {
