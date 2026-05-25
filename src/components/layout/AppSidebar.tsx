@@ -75,12 +75,12 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
     );
   }
 
-  if (locked && featureKey) {
+  if (locked) {
     return (
       <SidebarMenuItem>
         <SidebarMenuButton
           tooltip={`${item.label} — Upgrade required`}
-          onClick={() => requireUpgrade({ feature: featureKey })}
+          onClick={() => requireUpgrade({ feature: featureKey ?? item.id, requiredTier: dbTier !== 'free' ? dbTier : undefined })}
           className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <Icon className="h-5 w-5 shrink-0" />
