@@ -10,7 +10,7 @@ interface VideoPlayerProps {
 }
 
 const IFRAME_ALLOW =
-  'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+  'accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture';
 
 export function VideoPlayer({ url, title, className, ratio = 16 / 9 }: VideoPlayerProps) {
   const source = resolveVideoSource(url);

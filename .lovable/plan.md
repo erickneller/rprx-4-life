@@ -1,20 +1,26 @@
-## Library Page Filters & Sort
+## Goal
+Ensure every video player in the app can go fullscreen on the user's device (desktop + mobile, iOS included).
 
-Add filtering and sorting controls to `/library` so users can browse videos by category and order them by date.
+## Findings
+- `src/components/media/VideoPlayer.tsx` (used by Library and dashboard CustomCard videos):
+  - Iframe branch already sets `allowFullScreen`, but its `allow` string omits `fullscreen`. Some browsers (notably embedded YouTube/Loom in certain contexts) require `fullscreen` in the Permissions-Policy `allow` list in addition to the `allowfullscreen` attribute.
+  - File branch uses native `<video controls>` but is missing `playsInline` — on iOS Safari this can force inline-only or block proper fullscreen toggling. Native controls already expose a fullscreen button; we just need to not suppress it (no `controlsList="nofullscreen"` present — good).
+- `src/pages/CoursePage.tsx` `VideoEmbed`:
+  - Iframe already has `allow="autoplay; fullscreen; picture-in-picture"` and `allowFullScreen` — OK.
+  - Native `<video controls>` is missing `playsInline` (same iOS issue).
+- `src/components/dashboard/CustomCard.tsx` embed (raw HTML) sanitizer already permits `allow` and `allowfullscreen` attributes, so admin-pasted embeds keep fullscreen if the source iframe includes them. No change required.
 
-### UI changes (`src/pages/Library.tsx`)
-- Add a controls row above the video sections:
-  - **Category filter** — a `Select` (shadcn) with "All Categories" as the default option followed by each active category from `useLibraryCategories()`.
-  - **Sort** — a `Select` with "Newest first" (default) and "Oldest first" options, sorting by `created_at`.
-- Keep current grouped-by-category section layout when "All Categories" is selected, but apply the sort within each section.
-- When a specific category is selected, render a single section (that category's name + description) with its videos sorted.
-- Preserve existing tier-gating, lock cards, and video player behavior unchanged.
-- Show the empty-state card if the filtered result has zero videos.
+## Changes
+1. `src/components/media/VideoPlayer.tsx`
+   - Add `fullscreen` to the `IFRAME_ALLOW` permissions list (final value: `accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture`).
+   - Keep `allowFullScreen` attribute on the iframe.
+   - On the native `<video>` element, add `playsInline` so iOS allows user-initiated fullscreen via the default control bar.
+2. `src/pages/CoursePage.tsx` (`VideoEmbed`)
+   - Add `playsInline` to the fallback native `<video>` element.
+   - Iframe already correct; no change.
+3. No DB, RLS, or business-logic changes. Purely a presentation tweak.
 
-### State
-- Local `useState` for `selectedCategoryId: string` (default `"all"`) and `sortOrder: "newest" | "oldest"` (default `"newest"`).
-- Derive `grouped` from the existing categories/videos plus these two filters — no data-layer changes, no hook changes, no DB changes.
-
-### Out of scope
-- No changes to admin, hooks, or schema.
-- No tier filter (existing per-video tier gating remains).
+## Verification
+- Library page: open a YouTube/Loom/Vimeo video → fullscreen icon in player works; open an uploaded MP4 → native controls show fullscreen button on desktop and iOS.
+- Course lesson: same checks on `VideoEmbed`.
+- Dashboard custom video card: confirm fullscreen toggle.
