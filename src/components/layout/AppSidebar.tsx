@@ -1,9 +1,10 @@
-import { Phone, Building2, Shield, Lock } from "lucide-react";
+import { Phone, Building2, Shield, Lock, Library as LibraryIcon } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
 import { StreakCounter } from "@/components/gamification/StreakCounter";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useLibraryAdmin } from "@/hooks/useLibraryAdmin";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useCompany } from "@/hooks/useCompany";
 import { useAdvisorLink } from "@/hooks/useAdvisorLink";
@@ -121,6 +122,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const { isAdmin } = useAdmin();
+  const { isLibraryAdmin } = useLibraryAdmin();
   const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
   const { membership } = useCompany();
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
@@ -235,6 +237,27 @@ export function AppSidebar() {
                     >
                       <Building2 className="h-5 w-5 shrink-0" />
                       <span className={isCollapsed ? "sr-only" : ""}>Company</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isLibraryAdmin && !isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Library Admin">
+                    <NavLink
+                      to="/library-admin"
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <LibraryIcon className="h-5 w-5 shrink-0" />
+                      <span className={isCollapsed ? "sr-only" : ""}>Library Admin</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
