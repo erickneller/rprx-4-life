@@ -26,8 +26,15 @@ export function UpgradeRouteGuard({ feature }: UpgradeRouteGuardProps) {
   const location = useLocation();
   const fired = useRef(false);
 
+  // DB-driven tier wins. Find the sidebar row by:
+  //  1) current route URL (most reliable — e.g. '/library')
+  //  2) known feature → nav id alias (e.g. 'item:library')
+  //  3) bare feature name as id (legacy seed used id='library')
   const navId = FEATURE_NAV_ITEM[feature];
-  const navRow = navId ? rows.find(r => r.id === navId) : undefined;
+  const navRow =
+    rows.find(r => r.url && r.url === location.pathname) ||
+    (navId ? rows.find(r => r.id === navId) : undefined) ||
+    rows.find(r => r.id === feature);
   const required = navRow
     ? normalizeRequiredTier(navRow.required_tier)
     : featureRequiredTier(feature);
