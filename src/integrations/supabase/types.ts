@@ -47,6 +47,27 @@ export type Database = {
         }
         Relationships: []
       }
+      affiliate_attributions: {
+        Row: {
+          affiliate_id: string
+          captured_at: string
+          landing_path: string | null
+          user_id: string
+        }
+        Insert: {
+          affiliate_id: string
+          captured_at?: string
+          landing_path?: string | null
+          user_id: string
+        }
+        Update: {
+          affiliate_id?: string
+          captured_at?: string
+          landing_path?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       assessment_questions: {
         Row: {
           category: string
@@ -2038,6 +2059,7 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          affiliate_id: string | null
           billing_interval: string | null
           cancel_at_period_end: boolean
           current_period_end: string | null
@@ -2050,9 +2072,6 @@ export type Database = {
           source: string
           started_at: string
           status: string | null
-          stripe_customer_id: string | null
-          stripe_price_id: string | null
-          stripe_subscription_id: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
           tier_override: Database["public"]["Enums"]["subscription_tier"] | null
           updated_at: string
@@ -2060,6 +2079,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          affiliate_id?: string | null
           billing_interval?: string | null
           cancel_at_period_end?: boolean
           current_period_end?: string | null
@@ -2072,9 +2092,6 @@ export type Database = {
           source?: string
           started_at?: string
           status?: string | null
-          stripe_customer_id?: string | null
-          stripe_price_id?: string | null
-          stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
           tier_override?:
             | Database["public"]["Enums"]["subscription_tier"]
@@ -2084,6 +2101,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          affiliate_id?: string | null
           billing_interval?: string | null
           cancel_at_period_end?: boolean
           current_period_end?: string | null
@@ -2096,9 +2114,6 @@ export type Database = {
           source?: string
           started_at?: string
           status?: string | null
-          stripe_customer_id?: string | null
-          stripe_price_id?: string | null
-          stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
           tier_override?:
             | Database["public"]["Enums"]["subscription_tier"]
