@@ -193,15 +193,29 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Speak With A Virtual Advisor" asChild>
-                    <NavLink
-                      to="/virtual-advisor"
+                  {advisorLocked ? (
+                    <SidebarMenuButton
+                      tooltip="Speak With A Virtual Advisor — Upgrade required"
+                      onClick={() => requireUpgrade({ feature: 'virtual-advisor', requiredTier: advisorRequired })}
                       className="flex items-center gap-3 rounded-md px-3 py-2 text-primary font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     >
                       <Phone className="h-5 w-5 shrink-0" />
-                      <span className={isCollapsed ? "sr-only" : ""}>Speak With A Virtual Advisor</span>
-                    </NavLink>
-                  </SidebarMenuButton>
+                      <span className={isCollapsed ? "sr-only" : "flex-1 flex items-center gap-2"}>
+                        <span className="truncate">Speak With A Virtual Advisor</span>
+                        <Lock className="h-3 w-3 opacity-70 ml-auto shrink-0" />
+                      </span>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton tooltip="Speak With A Virtual Advisor" asChild>
+                      <NavLink
+                        to="/virtual-advisor"
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-primary font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      >
+                        <Phone className="h-5 w-5 shrink-0" />
+                        <span className={isCollapsed ? "sr-only" : ""}>Speak With A Virtual Advisor</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  )}
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
