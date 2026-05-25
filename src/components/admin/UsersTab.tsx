@@ -345,6 +345,21 @@ export function UsersTab() {
                             <><ShieldCheck className="h-4 w-4 mr-2" /> Make Admin</>
                           )}
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            toggleLibraryAdmin.mutate(
+                              { userId: u.id, make: !u.is_library_admin },
+                              {
+                                onSuccess: () => toast.success(u.is_library_admin ? 'Library admin revoked' : 'Library admin granted'),
+                                onError: (err) => toast.error((err as Error).message),
+                              }
+                            );
+                          }}
+                          disabled={toggleLibraryAdmin.isPending}
+                        >
+                          <LibraryIcon className="h-4 w-4 mr-2" />
+                          {u.is_library_admin ? 'Revoke Library Admin' : 'Make Library Admin'}
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleResetPassword(u)} disabled={adminAction.isPending}>
                           <KeyRound className="h-4 w-4 mr-2" /> Send Password Reset
