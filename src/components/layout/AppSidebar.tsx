@@ -37,10 +37,13 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
   const { isLocked, requireUpgrade } = useUpgradeGate();
   const { tier } = useSubscription();
 
-  // DB-driven gating wins; fall back to hardcoded NAV_ITEM_FEATURE for legacy items.
-  const dbTier = normalizeRequiredTier(item.required_tier);
+  // DB-driven gating is authoritative. If the row's required_tier column exists
+  // (including 'free'), it wins over the legacy hardcoded NAV_ITEM_FEATURE map.
   const featureKey = NAV_ITEM_FEATURE[item.id];
-  const locked = dbTier !== 'free'
+  const dbTier = item.required_tier != null
+    ? normalizeRequiredTier(item.required_tier)
+    : (featureKey ? undefined : 'free');
+  const locked = dbTier !== undefined
     ? !tierMeets(tier, dbTier)
     : (featureKey ? isLocked(featureKey) : false);
 
@@ -80,7 +83,7 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
       <SidebarMenuItem>
         <SidebarMenuButton
           tooltip={`${item.label} — Upgrade required`}
-          onClick={() => requireUpgrade({ feature: featureKey ?? item.id, requiredTier: dbTier !== 'free' ? dbTier : undefined })}
+          onClick={() => requireUpgrade({ feature: featureKey ?? item.id, requiredTier: dbTier })}
           className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <Icon className="h-5 w-5 shrink-0" />
