@@ -10,10 +10,11 @@ import { useAdvisorLink, useUpdateAdvisorLink } from '@/hooks/useAdvisorLink';
 import { useAdvisorEmbed, useUpdateAdvisorEmbed } from '@/hooks/useAdvisorEmbed';
 import { useBookingUrl, useUpdateBookingUrl } from '@/hooks/useBookingUrl';
 import { toast } from 'sonner';
-import { MessageSquare, FlaskConical, Phone, Code2, CalendarCheck, Gauge, Route } from 'lucide-react';
+import { MessageSquare, FlaskConical, Phone, Code2, CalendarCheck, Gauge, Route, CreditCard } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useFirstLoginFlow, useSetFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
 import { FIRST_LOGIN_FLOW_OPTIONS, type FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
+import { useBillingCardSettings, useSetBillingCardSettings, DEFAULT_BILLING_CARD_COPY, type BillingCardCopy } from '@/hooks/useBillingCardSettings';
 
 export function FeaturesTab() {
   const { enabled, isLoading } = useFeatureFlag('chat_enabled');
@@ -41,6 +42,12 @@ export function FeaturesTab() {
   const bookingUpdate = useUpdateBookingUrl();
   const [bookingInput, setBookingInput] = useState('');
   useEffect(() => { setBookingInput(bookingUrl); }, [bookingUrl]);
+
+  const { enabled: billingEnabled, copy: billingCopy, isLoading: billingLoading } = useBillingCardSettings();
+  const billingSet = useSetBillingCardSettings();
+  const [billingDraft, setBillingDraft] = useState<BillingCardCopy>(DEFAULT_BILLING_CARD_COPY);
+  useEffect(() => { setBillingDraft(billingCopy); }, [billingCopy]);
+  const billingDirty = JSON.stringify(billingDraft) !== JSON.stringify(billingCopy);
 
   useEffect(() => {
     setAdvisorInput(advisorUrl);
@@ -334,6 +341,101 @@ export function FeaturesTab() {
               }}
               disabled={xpScoreLoading || xpScoreToggle.isPending}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Billing Card (Profile)
+          </CardTitle>
+          <CardDescription>
+            Show or hide the Billing & Subscription card on the user Profile page, and edit its copy. Use <code>{'{email}'}</code> in the footer note to insert the support email.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Switch
+              id="billing-card-toggle"
+              checked={billingEnabled}
+              onCheckedChange={async (checked) => {
+                try {
+                  await billingSet.mutateAsync({ enabled: checked });
+                  toast.success(checked ? 'Billing card visible' : 'Billing card hidden');
+                } catch {
+                  toast.error('Failed to update visibility');
+                }
+              }}
+              disabled={billingLoading || billingSet.isPending}
+            />
+            <Label htmlFor="billing-card-toggle">
+              {billingEnabled ? 'Visible on Profile' : 'Hidden from Profile'}
+            </Label>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="bc-title">Title</Label>
+              <Input id="bc-title" value={billingDraft.title} onChange={(e) => setBillingDraft({ ...billingDraft, title: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="bc-desc">Description</Label>
+              <Input id="bc-desc" value={billingDraft.description} onChange={(e) => setBillingDraft({ ...billingDraft, description: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="bc-upgrade">Upgrade button (Free users)</Label>
+              <Input id="bc-upgrade" value={billingDraft.upgradeLabel} onChange={(e) => setBillingDraft({ ...billingDraft, upgradeLabel: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="bc-change">Change button (paid users)</Label>
+              <Input id="bc-change" value={billingDraft.changeLabel} onChange={(e) => setBillingDraft({ ...billingDraft, changeLabel: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="bc-support">Support button label</Label>
+              <Input id="bc-support" value={billingDraft.supportLabel} onChange={(e) => setBillingDraft({ ...billingDraft, supportLabel: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="bc-email">Support email</Label>
+              <Input id="bc-email" type="email" value={billingDraft.supportEmail} onChange={(e) => setBillingDraft({ ...billingDraft, supportEmail: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="bc-footer">Footer note</Label>
+            <Textarea
+              id="bc-footer"
+              rows={2}
+              value={billingDraft.footerNote}
+              onChange={(e) => setBillingDraft({ ...billingDraft, footerNote: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">
+              Use <code>{'{email}'}</code> to insert the support email as a clickable link.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setBillingDraft(DEFAULT_BILLING_CARD_COPY)}
+              disabled={billingSet.isPending}
+            >
+              Reset to defaults
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  await billingSet.mutateAsync({ copy: billingDraft });
+                  toast.success('Billing card copy updated');
+                } catch {
+                  toast.error('Failed to save copy');
+                }
+              }}
+              disabled={!billingDirty || billingSet.isPending}
+            >
+              Save changes
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -27,6 +27,7 @@ import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { showAchievementToast, showPointsEarnedToast } from '@/components/gamification/AchievementToast';
 import { useProfileFieldSettings } from '@/hooks/useProfileFieldSettings';
 import { BillingCard } from '@/components/billing/BillingCard';
+import { useBillingCardSettings } from '@/hooks/useBillingCardSettings';
 
 const EMPLOYER_MATCH_OPTIONS = [
   { value: 'yes', label: 'Yes — I get the full match' },
@@ -160,6 +161,7 @@ export default function Profile() {
   const { company: userCompany, membership: userMembership } = useCompany();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isVisible, isRequired } = useProfileFieldSettings();
+  const { enabled: billingCardEnabled } = useBillingCardSettings();
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -552,7 +554,7 @@ export default function Profile() {
   return (
     <AuthenticatedLayout title="Profile">
       <div className="container max-w-2xl py-8 space-y-6">
-        <BillingCard />
+        {billingCardEnabled && <BillingCard />}
         {/* Profile Photo Card */}
         <Card>
 

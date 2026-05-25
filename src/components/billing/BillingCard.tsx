@@ -3,16 +3,19 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useUpgradeGate } from '@/contexts/UpgradeGateContext';
+import { useBillingCardSettings } from '@/hooks/useBillingCardSettings';
 import { Sparkles, Mail, ArrowUpCircle } from 'lucide-react';
 
 export function BillingCard() {
   const { tier, isFree, isPartner } = useSubscription();
   const { requireUpgrade } = useUpgradeGate();
+  const { copy } = useBillingCardSettings();
 
   const tierLabel = tier === 'pro' ? 'Pro' : tier === 'partner' ? 'Partner' : tier === 'paid' ? 'Paid' : 'Free';
 
   // Free → suggest Partner; Partner → suggest Pro upgrade.
   const targetFeature = isPartner ? 'virtual-advisor' : 'strategy-assistant';
+  const footer = copy.footerNote.replace('{email}', copy.supportEmail);
 
   return (
     <Card className="p-6">
@@ -20,10 +23,10 @@ export function BillingCard() {
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-accent" />
-            Billing & Subscription
+            {copy.title}
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your RPRx plan.
+            {copy.description}
           </p>
         </div>
         <Badge variant={isFree ? 'secondary' : 'default'} className="capitalize">
@@ -34,13 +37,13 @@ export function BillingCard() {
       <div className="flex flex-wrap gap-3">
         <Button onClick={() => requireUpgrade({ feature: targetFeature })}>
           <ArrowUpCircle className="h-4 w-4 mr-2" />
-          {isFree ? 'Upgrade Plan' : 'Change Plan'}
+          {isFree ? copy.upgradeLabel : copy.changeLabel}
         </Button>
         {!isFree && (
-          <a href="mailto:support@rprx4life.com?subject=Subscription%20change%20request">
+          <a href={`mailto:${copy.supportEmail}?subject=Subscription%20change%20request`}>
             <Button variant="outline">
               <Mail className="h-4 w-4 mr-2" />
-              Manage via Support
+              {copy.supportLabel}
             </Button>
           </a>
         )}
@@ -48,8 +51,14 @@ export function BillingCard() {
 
       {!isFree && (
         <p className="text-xs text-muted-foreground mt-3">
-          To cancel or change payment method, email{' '}
-          <a href="mailto:support@rprx4life.com" className="underline">support@rprx4life.com</a>.
+          {footer.split(copy.supportEmail).map((part, i, arr) => (
+            <span key={i}>
+              {part}
+              {i < arr.length - 1 && (
+                <a href={`mailto:${copy.supportEmail}`} className="underline">{copy.supportEmail}</a>
+              )}
+            </span>
+          ))}
         </p>
       )}
     </Card>
