@@ -1,140 +1,123 @@
-## Goal
+# Pivot: GHL-only checkout + affiliate program
 
-Two checkout paths into the same `user_subscriptions` row shape so `useSubscription` and gating stay unchanged:
+No existing subscribers → clean rip-out, no migration of live Stripe subs needed.
 
-1. **In-app upgrade** → Stripe Checkout (already built).
-2. **External landing pages** → GHL order forms → GHL webhook → Supabase edge function → `user_subscriptions`.
+## Why
 
-## Decisions locked in
+Affiliates only get tracked on orders through GHL. Running Stripe in parallel would create commissionable and non-commissionable revenue in two ledgers. Single funnel = single source of truth for revenue, commissions, refunds.
 
-- GHL recurring billing is supported → treat GHL subs like Stripe subs (tier + period end).
-- New buyers without an account → email them a one-click "claim your account" magic link.
-- Cancellation → drop to `free` immediately (no grace period).
-- Refund → drop to `free` immediately, same path as cancellation.
-
-## Architecture
+## End-state architecture
 
 ```text
-              IN-APP PATH                       EXTERNAL PATH
-              (logged-in users)                 (cold traffic / LPs)
-
-              Pricing page                      Webflow / WP / LP
-                    |                                  |
-                    v                                  v
-              create-checkout                    GHL order form
-              (Stripe)                           (recurring product)
-                    |                                  |
-                    v                                  v
-              Stripe Checkout                    GHL processes payment
-                    |                                  |
-                    v                                  v
-              stripe-webhook                     GHL workflow -> webhook
-                    |                                  |
-                    +-------------+   +----------------+
-                                  |   |
-                                  v   v
-                        user_subscriptions (Supabase)
-                                  |
-                                  v
-                        get_subscription_tier RPC -> useSubscription
+  Cold traffic                      Logged-in Free user clicks Upgrade
+       |                                        |
+       v                                        v
+  GHL funnel page                   In-app modal embeds GHL order form
+  (?ref=AFF on link)                (?ref=AFF + email + user_id prefilled)
+       |                                        |
+       +--------------------+-------------------+
+                            v
+                  GHL processes payment + affiliate commission
+                            |
+                            v
+                  GHL workflow -> ghl-checkout-webhook
+                            |
+                            v
+                  user_subscriptions -> useSubscription
 ```
 
-## What we build
+## Scope
 
-### 1. Migration — extend `user_subscriptions`, add 2 tables
+### 1. Delete Stripe entirely
 
-`user_subscriptions` new columns:
-- `source` text not null default `'stripe'` — `'stripe'` | `'ghl'`
-- `ghl_contact_id` text
-- `ghl_subscription_id` text
-- `ghl_product_id` text
-- Unique index on `ghl_subscription_id` where not null
+- Delete `supabase/functions/create-checkout/`, `stripe-webhook/`, `customer-portal/`
+- Delete `src/lib/stripeConfig.ts`
+- Remove `VITE_STRIPE_PRICE_*` from `.env`
+- Remove Stripe function blocks from `supabase/config.toml`
+- Remove Stripe branch from `BillingCard.tsx`
+- Delete secrets: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 
-New table `pending_ghl_subscriptions`:
-- `email` text pk (lowercased)
-- `tier` text, `billing_interval` text
-- `ghl_contact_id`, `ghl_subscription_id`, `ghl_product_id`
-- `current_period_end` timestamptz
-- `claim_token` uuid default gen_random_uuid()
-- `claimed_at` timestamptz
-- `created_at` timestamptz
+Migration:
+- Drop columns `stripe_customer_id`, `stripe_subscription_id`, `stripe_price_id` from `user_subscriptions` (safe — no rows).
+- Set `source` default to `'ghl'`.
 
-RLS: service role only (function writes; client never reads).
+### 2. In-app upgrade = GHL form in modal
 
-New table `ghl_product_tier_map` (admin-editable):
-- `ghl_product_id` text pk
-- `tier` text (`partner` | `pro`)
-- `billing_interval` text (`month` | `year`)
-- `is_active` boolean
+New: `src/components/billing/UpgradeModal.tsx`
+- Plan + interval tabs (Partner/Pro × monthly/yearly) → swap iframe `src`.
+- Iframe URL = `<GHL_FORM_URL>?email=<user.email>&user_id=<user.id>&ref=<aff>`.
+- While open, poll `subscription-tier` query every 3s; on tier change → toast + close.
 
-RLS: admins manage, authenticated read.
+New config: `src/lib/ghlCheckoutConfig.ts` — 4 GHL order form URLs (you provide).
 
-### 2. Edge function — `ghl-checkout-webhook` (new)
+### 3. Affiliate attribution
 
-Public POST endpoint. GHL workflows hit it on order success, subscription updated, cancelled, refunded.
+New table `affiliate_attributions` (user_id pk, affiliate_id, landing_path, captured_at). RLS: own-read, service-write.
 
-- Verify shared secret via `X-Webhook-Secret` header against `GHL_CHECKOUT_WEBHOOK_SECRET`.
-- Parse: `email`, `contact_id`, `subscription_id`, `product_id`, `status`, `current_period_end`, `event_type`.
-- Map `product_id` → tier via `ghl_product_tier_map` (fallback to hardcoded map if row missing).
-- Resolve user:
-  - email matches `auth.users` → upsert `user_subscriptions` with `source='ghl'`, `tier=<mapped>`, `status='active'`.
-  - no match → upsert `pending_ghl_subscriptions` and call `claim-account-email` (see #3).
-- Cancellation / refund / failed events → set tier `free`, status `canceled`. Same logic for matched user or pending row (delete pending).
-- Idempotent on `ghl_subscription_id`.
+New hook `src/hooks/useAffiliateCapture.ts`:
+- On mount, read `?ref=` from URL → store in `localStorage` (90-day TTL).
+- On sign-in, upsert to `affiliate_attributions` (first-touch wins).
 
-### 3. Edge function — `send-claim-account-email` (new)
+Pass-through: `UpgradeModal` + logged-out Pricing buttons append `?ref=` to GHL URLs.
 
-Called by `ghl-checkout-webhook` when buyer has no account.
-- Generates Supabase magic link for that email (using service-role admin API) with redirect `https://app.rprx4life.com/auth/callback?claim=<token>`.
-- Sends branded email via existing transactional infrastructure: "You just upgraded to <Tier>. Click here to activate your account."
-- Token = `pending_ghl_subscriptions.claim_token`.
+Webhook: add optional `affiliate_id` field → store on `user_subscriptions.affiliate_id` (new column) for reconciliation.
 
-### 4. Auth callback — claim pending subscription
+### 4. Pricing page — dual mode
 
-In `AuthCallback.tsx` (and/or right after `onAuthStateChange` SIGNED_IN):
-- After session is established, if `?claim=<token>` is present OR always-check by email:
-  - Call new edge function `claim-ghl-subscription` (or RPC) that:
-    - Looks up `pending_ghl_subscriptions` by email = `auth.user.email`.
-    - If found, copies row into `user_subscriptions` (`source='ghl'`, `user_id=auth.uid()`), marks `claimed_at`, deletes pending row.
-- Idempotent — safe to call on every sign-in.
+`src/components/landing/Pricing.tsx`:
+- Logged-out → external link to GHL funnel with `?ref=`.
+- Logged-in → opens `UpgradeModal`.
+- Remove all `create-checkout` calls.
 
-### 5. Frontend touches
+### 5. BillingCard simplification
 
-- `BillingCard.tsx`: when `source === 'ghl'`, hide Stripe "Manage Subscription" button. Show "Manage subscription via your purchase confirmation email" + link to `mailto:support@rprx4life.com`. (GHL has no equivalent of Stripe Customer Portal.)
-- `useSubscription`: no change — reads tier via RPC which already abstracts source.
-- Pricing page: unchanged. External LPs link to GHL forms directly.
+Single view: tier badge, period end, "Upgrade / Change plan" → opens `UpgradeModal`, "Manage via support" mailto for paid users. No Stripe portal.
 
-### 6. Admin panel — `ghl_product_tier_map` editor
+### 6. Webhook update
 
-Small table editor under `/admin` Payments tab so non-devs can wire new GHL products to tiers without a deploy.
+`ghl-checkout-webhook/index.ts`:
+- Parse + persist `affiliate_id`.
+- Match user by `email` OR `user_id` (whichever GHL passes through).
 
-### 7. GHL configuration (you do this in GHL)
+## Technical details
 
-For each plan (Partner monthly/yearly, Pro monthly/yearly):
-1. Create recurring product + price in GHL Payments.
-2. Build one order form per plan (or one form with plan selector).
-3. Workflows:
-   - **Order completed (paid)** → POST to `ghl-checkout-webhook` with `event_type: 'subscription.active'`, email, contact_id, subscription_id, product_id, current_period_end, and `X-Webhook-Secret`.
-   - **Subscription renewed** → same webhook with `subscription.renewed` (updates `current_period_end`).
-   - **Subscription cancelled / failed** → `subscription.canceled`.
-   - **Order refunded** → `subscription.refunded`.
+Migration SQL:
+```sql
+alter table user_subscriptions
+  drop column if exists stripe_customer_id,
+  drop column if exists stripe_subscription_id,
+  drop column if exists stripe_price_id,
+  add column if not exists affiliate_id text,
+  alter column source set default 'ghl';
 
-I will give you the exact webhook URL, secret header name, and JSON body schema to paste into each GHL workflow.
+create table public.affiliate_attributions (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  affiliate_id text not null,
+  landing_path text,
+  captured_at timestamptz not null default now()
+);
+alter table public.affiliate_attributions enable row level security;
+create policy "own read" on public.affiliate_attributions
+  for select using (auth.uid() = user_id);
+-- writes via service role only
+```
+
+GHL postMessage isn't guaranteed → polling fallback is the contract.
 
 ## Order of work
 
-1. Migration (new columns + 2 tables + RLS).
-2. Add secret `GHL_CHECKOUT_WEBHOOK_SECRET`.
-3. Edge function: `ghl-checkout-webhook` (with hardcoded product map fallback so we can test before admin UI exists).
-4. Edge function: `send-claim-account-email` (uses existing transactional email infra).
-5. Claim logic in auth callback + edge function `claim-ghl-subscription`.
-6. `BillingCard` source-aware branching.
-7. Admin Payments tab: `ghl_product_tier_map` editor.
-8. You configure 1 GHL product + workflow → end-to-end test with a test card.
-9. Roll out remaining 3 products.
+1. Migration (drop Stripe cols, add `affiliate_id`, create `affiliate_attributions`).
+2. Delete Stripe edge functions + config.toml blocks + frontend code + env vars + secrets.
+3. `ghlCheckoutConfig.ts` + `UpgradeModal` (tabs + iframe + polling).
+4. `useAffiliateCapture` hook + wire into app root.
+5. Rewrite `Pricing.tsx` (logged-out external, logged-in modal).
+6. Simplify `BillingCard.tsx` (single view + Upgrade button).
+7. Update `ghl-checkout-webhook` (affiliate_id + user_id match).
+8. You provide 4 GHL order form URLs + GHL funnel URL → paste into config.
+9. End-to-end test: cold traffic `?ref=` → GHL → webhook → tier active + affiliate stored.
 
 ## Out of scope (v1)
 
-- Reconciliation cron against GHL API (add later if drift shows up).
-- Proration/upgrades between GHL plans (cancel-and-rebuy via GHL is fine for now).
-- Cross-source upgrades (Stripe customer buying via GHL or vice versa) — we'll just take the most recent active row.
+- In-app affiliate dashboard (GHL has its own).
+- Multi-touch attribution (first-touch only).
+- Cross-source upgrades (no Stripe to coexist with).
