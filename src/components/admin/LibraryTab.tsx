@@ -80,7 +80,7 @@ export function LibraryTab() {
   };
   const openEditVid = (v: LibraryVideo) => {
     setVidEditing(true);
-    setVidForm({ id: v.id, title: v.title, category_id: v.category_id, description: v.description, video_url: v.video_url, thumbnail_url: v.thumbnail_url || '', sort_order: v.sort_order, is_active: v.is_active });
+    setVidForm({ id: v.id, title: v.title, category_id: v.category_id, description: v.description, video_url: v.video_url, thumbnail_url: v.thumbnail_url || '', sort_order: v.sort_order, is_active: v.is_active, required_tier: v.required_tier ?? 'free' });
     setVidDialogOpen(true);
   };
   const saveVid = async () => {
