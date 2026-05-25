@@ -35,8 +35,14 @@ import HealthAssessment from "./pages/HealthAssessment";
 import VirtualAdvisor from "./pages/VirtualAdvisor";
 import RprxW2 from "./pages/RprxW2";
 import { WizardGuard } from "@/components/auth/WizardGuard";
+import { useAffiliateCapture } from "@/hooks/useAffiliateCapture";
 
 const queryClient = new QueryClient();
+
+const AffiliateCaptureBridge = () => {
+  useAffiliateCapture();
+  return null;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
