@@ -142,6 +142,9 @@ export function LibraryTab() {
               <div className="min-w-0">
                 <span className="font-medium">{v.title}</span>
                 <span className="text-xs text-muted-foreground ml-2">{categories.find(c => c.id === v.category_id)?.name}</span>
+                <span className={`text-[10px] uppercase ml-2 px-1.5 py-0.5 rounded ${v.required_tier === 'pro' ? 'bg-primary/15 text-primary' : v.required_tier === 'partner' ? 'bg-accent text-accent-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  {v.required_tier ?? 'free'}
+                </span>
                 {!v.is_active && <span className="text-xs text-destructive ml-2">Inactive</span>}
               </div>
               <div className="flex gap-1 shrink-0">
