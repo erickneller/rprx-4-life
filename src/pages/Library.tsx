@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useLibraryCategories, useLibraryVideos } from '@/hooks/useLibrary';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,6 +11,14 @@ import { resolveVideoSource } from '@/lib/videoSource';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useUpgradeGate } from '@/contexts/UpgradeGateContext';
 import { normalizeRequiredTier, tierMeets } from '@/lib/upgradeFeatures';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 export default function Library() {
   const { data: categories = [], isLoading: catLoading } = useLibraryCategories();
@@ -17,14 +26,32 @@ export default function Library() {
   const { tier } = useSubscription();
   const { requireUpgrade } = useUpgradeGate();
 
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+
   const isLoading = catLoading || vidLoading;
 
-  const grouped = categories
-    .map(cat => ({
-      ...cat,
-      videos: videos.filter(v => v.category_id === cat.id),
-    }))
-    .filter(g => g.videos.length > 0);
+  const sortVideos = <T extends { created_at: string }>(list: T[]) =>
+    [...list].sort((a, b) => {
+      const da = new Date(a.created_at).getTime();
+      const db = new Date(b.created_at).getTime();
+      return sortOrder === 'newest' ? db - da : da - db;
+    });
+
+  const grouped = useMemo(() => {
+    const visibleCats =
+      selectedCategoryId === 'all'
+        ? categories
+        : categories.filter(c => c.id === selectedCategoryId);
+
+    return visibleCats
+      .map(cat => ({
+        ...cat,
+        videos: sortVideos(videos.filter(v => v.category_id === cat.id)),
+      }))
+      .filter(g => g.videos.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories, videos, selectedCategoryId, sortOrder]);
 
   return (
     <AuthenticatedLayout title="RPRx Library">
@@ -36,6 +63,41 @@ export default function Library() {
         <p className="text-muted-foreground">
           Browse our curated video library to deepen your financial knowledge.
         </p>
+
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <Label htmlFor="category-filter" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Category
+            </Label>
+            <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+              <SelectTrigger id="category-filter">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map(c => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:w-56 space-y-1.5">
+            <Label htmlFor="sort-order" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Sort
+            </Label>
+            <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'newest' | 'oldest')}>
+              <SelectTrigger id="sort-order">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         {isLoading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
