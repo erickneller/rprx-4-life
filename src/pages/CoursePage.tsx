@@ -11,6 +11,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
+import rehypeRaw from 'rehype-raw';
 import { supabase } from '@/integrations/supabase/client';
 import coverPlaceholder from '@/assets/course-placeholder.jpg';
 import { cn } from '@/lib/utils';
@@ -193,7 +194,7 @@ export default function CoursePage() {
               {activeLesson.video_url && <VideoEmbed url={activeLesson.video_url} />}
               {activeLesson.body_markdown && (
                 <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{activeLesson.body_markdown}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeRaw]}>{activeLesson.body_markdown}</ReactMarkdown>
                 </div>
               )}
               {activeLesson.attachments.length > 0 && (
