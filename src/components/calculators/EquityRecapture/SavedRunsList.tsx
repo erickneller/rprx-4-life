@@ -24,7 +24,7 @@ export function SavedRunsList({ onLoad, refreshKey = 0 }: Props) {
     async function load() {
       setLoading(true);
       setError(null);
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('calculator_runs')
         .select('*')
         .eq('calculator_type', 'equity_recapture')
