@@ -8,6 +8,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { useAssessmentStore } from '@/store/healthAssessmentStore';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
+import { useToast } from '@/hooks/use-toast';
+import { submitHealthAssessment } from '@/utils/health/submitAssessment';
+
+const isEmbedded = () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('embed');
 
 const primaryGoals = [
   { value: 'weight-loss', label: 'Weight loss / fat loss' },
@@ -33,25 +39,73 @@ const obstacleOptions = [
 ];
 
 export function Step4Goals() {
-  const { goals, setGoals, setCurrentStep } = useAssessmentStore();
+  const { persona, basicProfile, healthHabits, screenings, goals, setGoals, setContact, setCurrentStep } = useAssessmentStore();
+  const { user } = useAuth();
+  const { profile } = useProfile();
+  const { toast } = useToast();
+  const embedded = isEmbedded();
+  const skipContactStep = !!user && !embedded;
 
   const [primaryGoal, setPrimaryGoal] = useState(goals.primaryGoal || '');
   const [otherGoal, setOtherGoal] = useState('');
   const [timeHorizon, setTimeHorizon] = useState(goals.timeHorizon || '');
   const [commitment, setCommitment] = useState<number[]>([goals.commitment || 3]);
   const [obstacles, setObstacles] = useState<string[]>(goals.obstacles || []);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isValid = primaryGoal && timeHorizon && obstacles.length > 0;
 
-  const handleNext = () => {
-    if (isValid) {
-      setGoals({
-        primaryGoal: primaryGoal === 'other' && otherGoal ? otherGoal : primaryGoal,
-        timeHorizon,
-        commitment: commitment[0],
-        obstacles,
-      });
+  const handleNext = async () => {
+    if (!isValid) return;
+    const nextGoals = {
+      primaryGoal: primaryGoal === 'other' && otherGoal ? otherGoal : primaryGoal,
+      timeHorizon,
+      commitment: commitment[0],
+      obstacles,
+    };
+    setGoals(nextGoals);
+
+    if (!skipContactStep) {
       setCurrentStep(5);
+      return;
+    }
+
+    // Authenticated in-app user: bypass contact step, auto-submit using profile data
+    setIsSubmitting(true);
+    try {
+      const fullName = (profile?.full_name || user?.user_metadata?.full_name || '').trim();
+      const [firstName, ...rest] = fullName.split(' ');
+      const lastName = rest.join(' ') || firstName || 'Member';
+      const contact = {
+        firstName: firstName || 'Member',
+        lastName,
+        email: user!.email || '',
+        phone: profile?.phone || '',
+        consent: true,
+      };
+      setContact(contact);
+
+      const { error } = await submitHealthAssessment({
+        persona,
+        basicProfile,
+        healthHabits,
+        screenings,
+        goals: nextGoals,
+        contact,
+      });
+
+      if (error) {
+        console.error('Submission error:', error);
+        toast({ title: 'Error saving your results', description: "We couldn't save your assessment. Please try again.", variant: 'destructive' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      setCurrentStep(6);
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Something went wrong', description: 'Please try again.', variant: 'destructive' });
+      setIsSubmitting(false);
     }
   };
 
@@ -116,12 +170,12 @@ export function Step4Goals() {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button variant="outline" size="lg" onClick={() => setCurrentStep(3)} className="flex-1">
+            <Button variant="outline" size="lg" onClick={() => setCurrentStep(3)} className="flex-1" disabled={isSubmitting}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            <Button size="lg" onClick={handleNext} disabled={!isValid} className="flex-1 bg-gradient-primary hover:opacity-90">
-              Next
+            <Button size="lg" onClick={handleNext} disabled={!isValid || isSubmitting} className="flex-1 bg-gradient-primary hover:opacity-90">
+              {isSubmitting ? 'Saving...' : skipContactStep ? 'See My Results' : 'Next'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
