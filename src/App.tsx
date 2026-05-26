@@ -36,6 +36,7 @@ import Terms from "./pages/Terms";
 import HealthAssessment from "./pages/HealthAssessment";
 import VirtualAdvisor from "./pages/VirtualAdvisor";
 import RprxW2 from "./pages/RprxW2";
+import Help from "./pages/Help";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 import { UpgradeRouteGuard } from "@/components/auth/UpgradeRouteGuard";
 import { UpgradeGateProvider } from "@/contexts/UpgradeGateContext";
@@ -100,6 +101,7 @@ const App = () => (
             <Route path="/virtual-advisor" element={<ProtectedRoute><WizardGuard><VirtualAdvisor /></WizardGuard></ProtectedRoute>} />
           </Route>
           <Route path="/rprx-w2" element={<RprxW2 />} />
+          <Route path="/help" element={<ProtectedRoute><WizardGuard><Help /></WizardGuard></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
