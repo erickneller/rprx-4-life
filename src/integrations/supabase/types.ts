@@ -1719,6 +1719,48 @@ export type Database = {
         }
         Relationships: []
       }
+      support_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          message: string
+          page_url: string | null
+          status: Database["public"]["Enums"]["support_request_status"]
+          subject: string
+          type: Database["public"]["Enums"]["support_request_type"]
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          page_url?: string | null
+          status?: Database["public"]["Enums"]["support_request_status"]
+          subject: string
+          type: Database["public"]["Enums"]["support_request_type"]
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          page_url?: string | null
+          status?: Database["public"]["Enums"]["support_request_status"]
+          subject?: string
+          type?: Database["public"]["Enums"]["support_request_type"]
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_active_strategies: {
         Row: {
           activated_at: string
@@ -2340,6 +2382,8 @@ export type Database = {
       plan_status: "not_started" | "in_progress" | "completed"
       question_type: "slider" | "single_choice" | "yes_no" | "range_select"
       subscription_tier: "free" | "paid" | "partner" | "pro"
+      support_request_status: "new" | "in_progress" | "resolved" | "archived"
+      support_request_type: "help" | "bug" | "feature" | "advisor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2485,6 +2529,8 @@ export const Constants = {
       plan_status: ["not_started", "in_progress", "completed"],
       question_type: ["slider", "single_choice", "yes_no", "range_select"],
       subscription_tier: ["free", "paid", "partner", "pro"],
+      support_request_status: ["new", "in_progress", "resolved", "archived"],
+      support_request_type: ["help", "bug", "feature", "advisor"],
     },
   },
 } as const
