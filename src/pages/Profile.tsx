@@ -163,6 +163,7 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isVisible, isRequired } = useProfileFieldSettings();
   const { enabled: billingCardEnabled } = useBillingCardSettings();
+  const { enabled: achievementsVisible } = useFeatureFlag('profile_achievements_visible');
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
