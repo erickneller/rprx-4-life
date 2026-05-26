@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,7 +7,6 @@ import {
   Move,
   ShieldCheck,
   CalendarCheck,
-  Mail,
   Printer,
   CheckCircle2,
   Sparkles,
