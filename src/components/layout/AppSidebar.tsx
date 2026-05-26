@@ -154,9 +154,10 @@ export function AppSidebar() {
         {!isCollapsed && (
           <div className="px-3 pb-2 space-y-2">
             <GamificationScoreCard compact />
-            <StreakCounter compact />
+            {streakSidebarVisible && <StreakCounter compact />}
           </div>
         )}
+
 
         {/* Orphan items (no section) — e.g. Dashboard */}
         {orphanItems.filter(showItem).length > 0 && (
