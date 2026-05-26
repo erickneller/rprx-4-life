@@ -1031,23 +1031,25 @@ export default function Profile() {
         )}
 
         {/* My Achievements */}
-        <Card>
-          <CardHeader>
-            <CardTitle>My Achievements</CardTitle>
-            <CardDescription>
-              Track your progress and unlock badges as you take control of your finances.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <StreakCounterComponent />
-              <div className="text-xs text-muted-foreground">
-                Longest streak: {profile?.longest_streak ?? 0} days
+        {achievementsVisible && (
+          <Card>
+            <CardHeader>
+              <CardTitle>My Achievements</CardTitle>
+              <CardDescription>
+                Track your progress and unlock badges as you take control of your finances.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <StreakCounterComponent />
+                <div className="text-xs text-muted-foreground">
+                  Longest streak: {profile?.longest_streak ?? 0} days
+                </div>
               </div>
-            </div>
-            <BadgeDisplayComponent />
-          </CardContent>
-        </Card>
+              <BadgeDisplayComponent />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Required fields reminder */}
         {!isValid && isDirty && (
