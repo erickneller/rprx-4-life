@@ -1,0 +1,1 @@
+INSERT INTO feature_flags (id, enabled) VALUES ('streak_visible', true) ON CONFLICT (id) DO NOTHING;
