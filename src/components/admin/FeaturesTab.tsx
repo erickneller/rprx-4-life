@@ -442,8 +442,8 @@ export function FeaturesTab() {
               <Input id="bc-support" value={billingDraft.supportLabel} onChange={(e) => setBillingDraft({ ...billingDraft, supportLabel: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="bc-email">Support email</Label>
-              <Input id="bc-email" type="email" value={billingDraft.supportEmail} onChange={(e) => setBillingDraft({ ...billingDraft, supportEmail: e.target.value })} />
+              <Label htmlFor="bc-email">Support link or email</Label>
+              <Input id="bc-email" type="text" placeholder="https://... or support@example.com" value={billingDraft.supportEmail} onChange={(e) => setBillingDraft({ ...billingDraft, supportEmail: e.target.value })} />
             </div>
           </div>
 
