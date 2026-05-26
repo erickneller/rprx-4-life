@@ -40,7 +40,7 @@ import { calculateEquityRecapture } from './calculations';
 import { ResultsDisplay } from './ResultsDisplay';
 import { SavedRunsList } from './SavedRunsList';
 import { supabase } from '@/integrations/supabase/client';
-import type { SavedRun } from './types';
+import type { SavedRun, EquityRecaptureInputs } from './types';
 
 export function EquityRecaptureCalculator() {
   const form = useForm<EquityRecaptureFormValues>({
