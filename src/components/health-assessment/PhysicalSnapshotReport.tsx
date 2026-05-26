@@ -57,7 +57,7 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-function CTASection({ url, onEmail, emailing }: { url: string; onEmail: () => void; emailing: boolean }) {
+function CTASection({ url }: { url: string }) {
   return (
     <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 print:border print:bg-transparent">
       <CardContent className="p-6 md:p-8 text-center space-y-4">
@@ -80,16 +80,6 @@ function CTASection({ url, onEmail, emailing }: { url: string; onEmail: () => vo
               <CalendarCheck className="mr-2 h-5 w-5" />
               Book My RPRx Physical Health Advisor Call
             </a>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={onEmail}
-            disabled={emailing}
-            className="print:hidden"
-          >
-            <Mail className="mr-2 h-5 w-5" />
-            {emailing ? 'Sending…' : 'Email Me My Results'}
           </Button>
         </div>
         {/* Print-only booking URL (visible in PDF / printout) */}
