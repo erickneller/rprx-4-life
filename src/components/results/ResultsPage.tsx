@@ -1,20 +1,18 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Home, RotateCcw, Pencil } from 'lucide-react';
+import { Loader2, Home, RotateCcw, Pencil, FileDown } from 'lucide-react';
 import { HorsemenRadarChart } from './HorsemenRadarChart';
 import { PrimaryHorsemanCard } from './PrimaryHorsemanCard';
 import { CashFlowIndicator } from './CashFlowIndicator';
 import { DiagnosticFeedback } from './DiagnosticFeedback';
 import { SuggestedPromptCard } from './SuggestedPromptCard';
-import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
-
-import { TierProgressBar } from '@/components/gamification/TierProgressBar';
-import { useRPRxScore } from '@/hooks/useRPRxScore';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAssessmentById } from '@/hooks/useAssessmentHistory';
 import { useProfile } from '@/hooks/useProfile';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 import { calculateCashFlowFromNumbers } from '@/lib/cashFlowCalculator';
+import { exportResultsPdf } from '@/lib/resultsPdfExport';
 import type { HorsemanScores, HorsemanType } from '@/lib/scoringEngine';
 import type { CashFlowStatus } from '@/lib/cashFlowCalculator';
 import type { UserAssessment } from '@/lib/assessmentTypes';
@@ -24,10 +22,7 @@ export function ResultsPage() {
   const navigate = useNavigate();
   const { data: assessment, isLoading, error } = useAssessmentById(id);
   const { profile } = useProfile();
-  const { score, refreshScore } = useRPRxScore();
-
-  // Refresh score when results page loads
-  useEffect(() => { refreshScore(); }, [refreshScore]);
+  const { enabled: personalizedStrategyVisible } = useFeatureFlag('personalized_strategy_visible');
 
   // Derive live cash flow status from profile, falling back to stored assessment value
   const cashFlowStatus = useMemo<CashFlowStatus | null>(() => {
@@ -82,6 +77,15 @@ export function ResultsPage() {
 
   const primaryHorseman = assessment.primary_horseman as HorsemanType;
 
+  const handleSavePdf = () => {
+    exportResultsPdf({
+      scores,
+      primaryHorseman,
+      cashFlowStatus,
+      assessmentDate: assessment.created_at,
+    });
+  };
+
   return (
     <AuthenticatedLayout breadcrumbs={[{ label: "My Assessments", href: "/assessments" }, { label: "Results" }]}>
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
@@ -118,23 +122,16 @@ export function ResultsPage() {
         </section>
 
         {/* Generate My Next Strategy — single CTA */}
-        <section>
-          <SuggestedPromptCard
-            assessment={assessment as unknown as UserAssessment}
-          />
-        </section>
-
-        {/* RPRx Score & Tier */}
-        <section className="space-y-3">
-          <GamificationScoreCard compact />
-          <TierProgressBar />
-          <p className="text-sm text-muted-foreground text-center">
-            Your RPRx Score updated! Complete your profile and Deep Dive to improve your score.
-          </p>
-        </section>
+        {personalizedStrategyVisible && (
+          <section>
+            <SuggestedPromptCard
+              assessment={assessment as unknown as UserAssessment}
+            />
+          </section>
+        )}
 
         {/* Action Buttons */}
-        <section className="flex flex-col sm:flex-row gap-4 pt-4">
+        <section className="flex flex-col sm:flex-row flex-wrap gap-4 pt-4">
           <Button
             variant="outline"
             className="flex-1"
@@ -142,6 +139,14 @@ export function ResultsPage() {
           >
             <Pencil className="h-4 w-4 mr-2" />
             Edit My Answers
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleSavePdf}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Save as PDF
           </Button>
           <Button
             variant="outline"
