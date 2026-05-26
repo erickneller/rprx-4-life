@@ -71,7 +71,12 @@ export default function CoursePage() {
   );
 
   useEffect(() => {
-    if (!activeLessonId && flatLessons.length > 0) {
+    setActiveLessonId(null);
+  }, [navConfigId]);
+
+  useEffect(() => {
+    if (flatLessons.length === 0) return;
+    if (!activeLessonId || !flatLessons.some(l => l.id === activeLessonId)) {
       setActiveLessonId(flatLessons[0].id);
     }
   }, [flatLessons, activeLessonId]);
