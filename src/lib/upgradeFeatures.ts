@@ -45,6 +45,7 @@ export const NAV_ITEM_FEATURE: Record<string, FeatureKey> = {
   'library':                 'library', // legacy seed id
   'item:virtual_advisor':    'virtual-advisor',
   'item:advisor_link':       'virtual-advisor',
+  'item:equity_recapture_calculator': 'equity-recapture-calculator',
 };
 
 // Reverse map: feature key → sidebar nav row id (for DB-driven tier lookups by route).
