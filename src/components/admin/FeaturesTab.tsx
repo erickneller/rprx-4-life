@@ -30,6 +30,8 @@ export function FeaturesTab() {
   const streakToggle = useToggleFeatureFlag('streak_visible');
   const { enabled: personalizedStrategyVisible, isLoading: personalizedStrategyLoading } = useFeatureFlag('personalized_strategy_visible');
   const personalizedStrategyToggle = useToggleFeatureFlag('personalized_strategy_visible');
+  const { enabled: achievementsVisible, isLoading: achievementsLoading } = useFeatureFlag('profile_achievements_visible');
+  const achievementsToggle = useToggleFeatureFlag('profile_achievements_visible');
 
 
   const { preset: firstLoginPreset, isLoading: firstLoginLoading } = useFirstLoginFlow();
@@ -384,6 +386,26 @@ export function FeaturesTab() {
                 }
               }}
               disabled={personalizedStrategyLoading || personalizedStrategyToggle.isPending}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="achievements-toggle" className="flex flex-col">
+              <span className="font-medium">My Achievements (Profile)</span>
+              <span className="text-xs text-muted-foreground">Badges + streak card on the Profile page</span>
+            </Label>
+            <Switch
+              id="achievements-toggle"
+              checked={achievementsVisible}
+              onCheckedChange={async (checked) => {
+                try {
+                  await achievementsToggle.mutateAsync(checked);
+                  toast.success(checked ? 'Achievements visible' : 'Achievements hidden');
+                } catch {
+                  toast.error('Failed to update visibility');
+                }
+              }}
+              disabled={achievementsLoading || achievementsToggle.isPending}
             />
           </div>
 
