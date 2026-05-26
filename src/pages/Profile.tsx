@@ -28,6 +28,7 @@ import { showAchievementToast, showPointsEarnedToast } from '@/components/gamifi
 import { useProfileFieldSettings } from '@/hooks/useProfileFieldSettings';
 import { BillingCard } from '@/components/billing/BillingCard';
 import { useBillingCardSettings } from '@/hooks/useBillingCardSettings';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 const EMPLOYER_MATCH_OPTIONS = [
   { value: 'yes', label: 'Yes — I get the full match' },
