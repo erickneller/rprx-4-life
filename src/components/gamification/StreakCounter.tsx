@@ -1,4 +1,5 @@
 import { useGamification } from '@/hooks/useGamification';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 interface StreakCounterProps {
   compact?: boolean;
@@ -6,6 +7,10 @@ interface StreakCounterProps {
 
 export function StreakCounter({ compact = false }: StreakCounterProps) {
   const { streak } = useGamification();
+  const { enabled: streakVisible } = useFeatureFlag('streak_visible');
+
+  if (!streakVisible) return null;
+
 
   const flameEmoji = streak.current >= 90
     ? '🔥🔥🔥'
