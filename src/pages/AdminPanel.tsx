@@ -33,6 +33,7 @@ import { FeaturesTab } from '@/components/admin/FeaturesTab';
 import { GHLFieldMappingTab } from '@/components/admin/GHLFieldMappingTab';
 import { CompaniesTab } from '@/components/admin/CompaniesTab';
 import { FeedbackTab } from '@/components/admin/FeedbackTab';
+import { SupportRequestsTab } from '@/components/admin/SupportRequestsTab';
 import { UserGuideTab } from '@/components/admin/UserGuideTab';
 import { KnowledgeBaseTab } from '@/components/admin/KnowledgeBaseTab';
 import { NavigationTab } from '@/components/admin/NavigationTab';
@@ -442,6 +443,9 @@ export default function AdminPanel() {
             <TabsTrigger value="feedback" className="gap-1">
               <Star className="h-4 w-4" /> Feedback
             </TabsTrigger>
+            <TabsTrigger value="support" className="gap-1">
+              <HelpCircle className="h-4 w-4" /> Support
+            </TabsTrigger>
             <TabsTrigger value="user-guide" className="gap-1">
               <HelpCircle className="h-4 w-4" /> User Guide
             </TabsTrigger>
@@ -704,6 +708,10 @@ export default function AdminPanel() {
           {/* ===== FEEDBACK TAB ===== */}
           <TabsContent value="feedback" className="space-y-4">
             <FeedbackTab />
+          </TabsContent>
+
+          <TabsContent value="support" className="space-y-4">
+            <SupportRequestsTab />
           </TabsContent>
 
           {/* ===== USER GUIDE TAB ===== */}

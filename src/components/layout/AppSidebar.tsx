@@ -1,4 +1,4 @@
-import { Phone, Building2, Shield, Lock, Library as LibraryIcon } from "lucide-react";
+import { Phone, Building2, Shield, Lock, Library as LibraryIcon, LifeBuoy } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import { GamificationScoreCard } from "@/components/gamification/GamificationScoreCard";
@@ -289,6 +289,25 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Help & Support">
+                  <NavLink
+                    to="/help"
+                    className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <LifeBuoy className="h-5 w-5 shrink-0" />
+                    <span className={isCollapsed ? "sr-only" : ""}>Help & Support</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   );
