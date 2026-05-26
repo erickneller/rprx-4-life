@@ -1,51 +1,105 @@
 ## Goal
 
-Give admins control over the "Billing & Subscription" card shown on `/profile`:
-1. **Hide/show** the entire card from the Profile page.
-2. **Edit its text content** (title, description, button labels, support email, footer note).
+Turn every section of the public landing page (`src/components/landing/LandingPage.tsx`) into an admin-controlled "card":
+- Toggle visibility per section
+- Edit all text content (headings, body, bullets, button labels)
+- Set free-form URLs for every CTA button
+- Drag-to-reorder section order
 
-## Where it lives today
+This mirrors the existing dashboard cards pattern (`dashboard_card_config` + `DashboardCardRenderer` + admin DnD).
 
-`src/components/billing/BillingCard.tsx` is rendered inside `src/pages/Profile.tsx`. All copy is hardcoded ("Billing & Subscription", "Manage your RPRx plan.", "Upgrade Plan" / "Change Plan", "Manage via Support", support email, footer note).
+## Sections in scope
 
-## Approach
+Hero, ProblemSection, SolutionSnapshot, Features, HowItWorks, Testimonials, Stats, ProductDemo, Pricing, ComparisonTable, Integrations, SecuritySection, FAQ, FinalCTA.
 
-Store both the visibility toggle and the editable copy in the existing `feature_flags` table (same pattern just used for First-Login Flow). One row, `flag_id = 'billing_card'`:
-- `enabled` (bool) → show/hide on Profile
-- `value` (text, JSON) → editable copy fields
+(Header and Footer are not "sections" — out of scope for this pass.)
 
-### 1. DB migration
-Insert default row into `feature_flags`:
-- `flag_id = 'billing_card'`
-- `enabled = true`
-- `value = '{"title":"Billing & Subscription","description":"Manage your RPRx plan.","upgradeLabel":"Upgrade Plan","changeLabel":"Change Plan","supportLabel":"Manage via Support","supportEmail":"support@rprx4life.com","footerNote":"To cancel or change payment method, email {email}."}'`
+## Data model — new table `landing_card_config`
 
-### 2. New hook `src/hooks/useBillingCardSettings.ts`
-- `useBillingCardSettings()` → `useQuery` reads `enabled` + parsed `value` JSON, returns `{ enabled, copy }` with safe fallbacks to current hardcoded strings.
-- `useSetBillingCardSettings()` → `useMutation` to update either `enabled` or `value` (stringified JSON) + `updated_at`, then invalidate.
+Mirrors `dashboard_card_config`:
 
-### 3. Update `src/components/billing/BillingCard.tsx`
-- Consume `useBillingCardSettings()`; use `copy.*` for every hardcoded string.
-- Footer note supports `{email}` placeholder.
-- (Visibility is enforced by the parent, not by the card itself, so the card stays generic.)
+| column | type | purpose |
+|---|---|---|
+| `id` | text PK | stable slug (`hero`, `final-cta`, …) |
+| `component_key` | text | which React component renders it (`Hero`, `Pricing`, …) |
+| `display_name` | text | admin label |
+| `sort_order` | int | order on page |
+| `is_visible` | bool | show/hide |
+| `content` | jsonb | all editable strings + button defs |
+| `created_at` / `updated_at` | timestamptz | standard |
 
-### 4. Update `src/pages/Profile.tsx`
-- Read `enabled` from the hook; render `<BillingCard />` only when `enabled === true` (default true while loading to avoid flicker).
+**RLS**
+- SELECT: `anon` + `authenticated` (landing is public)
+- INSERT/UPDATE/DELETE: admins only (`has_role(auth.uid(), 'admin')`)
 
-### 5. Admin UI — extend `src/components/admin/FeaturesTab.tsx`
-Add a "Billing Card (Profile)" card with:
-- A Switch for show/hide.
-- Inputs for: title, description, upgrade label, change label, support button label, support email, footer note (textarea, with helper text noting `{email}` placeholder).
-- "Save changes" button → calls `useSetBillingCardSettings()` with the JSON blob.
+Seed one row per existing section with current hardcoded copy and buttons.
+
+### `content` JSON shape (per card)
+
+A small, predictable schema each section component knows how to read. Example for Hero:
+
+```json
+{
+  "eyebrow": "AI-Powered Financial Wellness",
+  "headline": "Find Your Money Leaks. Fix Them Fast.",
+  "subheadline": "...",
+  "bullets": ["...", "...", "..."],
+  "buttons": [
+    { "label": "Start Free Assessment", "url": "/auth", "variant": "primary" },
+    { "label": "Watch Demo", "url": "#demo", "variant": "outline" }
+  ],
+  "trustNote": "No credit card required..."
+}
+```
+
+Each section uses only the fields it needs (FAQ has `items[]`, Pricing has `plans[]` with their own `buttons`, Stats has `stats[]`, etc.). Defaults live in the seed migration so nothing breaks if a field is missing.
+
+## Frontend changes
+
+### New shared pieces
+- `src/lib/landingCards.ts` — type definitions for each section's `content` shape + defaults.
+- `src/hooks/useLandingCards.ts` — `useQuery` reads all rows ordered by `sort_order`; `useMutation` hooks: `useUpdateLandingCard` (update content / is_visible / display_name), `useReorderLandingCards`.
+
+### Refactor section components
+Each component in `src/components/landing/*.tsx` becomes a pure renderer that takes a `content` prop instead of using hardcoded strings:
+- `<Hero content={...} />`, `<Pricing content={...} />`, etc.
+- Buttons render from `content.buttons[]` — internal URLs (start with `/` or `#`) use `<Link>` / anchor, external URLs use `<a href target="_blank">`.
+
+### Renderer
+- `src/components/landing/LandingCardRenderer.tsx` — takes the ordered, visible cards and renders the right component per `component_key` with its `content`. Returns `null` for unknown keys.
+- `src/components/landing/LandingPage.tsx` becomes: `<Header /> <main>{cards.map(render)}</main> <Footer />`.
+
+## Admin UI
+
+New tab `src/components/admin/LandingPageTab.tsx`, wired into `AdminPanel.tsx`:
+- DnD list of cards (reuses `@dnd-kit` pattern from `DashboardCardRenderer`) → calls `useReorderLandingCards` on drop.
+- Each row: visibility Switch, expand-to-edit panel.
+- Edit panel renders a form generated from the card's content schema:
+  - Text inputs for strings, Textarea for long copy, repeatable list editor for arrays (bullets, FAQ items, stats, plans, comparison rows).
+  - Buttons editor: add/remove/reorder buttons with `label`, `url` (free-form text), `variant` dropdown.
+- Save button → `useUpdateLandingCard`. Reset button reverts to seeded defaults.
 
 ## Out of scope
-- Per-user or per-company overrides.
-- Hiding the card from other surfaces (it's currently only used on Profile).
-- Changing billing logic, tier behavior, or upgrade flow.
+- Per-company / per-tier landing variants
+- Header / Footer editing
+- Image uploads (existing images stay; URL fields are text)
+- A visual page builder beyond field-level forms
 
 ## Files touched
-- new: `supabase/migrations/<ts>_billing_card_flag.sql`
-- new: `src/hooks/useBillingCardSettings.ts`
-- edit: `src/components/billing/BillingCard.tsx`
-- edit: `src/pages/Profile.tsx`
-- edit: `src/components/admin/FeaturesTab.tsx`
+
+New:
+- `supabase/migrations/<ts>_landing_card_config.sql` (table + RLS + seed)
+- `src/lib/landingCards.ts`
+- `src/hooks/useLandingCards.ts`
+- `src/components/landing/LandingCardRenderer.tsx`
+- `src/components/admin/LandingPageTab.tsx`
+
+Edit:
+- `src/components/landing/LandingPage.tsx`
+- All 14 section components in `src/components/landing/` (refactor to accept `content` prop)
+- `src/pages/AdminPanel.tsx` (register new tab)
+
+## Technical notes
+- Cast `.from('landing_card_config' as any)` per project convention to avoid TS deep-type errors.
+- Landing page must work for logged-out visitors → query uses the anon key (already the default Supabase client).
+- Cache landing config with React Query `staleTime: 5 * 60_000` so the public page isn't refetching constantly.
