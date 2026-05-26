@@ -124,6 +124,8 @@ export function AppSidebar() {
   const { isAdmin } = useAdmin();
   const { isLibraryAdmin } = useLibraryAdmin();
   const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
+  const { enabled: streakSidebarVisible } = useFeatureFlag('streak_visible');
+
   const { membership } = useCompany();
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
   const { enabled: advisorEnabled, url: advisorUrl } = useAdvisorLink();
@@ -154,9 +156,10 @@ export function AppSidebar() {
         {!isCollapsed && (
           <div className="px-3 pb-2 space-y-2">
             <GamificationScoreCard compact />
-            <StreakCounter compact />
+            {streakSidebarVisible && <StreakCounter compact />}
           </div>
         )}
+
 
         {/* Orphan items (no section) — e.g. Dashboard */}
         {orphanItems.filter(showItem).length > 0 && (

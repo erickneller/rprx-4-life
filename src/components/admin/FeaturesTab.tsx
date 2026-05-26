@@ -26,6 +26,9 @@ export function FeaturesTab() {
   const rprxScoreToggle = useToggleFeatureFlag('rprx_score_visible');
   const { enabled: xpScoreVisible, isLoading: xpScoreLoading } = useFeatureFlag('xp_score_visible');
   const xpScoreToggle = useToggleFeatureFlag('xp_score_visible');
+  const { enabled: streakVisible, isLoading: streakLoading } = useFeatureFlag('streak_visible');
+  const streakToggle = useToggleFeatureFlag('streak_visible');
+
 
   const { preset: firstLoginPreset, isLoading: firstLoginLoading } = useFirstLoginFlow();
   const firstLoginSet = useSetFirstLoginFlow();
@@ -342,6 +345,26 @@ export function FeaturesTab() {
               disabled={xpScoreLoading || xpScoreToggle.isPending}
             />
           </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="streak-toggle" className="flex flex-col">
+              <span className="font-medium">Day Streak</span>
+              <span className="text-xs text-muted-foreground">Flame indicator showing consecutive active days</span>
+            </Label>
+            <Switch
+              id="streak-toggle"
+              checked={streakVisible}
+              onCheckedChange={async (checked) => {
+                try {
+                  await streakToggle.mutateAsync(checked);
+                  toast.success(checked ? 'Day Streak visible' : 'Day Streak hidden');
+                } catch {
+                  toast.error('Failed to update Day Streak visibility');
+                }
+              }}
+              disabled={streakLoading || streakToggle.isPending}
+            />
+          </div>
+
         </CardContent>
       </Card>
 
