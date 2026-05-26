@@ -20,7 +20,26 @@ const isEmbedded = () => {
 
 const HealthAssessment = () => {
   const currentStep = useAssessmentStore((state) => state.currentStep);
+  const hydrateFromRecord = useAssessmentStore((s) => s.hydrateFromRecord);
+  const reset = useAssessmentStore((s) => s.reset);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get('mode'); // 'view' | 'edit' | null (new)
+  const { data: healthAssessments = [] } = useHealthAssessments();
+  const saved = healthAssessments[0];
+
+  // Hydrate / reset store based on URL mode
+  useEffect(() => {
+    if (mode === 'view' && saved) {
+      hydrateFromRecord(saved as any, { viewOnly: true, startStep: 6 });
+    } else if (mode === 'edit' && saved) {
+      hydrateFromRecord(saved as any, { viewOnly: false, startStep: 1 });
+    } else if (!mode) {
+      reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, saved?.id]);
+
 
   // Toggle embed mode class on <html>
   useEffect(() => {
