@@ -1,23 +1,14 @@
-## Why raw HTML isn't rendering in course lessons
+## Issue
 
-`ReactMarkdown` by default escapes raw HTML for safety — it shows the `<a href=...>` tags as literal text instead of rendering a link. To allow HTML inside markdown, the `rehype-raw` plugin must be added.
-
-Also, for plain URLs without an anchor tag, `remark-gfm` (already enabled) auto-links them, but the author's intent here is a styled anchor with `target="_blank"`, which requires raw HTML support.
+When switching from one course to another, `activeLessonId` from the previous course is retained. The `useEffect` only sets a default when `activeLessonId` is falsy, so on the new course it stays pointing at a lesson ID that doesn't exist in the new course's `flatLessons` — `activeLesson` becomes `undefined` and the panel shows "No lessons yet."
 
 ## Fix
 
-1. **Install `rehype-raw`** via `bun add rehype-raw`.
-2. **`src/pages/CoursePage.tsx`** — import `rehypeRaw` and pass `rehypePlugins={[rehypeRaw]}` to the lesson `<ReactMarkdown>` so inline HTML (`<a>`, `<br>`, `<strong>`, etc.) renders correctly.
+In `src/pages/CoursePage.tsx`:
 
-### Markdown alternative (no code change needed)
-The author can also use markdown link syntax instead of raw HTML:
-```
-[Access The Tax Scholarships Playbook](https://rprx4life.com/play-book-tax-scholarships)
-```
-This already works today and opens in the same tab. To force a new tab, raw HTML (fix above) is required.
+1. Reset `activeLessonId` to `null` whenever `navConfigId` changes (new `useEffect` keyed on `navConfigId`).
+2. Update the default-selection `useEffect` so it also kicks in when the current `activeLessonId` is not present in `flatLessons` (covers edge cases where lessons reload).
 
-### Out of scope
-Extending `rehype-raw` to other markdown renderers (help guide, plans, assistant) — happy to apply the same treatment if desired, just say the word.
+Result: navigating to any course always defaults to the first published lesson of that course.
 
-### Security note
-`rehype-raw` allows authors to inject any HTML/JS. Since only admins author course content (gated by the Courses admin tab), this is acceptable. If we ever open authoring to end users, we should pair it with `rehype-sanitize`.
+No other files affected.
