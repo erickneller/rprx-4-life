@@ -37,7 +37,7 @@ import HealthAssessment from "./pages/HealthAssessment";
 import VirtualAdvisor from "./pages/VirtualAdvisor";
 import RprxW2 from "./pages/RprxW2";
 import Help from "./pages/Help";
-import { EquityRecaptureCalculator } from "@/components/calculators/EquityRecapture";
+import EquityRecapturePage from "./pages/EquityRecapture";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 import { UpgradeRouteGuard } from "@/components/auth/UpgradeRouteGuard";
 import { UpgradeGateProvider } from "@/contexts/UpgradeGateContext";
