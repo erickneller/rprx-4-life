@@ -9,7 +9,7 @@ export interface SubmitArgs {
   healthHabits: Partial<HealthHabits>;
   screenings: Partial<Screenings>;
   goals: Partial<Goals>;
-  contact: Contact;
+  contact: Partial<Contact> & { firstName: string; lastName: string; email: string; phone: string };
 }
 
 export async function submitHealthAssessment(args: SubmitArgs) {
