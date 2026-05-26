@@ -133,42 +133,77 @@ serve(async (req) => {
       }
     }
 
-    let parsedPayload: unknown;
+    let parsedPayload: any;
     try {
       parsedPayload = JSON.parse(rawBody);
     } catch {
       return new Response(JSON.stringify({ error: 'Invalid request format' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const payload = validatePayload(parsedPayload);
-    if (!payload) {
-      return new Response(JSON.stringify({ error: 'Invalid request data' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    let ghlPayload: Record<string, unknown>;
+
+    if (parsedPayload && parsedPayload.trigger === 'email_snapshot') {
+      // Snapshot email trigger — lighter validation
+      const name = typeof parsedPayload.name === 'string' ? parsedPayload.name.trim().slice(0, 100) : '';
+      const email = typeof parsedPayload.email === 'string' ? parsedPayload.email.trim().toLowerCase().slice(0, 255) : '';
+      const phone = typeof parsedPayload.phone === 'string' ? parsedPayload.phone.trim().slice(0, 20) : '';
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !emailRegex.test(email)) {
+        return new Response(JSON.stringify({ error: 'Invalid request data' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const snap = parsedPayload.snapshot || {};
+      const nameParts = name.split(' ');
+      ghlPayload = {
+        trigger: 'email_snapshot',
+        contact: {
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email,
+          phone,
+        },
+        customFields: {
+          persona: typeof parsedPayload.persona === 'string' ? parsedPayload.persona.slice(0, 50) : '',
+          primaryHorseman: snap.primary_horseman ?? '',
+          secondaryHorseman: snap.secondary_horseman ?? '',
+          readinessScore: snap.readiness_score ?? null,
+          readinessLabel: snap.readiness_label ?? '',
+          recommendedTrack: snap.recommended_track ?? '',
+          recommendedTrackName: snap.recommended_track_name ?? '',
+          quickWins: Array.isArray(snap.quick_wins) ? snap.quick_wins.join(' | ') : '',
+        },
+      };
+      console.log('Processing snapshot email:', { persona: ghlPayload.customFields });
+    } else {
+      const payload = validatePayload(parsedPayload);
+      if (!payload) {
+        return new Response(JSON.stringify({ error: 'Invalid request data' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      console.log('Processing assessment:', { persona: payload.persona, hasScores: !!payload.scores });
+
+      const nameParts = payload.name.split(' ');
+      ghlPayload = {
+        contact: {
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: payload.email,
+          phone: payload.phone,
+        },
+        customFields: {
+          persona: payload.persona,
+          age: payload.age,
+          sex: payload.sex,
+          bmi: payload.bmi,
+          currentScore: payload.scores.current,
+          improvementPotential: payload.scores.improvement,
+          readinessTier: payload.scores.readiness,
+          smoker: payload.healthFlags.smoker,
+          exerciseFrequency: payload.healthFlags.exerciseFrequency,
+          screeningGaps: payload.healthFlags.screeningGaps?.join(', ') || '',
+          insuranceGaps: payload.healthFlags.insuranceGaps?.join(', ') || '',
+        },
+      };
     }
-
-    console.log('Processing assessment:', { persona: payload.persona, hasScores: !!payload.scores });
-
-    const nameParts = payload.name.split(' ');
-    const ghlPayload = {
-      contact: {
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || '',
-        email: payload.email,
-        phone: payload.phone,
-      },
-      customFields: {
-        persona: payload.persona,
-        age: payload.age,
-        sex: payload.sex,
-        bmi: payload.bmi,
-        currentScore: payload.scores.current,
-        improvementPotential: payload.scores.improvement,
-        readinessTier: payload.scores.readiness,
-        smoker: payload.healthFlags.smoker,
-        exerciseFrequency: payload.healthFlags.exerciseFrequency,
-        screeningGaps: payload.healthFlags.screeningGaps?.join(', ') || '',
-        insuranceGaps: payload.healthFlags.insuranceGaps?.join(', ') || '',
-      },
-    };
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -180,6 +215,7 @@ serve(async (req) => {
       console.error('GoHighLevel webhook failed:', response.status);
       return new Response(JSON.stringify({ error: 'Failed to process request' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+
 
     return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (error) {
