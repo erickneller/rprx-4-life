@@ -835,6 +835,39 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_card_config: {
+        Row: {
+          component_key: string
+          content: Json
+          created_at: string
+          display_name: string
+          id: string
+          is_visible: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          component_key: string
+          content?: Json
+          created_at?: string
+          display_name: string
+          id: string
+          is_visible?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          component_key?: string
+          content?: Json
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_visible?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       library_categories: {
         Row: {
           created_at: string
