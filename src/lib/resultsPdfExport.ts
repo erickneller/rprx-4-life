@@ -12,7 +12,7 @@ const HORSEMAN_LABEL: Record<HorsemanType, string> = {
 
 const CASH_FLOW_LABEL: Record<CashFlowStatus, string> = {
   surplus: 'Surplus — income exceeds expenses',
-  break_even: 'Break-even — income matches expenses',
+  tight: 'Tight — income just covers expenses',
   deficit: 'Deficit — expenses exceed income',
 };
 
