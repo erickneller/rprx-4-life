@@ -1,45 +1,26 @@
-## Goal
-Save each user's health assessment results to their account, surface them on the existing **My Assessments** page alongside financial assessments (with a type badge), allow them to view, edit-in-place, or start a fresh new health assessment. Remove the "Email me my results" button (Save as PDF / Print stays).
+## Skip contact step for authenticated users
 
-## Database
-New table `user_health_assessments` (per-user, RLS scoped to `auth.uid()`):
+In-app, the health assessment lives behind auth/paywall — we already have the user's name, email, phone in their profile, so the "You're Almost Done!" contact gate is redundant friction. The embedded (anonymous) widget on the marketing site still needs it for lead capture.
 
-- `id` uuid pk
-- `user_id` uuid (not null)
-- `persona`, `primary_horseman`, `secondary_horseman`, `recommended_track` text
-- `readiness_score` int, `readiness_label` text
-- `horseman_scores` jsonb, `quick_wins` jsonb, `weekly_focus` jsonb
-- `basic_profile` jsonb, `health_habits` jsonb, `screenings` jsonb, `goals` jsonb (full answer payload so we can repopulate the wizard for edits)
-- `bmi` numeric (nullable)
-- `created_at`, `updated_at` timestamps
+### Changes
 
-Grants: `authenticated` SELECT/INSERT/UPDATE/DELETE; `service_role` ALL. RLS: users CRUD only `WHERE user_id = auth.uid()`. Trigger to maintain `updated_at`.
+**`src/pages/HealthAssessment.tsx`**
+- When `user` is signed in (not embedded), treat Step 5 as auto-submit: skip rendering `<Step5Contact />` and instead call a shared submission helper as soon as the user completes Step 4, then jump to Step 6 (results).
+- Embedded/anonymous flow is unchanged — still shows Step 5.
 
-## Frontend
+**`src/components/health-assessment/Step4Goals.tsx`** (Next button handler)
+- If authenticated and not embedded: pull `first_name`, `last_name`, `email`, `phone` from `useProfile()`, write them into the store as `contact` (with `consent: true` since they're already a registered user), run the same submission payload that Step5Contact builds, invoke `submit-health-assessment`, then `setCurrentStep(6)`.
+- Otherwise: behave as today (advance to Step 5).
 
-### Save on completion
-- In `PhysicalSnapshotReport.tsx`, when the snapshot is generated and the user is authenticated, upsert into `user_health_assessments` (one active record per user — edit overwrites it).
-- The existing GHL webhook call stays unchanged.
+**Extract shared submit helper** → new `src/utils/health/submitAssessment.ts`
+- Move the payload construction + `supabase.functions.invoke('submit-health-assessment', …)` call out of `Step5Contact` so both Step 4 (auth path) and Step 5 (anon path) can call it without duplication. Keeps scoring/snapshot/BMI logic identical.
 
-### Remove email option
-- Strip the "Email My Results" button, `onEmail`/`emailing` props, and the `email_snapshot` handler/state from `PhysicalSnapshotReport.tsx` and its `CTASection`. Keep Print / Save as PDF.
-- Leave the `email_snapshot` branch in the `send-to-ghl` edge function in place (harmless) but no longer invoked from the app.
+**`PhysicalSnapshotReport.tsx`**
+- No change to the existing per-user upsert into `user_health_assessments` — it already runs on Step 6 mount.
 
-### My Assessments page
-- New hook `useHealthAssessment()` fetches the current user's saved health assessment.
-- Extend `AssessmentHistory` (or add a sibling `HealthAssessmentHistory` block within `Assessments.tsx`) to render a card for the saved health assessment with a **Health** type badge to distinguish it from financial ones.
-- Card actions: **View results**, **Edit answers**, **Take new assessment**, **Delete**.
+### Out of scope
+- No changes to the embed flow, Step 5 component itself, GHL webhook, scoring, or DB schema.
+- No new "Skip" UI — for signed-in users, Step 5 simply never appears.
 
-### View / Edit / Retake flow
-- `HealthAssessment.tsx` reads URL params:
-  - `?view=1` → hydrate store from saved record and jump straight to `currentStep = 6` (results) — no editing.
-  - `?edit=1` → hydrate store from saved record, start at step 1, mark `editMode` so completion **updates** the existing row in place.
-  - default (no params) → fresh assessment (reset store), insert new row on completion (replaces prior — single active record).
-- Add `loadFromSnapshot(record)` and `editingId` to the zustand store.
-
-## Out of scope
-No changes to GHL sync, scoring logic, or financial assessment flow. No anonymous/embed saving (only authenticated users get history).
-
-## Technical notes
-- Cast `supabase.from('user_health_assessments') as any` to avoid deep-type errors until types regen.
-- Edit mode = `UPDATE` existing row (per your decision); a "Take new assessment" still overwrites since we keep a single active record per user. If you'd prefer multiple historical rows for retakes, say the word and I'll switch retake to INSERT.
+### Result
+Signed-in users finishing Step 4 → brief "Saving…" state → land directly on the Physical Snapshot report. Embedded anonymous visitors still see the contact gate.
