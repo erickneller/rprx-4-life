@@ -4,7 +4,19 @@ import { Badge } from '@/components/ui/badge';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useUpgradeGate } from '@/contexts/UpgradeGateContext';
 import { useBillingCardSettings } from '@/hooks/useBillingCardSettings';
-import { Sparkles, Mail, ArrowUpCircle } from 'lucide-react';
+import { Sparkles, LifeBuoy, ArrowUpCircle } from 'lucide-react';
+
+function buildContactHref(value: string): { href: string; external: boolean } {
+  const v = (value || '').trim();
+  if (!v) return { href: '#', external: false };
+  if (/^(https?:|mailto:|tel:)/i.test(v)) {
+    return { href: v, external: /^https?:/i.test(v) };
+  }
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+    return { href: `mailto:${v}`, external: false };
+  }
+  return { href: v, external: false };
+}
 
 export function BillingCard() {
   const { tier, isFree, isPartner } = useSubscription();
@@ -13,9 +25,10 @@ export function BillingCard() {
 
   const tierLabel = tier === 'pro' ? 'Pro' : tier === 'partner' ? 'Partner' : tier === 'paid' ? 'Paid' : 'Free';
 
-  // Free → suggest Partner; Partner → suggest Pro upgrade.
   const targetFeature = isPartner ? 'virtual-advisor' : 'strategy-assistant';
   const footer = copy.footerNote.replace('{email}', copy.supportEmail);
+  const contact = buildContactHref(copy.supportEmail);
+  const externalProps = contact.external ? { target: '_blank', rel: 'noopener noreferrer' } : {};
 
   return (
     <Card className="p-6">
@@ -40,9 +53,9 @@ export function BillingCard() {
           {isFree ? copy.upgradeLabel : copy.changeLabel}
         </Button>
         {!isFree && (
-          <a href={`mailto:${copy.supportEmail}?subject=Subscription%20change%20request`}>
+          <a href={contact.href} {...externalProps}>
             <Button variant="outline">
-              <Mail className="h-4 w-4 mr-2" />
+              <LifeBuoy className="h-4 w-4 mr-2" />
               {copy.supportLabel}
             </Button>
           </a>
@@ -55,7 +68,7 @@ export function BillingCard() {
             <span key={i}>
               {part}
               {i < arr.length - 1 && (
-                <a href={`mailto:${copy.supportEmail}`} className="underline">{copy.supportEmail}</a>
+                <a href={contact.href} {...externalProps} className="underline">{copy.supportEmail}</a>
               )}
             </span>
           ))}
