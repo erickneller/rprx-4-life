@@ -124,6 +124,8 @@ export function AppSidebar() {
   const { isAdmin } = useAdmin();
   const { isLibraryAdmin } = useLibraryAdmin();
   const { enabled: chatEnabled } = useFeatureFlag('chat_enabled');
+  const { enabled: streakSidebarVisible } = useFeatureFlag('streak_visible');
+
   const { membership } = useCompany();
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
   const { enabled: advisorEnabled, url: advisorUrl } = useAdvisorLink();
