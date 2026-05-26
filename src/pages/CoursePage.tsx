@@ -9,6 +9,8 @@ import { Progress } from '@/components/ui/progress';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import { supabase } from '@/integrations/supabase/client';
 import coverPlaceholder from '@/assets/course-placeholder.jpg';
 import { cn } from '@/lib/utils';
