@@ -23,6 +23,8 @@ import {
 import { useBookingUrl } from '@/hooks/useBookingUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 
 const HORSEMAN_ICONS: Record<PhysicalHorseman, React.ComponentType<{ className?: string }>> = {
   energy: Battery,
