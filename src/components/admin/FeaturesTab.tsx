@@ -30,6 +30,8 @@ export function FeaturesTab() {
   const streakToggle = useToggleFeatureFlag('streak_visible');
   const { enabled: personalizedStrategyVisible, isLoading: personalizedStrategyLoading } = useFeatureFlag('personalized_strategy_visible');
   const personalizedStrategyToggle = useToggleFeatureFlag('personalized_strategy_visible');
+  const { enabled: achievementsVisible, isLoading: achievementsLoading } = useFeatureFlag('profile_achievements_visible');
+  const achievementsToggle = useToggleFeatureFlag('profile_achievements_visible');
 
 
   const { preset: firstLoginPreset, isLoading: firstLoginLoading } = useFirstLoginFlow();
