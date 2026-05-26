@@ -65,6 +65,7 @@ export const ROUTE_FEATURE: Record<string, FeatureKey> = {
   '/partners':           'partners-directory',
   '/library':            'library',
   '/virtual-advisor':    'virtual-advisor',
+  '/calculators/equity-recapture': 'equity-recapture-calculator',
 };
 
 const TIER_RANK: Record<SubscriptionTier | RequiredTier, number> = {
