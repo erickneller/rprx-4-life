@@ -26,6 +26,9 @@ export function FeaturesTab() {
   const rprxScoreToggle = useToggleFeatureFlag('rprx_score_visible');
   const { enabled: xpScoreVisible, isLoading: xpScoreLoading } = useFeatureFlag('xp_score_visible');
   const xpScoreToggle = useToggleFeatureFlag('xp_score_visible');
+  const { enabled: streakVisible, isLoading: streakLoading } = useFeatureFlag('streak_visible');
+  const streakToggle = useToggleFeatureFlag('streak_visible');
+
 
   const { preset: firstLoginPreset, isLoading: firstLoginLoading } = useFirstLoginFlow();
   const firstLoginSet = useSetFirstLoginFlow();
