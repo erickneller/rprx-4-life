@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAssessmentStore } from '@/store/healthAssessmentStore';
 import { WelcomeScreen } from '@/components/health-assessment/WelcomeScreen';
 import { ProgressBar } from '@/components/health-assessment/ProgressBar';
@@ -10,6 +11,7 @@ import { Step5Contact } from '@/components/health-assessment/Step5Contact';
 import { PhysicalSnapshotReport } from '@/components/health-assessment/PhysicalSnapshotReport';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAuth } from '@/hooks/useAuth';
+import { useHealthAssessments } from '@/hooks/useHealthAssessmentHistory';
 
 const isEmbedded = () => {
   if (typeof window === 'undefined') return false;
@@ -18,7 +20,26 @@ const isEmbedded = () => {
 
 const HealthAssessment = () => {
   const currentStep = useAssessmentStore((state) => state.currentStep);
+  const hydrateFromRecord = useAssessmentStore((s) => s.hydrateFromRecord);
+  const reset = useAssessmentStore((s) => s.reset);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get('mode'); // 'view' | 'edit' | null (new)
+  const { data: healthAssessments = [] } = useHealthAssessments();
+  const saved = healthAssessments[0];
+
+  // Hydrate / reset store based on URL mode
+  useEffect(() => {
+    if (mode === 'view' && saved) {
+      hydrateFromRecord(saved as any, { viewOnly: true, startStep: 6 });
+    } else if (mode === 'edit' && saved) {
+      hydrateFromRecord(saved as any, { viewOnly: false, startStep: 1 });
+    } else if (!mode) {
+      reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, saved?.id]);
+
 
   // Toggle embed mode class on <html>
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { AssessmentHistory } from '@/components/dashboard/AssessmentHistory';
+import { HealthAssessmentHistory } from '@/components/dashboard/HealthAssessmentHistory';
 import { StartAssessmentCTA } from '@/components/dashboard/StartAssessmentCTA';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { Loader2 } from 'lucide-react';
@@ -17,7 +18,14 @@ export default function Assessments() {
         ) : (
           <>
             <StartAssessmentCTA isFirstTime={assessments.length === 0} />
-            <AssessmentHistory />
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-foreground">Financial Assessments</h2>
+              <AssessmentHistory />
+            </section>
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-foreground">Health Assessment</h2>
+              <HealthAssessmentHistory />
+            </section>
           </>
         )}
       </div>

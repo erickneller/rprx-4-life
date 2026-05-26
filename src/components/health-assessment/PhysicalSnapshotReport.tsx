@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,7 +7,6 @@ import {
   Move,
   ShieldCheck,
   CalendarCheck,
-  Mail,
   Printer,
   CheckCircle2,
   Sparkles,
@@ -24,6 +23,8 @@ import {
 import { useBookingUrl } from '@/hooks/useBookingUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 
 const HORSEMAN_ICONS: Record<PhysicalHorseman, React.ComponentType<{ className?: string }>> = {
   energy: Battery,
@@ -56,7 +57,7 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-function CTASection({ url, onEmail, emailing }: { url: string; onEmail: () => void; emailing: boolean }) {
+function CTASection({ url }: { url: string }) {
   return (
     <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 print:border print:bg-transparent">
       <CardContent className="p-6 md:p-8 text-center space-y-4">
@@ -79,16 +80,6 @@ function CTASection({ url, onEmail, emailing }: { url: string; onEmail: () => vo
               <CalendarCheck className="mr-2 h-5 w-5" />
               Book My RPRx Physical Health Advisor Call
             </a>
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={onEmail}
-            disabled={emailing}
-            className="print:hidden"
-          >
-            <Mail className="mr-2 h-5 w-5" />
-            {emailing ? 'Sending…' : 'Email Me My Results'}
           </Button>
         </div>
         {/* Print-only booking URL (visible in PDF / printout) */}
@@ -118,7 +109,8 @@ export function PhysicalSnapshotReport() {
   const store = useAssessmentStore();
   const { url: bookingUrl } = useBookingUrl();
   const { toast } = useToast();
-  const [emailing, setEmailing] = useState(false);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const snapshot: PhysicalSnapshot = useMemo(
     () => generatePhysicalSnapshot({
@@ -158,43 +150,66 @@ export function PhysicalSnapshotReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Persist to user_health_assessments (authenticated users only). View-only mode skips saving.
+  useEffect(() => {
+    if (!user || store.viewOnly) return;
+    (async () => {
+      try {
+        const bp: any = store.basicProfile || {};
+        const heightInches =
+          (Number(bp.heightFeet) || 0) * 12 + (Number(bp.heightInches) || 0);
+        const weight = Number(bp.weight) || 0;
+        const bmi = heightInches > 0 && weight > 0
+          ? Math.round((weight / (heightInches * heightInches)) * 703 * 10) / 10
+          : null;
+
+        const payload = {
+          user_id: user.id,
+          persona: store.persona,
+          primary_horseman: snapshot.primaryHorseman,
+          secondary_horseman: snapshot.secondaryHorseman,
+          recommended_track: snapshot.recommendedTrack,
+          recommended_track_name: snapshot.recommendedTrackName,
+          readiness_score: snapshot.readinessScore,
+          readiness_label: snapshot.readinessLabel,
+          horseman_scores: snapshot.horsemanScores,
+          quick_wins: snapshot.quickWins,
+          weekly_focus: snapshot.weeklyFocus,
+          snapshot: snapshot as any,
+          basic_profile: store.basicProfile,
+          health_habits: store.healthHabits,
+          screenings: store.screenings,
+          goals: store.goals,
+          contact: store.contact,
+          bmi,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (store.editingId) {
+          await (supabase as any)
+            .from('user_health_assessments')
+            .update(payload)
+            .eq('id', store.editingId)
+            .eq('user_id', user.id);
+        } else {
+          // Single-active-record model: clear prior records, then insert fresh
+          await (supabase as any)
+            .from('user_health_assessments')
+            .delete()
+            .eq('user_id', user.id);
+          await (supabase as any).from('user_health_assessments').insert(payload);
+        }
+        queryClient.invalidateQueries({ queryKey: ['healthAssessments'] });
+      } catch (e) {
+        console.warn('Health assessment save skipped:', e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const firstName = store.contact?.firstName?.trim();
   const PrimaryIcon = HORSEMAN_ICONS[snapshot.primaryHorseman];
   const SecondaryIcon = HORSEMAN_ICONS[snapshot.secondaryHorseman];
-
-  const handleEmail = async () => {
-    if (!store.contact?.email) {
-      toast({ title: 'Missing email', description: 'We need an email on file to send your snapshot.', variant: 'destructive' });
-      return;
-    }
-    setEmailing(true);
-    try {
-      await supabase.functions.invoke('send-to-ghl', {
-        body: {
-          trigger: 'email_snapshot',
-          name: `${store.contact.firstName ?? ''} ${store.contact.lastName ?? ''}`.trim(),
-          email: store.contact.email,
-          phone: store.contact.phone,
-          persona: store.persona,
-          snapshot: {
-            primary_horseman: snapshot.primaryHorseman,
-            secondary_horseman: snapshot.secondaryHorseman,
-            readiness_score: snapshot.readinessScore,
-            readiness_label: snapshot.readinessLabel,
-            recommended_track: snapshot.recommendedTrack,
-            recommended_track_name: snapshot.recommendedTrackName,
-            quick_wins: snapshot.quickWins,
-          },
-        },
-      });
-      toast({ title: 'On its way', description: 'We just emailed your snapshot.' });
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Could not send', description: 'Please try again or contact support.', variant: 'destructive' });
-    } finally {
-      setEmailing(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle py-10 px-4 print:bg-background print:py-0">
@@ -258,7 +273,7 @@ export function PhysicalSnapshotReport() {
         </Card>
 
         {/* CTA early */}
-        <CTASection url={bookingUrl} onEmail={handleEmail} emailing={emailing} />
+        <CTASection url={bookingUrl} />
 
         {/* 4. What This Means */}
         <Card>
@@ -344,7 +359,7 @@ export function PhysicalSnapshotReport() {
         </Card>
 
         {/* 10. CTA repeat */}
-        <CTASection url={bookingUrl} onEmail={handleEmail} emailing={emailing} />
+        <CTASection url={bookingUrl} />
 
         {/* Print button */}
         <div className="flex justify-center print:hidden">

@@ -68,6 +68,8 @@ interface AssessmentStore {
   goals: Partial<Goals>;
   contact: Partial<Contact>;
   currentStep: number;
+  editingId: string | null;
+  viewOnly: boolean;
 
   setPersona: (persona: Persona) => void;
   setBasicProfile: (data: Partial<BasicProfile>) => void;
@@ -76,6 +78,18 @@ interface AssessmentStore {
   setGoals: (data: Partial<Goals>) => void;
   setContact: (data: Partial<Contact>) => void;
   setCurrentStep: (step: number) => void;
+  hydrateFromRecord: (
+    record: {
+      id: string;
+      persona: Persona | null;
+      basic_profile: Partial<BasicProfile>;
+      health_habits: Partial<HealthHabits>;
+      screenings: Partial<Screenings>;
+      goals: Partial<Goals>;
+      contact: Partial<Contact>;
+    },
+    opts: { viewOnly: boolean; startStep: number },
+  ) => void;
   reset: () => void;
 }
 
@@ -87,6 +101,8 @@ const initialState = {
   goals: {},
   contact: {},
   currentStep: 0,
+  editingId: null as string | null,
+  viewOnly: false,
 };
 
 export const useAssessmentStore = create<AssessmentStore>((set) => ({
@@ -98,5 +114,17 @@ export const useAssessmentStore = create<AssessmentStore>((set) => ({
   setGoals: (data) => set((state) => ({ goals: { ...state.goals, ...data } })),
   setContact: (data) => set((state) => ({ contact: { ...state.contact, ...data } })),
   setCurrentStep: (step) => set({ currentStep: step }),
+  hydrateFromRecord: (record, opts) =>
+    set({
+      editingId: record.id,
+      viewOnly: opts.viewOnly,
+      persona: record.persona ?? null,
+      basicProfile: record.basic_profile ?? {},
+      healthHabits: record.health_habits ?? {},
+      screenings: record.screenings ?? {},
+      goals: record.goals ?? {},
+      contact: record.contact ?? {},
+      currentStep: opts.startStep,
+    }),
   reset: () => set(initialState),
 }));

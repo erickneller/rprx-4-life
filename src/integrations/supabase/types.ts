@@ -2066,6 +2066,78 @@ export type Database = {
         }
         Relationships: []
       }
+      user_health_assessments: {
+        Row: {
+          basic_profile: Json
+          bmi: number | null
+          contact: Json
+          created_at: string
+          goals: Json
+          health_habits: Json
+          horseman_scores: Json
+          id: string
+          persona: string | null
+          primary_horseman: string | null
+          quick_wins: Json
+          readiness_label: string | null
+          readiness_score: number | null
+          recommended_track: string | null
+          recommended_track_name: string | null
+          screenings: Json
+          secondary_horseman: string | null
+          snapshot: Json
+          updated_at: string
+          user_id: string
+          weekly_focus: Json
+        }
+        Insert: {
+          basic_profile?: Json
+          bmi?: number | null
+          contact?: Json
+          created_at?: string
+          goals?: Json
+          health_habits?: Json
+          horseman_scores?: Json
+          id?: string
+          persona?: string | null
+          primary_horseman?: string | null
+          quick_wins?: Json
+          readiness_label?: string | null
+          readiness_score?: number | null
+          recommended_track?: string | null
+          recommended_track_name?: string | null
+          screenings?: Json
+          secondary_horseman?: string | null
+          snapshot?: Json
+          updated_at?: string
+          user_id: string
+          weekly_focus?: Json
+        }
+        Update: {
+          basic_profile?: Json
+          bmi?: number | null
+          contact?: Json
+          created_at?: string
+          goals?: Json
+          health_habits?: Json
+          horseman_scores?: Json
+          id?: string
+          persona?: string | null
+          primary_horseman?: string | null
+          quick_wins?: Json
+          readiness_label?: string | null
+          readiness_score?: number | null
+          recommended_track?: string | null
+          recommended_track_name?: string | null
+          screenings?: Json
+          secondary_horseman?: string | null
+          snapshot?: Json
+          updated_at?: string
+          user_id?: string
+          weekly_focus?: Json
+        }
+        Relationships: []
+      }
       user_onboarding_progress: {
         Row: {
           completed_at: string | null
