@@ -19,7 +19,8 @@ export type FeatureKey =
   | 'virtual-advisor'
   | 'family-overview'
   | 'partners-directory'
-  | 'library';
+  | 'library'
+  | 'equity-recapture-calculator';
 
 export const FEATURE_TIER: Record<FeatureKey, RequiredTier> = {
   'strategy-assistant': 'partner',
@@ -27,6 +28,7 @@ export const FEATURE_TIER: Record<FeatureKey, RequiredTier> = {
   'debt-eliminator':    'partner',
   'partners-directory': 'partner',
   'library':            'partner',
+  'equity-recapture-calculator': 'partner',
   'virtual-advisor':    'pro',
   'family-overview':    'pro',
 };
