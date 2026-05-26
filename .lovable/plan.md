@@ -1,33 +1,23 @@
-## Why markdown isn't formatting in courses
+## Why raw HTML isn't rendering in course lessons
 
-Two technical issues are stacking, plus a content note:
+`ReactMarkdown` by default escapes raw HTML for safety — it shows the `<a href=...>` tags as literal text instead of rendering a link. To allow HTML inside markdown, the `rehype-raw` plugin must be added.
 
-1. **Typography plugin not registered.** `@tailwindcss/typography` is installed in `package.json` but missing from `tailwind.config.ts` → every `prose`/`prose-invert` class on the lesson body is a no-op, so headings/lists/bold render at base size with no spacing.
-2. **Single line breaks are being collapsed.** `ReactMarkdown` follows CommonMark, where consecutive lines without a blank line between them merge into one paragraph. The lesson content in the screenshot uses single newlines between sentences, so they all collapse together visually.
-3. **(Content note, not code)** Lines like "The Tax Scholarships Playbook" and "Welcome and Mindset Shift" have no `#`/`##` prefix, so even with markdown working they'll render as paragraphs, not headings. The author needs to add `#`/`##` in the lesson body for proper hierarchy.
+Also, for plain URLs without an anchor tag, `remark-gfm` (already enabled) auto-links them, but the author's intent here is a styled anchor with `target="_blank"`, which requires raw HTML support.
 
 ## Fix
 
-### 1. Register the typography plugin
-`tailwind.config.ts` → add `require("@tailwindcss/typography")` to the `plugins` array.
+1. **Install `rehype-raw`** via `bun add rehype-raw`.
+2. **`src/pages/CoursePage.tsx`** — import `rehypeRaw` and pass `rehypePlugins={[rehypeRaw]}` to the lesson `<ReactMarkdown>` so inline HTML (`<a>`, `<br>`, `<strong>`, etc.) renders correctly.
 
-### 2. Enable GFM + line-break handling in the lesson renderer
-`src/pages/CoursePage.tsx` → install/use `remark-gfm` and `remark-breaks` so:
-- Single newlines render as `<br>` (matches author intent in the screenshot)
-- Tables, task lists, strikethrough work
-- Autolinks work
-
-```tsx
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
-...
-<ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
-  {activeLesson.body_markdown}
-</ReactMarkdown>
+### Markdown alternative (no code change needed)
+The author can also use markdown link syntax instead of raw HTML:
 ```
-
-Add `remark-gfm` and `remark-breaks` via `bun add`.
+[Access The Tax Scholarships Playbook](https://rprx4life.com/play-book-tax-scholarships)
+```
+This already works today and opens in the same tab. To force a new tab, raw HTML (fix above) is required.
 
 ### Out of scope
-- Editing existing lesson content to add `#` headings (author task).
-- Changing markdown rendering elsewhere (`useUserGuide`, help page, plans). If you want consistent behavior there too, say the word and I'll extend the same plugins to those renderers.
+Extending `rehype-raw` to other markdown renderers (help guide, plans, assistant) — happy to apply the same treatment if desired, just say the word.
+
+### Security note
+`rehype-raw` allows authors to inject any HTML/JS. Since only admins author course content (gated by the Courses admin tab), this is acceptable. If we ever open authoring to end users, we should pair it with `rehype-sanitize`.
