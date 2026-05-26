@@ -248,6 +248,42 @@ export type Database = {
         }
         Relationships: []
       }
+      calculator_runs: {
+        Row: {
+          calculator_type: string
+          created_at: string
+          id: string
+          inputs: Json
+          notes: string | null
+          outputs: Json
+          run_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calculator_type: string
+          created_at?: string
+          id?: string
+          inputs: Json
+          notes?: string | null
+          outputs: Json
+          run_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calculator_type?: string
+          created_at?: string
+          id?: string
+          inputs?: Json
+          notes?: string | null
+          outputs?: Json
+          run_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           created_at: string
