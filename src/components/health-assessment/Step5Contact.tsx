@@ -45,7 +45,7 @@ export function Step5Contact() {
         healthHabits,
         screenings,
         goals,
-        contact: validatedData,
+        contact: { ...validatedData },
       });
 
       if (error) {
