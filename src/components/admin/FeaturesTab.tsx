@@ -389,6 +389,26 @@ export function FeaturesTab() {
             />
           </div>
 
+          <div className="flex items-center justify-between">
+            <Label htmlFor="achievements-toggle" className="flex flex-col">
+              <span className="font-medium">My Achievements (Profile)</span>
+              <span className="text-xs text-muted-foreground">Badges + streak card on the Profile page</span>
+            </Label>
+            <Switch
+              id="achievements-toggle"
+              checked={achievementsVisible}
+              onCheckedChange={async (checked) => {
+                try {
+                  await achievementsToggle.mutateAsync(checked);
+                  toast.success(checked ? 'Achievements visible' : 'Achievements hidden');
+                } catch {
+                  toast.error('Failed to update visibility');
+                }
+              }}
+              disabled={achievementsLoading || achievementsToggle.isPending}
+            />
+          </div>
+
         </CardContent>
       </Card>
 
