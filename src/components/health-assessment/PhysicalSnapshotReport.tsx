@@ -273,7 +273,7 @@ export function PhysicalSnapshotReport() {
         </Card>
 
         {/* CTA early */}
-        <CTASection url={bookingUrl} onEmail={handleEmail} emailing={emailing} />
+        <CTASection url={bookingUrl} />
 
         {/* 4. What This Means */}
         <Card>
@@ -359,7 +359,7 @@ export function PhysicalSnapshotReport() {
         </Card>
 
         {/* 10. CTA repeat */}
-        <CTASection url={bookingUrl} onEmail={handleEmail} emailing={emailing} />
+        <CTASection url={bookingUrl} />
 
         {/* Print button */}
         <div className="flex justify-center print:hidden">
