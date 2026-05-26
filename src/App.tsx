@@ -37,6 +37,7 @@ import HealthAssessment from "./pages/HealthAssessment";
 import VirtualAdvisor from "./pages/VirtualAdvisor";
 import RprxW2 from "./pages/RprxW2";
 import Help from "./pages/Help";
+import EquityRecapturePage from "./pages/EquityRecapture";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 import { UpgradeRouteGuard } from "@/components/auth/UpgradeRouteGuard";
 import { UpgradeGateProvider } from "@/contexts/UpgradeGateContext";
@@ -99,6 +100,9 @@ const App = () => (
           <Route path="/health-assessment" element={<HealthAssessment />} />
           <Route element={<UpgradeRouteGuard feature="virtual-advisor" />}>
             <Route path="/virtual-advisor" element={<ProtectedRoute><WizardGuard><VirtualAdvisor /></WizardGuard></ProtectedRoute>} />
+          </Route>
+          <Route element={<UpgradeRouteGuard feature="equity-recapture-calculator" />}>
+            <Route path="/calculators/equity-recapture" element={<ProtectedRoute><WizardGuard><EquityRecapturePage /></WizardGuard></ProtectedRoute>} />
           </Route>
           <Route path="/rprx-w2" element={<RprxW2 />} />
           <Route path="/help" element={<ProtectedRoute><WizardGuard><Help /></WizardGuard></ProtectedRoute>} />

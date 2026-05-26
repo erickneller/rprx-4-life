@@ -1,26 +1,54 @@
-## Skip contact step for authenticated users
+## Equity Recapture Calculator — implementation plan
 
-In-app, the health assessment lives behind auth/paywall — we already have the user's name, email, phone in their profile, so the "You're Almost Done!" contact gate is redundant friction. The embedded (anonymous) widget on the marketing site still needs it for lead capture.
+A mortgage-acceleration calculator behind the existing paid-tier paywall, accessible from a new "Calculators" sidebar group. Logic from the uploaded bundle is copied verbatim; only Supabase import paths are rewired to the project's existing client.
 
-### Changes
+### 1. Database
+The target table `public.calculator_runs` already exists in this project with the correct columns, RLS policies, and `set_updated_at` trigger (verified in current schema). The bundled `supabase_migration.sql` is idempotent, but since the schema already matches, I'll run only what's missing:
+- Add the composite index `calculator_runs_user_type_created_idx` on `(user_id, calculator_type, created_at desc)` if it isn't already there.
+- Add explicit `GRANT SELECT, INSERT, UPDATE, DELETE ON public.calculator_runs TO authenticated;` and `GRANT ALL ... TO service_role;` to guarantee Data API access.
 
-**`src/pages/HealthAssessment.tsx`**
-- When `user` is signed in (not embedded), treat Step 5 as auto-submit: skip rendering `<Step5Contact />` and instead call a shared submission helper as soon as the user completes Step 4, then jump to Step 6 (results).
-- Embedded/anonymous flow is unchanged — still shows Step 5.
+No other schema changes.
 
-**`src/components/health-assessment/Step4Goals.tsx`** (Next button handler)
-- If authenticated and not embedded: pull `first_name`, `last_name`, `email`, `phone` from `useProfile()`, write them into the store as `contact` (with `consent: true` since they're already a registered user), run the same submission payload that Step5Contact builds, invoke `submit-health-assessment`, then `setCurrentStep(6)`.
-- Otherwise: behave as today (advance to Step 5).
+### 2. Dependencies
+Already installed: `react-hook-form`, `@hookform/resolvers`, `zod`, `@supabase/supabase-js`, `lucide-react`, and all required shadcn primitives (`card`, `button`, `input`, `label`, `select`, `dialog`, `table`). Nothing to add.
 
-**Extract shared submit helper** → new `src/utils/health/submitAssessment.ts`
-- Move the payload construction + `supabase.functions.invoke('submit-health-assessment', …)` call out of `Step5Contact` so both Step 4 (auth path) and Step 5 (anon path) can call it without duplication. Keeps scoring/snapshot/BMI logic identical.
+### 3. Calculator bundle (verbatim copy with one rewire)
+Create `src/components/calculators/EquityRecapture/` with the seven files from the zip:
+- `types.ts`, `calculations.ts`, `schema.ts`, `ResultsDisplay.tsx`, `SavedRunsList.tsx`, `Calculator.tsx`, `index.ts`
 
-**`PhysicalSnapshotReport.tsx`**
-- No change to the existing per-user upsert into `user_health_assessments` — it already runs on Step 6 mount.
+**Only modification:** swap `import { supabase } from '@/lib/supabase'` for `import { supabase } from '@/integrations/supabase/client'` in `Calculator.tsx` and `SavedRunsList.tsx`. This avoids creating a duplicate Supabase client (the project already has one with proper auth config) and keeps `calculations.ts` untouched as required.
+
+Skip creating `src/lib/supabase.ts` for the same reason.
+
+### 4. Print styles
+Append the contents of `print-styles.css` to `src/index.css` (do not replace existing rules). Wrap in a clearly labeled section comment.
+
+### 5. Route
+In `src/App.tsx`, add inside the existing `UpgradeRouteGuard` block (paid-tier guard, matching Strategy Assistant / Plans / Debt Eliminator):
+```tsx
+<Route element={<UpgradeRouteGuard feature="equity-recapture-calculator" />}>
+  <Route
+    path="/calculators/equity-recapture"
+    element={<ProtectedRoute><WizardGuard><EquityRecaptureCalculator /></WizardGuard></ProtectedRoute>}
+  />
+</Route>
+```
+Register `"equity-recapture-calculator"` as a new feature key in `src/lib/upgradeFeatures.ts` so the gate copy renders correctly.
+
+### 6. Navigation
+The sidebar (`src/components/layout/AppSidebar.tsx`) is driven by a categorized config (`useSidebarConfig`). Add a new top-level "Calculators" category containing one item:
+- Label: "Equity Recapture"
+- Path: `/calculators/equity-recapture`
+- Icon: `Calculator` from lucide-react
+- Tier-gated (paid) so free users see the same lock affordance other paid items get.
+
+I'll inspect `useSidebarConfig`/`AppSidebar` first in build mode to insert the category in the right place and in the project's existing pattern.
+
+### 7. Verification
+- Run the Supabase linter after the migration.
+- Load `/calculators/equity-recapture` as an authenticated paid user, run a default calculation, save a run, reload, delete a run, and trigger the print dialog to confirm the print stylesheet hides chrome.
 
 ### Out of scope
-- No changes to the embed flow, Step 5 component itself, GHL webhook, scoring, or DB schema.
-- No new "Skip" UI — for signed-in users, Step 5 simply never appears.
-
-### Result
-Signed-in users finishing Step 4 → brief "Saving…" state → land directly on the Physical Snapshot report. Embedded anonymous visitors still see the contact gate.
+- No edits to `calculations.ts` math.
+- No new Supabase client file.
+- No dashboard cards, gamification hooks, or admin config — just route + nav.

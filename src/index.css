@@ -175,3 +175,53 @@ html.embed .min-h-screen {
   min-height: 0 !important;
 }
 
+/* Print-only styles for the Equity Recapture Calculator.
+   Add these to your global CSS file (e.g., src/index.css or src/globals.css).
+   Tailwind's `print:` modifier handles most things; this fills in the rest. */
+
+@media print {
+  /* Page setup */
+  @page {
+    size: letter portrait;
+    margin: 0.75in;
+  }
+
+  /* Reset body for print */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  /* Hide app chrome (nav, sidebar, footer) */
+  nav, header, aside, footer,
+  [data-print-hide="true"] {
+    display: none !important;
+  }
+
+  /* Avoid breaking inside cards */
+  [class*="border-l-"] {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Tables look reasonable when printed */
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  /* Force black-on-white for KPI accent cards */
+  .border-l-emerald-600 {
+    border-left-color: #047857 !important;
+  }
+
+  /* Make sure all background colors print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

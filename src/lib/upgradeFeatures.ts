@@ -19,7 +19,8 @@ export type FeatureKey =
   | 'virtual-advisor'
   | 'family-overview'
   | 'partners-directory'
-  | 'library';
+  | 'library'
+  | 'equity-recapture-calculator';
 
 export const FEATURE_TIER: Record<FeatureKey, RequiredTier> = {
   'strategy-assistant': 'partner',
@@ -27,6 +28,7 @@ export const FEATURE_TIER: Record<FeatureKey, RequiredTier> = {
   'debt-eliminator':    'partner',
   'partners-directory': 'partner',
   'library':            'partner',
+  'equity-recapture-calculator': 'partner',
   'virtual-advisor':    'pro',
   'family-overview':    'pro',
 };
@@ -43,6 +45,7 @@ export const NAV_ITEM_FEATURE: Record<string, FeatureKey> = {
   'library':                 'library', // legacy seed id
   'item:virtual_advisor':    'virtual-advisor',
   'item:advisor_link':       'virtual-advisor',
+  'item:equity_recapture_calculator': 'equity-recapture-calculator',
 };
 
 // Reverse map: feature key → sidebar nav row id (for DB-driven tier lookups by route).
@@ -62,6 +65,7 @@ export const ROUTE_FEATURE: Record<string, FeatureKey> = {
   '/partners':           'partners-directory',
   '/library':            'library',
   '/virtual-advisor':    'virtual-advisor',
+  '/calculators/equity-recapture': 'equity-recapture-calculator',
 };
 
 const TIER_RANK: Record<SubscriptionTier | RequiredTier, number> = {
