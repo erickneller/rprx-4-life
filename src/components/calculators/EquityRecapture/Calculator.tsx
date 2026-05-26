@@ -57,7 +57,7 @@ export function EquityRecaptureCalculator() {
   // Run the calculation whenever committed inputs change
   const outputs = useMemo(() => {
     if (!committedInputs) return null;
-    return calculateEquityRecapture(committedInputs);
+    return calculateEquityRecapture(committedInputs as EquityRecaptureInputs);
   }, [committedInputs]);
 
   function onSubmit(values: EquityRecaptureFormValues) {
