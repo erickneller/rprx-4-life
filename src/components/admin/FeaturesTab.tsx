@@ -28,6 +28,8 @@ export function FeaturesTab() {
   const xpScoreToggle = useToggleFeatureFlag('xp_score_visible');
   const { enabled: streakVisible, isLoading: streakLoading } = useFeatureFlag('streak_visible');
   const streakToggle = useToggleFeatureFlag('streak_visible');
+  const { enabled: personalizedStrategyVisible, isLoading: personalizedStrategyLoading } = useFeatureFlag('personalized_strategy_visible');
+  const personalizedStrategyToggle = useToggleFeatureFlag('personalized_strategy_visible');
 
 
   const { preset: firstLoginPreset, isLoading: firstLoginLoading } = useFirstLoginFlow();
@@ -362,6 +364,26 @@ export function FeaturesTab() {
                 }
               }}
               disabled={streakLoading || streakToggle.isPending}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <Label htmlFor="personalized-strategy-toggle" className="flex flex-col">
+              <span className="font-medium">Personalized Strategy Card</span>
+              <span className="text-xs text-muted-foreground">"Your Personalized Strategy" CTA on the assessment results page. Turn off when not using the internal strategy engine.</span>
+            </Label>
+            <Switch
+              id="personalized-strategy-toggle"
+              checked={personalizedStrategyVisible}
+              onCheckedChange={async (checked) => {
+                try {
+                  await personalizedStrategyToggle.mutateAsync(checked);
+                  toast.success(checked ? 'Personalized Strategy card visible' : 'Personalized Strategy card hidden');
+                } catch {
+                  toast.error('Failed to update visibility');
+                }
+              }}
+              disabled={personalizedStrategyLoading || personalizedStrategyToggle.isPending}
             />
           </div>
 
