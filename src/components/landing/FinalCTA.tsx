@@ -1,43 +1,49 @@
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import { LandingCtaButton } from './LandingCtaButton';
+import type { LandingButton } from '@/lib/landingCards';
 
-const FinalCTA = () => {
+interface Content {
+  heading?: string;
+  headlineAccent?: string;
+  subheading?: string;
+  buttons?: LandingButton[];
+  trustNote?: string;
+}
+
+const DEFAULTS: Content = { heading: '', headlineAccent: '', subheading: '', buttons: [], trustNote: '' };
+
+function highlight(text: string, accent?: string) {
+  if (!accent || !text.includes(accent)) return text;
+  const [before, ...rest] = text.split(accent);
+  return (
+    <>
+      {before}
+      <span className="text-accent">{accent}</span>
+      {rest.join(accent)}
+    </>
+  );
+}
+
+const FinalCTA = ({ content }: { content?: Content }) => {
+  const c = { ...DEFAULTS, ...(content || {}) };
   return (
     <section className="py-20 md:py-28 bg-muted/50">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Headline */}
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6 leading-tight">
-            Ready to Take Control of Your{' '}
-            <span className="text-accent">Financial Future?</span>
+            {highlight(c.heading || '', c.headlineAccent)}
           </h2>
-
-          {/* Subheadline */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            Join thousands who have discovered where their money quietly leaks—and what to do about it. 
-            Start your free assessment today.
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/auth">
-              <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground px-8 h-12 text-base">
-                Start Free Assessment
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <a href="#pricing">
-              <Button size="lg" variant="outline" className="px-8 h-12 text-base">
-                View Pricing
-              </Button>
-            </a>
-          </div>
-
-          {/* Trust note */}
-          <p className="text-sm text-muted-foreground mt-8">
-            No credit card required • Free forever tier • Cancel anytime
-          </p>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">{c.subheading}</p>
+          {!!c.buttons?.length && (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              {c.buttons.map((b, i) => (
+                <LandingCtaButton key={i} button={b}>
+                  {i === 0 && b.variant !== 'outline' ? <ArrowRight className="ml-2 h-5 w-5" /> : null}
+                </LandingCtaButton>
+              ))}
+            </div>
+          )}
+          {c.trustNote && <p className="text-sm text-muted-foreground mt-8">{c.trustNote}</p>}
         </div>
       </div>
     </section>
