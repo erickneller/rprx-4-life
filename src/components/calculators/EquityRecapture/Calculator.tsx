@@ -282,7 +282,7 @@ export function EquityRecaptureCalculator() {
 
       {/* Results */}
       {outputs && committedInputs && (
-        <ResultsDisplay inputs={committedInputs} outputs={outputs} />
+        <ResultsDisplay inputs={committedInputs as EquityRecaptureInputs} outputs={outputs} />
       )}
 
       {/* Saved runs (hidden on print) */}
