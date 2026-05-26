@@ -77,7 +77,7 @@ export function EquityRecaptureCalculator() {
       setSaving(false);
       return;
     }
-    const { error } = await supabase.from('calculator_runs').insert({
+    const { error } = await (supabase as any).from('calculator_runs').insert({
       user_id: user.id,
       calculator_type: 'equity_recapture',
       run_name: runName.trim(),
