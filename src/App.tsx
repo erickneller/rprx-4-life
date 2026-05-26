@@ -101,6 +101,9 @@ const App = () => (
           <Route element={<UpgradeRouteGuard feature="virtual-advisor" />}>
             <Route path="/virtual-advisor" element={<ProtectedRoute><WizardGuard><VirtualAdvisor /></WizardGuard></ProtectedRoute>} />
           </Route>
+          <Route element={<UpgradeRouteGuard feature="equity-recapture-calculator" />}>
+            <Route path="/calculators/equity-recapture" element={<ProtectedRoute><WizardGuard><EquityRecaptureCalculator /></WizardGuard></ProtectedRoute>} />
+          </Route>
           <Route path="/rprx-w2" element={<RprxW2 />} />
           <Route path="/help" element={<ProtectedRoute><WizardGuard><Help /></WizardGuard></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
