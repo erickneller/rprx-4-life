@@ -44,6 +44,8 @@ import { AssistantQualityTab } from '@/components/admin/AssistantQualityTab';
 import { CoursesTab } from '@/components/admin/CoursesTab';
 import { ProfileFieldsTab } from '@/components/admin/ProfileFieldsTab';
 import { GhlProductMapTab } from '@/components/admin/GhlProductMapTab';
+import { LandingPageTab } from '@/components/admin/LandingPageTab';
+
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
 const DIFFICULTIES = ['easy', 'moderate', 'advanced'];
