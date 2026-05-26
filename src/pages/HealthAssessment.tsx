@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAssessmentStore } from '@/store/healthAssessmentStore';
 import { WelcomeScreen } from '@/components/health-assessment/WelcomeScreen';
 import { ProgressBar } from '@/components/health-assessment/ProgressBar';
@@ -10,6 +11,7 @@ import { Step5Contact } from '@/components/health-assessment/Step5Contact';
 import { PhysicalSnapshotReport } from '@/components/health-assessment/PhysicalSnapshotReport';
 import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useAuth } from '@/hooks/useAuth';
+import { useHealthAssessments } from '@/hooks/useHealthAssessmentHistory';
 
 const isEmbedded = () => {
   if (typeof window === 'undefined') return false;
