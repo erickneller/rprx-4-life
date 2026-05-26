@@ -109,7 +109,8 @@ export function PhysicalSnapshotReport() {
   const store = useAssessmentStore();
   const { url: bookingUrl } = useBookingUrl();
   const { toast } = useToast();
-  const [emailing, setEmailing] = useState(false);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const snapshot: PhysicalSnapshot = useMemo(
     () => generatePhysicalSnapshot({
@@ -149,43 +150,66 @@ export function PhysicalSnapshotReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Persist to user_health_assessments (authenticated users only). View-only mode skips saving.
+  useEffect(() => {
+    if (!user || store.viewOnly) return;
+    (async () => {
+      try {
+        const bp: any = store.basicProfile || {};
+        const heightInches =
+          (Number(bp.heightFeet) || 0) * 12 + (Number(bp.heightInches) || 0);
+        const weight = Number(bp.weight) || 0;
+        const bmi = heightInches > 0 && weight > 0
+          ? Math.round((weight / (heightInches * heightInches)) * 703 * 10) / 10
+          : null;
+
+        const payload = {
+          user_id: user.id,
+          persona: store.persona,
+          primary_horseman: snapshot.primaryHorseman,
+          secondary_horseman: snapshot.secondaryHorseman,
+          recommended_track: snapshot.recommendedTrack,
+          recommended_track_name: snapshot.recommendedTrackName,
+          readiness_score: snapshot.readinessScore,
+          readiness_label: snapshot.readinessLabel,
+          horseman_scores: snapshot.horsemanScores,
+          quick_wins: snapshot.quickWins,
+          weekly_focus: snapshot.weeklyFocus,
+          snapshot: snapshot as any,
+          basic_profile: store.basicProfile,
+          health_habits: store.healthHabits,
+          screenings: store.screenings,
+          goals: store.goals,
+          contact: store.contact,
+          bmi,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (store.editingId) {
+          await (supabase as any)
+            .from('user_health_assessments')
+            .update(payload)
+            .eq('id', store.editingId)
+            .eq('user_id', user.id);
+        } else {
+          // Single-active-record model: clear prior records, then insert fresh
+          await (supabase as any)
+            .from('user_health_assessments')
+            .delete()
+            .eq('user_id', user.id);
+          await (supabase as any).from('user_health_assessments').insert(payload);
+        }
+        queryClient.invalidateQueries({ queryKey: ['healthAssessments'] });
+      } catch (e) {
+        console.warn('Health assessment save skipped:', e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const firstName = store.contact?.firstName?.trim();
   const PrimaryIcon = HORSEMAN_ICONS[snapshot.primaryHorseman];
   const SecondaryIcon = HORSEMAN_ICONS[snapshot.secondaryHorseman];
-
-  const handleEmail = async () => {
-    if (!store.contact?.email) {
-      toast({ title: 'Missing email', description: 'We need an email on file to send your snapshot.', variant: 'destructive' });
-      return;
-    }
-    setEmailing(true);
-    try {
-      await supabase.functions.invoke('send-to-ghl', {
-        body: {
-          trigger: 'email_snapshot',
-          name: `${store.contact.firstName ?? ''} ${store.contact.lastName ?? ''}`.trim(),
-          email: store.contact.email,
-          phone: store.contact.phone,
-          persona: store.persona,
-          snapshot: {
-            primary_horseman: snapshot.primaryHorseman,
-            secondary_horseman: snapshot.secondaryHorseman,
-            readiness_score: snapshot.readinessScore,
-            readiness_label: snapshot.readinessLabel,
-            recommended_track: snapshot.recommendedTrack,
-            recommended_track_name: snapshot.recommendedTrackName,
-            quick_wins: snapshot.quickWins,
-          },
-        },
-      });
-      toast({ title: 'On its way', description: 'We just emailed your snapshot.' });
-    } catch (e) {
-      console.error(e);
-      toast({ title: 'Could not send', description: 'Please try again or contact support.', variant: 'destructive' });
-    } finally {
-      setEmailing(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle py-10 px-4 print:bg-background print:py-0">
