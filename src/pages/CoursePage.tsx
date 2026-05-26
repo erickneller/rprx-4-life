@@ -193,7 +193,7 @@ export default function CoursePage() {
               {activeLesson.video_url && <VideoEmbed url={activeLesson.video_url} />}
               {activeLesson.body_markdown && (
                 <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
-                  <ReactMarkdown>{activeLesson.body_markdown}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{activeLesson.body_markdown}</ReactMarkdown>
                 </div>
               )}
               {activeLesson.attachments.length > 0 && (
