@@ -15,10 +15,16 @@ export interface CheckoutSlot {
   value: string;
 }
 
+export interface CheckoutHeader {
+  title: string;
+  description: string;
+}
+
 export interface CheckoutConfig {
   partner: Record<IntervalKey, CheckoutSlot>;
   pro: Record<IntervalKey, CheckoutSlot>;
   publicFunnel: string;
+  header: CheckoutHeader;
 }
 
 function defaultSlot(plan: PlanKey, interval: IntervalKey): CheckoutSlot {
@@ -26,10 +32,16 @@ function defaultSlot(plan: PlanKey, interval: IntervalKey): CheckoutSlot {
   return { mode: 'url', value: url.includes('REPLACE_') ? '' : url };
 }
 
+export const DEFAULT_CHECKOUT_HEADER: CheckoutHeader = {
+  title: 'Upgrade your plan',
+  description: "Secure checkout powered by GoHighLevel. You'll stay logged in here — your access updates automatically.",
+};
+
 export const DEFAULT_CHECKOUT_CONFIG: CheckoutConfig = {
   partner: { month: defaultSlot('partner', 'month'), year: defaultSlot('partner', 'year') },
   pro: { month: defaultSlot('pro', 'month'), year: defaultSlot('pro', 'year') },
   publicFunnel: GHL_PUBLIC_FUNNEL_URL,
+  header: DEFAULT_CHECKOUT_HEADER,
 };
 
 function parse(value: unknown): CheckoutConfig {
@@ -53,6 +65,16 @@ function parse(value: unknown): CheckoutConfig {
         typeof p?.publicFunnel === 'string' && p.publicFunnel
           ? p.publicFunnel
           : DEFAULT_CHECKOUT_CONFIG.publicFunnel,
+      header: {
+        title:
+          typeof p?.header?.title === 'string' && p.header.title.trim()
+            ? p.header.title
+            : DEFAULT_CHECKOUT_HEADER.title,
+        description:
+          typeof p?.header?.description === 'string' && p.header.description.trim()
+            ? p.header.description
+            : DEFAULT_CHECKOUT_HEADER.description,
+      },
     };
   } catch {
     return DEFAULT_CHECKOUT_CONFIG;
