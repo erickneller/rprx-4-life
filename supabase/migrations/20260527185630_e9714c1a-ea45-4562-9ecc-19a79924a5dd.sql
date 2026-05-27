@@ -1,0 +1,1 @@
+UPDATE public.companies SET plan = 'pro' WHERE plan = 'enterprise';
