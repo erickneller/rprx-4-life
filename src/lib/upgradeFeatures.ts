@@ -68,11 +68,13 @@ export const ROUTE_FEATURE: Record<string, FeatureKey> = {
   '/calculators/equity-recapture': 'equity-recapture-calculator',
 };
 
-const TIER_RANK: Record<SubscriptionTier | RequiredTier, number> = {
+const TIER_RANK: Record<string, number> = {
   free:    0,
+  paid:    1, // legacy alias — keep so any stale 'paid' string ranks as partner
   partner: 1,
   pro:     2,
 };
+
 
 export function tierMeets(current: SubscriptionTier, required: RequiredTier): boolean {
   if (required === 'free') return true;
