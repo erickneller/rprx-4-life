@@ -35,13 +35,15 @@ export default function Join() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { joinByToken } = useCompany();
-  const { isProfileComplete } = useProfile();
-  const { data: assessments } = useAssessmentHistory();
-  const { preset } = useFirstLoginFlow();
+  const { isProfileComplete, isLoading: profileLoading } = useProfile();
+  const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
+  const { preset, isLoading: presetLoading } = useFirstLoginFlow();
 
   const [pendingCompany, setPendingCompany] = useState<PendingCompany | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingNavigate, setPendingNavigate] = useState(false);
+  const [hasJoined, setHasJoined] = useState(false);
 
 
   // Sign-up form state (used when not authenticated)
