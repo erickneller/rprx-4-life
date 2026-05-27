@@ -35,13 +35,15 @@ export default function Join() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { joinByToken } = useCompany();
-  const { isProfileComplete } = useProfile();
-  const { data: assessments } = useAssessmentHistory();
-  const { preset } = useFirstLoginFlow();
+  const { isProfileComplete, isLoading: profileLoading } = useProfile();
+  const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
+  const { preset, isLoading: presetLoading } = useFirstLoginFlow();
 
   const [pendingCompany, setPendingCompany] = useState<PendingCompany | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingNavigate, setPendingNavigate] = useState(false);
+  const [hasJoined, setHasJoined] = useState(false);
 
 
   // Sign-up form state (used when not authenticated)
@@ -78,26 +80,33 @@ export default function Join() {
     lookup();
   }, [token]);
 
-  // ─── Step 2a: Already logged in → join immediately ────────────────────────
+  // ─── Step 2a: Already logged in OR just-signed-up → join + redirect ──────
   useEffect(() => {
     if (!user || !pendingCompany || loading) return;
+    // Wait for preset/profile/assessments to load so dest is computed correctly
+    if (presetLoading || profileLoading || assessmentsLoading || !assessmentsFetched) return;
 
+    let cancelled = false;
     async function autoJoin() {
       try {
-        await joinByToken(token);
-        toast.success(`You've joined ${pendingCompany!.name}!`);
+        if (!hasJoined) {
+          await joinByToken(token);
+          if (cancelled) return;
+          setHasJoined(true);
+          toast.success(`You've joined ${pendingCompany!.name}!`);
+        }
         const hasAssessments = (assessments || []).some(a => a.completed_at);
         const dest = getFirstDestination({ preset, isProfileComplete, hasAssessments }) ?? '/dashboard';
         navigate(dest, { replace: true });
       } catch (err: any) {
-        setError(err.message ?? 'Failed to join company.');
+        if (!cancelled) setError(err.message ?? 'Failed to join company.');
       }
-
     }
 
     autoJoin();
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, pendingCompany, loading]);
+  }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched, preset, isProfileComplete]);
 
   // ─── Step 2b: Sign-up form submit ─────────────────────────────────────────
   async function handleSignUp(e: React.FormEvent) {
@@ -121,12 +130,11 @@ export default function Join() {
 
       if (signUpErr) throw signUpErr;
 
-      // Token is already in localStorage; useProfile.ts will pick it up
-      // on first profile creation. Also redirect to wizard to complete onboarding.
+      // Token is in localStorage; useProfile.ts will pick it up on profile creation.
+      // The autoJoin effect above will handle joining + redirecting once auth state
+      // updates AND preset/profile/assessment queries have resolved.
       toast.success(`Account created! Welcome to ${pendingCompany.name}.`);
-      const dest = getFirstDestination({ preset, isProfileComplete: false, hasAssessments: false }) ?? '/dashboard';
-      navigate(dest, { replace: true });
-
+      setPendingNavigate(true);
     } catch (err: any) {
       setError(err.message ?? 'Sign-up failed. Please try again.');
     } finally {
@@ -157,13 +165,13 @@ export default function Join() {
     );
   }
 
-  // ─── Logged-in: show joining spinner ─────────────────────────────────────
-  if (user) {
+  // ─── Logged-in or just-signed-up: show joining spinner ──────────────────
+  if (user || pendingNavigate) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
-          <p className="text-muted-foreground">Joining {pendingCompany?.name}…</p>
+          <p className="text-muted-foreground">Setting things up…</p>
         </div>
       </div>
     );
