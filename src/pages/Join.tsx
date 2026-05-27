@@ -3,12 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
+import { useProfile } from '@/hooks/useProfile';
+import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
+import { useFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
+import { getFirstDestination } from '@/lib/firstLoginFlow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import rprxLogo from '@/assets/rprx-logo.png';
+
 
 interface PendingCompany {
   id: string;
@@ -30,10 +35,14 @@ export default function Join() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { joinByToken } = useCompany();
+  const { isProfileComplete } = useProfile();
+  const { data: assessments } = useAssessmentHistory();
+  const { preset } = useFirstLoginFlow();
 
   const [pendingCompany, setPendingCompany] = useState<PendingCompany | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
 
   // Sign-up form state (used when not authenticated)
   const [fullName, setFullName] = useState('');
@@ -77,10 +86,13 @@ export default function Join() {
       try {
         await joinByToken(token);
         toast.success(`You've joined ${pendingCompany!.name}!`);
-        navigate('/dashboard', { replace: true });
+        const hasAssessments = (assessments || []).some(a => a.completed_at);
+        const dest = getFirstDestination({ preset, isProfileComplete, hasAssessments }) ?? '/dashboard';
+        navigate(dest, { replace: true });
       } catch (err: any) {
         setError(err.message ?? 'Failed to join company.');
       }
+
     }
 
     autoJoin();
@@ -112,7 +124,9 @@ export default function Join() {
       // Token is already in localStorage; useProfile.ts will pick it up
       // on first profile creation. Also redirect to wizard to complete onboarding.
       toast.success(`Account created! Welcome to ${pendingCompany.name}.`);
-      navigate('/wizard', { replace: true });
+      const dest = getFirstDestination({ preset, isProfileComplete: false, hasAssessments: false }) ?? '/dashboard';
+      navigate(dest, { replace: true });
+
     } catch (err: any) {
       setError(err.message ?? 'Sign-up failed. Please try again.');
     } finally {
