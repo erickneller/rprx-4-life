@@ -31,8 +31,9 @@ export function UpgradeModal({ open, onOpenChange, initialPlan = 'partner', init
   useEffect(() => {
     if (!open || !user) return;
     const id = window.setInterval(async () => {
-      await qc.invalidateQueries({ queryKey: ['subscription-tier', user.id] });
-      const next = qc.getQueryData<string>(['subscription-tier', user.id]);
+      await qc.invalidateQueries({ queryKey: ['subscription-tier', 'v2', user.id] });
+      const next = qc.getQueryData<string>(['subscription-tier', 'v2', user.id]);
+
       if (next && next !== 'free' && next !== startingTier) {
         toast.success(`Welcome to RPRx ${next === 'pro' ? 'Pro' : 'Partner'}!`);
         onOpenChange(false);
