@@ -165,13 +165,13 @@ export default function Join() {
     );
   }
 
-  // ─── Logged-in: show joining spinner ─────────────────────────────────────
-  if (user) {
+  // ─── Logged-in or just-signed-up: show joining spinner ──────────────────
+  if (user || pendingNavigate) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
-          <p className="text-muted-foreground">Joining {pendingCompany?.name}…</p>
+          <p className="text-muted-foreground">Setting things up…</p>
         </div>
       </div>
     );
