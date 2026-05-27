@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useUpgradeGate } from '@/contexts/UpgradeGateContext';
 import {
@@ -20,16 +21,13 @@ interface UpgradeRouteGuardProps {
  * over the hardcoded FEATURE_TIER map, so admin "Free" actually unlocks the page.
  */
 export function UpgradeRouteGuard({ feature }: UpgradeRouteGuardProps) {
-  const { tier, isLoading } = useSubscription();
+  const { user, loading: authLoading } = useAuth();
+  const { tier, isLoading: subLoading } = useSubscription();
   const { requireUpgrade } = useUpgradeGate();
   const { rows, isLoading: navLoading } = useSidebarConfig();
   const location = useLocation();
   const fired = useRef(false);
 
-  // DB-driven tier wins. Find the sidebar row by:
-  //  1) current route URL (most reliable — e.g. '/library')
-  //  2) known feature → nav id alias (e.g. 'item:library')
-  //  3) bare feature name as id (legacy seed used id='library')
   const navId = FEATURE_NAV_ITEM[feature];
   const navRow =
     rows.find(r => r.url && r.url === location.pathname) ||
@@ -40,22 +38,32 @@ export function UpgradeRouteGuard({ feature }: UpgradeRouteGuardProps) {
     : featureRequiredTier(feature);
   const allowed = tierMeets(tier, required);
 
-  // Reset the one-shot flag whenever access flips to allowed (tier finally loaded).
+  const stillLoading = authLoading || subLoading || navLoading || !user;
+
+  // Reset the one-shot flag whenever access flips to allowed.
   useEffect(() => {
     if (allowed) fired.current = false;
   }, [allowed]);
 
   useEffect(() => {
-    if (isLoading || navLoading || allowed || fired.current) return;
+    if (stillLoading || allowed || fired.current) return;
     fired.current = true;
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn('[UpgradeRouteGuard] denied', {
+        feature,
+        route: location.pathname,
+        currentTier: tier,
+        requiredTier: required,
+        matchedNavId: navRow?.id ?? null,
+      });
+    }
     requireUpgrade({ feature, requiredTier: required });
-  }, [isLoading, navLoading, allowed, feature, required, requireUpgrade]);
+  }, [stillLoading, allowed, feature, required, requireUpgrade, tier, navRow, location.pathname]);
 
-  // Don't redirect or gate while the user's tier is still resolving.
-  if (isLoading || navLoading) return null;
+  // Don't redirect or gate while auth/tier/nav config is still resolving.
+  if (stillLoading) return null;
   if (!allowed) return <Navigate to="/dashboard" replace state={{ from: location.pathname }} />;
-
-
 
   return <Outlet />;
 }
