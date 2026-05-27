@@ -87,7 +87,7 @@ export function DashboardContent() {
     return Math.round((paid / focusDebt.original_balance) * 100);
   }, [focusDebt]);
 
-  const activeDebtFocus = !hasNoHistory && hasActiveJourney && !!focusDebt;
+  const activeDebtFocus = hasActiveJourney && !!focusDebt;
 
   const focusPlanProgress = useMemo(() => {
     if (!focusPlan) return 0;
