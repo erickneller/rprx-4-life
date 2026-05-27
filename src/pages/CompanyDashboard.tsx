@@ -99,7 +99,7 @@ export default function CompanyDashboard() {
                   <TableHead>Joined</TableHead>
                   <TableHead>Last Active</TableHead>
                   <TableHead>Streak</TableHead>
-                  <TableHead>Tier</TableHead>
+                  <TableHead>Plan</TableHead>
                   <TableHead>Assessment</TableHead>
                 </TableRow>
               </TableHeader>
@@ -112,7 +112,11 @@ export default function CompanyDashboard() {
                       {m.last_active_date ? format(new Date(m.last_active_date), 'MMM d') : '—'}
                     </TableCell>
                     <TableCell>{m.current_streak}🔥</TableCell>
-                    <TableCell><Badge variant="secondary" className="text-xs capitalize">{m.current_tier}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant={planVariant(m.subscription_tier)} className="text-xs capitalize">
+                        {planLabel(m.subscription_tier)}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={m.has_assessment ? 'default' : 'outline'} className="text-xs">
                         {m.has_assessment ? 'Done' : 'Not yet'}
