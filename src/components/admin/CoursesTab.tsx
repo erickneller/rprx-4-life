@@ -1,12 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSidebarConfig, useUpdateNavIsCourse } from '@/hooks/useSidebarConfig';
 import { useAdminCourses, useUpsertCourse } from '@/hooks/useCourseAdmin';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import { Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { CourseBuilder } from './course/CourseBuilder';
+import {
+  useCourseBannerSettings,
+  useSetCourseBannerSettings,
+  bannerGradientCss,
+  DEFAULT_COURSE_BANNER,
+} from '@/hooks/useCourseBannerSettings';
 
 export function CoursesTab() {
   const { rows, isLoading } = useSidebarConfig();
