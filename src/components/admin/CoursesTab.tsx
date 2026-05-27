@@ -49,6 +49,9 @@ export function CoursesTab() {
   }
 
   return (
+    <div className="space-y-4">
+      <BannerSettingsCard />
+
     <Card>
       <CardHeader>
         <CardTitle>Mini-Courses</CardTitle>
