@@ -178,14 +178,22 @@ export default function CoursePage() {
         )}
         <main className="flex-1 min-w-0">
           <div className="relative h-32 md:h-40 overflow-hidden">
-            <img
-              src={course.cover_image_url || coverPlaceholder}
-              alt=""
-              loading="lazy"
-              width={1280}
-              height={720}
-              className="w-full h-full object-cover"
-            />
+            {course.cover_image_url ? (
+              <img
+                src={course.cover_image_url}
+                alt=""
+                loading="lazy"
+                width={1280}
+                height={720}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-full h-full"
+                style={{ background: bannerGradientCss(bannerSettings) }}
+                aria-hidden
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/10" />
             <div className="absolute bottom-3 left-4 right-4">
               <h1 className="text-xl md:text-2xl font-bold text-foreground [text-shadow:_0_1px_8px_rgb(0_0_0_/_40%)]">{course.title}</h1>
