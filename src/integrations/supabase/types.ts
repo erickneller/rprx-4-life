@@ -2489,7 +2489,7 @@ export type Database = {
       payment_type: "payment" | "balance_update"
       plan_status: "not_started" | "in_progress" | "completed"
       question_type: "slider" | "single_choice" | "yes_no" | "range_select"
-      subscription_tier: "free" | "paid" | "partner" | "pro"
+      subscription_tier: "free" | "partner" | "pro"
       support_request_status: "new" | "in_progress" | "resolved" | "archived"
       support_request_type: "help" | "bug" | "feature" | "advisor"
     }
@@ -2636,7 +2636,7 @@ export const Constants = {
       payment_type: ["payment", "balance_update"],
       plan_status: ["not_started", "in_progress", "completed"],
       question_type: ["slider", "single_choice", "yes_no", "range_select"],
-      subscription_tier: ["free", "paid", "partner", "pro"],
+      subscription_tier: ["free", "partner", "pro"],
       support_request_status: ["new", "in_progress", "resolved", "archived"],
       support_request_type: ["help", "bug", "feature", "advisor"],
     },

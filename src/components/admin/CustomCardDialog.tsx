@@ -28,7 +28,8 @@ interface CustomCardDialogProps {
 
 const TIERS = [
   { value: 'free', label: 'Free' },
-  { value: 'paid', label: 'Paid' },
+  { value: 'partner', label: 'Partner' },
+  { value: 'pro', label: 'Pro' },
 ];
 
 export function CustomCardDialog({ open, onOpenChange, initial, onSave, isSaving }: CustomCardDialogProps) {

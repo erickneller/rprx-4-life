@@ -71,7 +71,6 @@ export const ROUTE_FEATURE: Record<string, FeatureKey> = {
 const TIER_RANK: Record<SubscriptionTier | RequiredTier, number> = {
   free:    0,
   partner: 1,
-  paid:    1, // legacy — treat as partner-equivalent
   pro:     2,
 };
 

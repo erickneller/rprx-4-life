@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useAdmin } from './useAdmin';
 
-export type SubscriptionTier = 'free' | 'paid' | 'partner' | 'pro';
+export type SubscriptionTier = 'free' | 'partner' | 'pro';
 
 export function useSubscription() {
   const { user } = useAuth();
@@ -19,7 +19,9 @@ export function useSubscription() {
         console.error('Error fetching subscription tier:', error);
         return 'free';
       }
-      return (data as string) || 'free';
+      // Defensive: map any legacy 'paid' value to 'partner'
+      const raw = (data as string) || 'free';
+      return raw === 'paid' ? 'partner' : raw;
     },
     enabled: !!user && !isAdmin,
   });
@@ -30,8 +32,8 @@ export function useSubscription() {
   const isFree = tier === 'free';
   const isPartner = tier === 'partner';
   const isPro = tier === 'pro';
-  // Backward-compat: any paying tier counts as "paid"
-  const isPaid = tier === 'paid' || isPartner || isPro;
+  // Any paying tier (partner or pro) counts as "paid" for backward-compat
+  const isPaid = isPartner || isPro;
 
   return {
     tier,

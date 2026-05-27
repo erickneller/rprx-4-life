@@ -49,7 +49,7 @@ interface AdminUser {
   // computed
   is_admin: boolean;
   is_library_admin: boolean;
-  tier: 'free' | 'paid';
+  tier: 'free' | 'partner' | 'pro';
 }
 
 function useAdminUsers() {
@@ -74,7 +74,7 @@ function useAdminUsers() {
         ...u,
         is_admin: adminIds.has(u.id),
         is_library_admin: libraryAdminIds.has(u.id),
-        tier: (tierMap.get(u.id) || 'free') as 'free' | 'paid',
+        tier: (tierMap.get(u.id) || 'free') as 'free' | 'partner' | 'pro',
       })) as AdminUser[];
     },
   });
@@ -83,7 +83,7 @@ function useAdminUsers() {
 function useToggleTier() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, newTier }: { userId: string; newTier: 'free' | 'paid' }) => {
+    mutationFn: async ({ userId, newTier }: { userId: string; newTier: 'free' | 'partner' | 'pro' }) => {
       const { error } = await supabase
         .from('user_subscriptions' as any)
         .upsert(
@@ -250,7 +250,8 @@ export function UsersTab() {
           <SelectContent>
             <SelectItem value="all">All Tiers</SelectItem>
             <SelectItem value="free">Free</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="partner">Partner</SelectItem>
+            <SelectItem value="pro">Pro</SelectItem>
           </SelectContent>
         </Select>
         <span className="text-sm text-muted-foreground">{filtered.length} user{filtered.length !== 1 ? 's' : ''}</span>
@@ -297,22 +298,29 @@ export function UsersTab() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Switch
-                        checked={u.tier === 'paid'}
-                        onCheckedChange={(checked) => {
+                      <Select
+                        value={u.tier}
+                        onValueChange={(val) => {
+                          const newTier = val as 'free' | 'partner' | 'pro';
                           toggleTier.mutate(
-                            { userId: u.id, newTier: checked ? 'paid' : 'free' },
+                            { userId: u.id, newTier },
                             {
-                              onSuccess: () => toast.success(`User set to ${checked ? 'Paid' : 'Free'}`),
+                              onSuccess: () => toast.success(`User set to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)}`),
                               onError: (err) => toast.error((err as Error).message || 'Failed'),
                             }
                           );
                         }}
                         disabled={toggleTier.isPending}
-                      />
-                      <Badge variant={u.tier === 'paid' ? 'default' : 'secondary'} className={u.tier === 'paid' ? 'bg-green-600 text-white' : ''}>
-                        {u.tier === 'paid' ? 'Paid' : 'Free'}
-                      </Badge>
+                      >
+                        <SelectTrigger className="w-[110px] h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="free">Free</SelectItem>
+                          <SelectItem value="partner">Partner</SelectItem>
+                          <SelectItem value="pro">Pro</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
