@@ -19,6 +19,7 @@ import { PROFILE_TYPES, FINANCIAL_GOALS, FILING_STATUSES } from '@/lib/profileTy
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import { UnsavedChangesDialog } from '@/components/profile/UnsavedChangesDialog';
+import { ProfileDownload } from '@/components/profile/ProfileDownload';
 import { BadgeDisplay as BadgeDisplayComponent } from '@/components/gamification/BadgeDisplay';
 import { StreakCounter as StreakCounterComponent } from '@/components/gamification/StreakCounter';
 import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
