@@ -42,7 +42,7 @@ export function CompaniesTab() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<CompanyRow | null>(null);
   const [editName, setEditName] = useState('');
-  const [editPlan, setEditPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
+  const [editPlan, setEditPlan] = useState<'free' | 'partner' | 'pro'>('free');
   const [deleteTarget, setDeleteTarget] = useState<CompanyRow | null>(null);
 
   // ─── Fetch all companies with member counts ─────────────────────────────
