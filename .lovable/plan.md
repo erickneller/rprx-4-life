@@ -1,22 +1,38 @@
-## Likely cause
-DB is correct: `a@a.com` has `tier=partner`, the equity row's `required_tier=partner`, and `get_subscription_tier()` returns `partner`. So the gate is failing client-side, almost certainly from **stale state** carrying the legacy `'paid'` value:
+## Diagnosis
 
-- React Query has a cached `['subscription-tier', userId]` entry from before the migration. The defensive `raw === 'paid' ? 'partner'` mapping I added only runs **inside `queryFn`**, so a cached value never gets normalized.
-- With `tier === 'paid'` reaching the guard, `TIER_RANK['paid']` is now `undefined` (I removed it), so `tierMeets('paid', 'partner')` returns `false` → `UpgradeRouteGuard` redirects to `/dashboard`. Same effect in `AppSidebar` (lock icon + UpgradeModal).
-- A hard refresh would fix it, but the app should be self-healing.
+The database and network response are correct: `a@a.com` resolves to `partner`, and the Equity Recapture Calculator nav row requires `partner`.
 
-## Fix
+The current failure is frontend timing/state related:
+- Sidebar items calculate `locked` before subscription/admin loading is fully resolved.
+- A temporary default `free` tier can mark the calculator locked and open the upgrade modal.
+- The route guard can also redirect to `/dashboard` while auth/subscription/navigation data is still settling.
+- The modal iframe shows a broken document because the checkout URLs are still placeholder `REPLACE_*` URLs, but that modal should not open for a partner user clicking a partner feature anyway.
 
-1. **`src/hooks/useSubscription.ts`** — normalize on read, not only in `queryFn`. After the `useQuery` call, coerce any legacy value: `const tier = (isAdmin ? 'pro' : (rawTier === 'paid' ? 'partner' : rawTier)) as SubscriptionTier;`. This catches stale cache entries and any in-flight `'paid'` values.
+## Implementation plan
 
-2. **`src/lib/upgradeFeatures.ts`** — add a defensive `'paid': 1` entry back to `TIER_RANK` so any stray `'paid'` string anywhere in the app ranks as partner instead of `undefined` → 0. Keep the public `RequiredTier` / `SubscriptionTier` unions at `free | partner | pro`; the extra rank key is purely a runtime safety net.
+1. **Make subscription loading explicit and safe**
+   - Update `useSubscription` so it does not report a usable `free` tier while auth/admin/subscription checks are still pending.
+   - Keep the legacy `paid -> partner` normalization and the `v2` query key.
+   - Make query enablement wait for admin status to finish, so non-admin subscription fetches are not skipped due to a temporary admin-loading state.
 
-3. **One-time cache bump** — change the `useSubscription` query key from `['subscription-tier', user.id]` to `['subscription-tier', 'v2', user.id]` so any persisted/legacy cached `'paid'` entry is evicted on next mount. (Also update the matching `qc.invalidateQueries` / `qc.getQueryData` calls in `src/components/billing/UpgradeModal.tsx`.)
+2. **Prevent sidebar false locks during loading**
+   - Update `AppSidebar` / `NavItemRow` to consume `isLoading` from `useSubscription`.
+   - While subscription state is loading, do not treat partner/pro routes as locked and do not open the upgrade modal from a transient `free` default.
+   - Keep real locks once loading is complete.
 
-## Verify
-- Reload `a@a.com` (no hard refresh needed). Sidebar shows Equity Recapture Calculator unlocked, click navigates to `/calculators/equity-recapture` and renders without redirect or UpgradeModal.
-- Spot-check Plans / Debt Eliminator / Library / Partners still load.
-- Virtual Advisor still triggers the upgrade modal (no `pro` users yet).
+3. **Harden route guard against premature redirects**
+   - Update `UpgradeRouteGuard` to wait for subscription loading and sidebar config loading before computing the final access decision.
+   - Reset its one-shot `fired` flag when access becomes allowed so a stale blocked state cannot keep forcing upgrade behavior.
 
-## Out of scope
-No DB changes, no UI/UX redesign, no new admin controls.
+4. **Clean the checkout modal failure mode**
+   - Add a guard in `UpgradeModal`/checkout config so placeholder checkout URLs do not render as a broken iframe.
+   - Show a clear “checkout link not configured” state instead. This avoids the sad-file iframe if a truly locked feature is clicked before live GHL checkout URLs are added.
+
+## Validation
+
+After implementation:
+- Reload as `a@a.com`.
+- Confirm `get_subscription_tier` returns `partner`.
+- Confirm Equity Recapture Calculator is not locked in the sidebar.
+- Confirm navigating to `/calculators/equity-recapture` stays on the calculator route and does not open the upgrade modal or redirect to `/dashboard`.
+- Confirm Pro-only features, like Virtual Advisor if configured as `pro`, still gate correctly.
