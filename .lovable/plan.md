@@ -1,25 +1,36 @@
-## Make the default course banner color globally editable
+## Profile Download / Print
 
-**Where the orange comes from:** `src/pages/CoursePage.tsx` renders `course.cover_image_url || coverPlaceholder`, where `coverPlaceholder` is the static image `src/assets/course-placeholder.jpg` (the peach/orange gradient). It's the fallback shown for any course without its own cover image.
+Add a way for users to export the answers shown on their Profile page, respecting admin field visibility settings.
 
-**Approach:** Replace the static placeholder fallback with an admin-configurable CSS gradient stored in the existing `feature_flags` table (which already has a `value text` column). One global setting, used by every course that doesn't have its own `cover_image_url`. No per-course changes.
+### UI
 
-### Changes
+- Add a "Download" dropdown button in the Profile page header (top right, near the page title), styled like the existing `PlanDownload` dropdown:
+  - **Print / Save as PDF** — opens browser print dialog (`window.print()`), using a print-only stylesheet for clean output.
+  - **Download as PDF** — generates a PDF directly via `jsPDF` (already used by `planExport.ts` / `resultsPdfExport.ts`).
+  - **Download as CSV** — two-column "Field, Value" export for spreadsheet use.
 
-1. **Seed setting** (migration)
-   - Insert a `feature_flags` row: `id = 'course_banner_gradient'`, `enabled = true`, `value = 'from:#fed7aa;to:#fef3c7;angle:135'` (current orange feel as default so nothing visibly changes until admin edits it).
+### What gets included
 
-2. **Admin UI** — `src/components/admin/CoursesTab.tsx`
-   - Add a "Default Banner" section at the top with: two HSL/hex color pickers (start, end), an angle slider (0–360°), and a live preview swatch.
-   - Save button writes the encoded value back to `feature_flags`. Reads via the existing feature-flags hook/pattern.
+- Iterate the same fields the Profile page renders, gated by `useProfileFieldSettings().isVisible(field_key)` so admin-hidden fields are excluded.
+- Sections mirror the on-screen layout: Account info, Cash flow, Household, Goals & filing, Retirement, Insurance coverage, Emergency fund / employer match / tax-advantaged accounts, Stress questions, Company (if any).
+- Labels and human-readable values reuse the existing option arrays (`PROFILE_TYPES`, `FINANCIAL_GOALS`, `FILING_STATUSES`, `EMPLOYER_MATCH_OPTIONS`, etc.) so the export matches what the user sees, not raw enum keys.
+- Header on every export: user name, email, generation date, "RPRx For Life — Profile Summary".
+- Footer disclaimer matching other exports ("Educational use only. Not financial advice.").
 
-3. **Course page** — `src/pages/CoursePage.tsx`
-   - Read the `course_banner_gradient` flag.
-   - When `course.cover_image_url` is missing, render a `<div>` with `background: linear-gradient(...)` using the configured colors instead of the `<img src={coverPlaceholder}>`.
-   - Keep the existing dark overlay + title/description on top so contrast stays good in dark mode.
-   - Remove the now-unused `coverPlaceholder` import (asset file stays for safety).
+### Files
+
+- **New** `src/lib/profileExport.ts` — pure functions:
+  - `buildProfileExportRows(profile, isVisible)` → ordered `[{ section, label, value }]`
+  - `exportProfileAsPDF(rows, user)` (jsPDF)
+  - `exportProfileAsCSV(rows, user)` (download blob)
+  - `formatProfileValue(...)` helpers for currency / arrays / enums.
+- **New** `src/components/profile/ProfileDownload.tsx` — dropdown button (mirrors `PlanDownload.tsx`).
+- **Edit** `src/pages/Profile.tsx`:
+  - Render `<ProfileDownload />` in the page header.
+  - Add `print:hidden` to interactive controls (save bar, avatar upload buttons, invite card actions) and a minimal `print:block` header so `window.print()` produces a clean printout.
 
 ### Notes
-- Only one global setting — no per-course override added.
-- Existing courses that have uploaded a cover image are unaffected.
-- No schema changes beyond seeding one row in the existing `feature_flags` table.
+
+- No DB changes. No new dependencies (jsPDF already installed).
+- Visibility logic is centralized in `useProfileFieldSettings` and applied once in `buildProfileExportRows`, so future admin-hidden fields are automatically excluded from exports.
+- Empty/null fields are skipped from the export to avoid noise.
