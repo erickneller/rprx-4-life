@@ -52,7 +52,7 @@ export function DashboardContent() {
   }, [user?.id, profile?.onboarding_completed]);
 
   const isFirstTime = assessments.length === 0;
-  const hasNoHistory = assessments.length === 0 && plans.length === 0;
+
 
   const { surplus, status } = useMemo(() => {
     if (
@@ -87,7 +87,7 @@ export function DashboardContent() {
     return Math.round((paid / focusDebt.original_balance) * 100);
   }, [focusDebt]);
 
-  const activeDebtFocus = !hasNoHistory && hasActiveJourney && !!focusDebt;
+  const activeDebtFocus = hasActiveJourney && !!focusDebt;
 
   const focusPlanProgress = useMemo(() => {
     if (!focusPlan) return 0;
@@ -134,54 +134,48 @@ export function DashboardContent() {
         </div>
       ) : (
         <>
-          {hasNoHistory ? (
-            <>
-              <DashboardStreakBar />
-              <StartAssessmentCTA isFirstTime />
-            </>
-          ) : (
-            <>
-              <DashboardStreakBar />
-              {cardsLoading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {userOrder.length > 0 && (
-                    <div className="flex justify-end">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => resetOrder.mutate()}
-                        disabled={resetOrder.isPending}
-                        className="text-muted-foreground"
-                      >
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        Reset layout
-                      </Button>
-                    </div>
-                  )}
-                  <DashboardCardRenderer
-                    cards={mergedCards}
-                    cardProps={{
-                      motivation: {
-                        motivation: profile?.motivation_text ?? null,
-                        images: profile?.motivation_images ?? [],
-                        onEdit: () => setShowEditMotivation(true),
-                        onDelete: () => updateProfile.mutate({ motivation_text: null, motivation_images: [] }),
-                      },
-                      currentFocus: currentFocusProps,
-                      cashFlow: { surplus, status },
-                    }}
-                    onReorder={handleReorder}
-                  />
-                </div>
-              )}
+          <>
+            <DashboardStreakBar />
+            {cardsLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {userOrder.length > 0 && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => resetOrder.mutate()}
+                      disabled={resetOrder.isPending}
+                      className="text-muted-foreground"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      Reset layout
+                    </Button>
+                  </div>
+                )}
+                <DashboardCardRenderer
+                  cards={mergedCards}
+                  cardProps={{
+                    motivation: {
+                      motivation: profile?.motivation_text ?? null,
+                      images: profile?.motivation_images ?? [],
+                      onEdit: () => setShowEditMotivation(true),
+                      onDelete: () => updateProfile.mutate({ motivation_text: null, motivation_images: [] }),
+                    },
+                    currentFocus: currentFocusProps,
+                    cashFlow: { surplus, status },
+                  }}
+                  onReorder={handleReorder}
+                />
+              </div>
+            )}
 
-              {!focusPlan && !activeDebtFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
-            </>
-          )}
+            {!focusPlan && !activeDebtFocus && <StartAssessmentCTA isFirstTime={isFirstTime} />}
+          </>
+
 
           <EditMotivationDialog
             open={showEditMotivation}

@@ -1,36 +1,37 @@
-## Profile Download / Print
+# Fix company-invite onboarding flow
 
-Add a way for users to export the answers shown on their Profile page, respecting admin field visibility settings.
+Two separate bugs are causing the reported behavior. Both are scoped to flow/routing code — no DB or business-logic changes.
 
-### UI
+## Bug 1 — `/join` ignores the first-login flow preset
 
-- Add a "Download" dropdown button in the Profile page header (top right, near the page title), styled like the existing `PlanDownload` dropdown:
-  - **Print / Save as PDF** — opens browser print dialog (`window.print()`), using a print-only stylesheet for clean output.
-  - **Download as PDF** — generates a PDF directly via `jsPDF` (already used by `planExport.ts` / `resultsPdfExport.ts`).
-  - **Download as CSV** — two-column "Field, Value" export for spreadsheet use.
+`src/pages/Join.tsx` hardcodes `navigate('/wizard')` after signup (line 115), and the already-logged-in branch hardcodes `navigate('/dashboard')` (line 80). Neither consults `useFirstLoginFlow` + `getFirstDestination`, so admin-configured presets (e.g. `assessment_then_profile`, `dashboard_silent`, etc.) are bypassed for invited users.
 
-### What gets included
+### Fix
 
-- Iterate the same fields the Profile page renders, gated by `useProfileFieldSettings().isVisible(field_key)` so admin-hidden fields are excluded.
-- Sections mirror the on-screen layout: Account info, Cash flow, Household, Goals & filing, Retirement, Insurance coverage, Emergency fund / employer match / tax-advantaged accounts, Stress questions, Company (if any).
-- Labels and human-readable values reuse the existing option arrays (`PROFILE_TYPES`, `FINANCIAL_GOALS`, `FILING_STATUSES`, `EMPLOYER_MATCH_OPTIONS`, etc.) so the export matches what the user sees, not raw enum keys.
-- Header on every export: user name, email, generation date, "RPRx For Life — Profile Summary".
-- Footer disclaimer matching other exports ("Educational use only. Not financial advice.").
+In `src/pages/Join.tsx`:
+- Import `useFirstLoginFlow`, `useProfile`, `useAssessmentHistory`, `getFirstDestination`.
+- Replace both hardcoded destinations with `getFirstDestination({ preset, isProfileComplete, hasAssessments }) ?? '/dashboard'`.
+- For the post-signup branch, the new user has no profile/assessments yet, so call `getFirstDestination({ preset, isProfileComplete: false, hasAssessments: false })`. If it returns `null` (e.g. `dashboard_silent`), go to `/dashboard`; otherwise follow the preset (wizard, assessment, etc.). This matches what `Index.tsx` does for password/OAuth signups.
+- For the already-logged-in auto-join branch, compute the same way using the actual profile/assessment state so returning users land where the preset dictates.
 
-### Files
+This keeps the company-join flow consistent with `Index.tsx` and `WizardGuard`.
 
-- **New** `src/lib/profileExport.ts` — pure functions:
-  - `buildProfileExportRows(profile, isVisible)` → ordered `[{ section, label, value }]`
-  - `exportProfileAsPDF(rows, user)` (jsPDF)
-  - `exportProfileAsCSV(rows, user)` (download blob)
-  - `formatProfileValue(...)` helpers for currency / arrays / enums.
-- **New** `src/components/profile/ProfileDownload.tsx` — dropdown button (mirrors `PlanDownload.tsx`).
-- **Edit** `src/pages/Profile.tsx`:
-  - Render `<ProfileDownload />` in the page header.
-  - Add `print:hidden` to interactive controls (save bar, avatar upload buttons, invite card actions) and a minimal `print:block` header so `window.print()` produces a clean printout.
+## Bug 2 — Welcome card (and all configured cards) hidden for brand-new users
 
-### Notes
+In `src/components/dashboard/DashboardContent.tsx` (lines 54–55, 137–141), when a user has zero assessments **and** zero saved plans, the dashboard short-circuits to only show `<DashboardStreakBar />` + `<StartAssessmentCTA isFirstTime />`. The admin-configured cards (including any custom "Welcome" video card from `useDashboardConfig`) are skipped entirely.
 
-- No DB changes. No new dependencies (jsPDF already installed).
-- Visibility logic is centralized in `useProfileFieldSettings` and applied once in `buildProfileExportRows`, so future admin-hidden fields are automatically excluded from exports.
-- Empty/null fields are skipped from the export to avoid noise.
+### Fix
+
+Remove the `hasNoHistory` short-circuit so the configured cards always render. Specifically:
+- Always render `DashboardStreakBar` + `DashboardCardRenderer` with `mergedCards`.
+- Keep the existing fallback: if there's no focus plan and no active debt focus, render `<StartAssessmentCTA isFirstTime={isFirstTime} />` below the cards (this already handles the "nothing started yet" CTA).
+- Drop the unused `hasNoHistory` branch.
+
+Net result: new users see the welcome video card (and any other admin-pinned cards) plus the Start Assessment CTA at the bottom — instead of just the CTA.
+
+## Files touched
+
+- `src/pages/Join.tsx` — route both flows through `getFirstDestination`.
+- `src/components/dashboard/DashboardContent.tsx` — remove `hasNoHistory` early-return.
+
+No schema, hooks, or component API changes.
