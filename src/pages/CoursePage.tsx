@@ -13,7 +13,7 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import rehypeRaw from 'rehype-raw';
 import { supabase } from '@/integrations/supabase/client';
-import coverPlaceholder from '@/assets/course-placeholder.jpg';
+import { useCourseBannerSettings, bannerGradientCss } from '@/hooks/useCourseBannerSettings';
 import { cn } from '@/lib/utils';
 
 function VideoEmbed({ url }: { url: string }) {
