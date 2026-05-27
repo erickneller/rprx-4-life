@@ -27,7 +27,7 @@ interface PendingCompany {
  * Two flows:
  *   1. Already logged in  → join company immediately → /dashboard
  *   2. Not logged in       → show company name (locked) + signup form
- *                          → after signup, join company → /wizard
+ *                          → after signup, join company → destination per First-Login Flow
  */
 export default function Join() {
   const [searchParams] = useSearchParams();
