@@ -46,6 +46,9 @@ import { CoursesTab } from '@/components/admin/CoursesTab';
 import { ProfileFieldsTab } from '@/components/admin/ProfileFieldsTab';
 import { GhlProductMapTab } from '@/components/admin/GhlProductMapTab';
 import { LandingPageTab } from '@/components/admin/LandingPageTab';
+import { CheckoutLinksTab } from '@/components/admin/CheckoutLinksTab';
+
+
 
 
 const HORSEMAN_TYPES = ['interest', 'taxes', 'insurance', 'education'];
@@ -479,6 +482,9 @@ export default function AdminPanel() {
             <TabsTrigger value="ghl-products" className="gap-1">
               <Database className="h-4 w-4" /> GHL Products
             </TabsTrigger>
+            <TabsTrigger value="checkout-links" className="gap-1">
+              <Database className="h-4 w-4" /> Checkout Links
+            </TabsTrigger>
             <TabsTrigger value="landing-page" className="gap-1">
               <LayoutDashboard className="h-4 w-4" /> Landing Page
             </TabsTrigger>
@@ -761,6 +767,11 @@ export default function AdminPanel() {
           {/* ===== GHL PRODUCTS TAB ===== */}
           <TabsContent value="ghl-products" className="space-y-4">
             <GhlProductMapTab />
+          </TabsContent>
+
+          {/* ===== CHECKOUT LINKS TAB ===== */}
+          <TabsContent value="checkout-links" className="space-y-4">
+            <CheckoutLinksTab />
           </TabsContent>
         </Tabs>
       </div>

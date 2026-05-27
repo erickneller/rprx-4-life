@@ -1,29 +1,53 @@
-## Root cause
 
-`src/pages/Join.tsx` uses `useFirstLoginFlow()`, `useProfile()`, and `useAssessmentHistory()` to compute the post-signup destination, but never waits for those queries to finish.
+# Admin-Managed GHL Checkout Links
 
-- `useFirstLoginFlow` returns `DEFAULT_FIRST_LOGIN_FLOW = 'profile_then_assessment'` while loading.
-- `useProfile().isProfileComplete` is `false` until the new profile loads.
+Move the 4 checkout URLs (Partner Monthly/Yearly, Pro Monthly/Yearly) + public funnel URL out of hardcoded `ghlCheckoutConfig.ts` and into the existing `feature_flags` table so admins can update them without a redeploy. Also support pasting GHL's full **iframe embed snippet** (not just a URL) for a better in-app checkout experience.
 
-With that combination, `getFirstDestination()` resolves to `/wizard` even when the admin preset is actually `dashboard_silent`. The user gets pushed to the Profile Wizard ("Your Financial Snapshot") instead of the dashboard.
+## What the user will see
 
-## Fix — `src/pages/Join.tsx`
+- New admin tab **"Checkout Links"** (inside `/admin`) with 5 cards: Partner Monthly, Partner Yearly, Pro Monthly, Pro Yearly, Public Funnel.
+- Each card: a mode toggle (**URL** / **Embed snippet**), a textarea, Save button, and a small "Last updated" note.
+- The `UpgradeModal` keeps its current Partner/Pro × Monthly/Yearly tabs and renders whichever the admin saved (URL → iframe with that src; Embed → the pasted snippet). When blank, current "not configured yet" message stays.
 
-1. Pull loading flags from each hook:
-   - `useProfile()` → `isLoading: profileLoading`
-   - `useAssessmentHistory()` → `isLoading: assessmentsLoading, isFetched: assessmentsFetched`
-   - `useFirstLoginFlow()` → `isLoading: presetLoading`
+## Storage
 
-2. **Auto-join effect (already-logged-in path):** add `profileLoading || assessmentsLoading || !assessmentsFetched || presetLoading` to the early-return guard, and include those flags in the dependency array. Only navigate once the preset/profile/assessments queries have resolved.
+Single `feature_flags` row, id `ghl_checkout_config`, `value` = JSON string:
 
-3. **Signup handler:** after `supabase.auth.signUp()` succeeds, do **not** navigate immediately. Set a `pendingNavigate = true` flag and let a new effect handle the redirect once:
-   - `user` is populated (auto-signin completed), and
-   - `presetLoading`, `profileLoading`, `assessmentsLoading` are all false.
+```json
+{
+  "partner": {
+    "month": { "mode": "url", "value": "https://..." },
+    "year":  { "mode": "embed", "value": "<iframe ...></iframe><script ...></script>" }
+  },
+  "pro":     { "month": { "mode": "url", "value": "" }, "year": {...} },
+  "publicFunnel": "https://link.rprx4life.com/pricing"
+}
+```
 
-   That effect calls `joinByToken(token)` (if not already joined) and then `getFirstDestination(...)` with the now-correct values, falling back to `/dashboard`.
+No migration needed — `feature_flags` already exists with admin-write RLS.
 
-4. Keep the toast on signup success; show a "Setting things up…" spinner while `pendingNavigate` is true so the form doesn't sit visible during the wait.
+## Files
+
+**New**
+- `src/hooks/useCheckoutConfig.ts` — `useCheckoutConfig()` (read) + `useUpdateCheckoutConfig()` (admin write), mirroring `useCourseBannerSettings`. Falls back to current hardcoded defaults when row missing/blank.
+- `src/components/admin/CheckoutLinksTab.tsx` — 5 cards UI with URL/Embed toggle + Save.
+
+**Edited**
+- `src/lib/ghlCheckoutConfig.ts` — Keep current values as `DEFAULT_CHECKOUT_CONFIG`. Add `CheckoutSlot = { mode: 'url'|'embed', value: string }` types. `buildCheckoutUrl` stays for URL mode; add `isEmbed(slot)` helper.
+- `src/components/billing/UpgradeModal.tsx` — Replace hardcoded `buildCheckoutUrl` call with config-driven lookup. If `mode === 'embed'`, render the sanitized snippet via `dangerouslySetInnerHTML` inside the iframe container. If `mode === 'url'`, keep today's `<iframe src>` flow. Show "not configured yet" when `value` is empty.
+- `src/pages/AdminPanel.tsx` — Add new tab "Checkout Links" pointing to `CheckoutLinksTab`.
+
+**Untouched** — `ghl-checkout-webhook` edge function, `ghl_product_tier_map`, `useSubscription`, anything in the auth/dashboard flow.
+
+## Security
+
+- `feature_flags` already restricts writes to admins via RLS.
+- Embed mode uses `dangerouslySetInnerHTML`. Mitigation: client-side allowlist — the saved HTML must contain only `<iframe>` and `<script>` tags whose `src` references `link.rprx4life.com`, `*.leadconnectorhq.com`, or `*.msgsndr.com` (GHL's CDN). Reject on Save with a clear error if anything else is present. Admin-only path + allowlist = acceptable risk for an admin-gated modal.
 
 ## Out of scope
-- No change to `WizardGuard`, `Index.tsx`, or `firstLoginFlow.ts`.
-- No change to feature-flag schema.
+
+- No changes to the public landing-page funnel button beyond reading `publicFunnel` from the same config.
+- No edits to the webhook, product map, or subscription tier logic.
+- No Stripe/legacy w2 checkout URLs.
+
+Once approved I'll implement in build mode.
