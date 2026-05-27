@@ -74,19 +74,33 @@ export function UpgradeModal({ open, onOpenChange, initialPlan = 'partner', init
         </div>
 
         <div className="flex-1 relative bg-muted/30">
-          {iframeLoading && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          {checkoutUrl.includes('REPLACE_') ? (
+            <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
+              <div className="max-w-md space-y-2">
+                <p className="font-medium">Checkout link not configured yet</p>
+                <p className="text-sm text-muted-foreground">
+                  An admin needs to add the live GoHighLevel checkout URL for
+                  the <strong>{plan}</strong> ({interval}) plan before this can be completed.
+                </p>
+              </div>
             </div>
+          ) : (
+            <>
+              {iframeLoading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              <iframe
+                key={checkoutUrl}
+                src={checkoutUrl}
+                title="Checkout"
+                className="w-full h-full border-0"
+                onLoad={() => setIframeLoading(false)}
+                allow="payment"
+              />
+            </>
           )}
-          <iframe
-            key={checkoutUrl}
-            src={checkoutUrl}
-            title="Checkout"
-            className="w-full h-full border-0"
-            onLoad={() => setIframeLoading(false)}
-            allow="payment"
-          />
         </div>
       </DialogContent>
     </Dialog>
