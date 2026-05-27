@@ -36,7 +36,7 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
   const linkType = item.link_type;
   const url = linkType === 'course' ? `/course/${item.id}` : (item.url || '#');
   const { isLocked, requireUpgrade } = useUpgradeGate();
-  const { tier } = useSubscription();
+  const { tier, isLoading: subLoading } = useSubscription();
 
   // DB-driven gating is authoritative. If the row's required_tier column exists
   // (including 'free'), it wins over the legacy hardcoded NAV_ITEM_FEATURE map.
@@ -44,9 +44,13 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
   const dbTier = item.required_tier != null
     ? normalizeRequiredTier(item.required_tier)
     : (featureKey ? undefined : 'free');
-  const locked = dbTier !== undefined
-    ? !tierMeets(tier, dbTier)
-    : (featureKey ? isLocked(featureKey) : false);
+  // Never lock while the subscription tier is still loading — otherwise a
+  // transient 'free' default flashes the lock and can open the upgrade modal.
+  const locked = subLoading
+    ? false
+    : dbTier !== undefined
+      ? !tierMeets(tier, dbTier)
+      : (featureKey ? isLocked(featureKey) : false);
 
   if (linkType === 'coming_soon') {
     return (
@@ -130,12 +134,12 @@ export function AppSidebar() {
   const isCompanyAdmin = membership?.role === 'owner' || membership?.role === 'admin';
   const { enabled: advisorEnabled, url: advisorUrl } = useAdvisorLink();
   const { rows, isVisible, sections, itemsBySection, orphanItems } = useSidebarConfig();
-  const { tier } = useSubscription();
+  const { tier, isLoading: subLoading } = useSubscription();
   const { requireUpgrade } = useUpgradeGate();
 
   const advisorRow = rows.find(r => r.id === 'item:advisor_link' || r.url === '/virtual-advisor');
   const advisorRequired = normalizeRequiredTier(advisorRow?.required_tier);
-  const advisorLocked = !tierMeets(tier, advisorRequired);
+  const advisorLocked = !subLoading && !tierMeets(tier, advisorRequired);
 
   const resolveAdvisorHref = (url: string) => {
     const digits = url.replace(/\D/g, '');

@@ -9,7 +9,7 @@ export function useSubscription() {
   const { user } = useAuth();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
 
-  const { data: rawTier = 'free', isLoading: subLoading } = useQuery({
+  const { data: rawTier, isLoading: subLoading, isFetched: subFetched } = useQuery({
     queryKey: ['subscription-tier', 'v2', user?.id],
     queryFn: async () => {
       if (!user) return 'free';
@@ -19,23 +19,24 @@ export function useSubscription() {
         console.error('Error fetching subscription tier:', error);
         return 'free';
       }
-      // Defensive: map any legacy 'paid' value to 'partner'
       const raw = (data as string) || 'free';
       return raw === 'paid' ? 'partner' : raw;
     },
-    enabled: !!user && !isAdmin,
+    // Wait until we know admin status; admins skip this query entirely.
+    enabled: !!user && !adminLoading && !isAdmin,
   });
 
-  // Admins get top tier. Defensive normalize in case any stale cached value
-  // (or future migration drift) leaks the legacy 'paid' string here.
-  const normalized = rawTier === 'paid' ? 'partner' : rawTier;
+  const normalized = rawTier === 'paid' ? 'partner' : (rawTier ?? 'free');
   const tier = (isAdmin ? 'pro' : normalized) as SubscriptionTier;
 
+  // Loading = auth/admin still resolving, OR non-admin sub query hasn't returned
+  const isLoading =
+    adminLoading ||
+    (!!user && !isAdmin && (subLoading || !subFetched));
 
   const isFree = tier === 'free';
   const isPartner = tier === 'partner';
   const isPro = tier === 'pro';
-  // Any paying tier (partner or pro) counts as "paid" for backward-compat
   const isPaid = isPartner || isPro;
 
   return {
@@ -44,6 +45,6 @@ export function useSubscription() {
     isPartner,
     isPro,
     isPaid,
-    isLoading: adminLoading || (!isAdmin && subLoading),
+    isLoading,
   };
 }

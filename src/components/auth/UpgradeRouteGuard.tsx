@@ -40,14 +40,22 @@ export function UpgradeRouteGuard({ feature }: UpgradeRouteGuardProps) {
     : featureRequiredTier(feature);
   const allowed = tierMeets(tier, required);
 
+  // Reset the one-shot flag whenever access flips to allowed (tier finally loaded).
+  useEffect(() => {
+    if (allowed) fired.current = false;
+  }, [allowed]);
+
   useEffect(() => {
     if (isLoading || navLoading || allowed || fired.current) return;
     fired.current = true;
     requireUpgrade({ feature, requiredTier: required });
   }, [isLoading, navLoading, allowed, feature, required, requireUpgrade]);
 
+  // Don't redirect or gate while the user's tier is still resolving.
   if (isLoading || navLoading) return null;
   if (!allowed) return <Navigate to="/dashboard" replace state={{ from: location.pathname }} />;
+
+
 
   return <Outlet />;
 }
