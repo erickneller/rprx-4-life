@@ -65,6 +65,16 @@ function parse(value: unknown): CheckoutConfig {
         typeof p?.publicFunnel === 'string' && p.publicFunnel
           ? p.publicFunnel
           : DEFAULT_CHECKOUT_CONFIG.publicFunnel,
+      header: {
+        title:
+          typeof p?.header?.title === 'string' && p.header.title.trim()
+            ? p.header.title
+            : DEFAULT_CHECKOUT_HEADER.title,
+        description:
+          typeof p?.header?.description === 'string' && p.header.description.trim()
+            ? p.header.description
+            : DEFAULT_CHECKOUT_HEADER.description,
+      },
     };
   } catch {
     return DEFAULT_CHECKOUT_CONFIG;
