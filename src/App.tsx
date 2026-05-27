@@ -41,6 +41,7 @@ import EquityRecapturePage from "./pages/EquityRecapture";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 import { UpgradeRouteGuard } from "@/components/auth/UpgradeRouteGuard";
 import { UpgradeGateProvider } from "@/contexts/UpgradeGateContext";
+import { AuthProvider } from "@/hooks/useAuth";
 import { useAffiliateCapture } from "@/hooks/useAffiliateCapture";
 
 const queryClient = new QueryClient();
@@ -57,9 +58,11 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AuthProvider>
         <NavigationBlockerProvider>
         <UpgradeGateProvider>
         <AffiliateCaptureBridge />
+
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
@@ -111,7 +114,9 @@ const App = () => (
         </Routes>
         </UpgradeGateProvider>
         </NavigationBlockerProvider>
+        </AuthProvider>
       </BrowserRouter>
+
     </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
