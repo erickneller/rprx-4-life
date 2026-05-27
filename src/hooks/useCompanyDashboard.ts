@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from './useCompany';
 
+export type SubscriptionPlan = 'free' | 'partner' | 'pro';
+
 export interface CompanyMemberStats {
   user_id: string;
   full_name: string | null;
@@ -9,9 +11,17 @@ export interface CompanyMemberStats {
   last_active_date: string | null;
   current_streak: number;
   current_tier: string;
+  subscription_tier: SubscriptionPlan;
   onboarding_completed: boolean;
   has_assessment: boolean;
   total_points_earned: number;
+}
+
+function normalizePlan(raw: unknown): SubscriptionPlan {
+  const v = (raw as string) || 'free';
+  if (v === 'paid' || v === 'partner') return 'partner';
+  if (v === 'pro') return 'pro';
+  return 'free';
 }
 
 export function useCompanyDashboard() {
