@@ -1,39 +1,22 @@
-## Goal
-Collapse the tier model to **free / partner / pro** everywhere, and migrate all existing `paid` users to `partner`. Today the DB enum still has a legacy `paid` value and the code carries dual logic for it, which is why gating feels inconsistent.
+## Likely cause
+DB is correct: `a@a.com` has `tier=partner`, the equity row's `required_tier=partner`, and `get_subscription_tier()` returns `partner`. So the gate is failing client-side, almost certainly from **stale state** carrying the legacy `'paid'` value:
 
-## Current state
-- DB enum `subscription_tier` = `free | paid | partner | pro`
-- `user_subscriptions`: 3 users on `free`, 2 users on `paid` (incl. `a@a.com`), 0 on `partner`/`pro`
-- `useSubscription.ts` returns `'paid'` as its own tier and treats it as "any paying"
-- `upgradeFeatures.ts` ranks `paid` and `partner` equally (rank 1) — so route gating *should* already let `paid` through to the Equity Calculator. The inconsistency is the dual code paths and label confusion, not a hard block.
+- React Query has a cached `['subscription-tier', userId]` entry from before the migration. The defensive `raw === 'paid' ? 'partner'` mapping I added only runs **inside `queryFn`**, so a cached value never gets normalized.
+- With `tier === 'paid'` reaching the guard, `TIER_RANK['paid']` is now `undefined` (I removed it), so `tierMeets('paid', 'partner')` returns `false` → `UpgradeRouteGuard` redirects to `/dashboard`. Same effect in `AppSidebar` (lock icon + UpgradeModal).
+- A hard refresh would fix it, but the app should be self-healing.
 
-## Plan
+## Fix
 
-### 1. DB migration — normalize tier values
-- Update every `user_subscriptions.tier = 'paid'` → `'partner'` (also `tier_override`)
-- Update `ghl_product_tier_map.tier = 'paid'` → `'partner'`
-- Drop `'paid'` from the `subscription_tier` enum (rebuild enum as `free | partner | pro`, cast columns)
-- Leave `get_subscription_tier()` as-is — it will now only ever return `free | partner | pro`
+1. **`src/hooks/useSubscription.ts`** — normalize on read, not only in `queryFn`. After the `useQuery` call, coerce any legacy value: `const tier = (isAdmin ? 'pro' : (rawTier === 'paid' ? 'partner' : rawTier)) as SubscriptionTier;`. This catches stale cache entries and any in-flight `'paid'` values.
 
-### 2. Frontend — remove the `paid` branch
-- `src/hooks/useSubscription.ts`: change `SubscriptionTier` to `'free' | 'partner' | 'pro'`; drop the `isPaid = tier === 'paid' || ...` legacy line; keep `isPaid` as a derived alias of "partner or higher" for backward compatibility with existing call sites.
-- `src/lib/upgradeFeatures.ts`: remove `'paid': 1` from `TIER_RANK` (no longer reachable).
-- Grep call sites of `'paid'` literal and `isPaid` and confirm none depend on the legacy meaning. Expected touch points: billing UI labels, admin user table tier badge, useSubscription consumers.
+2. **`src/lib/upgradeFeatures.ts`** — add a defensive `'paid': 1` entry back to `TIER_RANK` so any stray `'paid'` string anywhere in the app ranks as partner instead of `undefined` → 0. Keep the public `RequiredTier` / `SubscriptionTier` unions at `free | partner | pro`; the extra rank key is purely a runtime safety net.
 
-### 3. Admin UI sanity
-- Confirm the admin user-management screen's tier dropdown lists only `free / partner / pro` after the enum change (it reads from the enum).
+3. **One-time cache bump** — change the `useSubscription` query key from `['subscription-tier', user.id]` to `['subscription-tier', 'v2', user.id]` so any persisted/legacy cached `'paid'` entry is evicted on next mount. (Also update the matching `qc.invalidateQueries` / `qc.getQueryData` calls in `src/components/billing/UpgradeModal.tsx`.)
 
-### 4. Verify
-- Reload `a@a.com` → sidebar shows Equity Calculator unlocked, `/calculators/equity-recapture` loads without UpgradeModal.
-- Spot-check Plans, Debt Eliminator, Library, Partners (all `partner`-gated) load for `a@a.com`.
-- Spot-check Virtual Advisor still shows the upgrade gate (no `pro` users exist yet, as you confirmed).
+## Verify
+- Reload `a@a.com` (no hard refresh needed). Sidebar shows Equity Recapture Calculator unlocked, click navigates to `/calculators/equity-recapture` and renders without redirect or UpgradeModal.
+- Spot-check Plans / Debt Eliminator / Library / Partners still load.
+- Virtual Advisor still triggers the upgrade modal (no `pro` users yet).
 
 ## Out of scope
-- No new admin controls, no Stripe/GHL webhook changes, no UI redesign. Pure normalization.
-
-## Tier mapping going forward
-| Tier | Who | Unlocks |
-|---|---|---|
-| `free` | Default | Dashboard, profile, assessment, results |
-| `partner` | Paying members | + Strategy Assistant, Plans, Debt Eliminator, Library, Partners, **Equity Recapture Calculator** |
-| `pro` | Reserved | Currently nothing exclusive — placeholder for Virtual Advisor / Family Overview when those launch |
+No DB changes, no UI/UX redesign, no new admin controls.

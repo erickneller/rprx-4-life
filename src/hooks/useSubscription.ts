@@ -10,7 +10,7 @@ export function useSubscription() {
   const { isAdmin, isLoading: adminLoading } = useAdmin();
 
   const { data: rawTier = 'free', isLoading: subLoading } = useQuery({
-    queryKey: ['subscription-tier', user?.id],
+    queryKey: ['subscription-tier', 'v2', user?.id],
     queryFn: async () => {
       if (!user) return 'free';
       const { data, error } = await supabase
@@ -26,8 +26,11 @@ export function useSubscription() {
     enabled: !!user && !isAdmin,
   });
 
-  // Admins get top tier
-  const tier = (isAdmin ? 'pro' : rawTier) as SubscriptionTier;
+  // Admins get top tier. Defensive normalize in case any stale cached value
+  // (or future migration drift) leaks the legacy 'paid' string here.
+  const normalized = rawTier === 'paid' ? 'partner' : rawTier;
+  const tier = (isAdmin ? 'pro' : normalized) as SubscriptionTier;
+
 
   const isFree = tier === 'free';
   const isPartner = tier === 'partner';
