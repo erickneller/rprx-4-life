@@ -556,6 +556,13 @@ export default function Profile() {
   return (
     <AuthenticatedLayout title="Profile">
       <div className="container max-w-2xl py-8 space-y-6">
+        <div className="flex items-center justify-between print:hidden">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Your Profile</h1>
+            <p className="text-sm text-muted-foreground">Download or print a copy of your profile answers.</p>
+          </div>
+          <ProfileDownload />
+        </div>
         {billingCardEnabled && <BillingCard />}
         {/* Profile Photo Card */}
         <Card>
