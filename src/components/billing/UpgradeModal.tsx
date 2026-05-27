@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { buildCheckoutUrl, type PlanKey, type IntervalKey } from '@/lib/ghlCheckoutConfig';
+import { type PlanKey, type IntervalKey } from '@/lib/ghlCheckoutConfig';
 import { getStoredAffiliateRef } from '@/lib/affiliateStorage';
+import { useCheckoutConfig } from '@/hooks/useCheckoutConfig';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -16,9 +17,22 @@ interface UpgradeModalProps {
   initialInterval?: IntervalKey;
 }
 
+function appendParams(rawUrl: string, params: Record<string, string | null | undefined>): string {
+  try {
+    const url = new URL(rawUrl);
+    for (const [k, v] of Object.entries(params)) {
+      if (v) url.searchParams.set(k, v);
+    }
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 export function UpgradeModal({ open, onOpenChange, initialPlan = 'partner', initialInterval = 'month' }: UpgradeModalProps) {
   const { user } = useAuth();
   const { tier } = useSubscription();
+  const { config } = useCheckoutConfig();
   const qc = useQueryClient();
   const [plan, setPlan] = useState<PlanKey>(initialPlan);
   const [interval, setInterval] = useState<IntervalKey>(initialInterval);
@@ -42,11 +56,20 @@ export function UpgradeModal({ open, onOpenChange, initialPlan = 'partner', init
     return () => window.clearInterval(id);
   }, [open, user, qc, startingTier, onOpenChange]);
 
-  const checkoutUrl = buildCheckoutUrl(plan, interval, {
-    email: user?.email,
-    userId: user?.id,
-    ref: getStoredAffiliateRef(),
-  });
+  const slot = config[plan][interval];
+  const isBlank = !slot.value.trim();
+
+  const checkoutUrl = useMemo(() => {
+    if (slot.mode !== 'url' || isBlank) return '';
+    return appendParams(slot.value, {
+      email: user?.email ?? null,
+      user_id: user?.id ?? null,
+      ref: getStoredAffiliateRef(),
+    });
+  }, [slot, isBlank, user]);
+
+  // Embed mode: render the admin-saved snippet (validated to GHL hosts on save).
+  const embedHtml = slot.mode === 'embed' && !isBlank ? slot.value : '';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -73,17 +96,22 @@ export function UpgradeModal({ open, onOpenChange, initialPlan = 'partner', init
           </Tabs>
         </div>
 
-        <div className="flex-1 relative bg-muted/30">
-          {checkoutUrl.includes('REPLACE_') ? (
+        <div className="flex-1 relative bg-muted/30 overflow-auto">
+          {isBlank ? (
             <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
               <div className="max-w-md space-y-2">
                 <p className="font-medium">Checkout link not configured yet</p>
                 <p className="text-sm text-muted-foreground">
-                  An admin needs to add the live GoHighLevel checkout URL for
+                  An admin needs to add the live GoHighLevel checkout for
                   the <strong>{plan}</strong> ({interval}) plan before this can be completed.
                 </p>
               </div>
             </div>
+          ) : slot.mode === 'embed' ? (
+            <div
+              className="w-full h-full p-2"
+              dangerouslySetInnerHTML={{ __html: embedHtml }}
+            />
           ) : (
             <>
               {iframeLoading && (
