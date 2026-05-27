@@ -1,54 +1,39 @@
-## Equity Recapture Calculator — implementation plan
+## Goal
+Collapse the tier model to **free / partner / pro** everywhere, and migrate all existing `paid` users to `partner`. Today the DB enum still has a legacy `paid` value and the code carries dual logic for it, which is why gating feels inconsistent.
 
-A mortgage-acceleration calculator behind the existing paid-tier paywall, accessible from a new "Calculators" sidebar group. Logic from the uploaded bundle is copied verbatim; only Supabase import paths are rewired to the project's existing client.
+## Current state
+- DB enum `subscription_tier` = `free | paid | partner | pro`
+- `user_subscriptions`: 3 users on `free`, 2 users on `paid` (incl. `a@a.com`), 0 on `partner`/`pro`
+- `useSubscription.ts` returns `'paid'` as its own tier and treats it as "any paying"
+- `upgradeFeatures.ts` ranks `paid` and `partner` equally (rank 1) — so route gating *should* already let `paid` through to the Equity Calculator. The inconsistency is the dual code paths and label confusion, not a hard block.
 
-### 1. Database
-The target table `public.calculator_runs` already exists in this project with the correct columns, RLS policies, and `set_updated_at` trigger (verified in current schema). The bundled `supabase_migration.sql` is idempotent, but since the schema already matches, I'll run only what's missing:
-- Add the composite index `calculator_runs_user_type_created_idx` on `(user_id, calculator_type, created_at desc)` if it isn't already there.
-- Add explicit `GRANT SELECT, INSERT, UPDATE, DELETE ON public.calculator_runs TO authenticated;` and `GRANT ALL ... TO service_role;` to guarantee Data API access.
+## Plan
 
-No other schema changes.
+### 1. DB migration — normalize tier values
+- Update every `user_subscriptions.tier = 'paid'` → `'partner'` (also `tier_override`)
+- Update `ghl_product_tier_map.tier = 'paid'` → `'partner'`
+- Drop `'paid'` from the `subscription_tier` enum (rebuild enum as `free | partner | pro`, cast columns)
+- Leave `get_subscription_tier()` as-is — it will now only ever return `free | partner | pro`
 
-### 2. Dependencies
-Already installed: `react-hook-form`, `@hookform/resolvers`, `zod`, `@supabase/supabase-js`, `lucide-react`, and all required shadcn primitives (`card`, `button`, `input`, `label`, `select`, `dialog`, `table`). Nothing to add.
+### 2. Frontend — remove the `paid` branch
+- `src/hooks/useSubscription.ts`: change `SubscriptionTier` to `'free' | 'partner' | 'pro'`; drop the `isPaid = tier === 'paid' || ...` legacy line; keep `isPaid` as a derived alias of "partner or higher" for backward compatibility with existing call sites.
+- `src/lib/upgradeFeatures.ts`: remove `'paid': 1` from `TIER_RANK` (no longer reachable).
+- Grep call sites of `'paid'` literal and `isPaid` and confirm none depend on the legacy meaning. Expected touch points: billing UI labels, admin user table tier badge, useSubscription consumers.
 
-### 3. Calculator bundle (verbatim copy with one rewire)
-Create `src/components/calculators/EquityRecapture/` with the seven files from the zip:
-- `types.ts`, `calculations.ts`, `schema.ts`, `ResultsDisplay.tsx`, `SavedRunsList.tsx`, `Calculator.tsx`, `index.ts`
+### 3. Admin UI sanity
+- Confirm the admin user-management screen's tier dropdown lists only `free / partner / pro` after the enum change (it reads from the enum).
 
-**Only modification:** swap `import { supabase } from '@/lib/supabase'` for `import { supabase } from '@/integrations/supabase/client'` in `Calculator.tsx` and `SavedRunsList.tsx`. This avoids creating a duplicate Supabase client (the project already has one with proper auth config) and keeps `calculations.ts` untouched as required.
+### 4. Verify
+- Reload `a@a.com` → sidebar shows Equity Calculator unlocked, `/calculators/equity-recapture` loads without UpgradeModal.
+- Spot-check Plans, Debt Eliminator, Library, Partners (all `partner`-gated) load for `a@a.com`.
+- Spot-check Virtual Advisor still shows the upgrade gate (no `pro` users exist yet, as you confirmed).
 
-Skip creating `src/lib/supabase.ts` for the same reason.
+## Out of scope
+- No new admin controls, no Stripe/GHL webhook changes, no UI redesign. Pure normalization.
 
-### 4. Print styles
-Append the contents of `print-styles.css` to `src/index.css` (do not replace existing rules). Wrap in a clearly labeled section comment.
-
-### 5. Route
-In `src/App.tsx`, add inside the existing `UpgradeRouteGuard` block (paid-tier guard, matching Strategy Assistant / Plans / Debt Eliminator):
-```tsx
-<Route element={<UpgradeRouteGuard feature="equity-recapture-calculator" />}>
-  <Route
-    path="/calculators/equity-recapture"
-    element={<ProtectedRoute><WizardGuard><EquityRecaptureCalculator /></WizardGuard></ProtectedRoute>}
-  />
-</Route>
-```
-Register `"equity-recapture-calculator"` as a new feature key in `src/lib/upgradeFeatures.ts` so the gate copy renders correctly.
-
-### 6. Navigation
-The sidebar (`src/components/layout/AppSidebar.tsx`) is driven by a categorized config (`useSidebarConfig`). Add a new top-level "Calculators" category containing one item:
-- Label: "Equity Recapture"
-- Path: `/calculators/equity-recapture`
-- Icon: `Calculator` from lucide-react
-- Tier-gated (paid) so free users see the same lock affordance other paid items get.
-
-I'll inspect `useSidebarConfig`/`AppSidebar` first in build mode to insert the category in the right place and in the project's existing pattern.
-
-### 7. Verification
-- Run the Supabase linter after the migration.
-- Load `/calculators/equity-recapture` as an authenticated paid user, run a default calculation, save a run, reload, delete a run, and trigger the print dialog to confirm the print stylesheet hides chrome.
-
-### Out of scope
-- No edits to `calculations.ts` math.
-- No new Supabase client file.
-- No dashboard cards, gamification hooks, or admin config — just route + nav.
+## Tier mapping going forward
+| Tier | Who | Unlocks |
+|---|---|---|
+| `free` | Default | Dashboard, profile, assessment, results |
+| `partner` | Paying members | + Strategy Assistant, Plans, Debt Eliminator, Library, Partners, **Equity Recapture Calculator** |
+| `pro` | Reserved | Currently nothing exclusive — placeholder for Virtual Advisor / Family Overview when those launch |
