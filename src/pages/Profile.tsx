@@ -19,6 +19,7 @@ import { PROFILE_TYPES, FINANCIAL_GOALS, FILING_STATUSES } from '@/lib/profileTy
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning';
 import { UnsavedChangesDialog } from '@/components/profile/UnsavedChangesDialog';
+import { ProfileDownload } from '@/components/profile/ProfileDownload';
 import { BadgeDisplay as BadgeDisplayComponent } from '@/components/gamification/BadgeDisplay';
 import { StreakCounter as StreakCounterComponent } from '@/components/gamification/StreakCounter';
 import { GamificationScoreCard } from '@/components/gamification/GamificationScoreCard';
@@ -556,6 +557,13 @@ export default function Profile() {
   return (
     <AuthenticatedLayout title="Profile">
       <div className="container max-w-2xl py-8 space-y-6">
+        <div className="flex items-center justify-between print:hidden">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Your Profile</h1>
+            <p className="text-sm text-muted-foreground">Download or print a copy of your profile answers.</p>
+          </div>
+          <ProfileDownload />
+        </div>
         {billingCardEnabled && <BillingCard />}
         {/* Profile Photo Card */}
         <Card>
