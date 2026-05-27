@@ -83,6 +83,32 @@ export function CheckoutLinksTab() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="p-4 space-y-3 lg:col-span-2">
+          <h3 className="font-semibold">Modal Header</h3>
+          <div className="space-y-1">
+            <Label className="text-xs">Title</Label>
+            <Input
+              placeholder="Upgrade your plan"
+              value={draft.header.title}
+              onChange={(e) =>
+                setDraft((d) => (d ? { ...d, header: { ...d.header, title: e.target.value } } : d))
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Description</Label>
+            <Textarea
+              rows={2}
+              placeholder="Shown under the title in the upgrade modal."
+              value={draft.header.description}
+              onChange={(e) =>
+                setDraft((d) =>
+                  d ? { ...d, header: { ...d.header, description: e.target.value } } : d,
+                )
+              }
+            />
+          </div>
+        </Card>
         {SLOTS.map(({ plan, interval, label }) => {
           const slot = draft[plan][interval];
           return (
