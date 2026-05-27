@@ -37,12 +37,18 @@ export default function CompanyDashboard() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const paidMembers = members.filter(m => m.subscription_tier !== 'free').length;
+
   const statCards = [
     { label: 'Total Members', value: stats.totalMembers, icon: Users },
     { label: 'Active This Week', value: stats.activeThisWeek, icon: Activity },
+    { label: 'Paid Members', value: paidMembers, icon: Flame },
     { label: 'Assessments Done', value: stats.assessmentsCompleted, icon: ClipboardCheck },
-    { label: 'Onboarding Done', value: stats.onboardingCompleted, icon: Flame },
   ];
+
+  const planVariant = (p: string): 'default' | 'secondary' | 'outline' =>
+    p === 'pro' ? 'default' : p === 'partner' ? 'secondary' : 'outline';
+  const planLabel = (p: string) => p.charAt(0).toUpperCase() + p.slice(1);
 
   return (
     <AuthenticatedLayout>
