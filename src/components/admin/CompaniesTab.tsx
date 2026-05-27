@@ -311,8 +311,8 @@ export function CompaniesTab() {
                 onChange={e => setNewPlan(e.target.value as any)}
               >
                 <option value="free">Free</option>
+                <option value="partner">Partner</option>
                 <option value="pro">Pro</option>
-                <option value="enterprise">Enterprise</option>
               </select>
             </div>
             <div className="flex gap-2 justify-end pt-2">
