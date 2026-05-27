@@ -105,10 +105,10 @@ export function EquityRecaptureCalculator() {
     <div className="space-y-6 print:space-y-3">
       {/* Page header */}
       <div className="print:hidden">
-        <h1 className="text-3xl font-bold text-slate-900">
+        <h1 className="text-3xl font-bold text-foreground">
           Equity Recapture Calculator
         </h1>
-        <p className="text-slate-600 mt-1">
+        <p className="text-muted-foreground mt-1">
           Compare a paid-as-scheduled mortgage against the same loan with extra
           principal payments. See exactly how much interest you save and how
           many years you cut off the clock.
