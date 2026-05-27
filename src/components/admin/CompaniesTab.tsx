@@ -38,11 +38,11 @@ export function CompaniesTab() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newPlan, setNewPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
+  const [newPlan, setNewPlan] = useState<'free' | 'partner' | 'pro'>('free');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<CompanyRow | null>(null);
   const [editName, setEditName] = useState('');
-  const [editPlan, setEditPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
+  const [editPlan, setEditPlan] = useState<'free' | 'partner' | 'pro'>('free');
   const [deleteTarget, setDeleteTarget] = useState<CompanyRow | null>(null);
 
   // ─── Fetch all companies with member counts ─────────────────────────────
@@ -219,7 +219,7 @@ export function CompaniesTab() {
                   <TableCell className="font-medium">{company.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground font-mono">{company.slug}</TableCell>
                   <TableCell>
-                    <Badge variant={company.plan === 'enterprise' ? 'default' : company.plan === 'pro' ? 'secondary' : 'outline'}>
+                    <Badge variant={company.plan === 'pro' ? 'default' : company.plan === 'partner' ? 'secondary' : 'outline'} className="capitalize">
                       {company.plan}
                     </Badge>
                   </TableCell>
@@ -311,8 +311,8 @@ export function CompaniesTab() {
                 onChange={e => setNewPlan(e.target.value as any)}
               >
                 <option value="free">Free</option>
+                <option value="partner">Partner</option>
                 <option value="pro">Pro</option>
-                <option value="enterprise">Enterprise</option>
               </select>
             </div>
             <div className="flex gap-2 justify-end pt-2">
@@ -354,8 +354,8 @@ export function CompaniesTab() {
                 onChange={e => setEditPlan(e.target.value as any)}
               >
                 <option value="free">Free</option>
+                <option value="partner">Partner</option>
                 <option value="pro">Pro</option>
-                <option value="enterprise">Enterprise</option>
               </select>
             </div>
             <div className="flex gap-2 justify-end pt-2">
