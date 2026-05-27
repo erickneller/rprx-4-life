@@ -219,7 +219,7 @@ export function CompaniesTab() {
                   <TableCell className="font-medium">{company.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground font-mono">{company.slug}</TableCell>
                   <TableCell>
-                    <Badge variant={company.plan === 'enterprise' ? 'default' : company.plan === 'pro' ? 'secondary' : 'outline'}>
+                    <Badge variant={company.plan === 'pro' ? 'default' : company.plan === 'partner' ? 'secondary' : 'outline'} className="capitalize">
                       {company.plan}
                     </Badge>
                   </TableCell>
