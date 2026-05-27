@@ -75,10 +75,8 @@ export function UpgradeModal({ open, onOpenChange, initialPlan = 'partner', init
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="p-6 pb-3 border-b">
-          <DialogTitle>Upgrade your plan</DialogTitle>
-          <DialogDescription>
-            Secure checkout powered by GoHighLevel. You'll stay logged in here — your access updates automatically.
-          </DialogDescription>
+          <DialogTitle>{config.header.title}</DialogTitle>
+          <DialogDescription>{config.header.description}</DialogDescription>
         </DialogHeader>
 
         <div className="px-6 pt-4 pb-3 border-b flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
