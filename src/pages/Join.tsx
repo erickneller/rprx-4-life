@@ -27,7 +27,7 @@ interface PendingCompany {
  * Two flows:
  *   1. Already logged in  → join company immediately → /dashboard
  *   2. Not logged in       → show company name (locked) + signup form
- *                          → after signup, join company → /wizard
+ *                          → after signup, join company → destination per First-Login Flow
  */
 export default function Join() {
   const [searchParams] = useSearchParams();
@@ -83,8 +83,14 @@ export default function Join() {
   // ─── Step 2a: Already logged in OR just-signed-up → join + redirect ──────
   useEffect(() => {
     if (!user || !pendingCompany || loading) return;
-    // Wait for preset/profile/assessments to load so dest is computed correctly
-    if (presetLoading || profileLoading || assessmentsLoading || !assessmentsFetched) return;
+    // Always wait for the first-login preset so we can honor admin config
+    if (presetLoading) return;
+
+    const isDashboardOnly = preset === 'dashboard_silent' || preset === 'dashboard_nudge';
+
+    // For presets that may compute a wizard/assessment destination,
+    // wait until profile + assessments are loaded so the dest is correct.
+    if (!isDashboardOnly && (profileLoading || assessmentsLoading || !assessmentsFetched)) return;
 
     let cancelled = false;
     async function autoJoin() {
@@ -94,6 +100,10 @@ export default function Join() {
           if (cancelled) return;
           setHasJoined(true);
           toast.success(`You've joined ${pendingCompany!.name}!`);
+        }
+        if (isDashboardOnly) {
+          navigate('/dashboard', { replace: true });
+          return;
         }
         const hasAssessments = (assessments || []).some(a => a.completed_at);
         const dest = getFirstDestination({ preset, isProfileComplete, hasAssessments }) ?? '/dashboard';

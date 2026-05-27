@@ -1,30 +1,31 @@
-# Editable Upgrade Modal Header
+## Plan: Company invite signups should go straight to dashboard
 
-Make the "Upgrade your plan" title and the description below it editable from the admin **Checkout Links** tab.
+### Problem
+New accounts created from `/join?token=...` can still land on the Financial Snapshot wizard even when **First-Login Flow** is set to **Dashboard only — silent**.
 
-## Storage
+The likely cause is a race in `src/pages/Join.tsx`: right after signup, the app computes the redirect before the new profile row is reliably available. Because `isProfileComplete` is false during that moment, some flows can resolve to `/wizard` or get caught by older wizard-first logic.
 
-Extend the existing `ghl_checkout_config` feature flag JSON with a `header` object:
+### Fix
+1. **Make invite signup redirects deterministic**
+   - Update `src/pages/Join.tsx` so after signup/login through a company invite it waits until:
+     - the invite has been joined,
+     - the profile query has actually returned a profile,
+     - the first-login preset has loaded,
+     - assessment history has loaded.
 
-```json
-{
-  "partner": { ... },
-  "pro": { ... },
-  "publicFunnel": "...",
-  "header": {
-    "title": "Upgrade your plan",
-    "description": "Secure checkout powered by GoHighLevel. You'll stay logged in here — your access updates automatically."
-  }
-}
-```
+2. **Respect dashboard-only settings first**
+   - If the preset is `dashboard_silent` or `dashboard_nudge`, route invited users directly to `/dashboard` after the company join succeeds.
+   - This avoids computing wizard destinations from incomplete brand-new profile data.
 
-No migration — same row, same RLS, same admin-only writes.
+3. **Keep required onboarding behavior for other presets**
+   - For `profile_then_assessment`, `assessment_then_profile`, `assessment_only`, and `profile_only`, keep using the existing `getFirstDestination()` logic.
 
-## Files
+4. **Update outdated inline docs**
+   - Change the stale `/join` comment that says signup goes to `/wizard` so it matches the configurable first-login flow.
 
-**Edited**
-- `src/hooks/useCheckoutConfig.ts` — Add `CheckoutHeader` type + `header` field on `CheckoutConfig`. Add `DEFAULT_CHECKOUT_HEADER` with current copy as fallback. Update `parse()` to read `header.title` / `header.description` (falling back to defaults when missing/blank).
-- `src/components/admin/CheckoutLinksTab.tsx` — Add a "Modal Header" card at the top with a Title `Input` and a Description `Textarea`, bound to `draft.header`.
-- `src/components/billing/UpgradeModal.tsx` — Replace the hardcoded `<DialogTitle>` / `<DialogDescription>` strings with `config.header.title` / `config.header.description`.
+### Files to change
+- `src/pages/Join.tsx`
 
-**Untouched** — Checkout slots, public funnel, webhook, subscription logic.
+### Validation
+- Confirm the invite flow now routes `dashboard_silent` / `dashboard_nudge` invite signups to `/dashboard`.
+- Confirm other first-login presets still route as configured.
