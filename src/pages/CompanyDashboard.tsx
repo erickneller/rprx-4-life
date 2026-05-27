@@ -37,12 +37,18 @@ export default function CompanyDashboard() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const paidMembers = members.filter(m => m.subscription_tier !== 'free').length;
+
   const statCards = [
     { label: 'Total Members', value: stats.totalMembers, icon: Users },
     { label: 'Active This Week', value: stats.activeThisWeek, icon: Activity },
+    { label: 'Paid Members', value: paidMembers, icon: Flame },
     { label: 'Assessments Done', value: stats.assessmentsCompleted, icon: ClipboardCheck },
-    { label: 'Onboarding Done', value: stats.onboardingCompleted, icon: Flame },
   ];
+
+  const planVariant = (p: string): 'default' | 'secondary' | 'outline' =>
+    p === 'pro' ? 'default' : p === 'partner' ? 'secondary' : 'outline';
+  const planLabel = (p: string) => p.charAt(0).toUpperCase() + p.slice(1);
 
   return (
     <AuthenticatedLayout>
@@ -93,7 +99,7 @@ export default function CompanyDashboard() {
                   <TableHead>Joined</TableHead>
                   <TableHead>Last Active</TableHead>
                   <TableHead>Streak</TableHead>
-                  <TableHead>Tier</TableHead>
+                  <TableHead>Plan</TableHead>
                   <TableHead>Assessment</TableHead>
                 </TableRow>
               </TableHeader>
@@ -106,7 +112,11 @@ export default function CompanyDashboard() {
                       {m.last_active_date ? format(new Date(m.last_active_date), 'MMM d') : '—'}
                     </TableCell>
                     <TableCell>{m.current_streak}🔥</TableCell>
-                    <TableCell><Badge variant="secondary" className="text-xs capitalize">{m.current_tier}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant={planVariant(m.subscription_tier)} className="text-xs capitalize">
+                        {planLabel(m.subscription_tier)}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={m.has_assessment ? 'default' : 'outline'} className="text-xs">
                         {m.has_assessment ? 'Done' : 'Not yet'}

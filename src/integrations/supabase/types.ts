@@ -2439,6 +2439,7 @@ export type Database = {
           joined_at: string
           last_active_date: string
           onboarding_completed: boolean
+          subscription_tier: string
           total_points_earned: number
           user_id: string
         }[]
