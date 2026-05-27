@@ -36,7 +36,10 @@ export function useCompanyDashboard() {
         _company_id: company.id,
       });
       if (error) throw error;
-      return (data ?? []) as CompanyMemberStats[];
+      return ((data ?? []) as any[]).map(r => ({
+        ...r,
+        subscription_tier: normalizePlan(r.subscription_tier),
+      })) as CompanyMemberStats[];
     },
     enabled: !!company?.id && isCompanyAdmin,
   });
