@@ -64,6 +64,7 @@ export default function CoursePage() {
 
   const courseId = data?.course.id;
   const { completedLessonIds, toggle } = useCourseProgress(courseId);
+  const { settings: bannerSettings } = useCourseBannerSettings();
 
   const flatLessons = useMemo(
     () => (data?.modules.flatMap(m => m.lessons.filter(l => l.is_published)) || []),
