@@ -1,31 +1,29 @@
-## Plan: Company invite signups should go straight to dashboard
+## Goal
+Fix the admin panel's "Reset password" action so it actually sends a recovery email (today it silently does nothing because `admin.generateLink` only generates a link — it doesn't send mail).
 
-### Problem
-New accounts created from `/join?token=...` can still land on the Financial Snapshot wizard even when **First-Login Flow** is set to **Dashboard only — silent**.
+## Change
+**File:** `supabase/functions/admin-user-actions/index.ts` — `reset-password` case only.
 
-The likely cause is a race in `src/pages/Join.tsx`: right after signup, the app computes the redirect before the new profile row is reliably available. Because `isProfileComplete` is false during that moment, some flows can resolve to `/wizard` or get caught by older wizard-first logic.
+Replace the current `serviceClient.auth.admin.generateLink({ type: "recovery", ... })` call with `anonClient.auth.resetPasswordForEmail(email, { redirectTo })`, which is the same path the working "Forgot password" flow on `/auth` uses.
 
-### Fix
-1. **Make invite signup redirects deterministic**
-   - Update `src/pages/Join.tsx` so after signup/login through a company invite it waits until:
-     - the invite has been joined,
-     - the profile query has actually returned a profile,
-     - the first-login preset has loaded,
-     - assessment history has loaded.
+Details:
+- Keep the existing admin auth + admin-role check.
+- Keep `getUserById` to resolve the target user's email and 404 if missing.
+- Derive `redirectTo` from the request's `Origin`/`Referer` header → `${origin}/reset-password` so the link lands on the existing reset page (matches what `useAuth.resetPasswordForEmail` does).
+- Call `anonClient.auth.resetPasswordForEmail(email, { redirectTo })`.
+- Map Supabase's rate-limit response (HTTP 429 / "rate limit" message) to a friendly 429 toast: "Please wait a moment before requesting another reset email for this user." Other errors return the underlying message with status 400.
+- Update success message to include the recipient email: `Password reset email sent to <email>`.
 
-2. **Respect dashboard-only settings first**
-   - If the preset is `dashboard_silent` or `dashboard_nudge`, route invited users directly to `/dashboard` after the company join succeeds.
-   - This avoids computing wizard destinations from incomplete brand-new profile data.
+After the edit: redeploy `admin-user-actions` so the change takes effect.
 
-3. **Keep required onboarding behavior for other presets**
-   - For `profile_then_assessment`, `assessment_then_profile`, `assessment_only`, and `profile_only`, keep using the existing `getFirstDestination()` logic.
+## Not changing
+- Admin UI / button wiring — the existing call site already shows a toast from the response.
+- `ban-user` and `delete-user` cases.
+- No DB or schema changes.
+- No new secrets.
 
-4. **Update outdated inline docs**
-   - Change the stale `/join` comment that says signup goes to `/wizard` so it matches the configurable first-login flow.
-
-### Files to change
-- `src/pages/Join.tsx`
-
-### Validation
-- Confirm the invite flow now routes `dashboard_silent` / `dashboard_nudge` invite signups to `/dashboard`.
-- Confirm other first-login presets still route as configured.
+## Verification
+1. From `/admin`, click "Reset password" on a test user.
+2. Confirm a `mail.send` event with `mail_type: recovery` appears in auth logs (same shape as the working `/auth` flow).
+3. Confirm the email arrives and the link routes to `/reset-password`.
+4. Click again immediately → expect the friendly 429 toast (Supabase's ~23s cooldown).

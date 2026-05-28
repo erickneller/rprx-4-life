@@ -94,14 +94,39 @@ Deno.serve(async (req) => {
             }
           );
         }
-        const { error: resetErr } =
-          await serviceClient.auth.admin.generateLink({
-            type: "recovery",
-            email: userData.user.email,
-          });
-        if (resetErr) throw resetErr;
+        // Use the anon client to trigger Supabase's built-in recovery mailer.
+        // admin.generateLink only GENERATES a link — it does NOT send mail.
+        const origin =
+          req.headers.get("origin") ||
+          (req.headers.get("referer") || "").replace(/\/+$/, "") ||
+          "";
+        const redirectTo = origin ? `${origin}/reset-password` : undefined;
+
+        const { error: resetErr } = await anonClient.auth.resetPasswordForEmail(
+          userData.user.email,
+          redirectTo ? { redirectTo } : undefined
+        );
+        if (resetErr) {
+          const msg = (resetErr as any)?.message || "Failed to send reset email";
+          const isRate =
+            (resetErr as any)?.status === 429 || /rate limit/i.test(msg);
+          return new Response(
+            JSON.stringify({
+              error: isRate
+                ? "Please wait a moment before requesting another reset email for this user."
+                : msg,
+            }),
+            {
+              status: isRate ? 429 : 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
         return new Response(
-          JSON.stringify({ success: true, message: "Password reset email sent" }),
+          JSON.stringify({
+            success: true,
+            message: `Password reset email sent to ${userData.user.email}`,
+          }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
