@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { DEFAULT_FIRST_LOGIN_FLOW, type FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
 
 const FLAG_ID = 'first_login_flow';
@@ -27,8 +28,11 @@ function toOnboardingPath(value: unknown): string | null {
 }
 
 export function useFirstLoginFlow() {
+  const { user, loading: authLoading } = useAuth();
+  const authScope = user?.id ?? 'anon';
   const { data, isLoading } = useQuery({
-    queryKey: ['feature-flag-value', FLAG_ID],
+    queryKey: ['feature-flag-value', FLAG_ID, authScope],
+    enabled: !authLoading,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feature_flags' as any)
@@ -45,7 +49,7 @@ export function useFirstLoginFlow() {
     preset: (data ?? DEFAULT_FIRST_LOGIN_FLOW) as FirstLoginFlowPreset,
     globalRaw: (data ?? null) as string | null,
     globalPath: toOnboardingPath(data),
-    isLoading,
+    isLoading: authLoading || isLoading,
   };
 }
 
