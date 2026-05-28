@@ -133,16 +133,7 @@ export default function Join() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched, preset, globalPath, isProfileComplete]);
 
-        navigate(routeDecision.route ?? '/dashboard', { replace: true });
-      } catch (err: any) {
-        if (!cancelled) setError(err.message ?? 'Failed to join company.');
-      }
-    }
 
-    autoJoin();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched, preset, isProfileComplete]);
 
   // ─── Step 2b: Sign-up form submit ─────────────────────────────────────────
   async function handleSignUp(e: React.FormEvent) {
