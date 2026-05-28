@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveOnboardingRoute } from '../onboardingRoute';
+import { resolveFinalOnboardingPath, resolveOnboardingRoute } from '../onboardingRoute';
 
 describe('resolveOnboardingRoute', () => {
   it('company override wins over global', () => {
@@ -28,6 +28,30 @@ describe('resolveOnboardingRoute', () => {
       companyOverrideEnabled: true,
       companyOverridePath: 'company-start',
       globalPath: 'intro',
+    })).toEqual({ path: '/wizard', reason: 'fallback_wizard' });
+  });
+});
+
+describe('resolveFinalOnboardingPath', () => {
+  it('sends incomplete company users to /dashboard when there is no company override and the global path is dashboard', () => {
+    expect(resolveFinalOnboardingPath({
+      onboardingCompleted: false,
+      isProfileComplete: false,
+      hasAssessments: false,
+      companyOverrideEnabled: false,
+      companyOverridePath: null,
+      globalPath: '/dashboard',
+    })).toEqual({ path: '/dashboard', reason: 'force_dashboard_global' });
+  });
+
+  it('still sends incomplete users to /wizard when no dashboard-only config exists', () => {
+    expect(resolveFinalOnboardingPath({
+      onboardingCompleted: false,
+      isProfileComplete: false,
+      hasAssessments: false,
+      companyOverrideEnabled: false,
+      companyOverridePath: null,
+      globalPath: null,
     })).toEqual({ path: '/wizard', reason: 'fallback_wizard' });
   });
 });
