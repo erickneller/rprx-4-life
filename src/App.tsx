@@ -68,7 +68,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/wizard" element={<ProtectedRoute><Wizard /></ProtectedRoute>} />
+          <Route path="/wizard" element={<ProtectedRoute><WizardGuard><Wizard /></WizardGuard></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><WizardGuard><Dashboard /></WizardGuard></ProtectedRoute>} />
           <Route path="/assessment" element={<ProtectedRoute><Assessment /></ProtectedRoute>} />
           <Route path="/assessment/edit/:id" element={<ProtectedRoute><Assessment /></ProtectedRoute>} />

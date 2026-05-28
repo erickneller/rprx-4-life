@@ -82,6 +82,11 @@ export function WizardGuard({ children }: WizardGuardProps) {
   // belongs on /dashboard (profile complete, or global preset is dashboard-only).
   const suppressForcedRedirect = reason === 'profile_complete' || reason === 'force_dashboard_global';
 
+  if (location.pathname.startsWith('/wizard') && onboardingPath !== '/wizard') {
+    console.debug('[onboarding-route]', logPayload);
+    return <Navigate to={onboardingPath} replace />;
+  }
+
   if (!suppressForcedRedirect && shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed && !isProfileComplete) {
     console.debug('[onboarding-route]', logPayload);
     return <Navigate to={onboardingPath} replace />;
