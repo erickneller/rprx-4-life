@@ -2471,6 +2471,7 @@ export type Database = {
       lookup_company_by_invite_token: {
         Args: { _token: string }
         Returns: {
+          first_login_flow: string
           id: string
           name: string
         }[]
