@@ -11,6 +11,7 @@ import { Loader2, Plus, Copy, Check, Building2, RefreshCw, Pencil, Trash2 } from
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { buildInviteUrl } from '@/hooks/useCompany';
+import { FIRST_LOGIN_FLOW_OPTIONS, type FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
 
 interface CompanyRow {
   id: string;
@@ -20,6 +21,7 @@ interface CompanyRow {
   owner_id: string | null;
   invite_token: string;
   created_at: string;
+  first_login_flow: FirstLoginFlowPreset | null;
   member_count?: number;
   owner_email?: string;
 }
