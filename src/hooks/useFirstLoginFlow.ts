@@ -28,7 +28,7 @@ function toOnboardingPath(value: unknown): string | null {
 
 export function useFirstLoginFlow() {
   const { data, isLoading } = useQuery({
-    queryKey: ['feature-flag', FLAG_ID],
+    queryKey: ['feature-flag-value', FLAG_ID],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feature_flags' as any)
@@ -59,7 +59,7 @@ export function useSetFirstLoginFlow() {
         .eq('id', FLAG_ID);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag', FLAG_ID] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag-value', FLAG_ID] }),
   });
 }
 

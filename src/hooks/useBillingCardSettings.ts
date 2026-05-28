@@ -36,7 +36,7 @@ function parseCopy(value: unknown): BillingCardCopy {
 
 export function useBillingCardSettings() {
   const { data, isLoading } = useQuery({
-    queryKey: ['feature-flag', FLAG_ID],
+    queryKey: ['feature-flag-value', FLAG_ID],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feature_flags' as any)
@@ -73,6 +73,6 @@ export function useSetBillingCardSettings() {
         .eq('id', FLAG_ID);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag', FLAG_ID] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag-value', FLAG_ID] }),
   });
 }
