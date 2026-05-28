@@ -3,15 +3,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useFirstLoginFlow, useCompanyFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
-import { resolveOnboardingRoute } from '@/lib/firstLoginFlow';
+import { resolveOnboardingRoute } from '@/lib/onboardingRoute';
 import LandingPage from '@/components/landing/LandingPage';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading } = useAssessmentHistory();
-  const { preset, isLoading: presetLoading } = useFirstLoginFlow();
-  const { companyPreset, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
+  const { globalPath, isLoading: presetLoading } = useFirstLoginFlow();
+  const { companyOverrideEnabled, companyOverridePath, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
 
   if (loading || (user && (profileLoading || !profile || assessmentsLoading || presetLoading || companyPresetLoading))) {
     return (
@@ -34,20 +34,21 @@ const Index = () => {
   }
 
   const hasAssessments = (assessments || []).some(a => a.completed_at);
-  const routeDecision = resolveOnboardingRoute(
-    { isProfileComplete, hasAssessments, onboardingCompleted: profile.onboarding_completed },
-    { preset: companyPreset, enabled: companyPreset != null },
-    { preset },
-  );
-  const destination = routeDecision.route ?? '/dashboard';
-  console.debug('[onboarding-route]', {
-    surface: 'Index',
-    route: destination,
-    reason: routeDecision.reason,
-    preset: routeDecision.preset,
-    companyId: profile.company_id,
+  if (profile.onboarding_completed || isProfileComplete) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (hasAssessments) {
+    return <Navigate to="/profile" replace />;
+  }
+
+  const { path, reason } = resolveOnboardingRoute({
+    companyOverrideEnabled,
+    companyOverridePath,
+    globalPath,
   });
-  return <Navigate to={destination} replace />;
+  console.debug(`[onboarding-route] user=${user.id} path=${path} reason=${reason} source=index`);
+  return <Navigate to={path} replace />;
 };
 
 export default Index;

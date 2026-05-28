@@ -17,10 +17,13 @@ const assessmentsState = {
 };
 const presetState = {
   preset: 'profile_then_assessment' as string,
+  globalPath: null as string | null,
   isLoading: false,
 };
 const companyPresetState = {
   companyPreset: null as string | null,
+  companyOverrideEnabled: false,
+  companyOverridePath: null as string | null,
   isLoading: false,
 };
 
@@ -48,6 +51,8 @@ function renderAt(path: string) {
           }
         />
         <Route path="/wizard" element={<div>WIZARD PAGE</div>} />
+        <Route path="/intro" element={<div>INTRO PAGE</div>} />
+        <Route path="/company-start" element={<div>COMPANY START PAGE</div>} />
         <Route path="/assessment" element={<div>ASSESSMENT PAGE</div>} />
       </Routes>
     </MemoryRouter>,
@@ -62,8 +67,11 @@ beforeEach(() => {
   assessmentsState.isFetched = true;
   assessmentsState.isLoading = false;
   presetState.preset = 'profile_then_assessment';
+  presetState.globalPath = null;
   presetState.isLoading = false;
   companyPresetState.companyPreset = null;
+  companyPresetState.companyOverrideEnabled = false;
+  companyPresetState.companyOverridePath = null;
   companyPresetState.isLoading = false;
 });
 
@@ -83,6 +91,38 @@ describe('WizardGuard', () => {
 
     renderAt('/dashboard');
     expect(screen.getByText('DASHBOARD')).toBeTruthy();
+  });
+
+  it('redirects incomplete users to the enabled company override path', () => {
+    profileState.profile = { id: 'user-1', onboarding_completed: false, company_id: 'co-1' };
+    profileState.isProfileComplete = false;
+    presetState.globalPath = '/intro';
+    companyPresetState.companyPreset = '/company-start';
+    companyPresetState.companyOverrideEnabled = true;
+    companyPresetState.companyOverridePath = '/company-start';
+
+    renderAt('/dashboard');
+    expect(screen.getByText('COMPANY START PAGE')).toBeTruthy();
+  });
+
+  it('redirects incomplete users to the global path when company override is absent', () => {
+    profileState.profile = { id: 'user-1', onboarding_completed: false, company_id: null };
+    profileState.isProfileComplete = false;
+    presetState.globalPath = '/intro';
+
+    renderAt('/dashboard');
+    expect(screen.getByText('INTRO PAGE')).toBeTruthy();
+  });
+
+  it('links the profile nudge Continue action to the resolved route', () => {
+    profileState.profile = { id: 'user-1', onboarding_completed: false, company_id: 'co-1' };
+    profileState.isProfileComplete = false;
+    companyPresetState.companyPreset = 'dashboard_nudge';
+    companyPresetState.companyOverrideEnabled = true;
+    companyPresetState.companyOverridePath = '/company-start';
+
+    renderAt('/dashboard');
+    expect(screen.getByRole('link', { name: /continue/i }).getAttribute('href')).toBe('/company-start');
   });
 
   it('renders children for onboarding-complete users regardless of preset', () => {

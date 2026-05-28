@@ -4,6 +4,11 @@ import { DEFAULT_FIRST_LOGIN_FLOW, type FirstLoginFlowPreset } from '@/lib/first
 
 const FLAG_ID = 'first_login_flow';
 
+function toOnboardingPath(value: unknown): string | null {
+  const path = typeof value === 'string' ? value.trim() : '';
+  return path.startsWith('/') ? path : null;
+}
+
 export function useFirstLoginFlow() {
   const { data, isLoading } = useQuery({
     queryKey: ['feature-flag', FLAG_ID],
@@ -19,7 +24,11 @@ export function useFirstLoginFlow() {
     staleTime: 60_000,
   });
 
-  return { preset: (data ?? DEFAULT_FIRST_LOGIN_FLOW) as FirstLoginFlowPreset, isLoading };
+  return {
+    preset: (data ?? DEFAULT_FIRST_LOGIN_FLOW) as FirstLoginFlowPreset,
+    globalPath: toOnboardingPath(data),
+    isLoading,
+  };
 }
 
 export function useSetFirstLoginFlow() {
@@ -59,6 +68,8 @@ export function useCompanyFirstLoginFlow(companyId: string | null | undefined) {
   });
   return {
     companyPreset: (data ?? null) as FirstLoginFlowPreset | null,
+    companyOverrideEnabled: data != null,
+    companyOverridePath: toOnboardingPath(data),
     isLoading: enabled ? isLoading : false,
   };
 }
