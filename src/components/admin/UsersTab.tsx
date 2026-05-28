@@ -159,6 +159,7 @@ const fmt = (v: number | null | undefined) => v != null ? `$${v.toLocaleString()
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString() : '—';
 
 export function UsersTab() {
+  const { user: currentUser } = useAuth();
   const { data: users = [], isLoading } = useAdminUsers();
   const toggleAdmin = useToggleAdmin();
   const toggleLibraryAdmin = useToggleLibraryAdmin();
@@ -170,6 +171,9 @@ export function UsersTab() {
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
   const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const filtered = useMemo(() => {
     return users.filter(u => {
@@ -184,6 +188,38 @@ export function UsersTab() {
       return true;
     });
   }, [users, search, statusFilter, tierFilter]);
+
+  // Clear selection when filters change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [search, statusFilter, tierFilter]);
+
+  const selectableFilteredIds = useMemo(
+    () => filtered.filter(u => u.id !== currentUser?.id).map(u => u.id),
+    [filtered, currentUser?.id],
+  );
+  const selectedCount = selectedIds.size;
+  const allSelected = selectableFilteredIds.length > 0 && selectableFilteredIds.every(id => selectedIds.has(id));
+  const someSelected = selectedCount > 0 && !allSelected;
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAll = (checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        selectableFilteredIds.forEach(id => next.add(id));
+      } else {
+        selectableFilteredIds.forEach(id => next.delete(id));
+      }
+      return next;
+    });
+  };
 
   const handleResetPassword = async (u: AdminUser) => {
     try {
@@ -211,6 +247,25 @@ export function UsersTab() {
       setDeleteUser(null);
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete user');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    setBulkPending(true);
+    try {
+      const result = await adminAction.mutateAsync({ action: 'bulk-delete-users', userIds: ids });
+      const deleted = result?.deleted ?? 0;
+      const failed = result?.failed?.length ?? 0;
+      if (deleted > 0) toast.success(`Deleted ${deleted} user${deleted !== 1 ? 's' : ''}`);
+      if (failed > 0) toast.error(`${failed} user${failed !== 1 ? 's' : ''} failed to delete`);
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete users');
+    } finally {
+      setBulkPending(false);
     }
   };
 
