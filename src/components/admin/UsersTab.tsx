@@ -314,11 +314,44 @@ export function UsersTab() {
         <span className="text-sm text-muted-foreground">{filtered.length} user{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
+      {/* Bulk action bar */}
+      {selectedCount > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2">
+          <div className="flex items-center gap-3 text-sm">
+            <span className="font-medium">{selectedCount} selected</span>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+            >
+              <X className="h-3.5 w-3.5" /> Clear
+            </button>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setBulkDeleteOpen(true)}
+            disabled={bulkPending}
+          >
+            {bulkPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            <Trash2 className="h-4 w-4 mr-2" /> Delete selected
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="border rounded-lg overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                  onCheckedChange={(v) => toggleAll(v === true)}
+                  aria-label="Select all users"
+                  disabled={selectableFilteredIds.length === 0}
+                />
+              </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
@@ -334,8 +367,17 @@ export function UsersTab() {
             {filtered.map((u) => {
               const status = getUserStatus(u);
               const isBanned = u.banned_until && new Date(u.banned_until) > new Date();
+              const isSelf = u.id === currentUser?.id;
               return (
-                <TableRow key={u.id} className="cursor-pointer" onClick={() => setDetailUser(u)}>
+                <TableRow key={u.id} className="cursor-pointer" onClick={() => setDetailUser(u)} data-state={selectedIds.has(u.id) ? 'selected' : undefined}>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(u.id)}
+                      onCheckedChange={(v) => toggleRow(u.id, v === true)}
+                      disabled={isSelf}
+                      aria-label={`Select ${u.email}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{u.full_name || u.raw_user_meta_data?.full_name || u.raw_user_meta_data?.name || '—'}</TableCell>
                   <TableCell className="text-sm">{u.email}</TableCell>
                   <TableCell className="text-sm">{u.phone || '—'}</TableCell>
