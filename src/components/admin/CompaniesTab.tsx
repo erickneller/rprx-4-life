@@ -139,7 +139,11 @@ export function CompaniesTab() {
     mutationFn: async () => {
       if (!editingCompany) return;
       const { error } = await (supabase.from('companies') as any)
-        .update({ name: editName.trim(), plan: editPlan })
+        .update({
+          name: editName.trim(),
+          plan: editPlan,
+          first_login_flow: editFirstLoginFlow === '' ? null : editFirstLoginFlow,
+        })
         .eq('id', editingCompany.id);
       if (error) throw error;
     },
@@ -147,6 +151,7 @@ export function CompaniesTab() {
       toast.success('Company updated.');
       setEditingCompany(null);
       queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+      queryClient.invalidateQueries({ queryKey: ['company-first-login-flow'] });
     },
     onError: (err: any) => toast.error(err.message ?? 'Failed to update company.'),
   });
@@ -174,6 +179,7 @@ export function CompaniesTab() {
   const openEdit = (company: CompanyRow) => {
     setEditName(company.name);
     setEditPlan(company.plan as any);
+    setEditFirstLoginFlow((company.first_login_flow ?? '') as FirstLoginFlowPreset | '');
     setEditingCompany(company);
   };
 
