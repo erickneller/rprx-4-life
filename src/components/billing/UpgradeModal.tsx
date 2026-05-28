@@ -10,6 +10,9 @@ import { useCheckoutConfig, CHECKOUT_CONFIG_QUERY_KEY } from '@/hooks/useCheckou
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Loader2, RefreshCw } from 'lucide-react';
+
+interface UpgradeModalProps {
+  open: boolean;
   onOpenChange: (open: boolean) => void;
   initialPlan?: PlanKey;
   initialInterval?: IntervalKey;
