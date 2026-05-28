@@ -60,12 +60,6 @@ export function WizardGuard({ children }: WizardGuardProps) {
     globalPath,
   });
 
-  const isAllowed =
-    ALLOWED_PATHS.some(p => location.pathname.startsWith(p)) ||
-    location.pathname.startsWith(onboardingPath) ||
-    location.pathname.startsWith(presetPath);
-  if (isAllowed) return <>{children}</>;
-
   const logPayload = {
     source: 'guard' as const,
     user: profile.id,
@@ -77,6 +71,19 @@ export function WizardGuard({ children }: WizardGuardProps) {
     reason,
     finalRedirectPath: onboardingPath,
   };
+
+  const isWizardRoute = location.pathname === '/wizard' || location.pathname.startsWith('/wizard/');
+
+  if (isWizardRoute && onboardingPath !== '/wizard') {
+    console.debug('[onboarding-route]', logPayload);
+    return <Navigate to={onboardingPath} replace />;
+  }
+
+  const isAllowed =
+    ALLOWED_PATHS.some(p => location.pathname.startsWith(p)) ||
+    location.pathname.startsWith(onboardingPath) ||
+    location.pathname.startsWith(presetPath);
+  if (isAllowed) return <>{children}</>;
 
   // Skip the forced redirect when the unified adapter already says the user
   // belongs on /dashboard (profile complete, or global preset is dashboard-only).
