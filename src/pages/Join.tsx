@@ -6,7 +6,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
-import { getFirstDestination } from '@/lib/firstLoginFlow';
+import { resolveOnboardingPreset, resolveOnboardingRoute, type FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
