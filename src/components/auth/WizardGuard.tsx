@@ -29,6 +29,7 @@ export function WizardGuard({ children }: WizardGuardProps) {
   const { preset, globalPath, globalRaw, isLoading: presetLoading } = useFirstLoginFlow();
   const { companyPreset, companyOverrideEnabled, companyOverridePath, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
   const location = useLocation();
+  const isWizardRoute = location.pathname === '/wizard' || location.pathname.startsWith('/wizard/');
 
   if (profileLoading || assessmentsLoading || !assessmentsFetched || presetLoading || companyPresetLoading) {
     return (
@@ -37,7 +38,17 @@ export function WizardGuard({ children }: WizardGuardProps) {
       </div>
     );
   }
-  if (!profile) return <>{children}</>;
+  if (!profile) {
+    if (isWizardRoute) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      );
+    }
+    return <>{children}</>;
+  }
+
 
   const hasAssessments = (assessments || []).some(a => a.completed_at);
   const effectivePreset = companyPreset ?? preset;
@@ -72,7 +83,7 @@ export function WizardGuard({ children }: WizardGuardProps) {
     finalRedirectPath: onboardingPath,
   };
 
-  const isWizardRoute = location.pathname === '/wizard' || location.pathname.startsWith('/wizard/');
+
 
   if (isWizardRoute && onboardingPath !== '/wizard') {
     console.debug('[onboarding-route]', logPayload);
