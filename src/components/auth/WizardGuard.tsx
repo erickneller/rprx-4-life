@@ -51,7 +51,7 @@ export function WizardGuard({ children }: WizardGuardProps) {
 
   // Forced redirect only when the resolved preset enforces it AND user explicitly hasn't completed onboarding
   if (shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed && !isProfileComplete) {
-    console.debug(`[onboarding-route] user=${profile.id} path=${onboardingPath} reason=${reason} source=guard`);
+    console.debug('[onboarding-route]', { source: 'guard', user: profile.id, globalRaw, globalNormalized: globalPath, resolvedPath: onboardingPath, reason });
     return <Navigate to={onboardingPath} replace />;
   }
 
