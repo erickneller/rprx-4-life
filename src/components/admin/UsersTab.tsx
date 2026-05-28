@@ -133,9 +133,9 @@ function useToggleLibraryAdmin() {
 function useAdminAction() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ action, userId }: { action: string; userId: string }) => {
+    mutationFn: async ({ action, userId, userIds }: { action: string; userId?: string; userIds?: string[] }) => {
       const { data, error } = await supabase.functions.invoke('admin-user-actions', {
-        body: { action, userId },
+        body: { action, userId, userIds },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
