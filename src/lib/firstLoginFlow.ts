@@ -74,13 +74,30 @@ export function getPostWizardDestination(preset: FirstLoginFlowPreset, hasAssess
   return '/dashboard';
 }
 
-/**
- * Unified onboarding-route resolver used by Index, WizardGuard, and Join.
- * Per-company preset (if set) overrides the global preset.
- */
+export type OnboardingRouteReason = 'company_override' | 'global_default' | 'fallback';
+
+export interface OnboardingProfileState {
+  isProfileComplete: boolean;
+  hasAssessments: boolean;
+  onboardingCompleted?: boolean | null;
+}
+
+export interface OnboardingRouteConfig {
+  preset?: FirstLoginFlowPreset | string | null;
+  enabled?: boolean | null;
+}
+
+export interface ResolvedOnboardingRoute {
+  route: string | null;
+  preset: FirstLoginFlowPreset;
+  reason: OnboardingRouteReason;
+}
+
+/** Back-compat config shape for callers that only need the effective preset. */
 export interface OnboardingConfig {
-  globalPreset: FirstLoginFlowPreset;
-  companyPreset?: FirstLoginFlowPreset | null;
+  globalPreset?: FirstLoginFlowPreset | string | null;
+  companyPreset?: FirstLoginFlowPreset | string | null;
+  companyEnabled?: boolean | null;
 }
 
 function isFirstLoginPreset(v: unknown): v is FirstLoginFlowPreset {
@@ -88,12 +105,38 @@ function isFirstLoginPreset(v: unknown): v is FirstLoginFlowPreset {
 }
 
 export function resolveOnboardingPreset(cfg: OnboardingConfig): FirstLoginFlowPreset {
-  return isFirstLoginPreset(cfg.companyPreset) ? cfg.companyPreset : cfg.globalPreset;
+  return resolveOnboardingRoute(
+    { isProfileComplete: false, hasAssessments: false, onboardingCompleted: false },
+    { preset: cfg.companyPreset, enabled: cfg.companyEnabled ?? cfg.companyPreset != null },
+    { preset: cfg.globalPreset },
+  ).preset;
 }
 
 export function resolveOnboardingRoute(
-  cfg: OnboardingConfig,
-  state: { isProfileComplete: boolean; hasAssessments: boolean },
-): string | null {
-  return getFirstDestination({ preset: resolveOnboardingPreset(cfg), ...state });
+  profile: OnboardingProfileState,
+  companyConfig: OnboardingRouteConfig | null | undefined,
+  globalConfig: OnboardingRouteConfig | null | undefined,
+): ResolvedOnboardingRoute {
+  const companyOverrideEnabled = companyConfig?.enabled !== false;
+  if (companyOverrideEnabled && isFirstLoginPreset(companyConfig?.preset)) {
+    return {
+      route: profile.onboardingCompleted ? null : getFirstDestination({ preset: companyConfig.preset, ...profile }),
+      preset: companyConfig.preset,
+      reason: 'company_override',
+    };
+  }
+
+  if (isFirstLoginPreset(globalConfig?.preset)) {
+    return {
+      route: profile.onboardingCompleted ? null : getFirstDestination({ preset: globalConfig.preset, ...profile }),
+      preset: globalConfig.preset,
+      reason: 'global_default',
+    };
+  }
+
+  return {
+    route: profile.onboardingCompleted ? null : '/wizard',
+    preset: DEFAULT_FIRST_LOGIN_FLOW,
+    reason: 'fallback',
+  };
 }
