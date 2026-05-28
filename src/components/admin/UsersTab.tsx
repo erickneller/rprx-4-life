@@ -1,8 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -11,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, MoreHorizontal, ShieldCheck, ShieldOff, KeyRound, Lock, Unlock, Trash2, Search, Eye, Library as LibraryIcon } from 'lucide-react';
+import { Loader2, MoreHorizontal, ShieldCheck, ShieldOff, KeyRound, Lock, Unlock, Trash2, Search, Eye, Library as LibraryIcon, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AdminUser {
@@ -131,9 +133,9 @@ function useToggleLibraryAdmin() {
 function useAdminAction() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ action, userId }: { action: string; userId: string }) => {
+    mutationFn: async ({ action, userId, userIds }: { action: string; userId?: string; userIds?: string[] }) => {
       const { data, error } = await supabase.functions.invoke('admin-user-actions', {
-        body: { action, userId },
+        body: { action, userId, userIds },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -157,6 +159,7 @@ const fmt = (v: number | null | undefined) => v != null ? `$${v.toLocaleString()
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString() : '—';
 
 export function UsersTab() {
+  const { user: currentUser } = useAuth();
   const { data: users = [], isLoading } = useAdminUsers();
   const toggleAdmin = useToggleAdmin();
   const toggleLibraryAdmin = useToggleLibraryAdmin();
@@ -168,6 +171,9 @@ export function UsersTab() {
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
   const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
 
   const filtered = useMemo(() => {
     return users.filter(u => {
@@ -182,6 +188,38 @@ export function UsersTab() {
       return true;
     });
   }, [users, search, statusFilter, tierFilter]);
+
+  // Clear selection when filters change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [search, statusFilter, tierFilter]);
+
+  const selectableFilteredIds = useMemo(
+    () => filtered.filter(u => u.id !== currentUser?.id).map(u => u.id),
+    [filtered, currentUser?.id],
+  );
+  const selectedCount = selectedIds.size;
+  const allSelected = selectableFilteredIds.length > 0 && selectableFilteredIds.every(id => selectedIds.has(id));
+  const someSelected = selectedCount > 0 && !allSelected;
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAll = (checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        selectableFilteredIds.forEach(id => next.add(id));
+      } else {
+        selectableFilteredIds.forEach(id => next.delete(id));
+      }
+      return next;
+    });
+  };
 
   const handleResetPassword = async (u: AdminUser) => {
     try {
@@ -209,6 +247,25 @@ export function UsersTab() {
       setDeleteUser(null);
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete user');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    setBulkPending(true);
+    try {
+      const result = await adminAction.mutateAsync({ action: 'bulk-delete-users', userIds: ids });
+      const deleted = result?.deleted ?? 0;
+      const failed = result?.failed?.length ?? 0;
+      if (deleted > 0) toast.success(`Deleted ${deleted} user${deleted !== 1 ? 's' : ''}`);
+      if (failed > 0) toast.error(`${failed} user${failed !== 1 ? 's' : ''} failed to delete`);
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete users');
+    } finally {
+      setBulkPending(false);
     }
   };
 
@@ -257,11 +314,44 @@ export function UsersTab() {
         <span className="text-sm text-muted-foreground">{filtered.length} user{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
+      {/* Bulk action bar */}
+      {selectedCount > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2">
+          <div className="flex items-center gap-3 text-sm">
+            <span className="font-medium">{selectedCount} selected</span>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+            >
+              <X className="h-3.5 w-3.5" /> Clear
+            </button>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setBulkDeleteOpen(true)}
+            disabled={bulkPending}
+          >
+            {bulkPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            <Trash2 className="h-4 w-4 mr-2" /> Delete selected
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="border rounded-lg overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                  onCheckedChange={(v) => toggleAll(v === true)}
+                  aria-label="Select all users"
+                  disabled={selectableFilteredIds.length === 0}
+                />
+              </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
@@ -277,8 +367,17 @@ export function UsersTab() {
             {filtered.map((u) => {
               const status = getUserStatus(u);
               const isBanned = u.banned_until && new Date(u.banned_until) > new Date();
+              const isSelf = u.id === currentUser?.id;
               return (
-                <TableRow key={u.id} className="cursor-pointer" onClick={() => setDetailUser(u)}>
+                <TableRow key={u.id} className="cursor-pointer" onClick={() => setDetailUser(u)} data-state={selectedIds.has(u.id) ? 'selected' : undefined}>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(u.id)}
+                      onCheckedChange={(v) => toggleRow(u.id, v === true)}
+                      disabled={isSelf}
+                      aria-label={`Select ${u.email}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{u.full_name || u.raw_user_meta_data?.full_name || u.raw_user_meta_data?.name || '—'}</TableCell>
                   <TableCell className="text-sm">{u.email}</TableCell>
                   <TableCell className="text-sm">{u.phone || '—'}</TableCell>
@@ -394,7 +493,7 @@ export function UsersTab() {
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -511,6 +610,29 @@ export function UsersTab() {
             >
               {adminAction.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={(open) => !open && !bulkPending && setBulkDeleteOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedCount} user{selectedCount !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the selected accounts and all of their data. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={bulkPending}
+            >
+              {bulkPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Delete {selectedCount} user{selectedCount !== 1 ? 's' : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
