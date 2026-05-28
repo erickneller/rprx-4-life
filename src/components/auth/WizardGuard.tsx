@@ -3,7 +3,6 @@ import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useFirstLoginFlow, useCompanyFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
 import {
-  resolveOnboardingPreset,
   resolveOnboardingRoute,
   shouldGuardRedirect,
   shouldShowProfileNudge,
@@ -45,12 +44,12 @@ export function WizardGuard({ children }: WizardGuardProps) {
   if (isAllowed) return <>{children}</>;
 
   const hasAssessments = (assessments || []).some(a => a.completed_at);
-  const effectivePreset = resolveOnboardingPreset({ globalPreset: preset, companyPreset });
   const routeDecision = resolveOnboardingRoute(
     { isProfileComplete, hasAssessments, onboardingCompleted: profile.onboarding_completed },
     { preset: companyPreset, enabled: companyPreset != null },
     { preset },
   );
+  const effectivePreset = routeDecision.preset;
   const profileRoute = routeDecision.route ?? '/dashboard';
   const profileNudgeRoute = routeDecision.route ?? (routeDecision.reason === 'fallback' ? '/wizard' : '/dashboard');
   console.debug('[onboarding-route]', {
