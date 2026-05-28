@@ -17,10 +17,13 @@ const assessmentsState = {
 };
 const presetState = {
   preset: 'profile_then_assessment' as string,
+  globalPath: null as string | null,
   isLoading: false,
 };
 const companyPresetState = {
   companyPreset: null as string | null,
+  companyOverrideEnabled: false,
+  companyOverridePath: null as string | null,
   isLoading: false,
 };
 
@@ -48,6 +51,8 @@ function renderAt(path: string) {
           }
         />
         <Route path="/wizard" element={<div>WIZARD PAGE</div>} />
+        <Route path="/intro" element={<div>INTRO PAGE</div>} />
+        <Route path="/company-start" element={<div>COMPANY START PAGE</div>} />
         <Route path="/assessment" element={<div>ASSESSMENT PAGE</div>} />
       </Routes>
     </MemoryRouter>,
@@ -62,8 +67,11 @@ beforeEach(() => {
   assessmentsState.isFetched = true;
   assessmentsState.isLoading = false;
   presetState.preset = 'profile_then_assessment';
+  presetState.globalPath = null;
   presetState.isLoading = false;
   companyPresetState.companyPreset = null;
+  companyPresetState.companyOverrideEnabled = false;
+  companyPresetState.companyOverridePath = null;
   companyPresetState.isLoading = false;
 });
 
