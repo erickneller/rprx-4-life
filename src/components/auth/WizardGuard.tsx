@@ -2,8 +2,8 @@ import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useFirstLoginFlow, useCompanyFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
+import { resolveOnboardingRoute } from '@/lib/onboardingRoute';
 import {
-  resolveOnboardingRoute,
   shouldGuardRedirect,
   shouldShowProfileNudge,
   shouldShowAssessmentNudge,
@@ -27,8 +27,8 @@ interface WizardGuardProps {
 export function WizardGuard({ children }: WizardGuardProps) {
   const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
-  const { preset, isLoading: presetLoading } = useFirstLoginFlow();
-  const { companyPreset, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
+  const { preset, globalPath, isLoading: presetLoading } = useFirstLoginFlow();
+  const { companyPreset, companyOverrideEnabled, companyOverridePath, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
   const location = useLocation();
 
   if (profileLoading || assessmentsLoading || !assessmentsFetched || presetLoading || companyPresetLoading) {
@@ -40,30 +40,20 @@ export function WizardGuard({ children }: WizardGuardProps) {
   }
   if (!profile) return <>{children}</>;
 
-  const isAllowed = ALLOWED_PATHS.some(p => location.pathname.startsWith(p));
+  const hasAssessments = (assessments || []).some(a => a.completed_at);
+  const effectivePreset = companyPreset ?? preset;
+  const { path: onboardingPath, reason } = resolveOnboardingRoute({
+    companyOverrideEnabled,
+    companyOverridePath,
+    globalPath,
+  });
+  const isAllowed = ALLOWED_PATHS.some(p => location.pathname.startsWith(p)) || location.pathname.startsWith(onboardingPath);
   if (isAllowed) return <>{children}</>;
 
-  const hasAssessments = (assessments || []).some(a => a.completed_at);
-  const routeDecision = resolveOnboardingRoute(
-    { isProfileComplete, hasAssessments, onboardingCompleted: profile.onboarding_completed },
-    { preset: companyPreset, enabled: companyPreset != null },
-    { preset },
-  );
-  const effectivePreset = routeDecision.preset;
-  const profileRoute = routeDecision.route ?? '/dashboard';
-  const profileNudgeRoute = routeDecision.route ?? (routeDecision.reason === 'fallback' ? '/wizard' : '/dashboard');
-  console.debug('[onboarding-route]', {
-    surface: 'WizardGuard',
-    route: profileRoute,
-    reason: routeDecision.reason,
-    preset: routeDecision.preset,
-    path: location.pathname,
-    companyId: profile.company_id,
-  });
-
   // Forced redirect only when the resolved preset enforces it AND user explicitly hasn't completed onboarding
-  if (shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed) {
-    if (routeDecision.route) return <Navigate to={routeDecision.route} replace />;
+  if (shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed && !isProfileComplete) {
+    console.debug(`[onboarding-route] user=${profile.id} path=${onboardingPath} reason=${reason} source=guard`);
+    return <Navigate to={onboardingPath} replace />;
   }
 
   // Banner nudges (non-blocking)
@@ -76,7 +66,7 @@ export function WizardGuard({ children }: WizardGuardProps) {
         {needsProfile && (
           <div className="bg-accent text-accent-foreground px-4 py-2 text-center text-sm">
             Complete your profile to unlock your RPRx Score{' '}
-            <Link to={profileNudgeRoute} className="underline font-semibold hover:opacity-80">
+            <Link to={onboardingPath} className="underline font-semibold hover:opacity-80">
               Continue →
             </Link>
           </div>
