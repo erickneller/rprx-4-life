@@ -72,7 +72,9 @@ export function WizardGuard({ children }: WizardGuardProps) {
     finalRedirectPath: onboardingPath,
   };
 
-  if (location.pathname.startsWith('/wizard') && onboardingPath !== '/wizard') {
+  const isWizardRoute = location.pathname === '/wizard' || location.pathname.startsWith('/wizard/');
+
+  if (isWizardRoute && onboardingPath !== '/wizard') {
     console.debug('[onboarding-route]', logPayload);
     return <Navigate to={onboardingPath} replace />;
   }
