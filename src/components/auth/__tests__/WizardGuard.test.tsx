@@ -50,7 +50,14 @@ function renderAt(path: string) {
             </WizardGuard>
           }
         />
-        <Route path="/wizard" element={<div>WIZARD PAGE</div>} />
+        <Route
+          path="/wizard"
+          element={
+            <WizardGuard>
+              <div>WIZARD PAGE</div>
+            </WizardGuard>
+          }
+        />
         <Route path="/intro" element={<div>INTRO PAGE</div>} />
         <Route path="/company-start" element={<div>COMPANY START PAGE</div>} />
         <Route path="/assessment" element={<div>ASSESSMENT PAGE</div>} />
@@ -90,6 +97,26 @@ describe('WizardGuard', () => {
     companyPresetState.companyPreset = 'dashboard_silent';
 
     renderAt('/dashboard');
+    expect(screen.getByText('DASHBOARD')).toBeTruthy();
+  });
+
+  it('keeps incomplete company users on /dashboard when the global preset is dashboard-only and no company override exists', () => {
+    profileState.profile = { id: 'user-1', onboarding_completed: false, company_id: 'co-1' };
+    profileState.isProfileComplete = false;
+    presetState.preset = 'dashboard_silent';
+    presetState.globalPath = '/dashboard';
+
+    renderAt('/dashboard');
+    expect(screen.getByText('DASHBOARD')).toBeTruthy();
+  });
+
+  it('redirects direct /wizard access to /dashboard under the dashboard-only global preset', () => {
+    profileState.profile = { id: 'user-1', onboarding_completed: false, company_id: 'co-1' };
+    profileState.isProfileComplete = false;
+    presetState.preset = 'dashboard_silent';
+    presetState.globalPath = '/dashboard';
+
+    renderAt('/wizard');
     expect(screen.getByText('DASHBOARD')).toBeTruthy();
   });
 
