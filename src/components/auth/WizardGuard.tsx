@@ -41,17 +41,34 @@ export function WizardGuard({ children }: WizardGuardProps) {
 
   const hasAssessments = (assessments || []).some(a => a.completed_at);
   const effectivePreset = companyPreset ?? preset;
-  const { path: onboardingPath, reason } = resolveOnboardingRoute({
+  const isCompanyUser = !!profile.company_id;
+  const forceDashboardFromGlobal = !companyOverrideEnabled && globalPath === '/dashboard';
+  const { path: resolverPath, reason } = resolveOnboardingRoute({
     companyOverrideEnabled,
     companyOverridePath,
     globalPath,
   });
+  const onboardingPath = forceDashboardFromGlobal ? '/dashboard' : resolverPath;
   const isAllowed = ALLOWED_PATHS.some(p => location.pathname.startsWith(p)) || location.pathname.startsWith(onboardingPath);
   if (isAllowed) return <>{children}</>;
 
-  // Forced redirect only when the resolved preset enforces it AND user explicitly hasn't completed onboarding
-  if (shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed && !isProfileComplete) {
-    console.debug('[onboarding-route]', { source: 'guard', user: profile.id, globalRaw, globalNormalized: globalPath, resolvedPath: onboardingPath, reason });
+  const logPayload = {
+    source: 'guard' as const,
+    user: profile.id,
+    isCompanyUser,
+    companyOverrideEnabled,
+    companyOverridePath,
+    globalRaw,
+    globalNormalized: globalPath,
+    forceDashboardFromGlobal,
+    reason,
+    finalRedirectPath: onboardingPath,
+  };
+
+  // Forced redirect only when the resolved preset enforces it AND user explicitly hasn't completed onboarding.
+  // forceDashboardFromGlobal short-circuits any legacy wizard-first override.
+  if (!forceDashboardFromGlobal && shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed && !isProfileComplete) {
+    console.debug('[onboarding-route]', logPayload);
     return <Navigate to={onboardingPath} replace />;
   }
 
