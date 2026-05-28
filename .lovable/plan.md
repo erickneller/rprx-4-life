@@ -1,52 +1,63 @@
-## What happened
+## Root cause
 
-Production users saw "checkout not configured" while the admin tab showed the correct URLs. The DB row was fine the whole time (current `feature_flags.ghl_checkout_config.value` is intact, 706 chars of valid JSON, last user-save at 16:34 UTC). Re-saving from admin "fixed" it only because it forced a fresh refetch of the same row.
+`companies.plan = 'partner'` is set correctly for `Tester3`, but `get_subscription_tier(_user_id)` only reads `public.user_subscriptions`. New users who join a company via `/join?token=…` never get a `user_subscriptions` row created, so the RPC returns the `'free'` fallback. Nothing in `useCompany.joinByToken` (or anywhere else in the Join flow) writes the company plan to the user.
 
-That pattern points to a **silent client-side fallback**, not a data loss. There are four fragility points in `src/hooks/useCheckoutConfig.ts` and `useFeatureFlag.ts` that can each independently cause production to render the empty default config — and the default contains the placeholder `REPLACE_…` URLs which `parse()` strips to empty strings, which `UpgradeModal` then renders as "not configured".
+Confirmed via DB:
+- `companies` row for the token: `plan = 'partner'`, `first_login_flow = null`.
+- `get_subscription_tier` body returns `COALESCE((SELECT tier_override||tier FROM user_subscriptions …), 'free')` — no company lookup.
 
-### Root-cause candidates (all real, ranked by likelihood)
+## Fix (single source of truth)
 
-1. **Auth-not-ready race (most likely).** RLS on `feature_flags` requires the `authenticated` role. `useCheckoutConfig` fires on mount with no `enabled` guard. If the Supabase session hasn't attached yet (common on a cold load after a fresh deploy), the SELECT returns 0 rows or errors → React Query returns `undefined` → the hook returns `DEFAULT_CHECKOUT_CONFIG` (placeholders → empty). No toast, no retry surface. Once the user clicked "Save all", the mutation ran after auth was ready and invalidated the cache, so the next read succeeded.
-2. **Silent parse fallback.** `parse()` returns `DEFAULT_CHECKOUT_CONFIG` for any non-string / invalid-JSON / null value. There's no logging and no admin-side warning. Any one-time bad write (or a transient `null` from Postgrest) is invisible.
-3. **Shared queryKey collision.** `['feature-flag', flagId]` is used by `useFeatureFlag` (returns `boolean`), `useCheckoutConfig`, `useBookingUrl`, `useBillingCardSettings`, `useCourseBannerSettings`, `useFirstLoginFlow`, `useAdvisorLink`. Today no caller passes `'ghl_checkout_config'` to `useFeatureFlag`, but the next time someone does, the cache will hold the wrong shape and the typed consumer will silently render defaults.
-4. **No safety net in `UpgradeModal`.** When the slot value is blank, the modal shows "not configured" with no fallback to the public funnel URL — so a transient load failure becomes a hard "you can't pay us" screen.
+Make the company plan the authoritative fallback inside the SECURITY DEFINER RPC. This automatically corrects every existing joined user too — no backfill race, no client-side writes.
 
-## Fix plan (one patch, frontend only, no DB changes)
+### 1. Migration — update `get_subscription_tier`
 
-### 1. Make `useCheckoutConfig` resilient
-File: `src/hooks/useCheckoutConfig.ts`
-- Add `retry: 3` with exponential backoff and `refetchOnWindowFocus: true` so a transient RLS / network blip self-heals.
-- On query error, log `console.error('[checkout-config] load failed', err)` so we can see it in production console logs instead of silently falling back.
-- In `parse()`, when input is non-string or `JSON.parse` throws, also log a warning with the raw value type so a corrupted row is visible.
-- Change the placeholder filter: instead of `url.includes('REPLACE_') ? '' : url`, keep returning empty for the placeholder, but expose an `isDefault` flag on the returned config so callers know the data is the fallback, not the saved value.
-- Lower `staleTime` to `30_000` and add `gcTime: 5 * 60_000`.
+```sql
+CREATE OR REPLACE FUNCTION public.get_subscription_tier(_user_id uuid)
+RETURNS text
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT COALESCE(
+    -- 1. Explicit per-user subscription / admin override wins
+    (SELECT COALESCE(tier_override, tier)::text
+       FROM public.user_subscriptions
+       WHERE user_id = _user_id
+       LIMIT 1),
+    -- 2. Otherwise inherit the company plan the user belongs to
+    (SELECT c.plan
+       FROM public.profiles p
+       JOIN public.companies c ON c.id = p.company_id
+       WHERE p.id = _user_id
+         AND c.plan IN ('partner','pro')
+       LIMIT 1),
+    'free'
+  )
+$$;
+```
 
-### 2. Stop the queryKey collision risk
-Files: `src/hooks/useCheckoutConfig.ts`, `useBookingUrl.ts`, `useBillingCardSettings.ts`, `useCourseBannerSettings.ts`, `useFirstLoginFlow.ts`, `useAdvisorLink.ts`
-- Rename the typed-flag query keys from `['feature-flag', FLAG_ID]` to `['feature-flag-value', FLAG_ID]` (boolean-only `useFeatureFlag` keeps `['feature-flag', flagId]`).
-- Update each hook's matching `invalidateQueries` calls to the new key.
-- Net effect: `useFeatureFlag` and the typed hooks can never share a cache entry again.
+Notes:
+- Filter `c.plan IN ('partner','pro')` so a company row with `plan='free'` or NULL doesn't shadow anything.
+- `useSubscription.ts` already normalizes `'paid' → 'partner'`; no client changes needed.
+- The function stays STABLE / SECURITY DEFINER, so RLS on `profiles`/`companies` is bypassed safely (returns only the tier string).
 
-### 3. Harden `UpgradeModal` so users can always pay
-File: `src/components/billing/UpgradeModal.tsx`
-- When the resolved slot is blank, instead of only showing "not configured", also render a **"Continue to public pricing"** button that links to `config.publicFunnel` (falls back to `GHL_PUBLIC_FUNNEL_URL`). The user can still complete purchase even if the per-plan slot failed to load.
-- Show a small "Retry" button that calls `qc.invalidateQueries({ queryKey: ['feature-flag-value', 'ghl_checkout_config'] })`.
+### 2. Verification queries (run after migration)
 
-### 4. Surface load failures in admin
-File: `src/components/admin/CheckoutLinksTab.tsx`
-- If `useCheckoutConfig` returns `isDefault === true` (i.e. nothing was actually loaded from the DB), show a destructive banner: "Saved config could not be loaded — saving now will overwrite the live config with whatever is on screen. Refresh first." This prevents an admin from accidentally blanking the row while React Query is in its fallback state.
+```sql
+-- Tester3 members should now resolve to 'partner'
+SELECT p.id, p.email, public.get_subscription_tier(p.id) AS tier
+FROM profiles p
+WHERE p.company_id = 'bba2c02c-66d0-4e2a-a718-13d6ac63824a';
+```
 
-### 5. Verification
+Expected: every row returns `partner`.
 
-After the patch, verify in one pass:
-- `rg -n "queryKey: \['feature-flag', FLAG_ID\]" src` returns no hits in typed-flag hooks.
-- Open `/admin` → Checkout Links: existing URLs render (no fallback banner).
-- Open the upgrade modal logged-in: iframe loads.
-- Throttle network in DevTools, hard-reload the modal page: confirm retry succeeds; if it fails, the "Continue to public pricing" fallback button is visible.
-- Console shows no `[checkout-config] load failed` on a normal load.
+### 3. Optional follow-up (not in this patch)
+
+When admins change `companies.plan`, the cached `['subscription-tier', userId]` React Query stays warm for 5 min. If you want instant propagation, we can add a Realtime subscription on `companies` to invalidate `['subscription-tier']` — happy to do that as a separate change if you want it.
 
 ## Out of scope
 
-- No DB migration. The current row is valid; the bug is in how the client handles transient failures.
-- No change to `ghlCheckoutConfig.ts` static defaults (still contain `REPLACE_…` so we can detect placeholder state).
-- No change to `Pricing.tsx` (it already uses `buildPublicFunnelUrl` directly and was never affected).
+- No changes to `useCompany.joinByToken` (avoids the failure mode where the insert silently fails and the user is permanently stuck free).
+- No changes to GHL webhook / checkout flow — those already write `user_subscriptions` directly and continue to take precedence.
