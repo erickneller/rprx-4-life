@@ -84,6 +84,7 @@ export interface OnboardingProfileState {
 
 export interface OnboardingRouteConfig {
   preset?: FirstLoginFlowPreset | string | null;
+  route?: string | null;
   enabled?: boolean | null;
 }
 
@@ -104,6 +105,11 @@ function isFirstLoginPreset(v: unknown): v is FirstLoginFlowPreset {
   return typeof v === 'string' && FIRST_LOGIN_FLOW_OPTIONS.some(o => o.value === v);
 }
 
+function getConfiguredRoute(cfg: OnboardingRouteConfig | null | undefined): string | null {
+  const candidate = cfg?.route ?? cfg?.preset;
+  return typeof candidate === 'string' && candidate.startsWith('/') ? candidate : null;
+}
+
 export function resolveOnboardingPreset(cfg: OnboardingConfig): FirstLoginFlowPreset {
   return resolveOnboardingRoute(
     { isProfileComplete: false, hasAssessments: false, onboardingCompleted: false },
@@ -118,11 +124,29 @@ export function resolveOnboardingRoute(
   globalConfig: OnboardingRouteConfig | null | undefined,
 ): ResolvedOnboardingRoute {
   const companyOverrideEnabled = companyConfig?.enabled !== false;
+  const companyRoute = companyOverrideEnabled ? getConfiguredRoute(companyConfig) : null;
+  if (companyRoute) {
+    return {
+      route: profile.onboardingCompleted ? null : companyRoute,
+      preset: DEFAULT_FIRST_LOGIN_FLOW,
+      reason: 'company_override',
+    };
+  }
+
   if (companyOverrideEnabled && isFirstLoginPreset(companyConfig?.preset)) {
     return {
       route: profile.onboardingCompleted ? null : getFirstDestination({ preset: companyConfig.preset, ...profile }),
       preset: companyConfig.preset,
       reason: 'company_override',
+    };
+  }
+
+  const globalRoute = getConfiguredRoute(globalConfig);
+  if (globalRoute) {
+    return {
+      route: profile.onboardingCompleted ? null : globalRoute,
+      preset: DEFAULT_FIRST_LOGIN_FLOW,
+      reason: 'global_default',
     };
   }
 
