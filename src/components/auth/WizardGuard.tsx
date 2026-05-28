@@ -2,7 +2,7 @@ import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useFirstLoginFlow, useCompanyFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
-import { resolveOnboardingRoute } from '@/lib/onboardingRoute';
+import { resolveFinalOnboardingPath, resolveOnboardingRoute } from '@/lib/onboardingRoute';
 import {
   shouldGuardRedirect,
   shouldShowProfileNudge,
@@ -42,14 +42,28 @@ export function WizardGuard({ children }: WizardGuardProps) {
   const hasAssessments = (assessments || []).some(a => a.completed_at);
   const effectivePreset = companyPreset ?? preset;
   const isCompanyUser = !!profile.company_id;
-  const forceDashboardFromGlobal = !companyOverrideEnabled && globalPath === '/dashboard';
-  const { path: resolverPath, reason } = resolveOnboardingRoute({
+
+  const { path: onboardingPath, reason } = resolveFinalOnboardingPath({
+    onboardingCompleted: profile.onboarding_completed,
+    isProfileComplete,
+    hasAssessments,
     companyOverrideEnabled,
     companyOverridePath,
     globalPath,
   });
-  const onboardingPath = forceDashboardFromGlobal ? '/dashboard' : resolverPath;
-  const isAllowed = ALLOWED_PATHS.some(p => location.pathname.startsWith(p)) || location.pathname.startsWith(onboardingPath);
+
+  // Low-level preset path (for the allowed-route gate so users mid-onboarding
+  // aren't bounced off the wizard/assessment page they're working through).
+  const { path: presetPath } = resolveOnboardingRoute({
+    companyOverrideEnabled,
+    companyOverridePath,
+    globalPath,
+  });
+
+  const isAllowed =
+    ALLOWED_PATHS.some(p => location.pathname.startsWith(p)) ||
+    location.pathname.startsWith(onboardingPath) ||
+    location.pathname.startsWith(presetPath);
   if (isAllowed) return <>{children}</>;
 
   const logPayload = {
@@ -60,14 +74,15 @@ export function WizardGuard({ children }: WizardGuardProps) {
     companyOverridePath,
     globalRaw,
     globalNormalized: globalPath,
-    forceDashboardFromGlobal,
     reason,
     finalRedirectPath: onboardingPath,
   };
 
-  // Forced redirect only when the resolved preset enforces it AND user explicitly hasn't completed onboarding.
-  // forceDashboardFromGlobal short-circuits any legacy wizard-first override.
-  if (!forceDashboardFromGlobal && shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed && !isProfileComplete) {
+  // Skip the forced redirect when the unified adapter already says the user
+  // belongs on /dashboard (profile complete, or global preset is dashboard-only).
+  const suppressForcedRedirect = reason === 'profile_complete' || reason === 'force_dashboard_global';
+
+  if (!suppressForcedRedirect && shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed && !isProfileComplete) {
     console.debug('[onboarding-route]', logPayload);
     return <Navigate to={onboardingPath} replace />;
   }

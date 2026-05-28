@@ -5,9 +5,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
-import { useFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
-import { resolveOnboardingPreset, resolveOnboardingRoute, type FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
-import { Button } from '@/components/ui/button';
+import { useFirstLoginFlow, normalizeOnboardingPath } from '@/hooks/useFirstLoginFlow';
+import { resolveFinalOnboardingPath } from '@/lib/onboardingRoute';
+import type { FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -34,7 +35,8 @@ export default function Join() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { preset, globalPath, globalRaw, isLoading: presetLoading } = useFirstLoginFlow();
+
   const { joinByToken } = useCompany();
   const { isProfileComplete, isLoading: profileLoading } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
@@ -85,22 +87,11 @@ export default function Join() {
 
     lookup();
   }, [token]);
-
-  // ─── Step 2a: Already logged in OR just-signed-up → join + redirect ──────
   useEffect(() => {
     if (!user || !pendingCompany || loading) return;
-    // Always wait for the first-login preset so we can honor admin config
-    if (presetLoading) return;
-
-    const effectivePreset = resolveOnboardingPreset({
-      globalPreset: preset,
-      companyPreset: pendingCompany.first_login_flow,
-    });
-    const isDashboardOnly = effectivePreset === 'dashboard_silent' || effectivePreset === 'dashboard_nudge';
-
-    // For presets that may compute a wizard/assessment destination,
-    // wait until profile + assessments are loaded so the dest is correct.
-    if (!isDashboardOnly && (profileLoading || assessmentsLoading || !assessmentsFetched)) return;
+    // Always wait for the first-login preset and profile/assessment data so
+    // the unified adapter computes against complete state.
+    if (presetLoading || profileLoading || assessmentsLoading || !assessmentsFetched) return;
 
     let cancelled = false;
     async function autoJoin() {
@@ -111,16 +102,37 @@ export default function Join() {
           setHasJoined(true);
           toast.success(`You've joined ${pendingCompany!.name}!`);
         }
-        if (isDashboardOnly) {
-          navigate('/dashboard', { replace: true });
-          return;
-        }
         const hasAssessments = (assessments || []).some(a => a.completed_at);
-        const routeDecision = resolveOnboardingRoute(
-          { isProfileComplete, hasAssessments },
-          { preset: pendingCompany!.first_login_flow, enabled: pendingCompany!.first_login_flow != null },
-          { preset },
-        );
+        const companyOverridePath = normalizeOnboardingPath(pendingCompany!.first_login_flow);
+        const companyOverrideEnabled = pendingCompany!.first_login_flow != null;
+        const { path: finalRedirectPath, reason } = resolveFinalOnboardingPath({
+          isProfileComplete,
+          hasAssessments,
+          companyOverrideEnabled,
+          companyOverridePath,
+          globalPath,
+        });
+        console.debug('[onboarding-route]', {
+          source: 'join',
+          user: user!.id,
+          companyOverrideEnabled,
+          companyOverridePath,
+          globalRaw,
+          globalNormalized: globalPath,
+          reason,
+          finalRedirectPath,
+        });
+        navigate(finalRedirectPath, { replace: true });
+      } catch (err: any) {
+        if (!cancelled) setError(err.message ?? 'Failed to join company.');
+      }
+    }
+
+    autoJoin();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched, preset, globalPath, isProfileComplete]);
+
         navigate(routeDecision.route ?? '/dashboard', { replace: true });
       } catch (err: any) {
         if (!cancelled) setError(err.message ?? 'Failed to join company.');
