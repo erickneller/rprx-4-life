@@ -55,7 +55,7 @@ export function CompaniesTab() {
       // Fetch companies
       const { data: rows, error } = await (supabase
         .from('companies') as any)
-        .select('id, name, slug, plan, owner_id, created_at')
+        .select('id, name, slug, plan, owner_id, created_at, first_login_flow')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
