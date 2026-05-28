@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { type PlanKey, type IntervalKey } from '@/lib/ghlCheckoutConfig';
+import { type PlanKey, type IntervalKey, GHL_PUBLIC_FUNNEL_URL } from '@/lib/ghlCheckoutConfig';
 import { getStoredAffiliateRef } from '@/lib/affiliateStorage';
-import { useCheckoutConfig } from '@/hooks/useCheckoutConfig';
+import { useCheckoutConfig, CHECKOUT_CONFIG_QUERY_KEY } from '@/hooks/useCheckoutConfig';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
-
-interface UpgradeModalProps {
-  open: boolean;
+import { Loader2, RefreshCw } from 'lucide-react';
   onOpenChange: (open: boolean) => void;
   initialPlan?: PlanKey;
   initialInterval?: IntervalKey;
