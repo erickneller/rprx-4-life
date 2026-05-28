@@ -26,7 +26,7 @@ interface WizardGuardProps {
 export function WizardGuard({ children }: WizardGuardProps) {
   const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
-  const { preset, globalPath, isLoading: presetLoading } = useFirstLoginFlow();
+  const { preset, globalPath, globalRaw, isLoading: presetLoading } = useFirstLoginFlow();
   const { companyPreset, companyOverrideEnabled, companyOverridePath, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
   const location = useLocation();
 
@@ -51,7 +51,7 @@ export function WizardGuard({ children }: WizardGuardProps) {
 
   // Forced redirect only when the resolved preset enforces it AND user explicitly hasn't completed onboarding
   if (shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed && !isProfileComplete) {
-    console.debug(`[onboarding-route] user=${profile.id} path=${onboardingPath} reason=${reason} source=guard`);
+    console.debug('[onboarding-route]', { source: 'guard', user: profile.id, globalRaw, globalNormalized: globalPath, resolvedPath: onboardingPath, reason });
     return <Navigate to={onboardingPath} replace />;
   }
 

@@ -4,9 +4,26 @@ import { DEFAULT_FIRST_LOGIN_FLOW, type FirstLoginFlowPreset } from '@/lib/first
 
 const FLAG_ID = 'first_login_flow';
 
+export function normalizeOnboardingPath(value: unknown): string | null {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return null;
+  if (raw.startsWith('/')) return raw;
+  const lower = raw.toLowerCase();
+  // Map known preset/keyword values to concrete routes
+  if (lower === 'dashboard' || lower === 'dashboard_silent' || lower === 'dashboard_nudge') {
+    return '/dashboard';
+  }
+  if (lower === 'wizard' || lower === 'profile' || lower === 'profile_only' || lower === 'profile_then_assessment') {
+    return '/wizard';
+  }
+  if (lower === 'assessment' || lower === 'assessment_only' || lower === 'assessment_then_profile') {
+    return '/assessment';
+  }
+  return null;
+}
+
 function toOnboardingPath(value: unknown): string | null {
-  const path = typeof value === 'string' ? value.trim() : '';
-  return path.startsWith('/') ? path : null;
+  return normalizeOnboardingPath(value);
 }
 
 export function useFirstLoginFlow() {
@@ -26,6 +43,7 @@ export function useFirstLoginFlow() {
 
   return {
     preset: (data ?? DEFAULT_FIRST_LOGIN_FLOW) as FirstLoginFlowPreset,
+    globalRaw: (data ?? null) as string | null,
     globalPath: toOnboardingPath(data),
     isLoading,
   };
