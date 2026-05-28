@@ -25,7 +25,7 @@ const SLOTS: Array<{ plan: PlanKey; interval: IntervalKey; label: string }> = [
 ];
 
 export function CheckoutLinksTab() {
-  const { config, isLoading } = useCheckoutConfig();
+  const { config, isLoading, isDefault, isError } = useCheckoutConfig();
   const update = useUpdateCheckoutConfig();
   const [draft, setDraft] = useState<CheckoutConfig | null>(null);
 
