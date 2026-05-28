@@ -216,6 +216,7 @@ export function CompaniesTab() {
                 <TableHead>Name</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Plan</TableHead>
+                <TableHead>First-Login Flow</TableHead>
                 <TableHead className="text-center">Members</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Invite Link</TableHead>
@@ -223,7 +224,11 @@ export function CompaniesTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {companies.map(company => (
+              {companies.map(company => {
+                const flowLabel = company.first_login_flow
+                  ? FIRST_LOGIN_FLOW_OPTIONS.find(o => o.value === company.first_login_flow)?.label ?? company.first_login_flow
+                  : 'Use global default';
+                return (
                 <TableRow key={company.id}>
                   <TableCell className="font-medium">{company.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground font-mono">{company.slug}</TableCell>
@@ -232,6 +237,7 @@ export function CompaniesTab() {
                       {company.plan}
                     </Badge>
                   </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{flowLabel}</TableCell>
                   <TableCell className="text-center">{company.member_count ?? 0}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {new Date(company.created_at).toLocaleDateString()}
