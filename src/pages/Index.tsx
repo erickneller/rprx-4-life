@@ -34,11 +34,20 @@ const Index = () => {
   }
 
   const hasAssessments = (assessments || []).some(a => a.completed_at);
-  const dest = resolveOnboardingRoute(
-    { globalPreset: preset, companyPreset },
-    { isProfileComplete, hasAssessments },
+  const routeDecision = resolveOnboardingRoute(
+    { isProfileComplete, hasAssessments, onboardingCompleted: profile.onboarding_completed },
+    { preset: companyPreset, enabled: companyPreset != null },
+    { preset },
   );
-  return <Navigate to={dest ?? '/dashboard'} replace />;
+  const destination = routeDecision.route ?? '/dashboard';
+  console.debug('[onboarding-route]', {
+    surface: 'Index',
+    route: destination,
+    reason: routeDecision.reason,
+    preset: routeDecision.preset,
+    companyId: profile.company_id,
+  });
+  return <Navigate to={destination} replace />;
 };
 
 export default Index;

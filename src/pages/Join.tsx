@@ -116,11 +116,12 @@ export default function Join() {
           return;
         }
         const hasAssessments = (assessments || []).some(a => a.completed_at);
-        const dest = resolveOnboardingRoute(
-          { globalPreset: preset, companyPreset: pendingCompany!.first_login_flow },
+        const routeDecision = resolveOnboardingRoute(
           { isProfileComplete, hasAssessments },
-        ) ?? '/dashboard';
-        navigate(dest, { replace: true });
+          { preset: pendingCompany!.first_login_flow, enabled: pendingCompany!.first_login_flow != null },
+          { preset },
+        );
+        navigate(routeDecision.route ?? '/dashboard', { replace: true });
       } catch (err: any) {
         if (!cancelled) setError(err.message ?? 'Failed to join company.');
       }
