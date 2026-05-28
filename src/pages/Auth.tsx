@@ -126,9 +126,11 @@ const Auth = () => {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             justSignedUp.current = true;
-            navigate('/wizard', { replace: true });
+            // Route through Index so the unified onboarding adapter decides.
+            navigate('/', { replace: true });
             return;
           }
+
           setSuccess('Account created! Check your inbox to confirm your email. If you don\'t see it within 2 minutes, check your spam/junk folder or try resending.');
           setEmail('');
           setPassword('');

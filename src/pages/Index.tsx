@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useFirstLoginFlow, useCompanyFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
-import { resolveOnboardingRoute } from '@/lib/onboardingRoute';
+import { resolveFinalOnboardingPath } from '@/lib/onboardingRoute';
 import LandingPage from '@/components/landing/LandingPage';
 
 const Index = () => {
@@ -35,25 +35,14 @@ const Index = () => {
 
   const hasAssessments = (assessments || []).some(a => a.completed_at);
   const isCompanyUser = !!profile.company_id;
-  const forceDashboardFromGlobal = !companyOverrideEnabled && globalPath === '/dashboard';
-  const { path: resolverPath, reason } = resolveOnboardingRoute({
+  const { path: finalRedirectPath, reason } = resolveFinalOnboardingPath({
+    onboardingCompleted: profile.onboarding_completed,
+    isProfileComplete,
+    hasAssessments,
     companyOverrideEnabled,
     companyOverridePath,
     globalPath,
   });
-
-  let finalRedirectPath: string;
-  if (profile.onboarding_completed || isProfileComplete) {
-    finalRedirectPath = '/dashboard';
-  } else if (companyOverrideEnabled && companyOverridePath) {
-    finalRedirectPath = resolverPath;
-  } else if (forceDashboardFromGlobal) {
-    finalRedirectPath = '/dashboard';
-  } else if (hasAssessments) {
-    finalRedirectPath = '/profile';
-  } else {
-    finalRedirectPath = resolverPath;
-  }
 
   console.debug('[onboarding-route]', {
     source: 'index',
@@ -63,7 +52,6 @@ const Index = () => {
     companyOverridePath,
     globalRaw,
     globalNormalized: globalPath,
-    forceDashboardFromGlobal,
     reason,
     finalRedirectPath,
   });
