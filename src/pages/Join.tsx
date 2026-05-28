@@ -8,8 +8,9 @@ import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
 import { useFirstLoginFlow, normalizeOnboardingPath } from '@/hooks/useFirstLoginFlow';
 import { resolveFinalOnboardingPath } from '@/lib/onboardingRoute';
 import type { FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
-
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -35,12 +36,12 @@ export default function Join() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
   const navigate = useNavigate();
-  const { preset, globalPath, globalRaw, isLoading: presetLoading } = useFirstLoginFlow();
-
+  const { user } = useAuth();
   const { joinByToken } = useCompany();
   const { isProfileComplete, isLoading: profileLoading } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
-  const { preset, isLoading: presetLoading } = useFirstLoginFlow();
+  const { preset, globalPath, globalRaw, isLoading: presetLoading } = useFirstLoginFlow();
+
 
   const [pendingCompany, setPendingCompany] = useState<PendingCompany | null>(null);
   const [loading, setLoading] = useState(true);
