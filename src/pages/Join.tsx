@@ -19,6 +19,7 @@ interface PendingCompany {
   id: string;
   name: string;
   invite_token: string;
+  first_login_flow: FirstLoginFlowPreset | null;
 }
 
 /**
