@@ -43,6 +43,7 @@ export function useFirstLoginFlow() {
 
   return {
     preset: (data ?? DEFAULT_FIRST_LOGIN_FLOW) as FirstLoginFlowPreset,
+    globalRaw: (data ?? null) as string | null,
     globalPath: toOnboardingPath(data),
     isLoading,
   };
