@@ -26,7 +26,7 @@ interface WizardGuardProps {
 export function WizardGuard({ children }: WizardGuardProps) {
   const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
-  const { preset, globalPath, isLoading: presetLoading } = useFirstLoginFlow();
+  const { preset, globalPath, globalRaw, isLoading: presetLoading } = useFirstLoginFlow();
   const { companyPreset, companyOverrideEnabled, companyOverridePath, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
   const location = useLocation();
 
