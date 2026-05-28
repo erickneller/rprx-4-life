@@ -10,7 +10,7 @@ const Index = () => {
   const { user, loading } = useAuth();
   const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading } = useAssessmentHistory();
-  const { globalPath, isLoading: presetLoading } = useFirstLoginFlow();
+  const { globalPath, globalRaw, isLoading: presetLoading } = useFirstLoginFlow();
   const { companyOverrideEnabled, companyOverridePath, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
 
   if (loading || (user && (profileLoading || !profile || assessmentsLoading || presetLoading || companyPresetLoading))) {
