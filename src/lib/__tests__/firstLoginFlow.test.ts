@@ -1,0 +1,131 @@
+import { describe, it, expect } from 'vitest';
+import {
+  resolveOnboardingPreset,
+  resolveOnboardingRoute,
+  shouldGuardRedirect,
+  getPostWizardDestination,
+} from '../firstLoginFlow';
+
+describe('resolveOnboardingPreset', () => {
+  it('returns company preset when set', () => {
+    expect(
+      resolveOnboardingPreset({
+        globalPreset: 'profile_then_assessment',
+        companyPreset: 'dashboard_silent',
+      }),
+    ).toBe('dashboard_silent');
+  });
+
+  it('falls back to global when company is null/undefined', () => {
+    expect(
+      resolveOnboardingPreset({ globalPreset: 'profile_then_assessment', companyPreset: null }),
+    ).toBe('profile_then_assessment');
+    expect(
+      resolveOnboardingPreset({ globalPreset: 'profile_then_assessment' }),
+    ).toBe('profile_then_assessment');
+  });
+
+  it('ignores an invalid company preset value', () => {
+    expect(
+      resolveOnboardingPreset({
+        globalPreset: 'profile_then_assessment',
+        // @ts-expect-error – intentionally invalid
+        companyPreset: 'garbage_value',
+      }),
+    ).toBe('profile_then_assessment');
+  });
+});
+
+describe('resolveOnboardingRoute', () => {
+  it('new user + company override dashboard_silent → null (dashboard)', () => {
+    expect(
+      resolveOnboardingRoute(
+        { globalPreset: 'profile_then_assessment', companyPreset: 'dashboard_silent' },
+        { isProfileComplete: false, hasAssessments: false },
+      ),
+    ).toBeNull();
+  });
+
+  it('new user + no company override + global profile_then_assessment → /wizard', () => {
+    expect(
+      resolveOnboardingRoute(
+        { globalPreset: 'profile_then_assessment', companyPreset: null },
+        { isProfileComplete: false, hasAssessments: false },
+      ),
+    ).toBe('/wizard');
+  });
+
+  it('profile complete + no assessments + profile_then_assessment → /assessment', () => {
+    expect(
+      resolveOnboardingRoute(
+        { globalPreset: 'profile_then_assessment' },
+        { isProfileComplete: true, hasAssessments: false },
+      ),
+    ).toBe('/assessment');
+  });
+
+  it('everything done → null', () => {
+    expect(
+      resolveOnboardingRoute(
+        { globalPreset: 'profile_then_assessment' },
+        { isProfileComplete: true, hasAssessments: true },
+      ),
+    ).toBeNull();
+  });
+
+  it('assessment_then_profile sends new user to /assessment first', () => {
+    expect(
+      resolveOnboardingRoute(
+        { globalPreset: 'assessment_then_profile' },
+        { isProfileComplete: false, hasAssessments: false },
+      ),
+    ).toBe('/assessment');
+  });
+
+  it('company override beats a different global', () => {
+    expect(
+      resolveOnboardingRoute(
+        { globalPreset: 'dashboard_silent', companyPreset: 'profile_only' },
+        { isProfileComplete: false, hasAssessments: false },
+      ),
+    ).toBe('/wizard');
+  });
+});
+
+describe('shouldGuardRedirect via resolveOnboardingPreset', () => {
+  it('is false for dashboard presets', () => {
+    expect(
+      shouldGuardRedirect(
+        resolveOnboardingPreset({
+          globalPreset: 'profile_then_assessment',
+          companyPreset: 'dashboard_silent',
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      shouldGuardRedirect(
+        resolveOnboardingPreset({
+          globalPreset: 'profile_then_assessment',
+          companyPreset: 'dashboard_nudge',
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it('is true for forced-onboarding presets', () => {
+    expect(
+      shouldGuardRedirect(
+        resolveOnboardingPreset({ globalPreset: 'profile_then_assessment' }),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('getPostWizardDestination (unchanged behavior)', () => {
+  it('routes to /assessment when assessment still needed', () => {
+    expect(getPostWizardDestination('profile_then_assessment', false)).toBe('/assessment');
+  });
+  it('routes to /dashboard once assessments are done', () => {
+    expect(getPostWizardDestination('profile_then_assessment', true)).toBe('/dashboard');
+  });
+});
