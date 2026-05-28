@@ -374,6 +374,23 @@ export function CompaniesTab() {
                 <option value="pro">Pro</option>
               </select>
             </div>
+            <div className="space-y-1">
+              <Label htmlFor="editFirstLoginFlow">First-Login Flow (overrides global)</Label>
+              <select
+                id="editFirstLoginFlow"
+                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                value={editFirstLoginFlow}
+                onChange={e => setEditFirstLoginFlow(e.target.value as FirstLoginFlowPreset | '')}
+              >
+                <option value="">Use global default</option>
+                {FIRST_LOGIN_FLOW_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Where users from this company land after signup. Leave on the default to follow the global setting.
+              </p>
+            </div>
             <div className="flex gap-2 justify-end pt-2">
               <Button variant="outline" onClick={() => setEditingCompany(null)}>Cancel</Button>
               <Button
