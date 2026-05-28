@@ -2,8 +2,8 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
-import { useFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
-import { getFirstDestination } from '@/lib/firstLoginFlow';
+import { useFirstLoginFlow, useCompanyFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
+import { resolveOnboardingRoute } from '@/lib/firstLoginFlow';
 import LandingPage from '@/components/landing/LandingPage';
 
 const Index = () => {
@@ -11,8 +11,9 @@ const Index = () => {
   const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading } = useAssessmentHistory();
   const { preset, isLoading: presetLoading } = useFirstLoginFlow();
+  const { companyPreset, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
 
-  if (loading || (user && (profileLoading || !profile || assessmentsLoading || presetLoading))) {
+  if (loading || (user && (profileLoading || !profile || assessmentsLoading || presetLoading || companyPresetLoading))) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -33,7 +34,10 @@ const Index = () => {
   }
 
   const hasAssessments = (assessments || []).some(a => a.completed_at);
-  const dest = getFirstDestination({ preset, isProfileComplete, hasAssessments });
+  const dest = resolveOnboardingRoute(
+    { globalPreset: preset, companyPreset },
+    { isProfileComplete, hasAssessments },
+  );
   return <Navigate to={dest ?? '/dashboard'} replace />;
 };
 

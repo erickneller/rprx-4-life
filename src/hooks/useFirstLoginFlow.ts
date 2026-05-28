@@ -35,3 +35,30 @@ export function useSetFirstLoginFlow() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag', FLAG_ID] }),
   });
 }
+
+/**
+ * Reads a company's onboarding-flow override. Returns null when the company
+ * hasn't set one (callers should fall back to the global preset).
+ */
+export function useCompanyFirstLoginFlow(companyId: string | null | undefined) {
+  const enabled = !!companyId;
+  const { data, isLoading } = useQuery({
+    queryKey: ['company-first-login-flow', companyId],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from('companies' as any)
+        .select('first_login_flow')
+        .eq('id', companyId)
+        .maybeSingle() as any);
+      if (error) throw error;
+      const v = (data as any)?.first_login_flow;
+      return (v as FirstLoginFlowPreset | null) ?? null;
+    },
+    staleTime: 60_000,
+  });
+  return {
+    companyPreset: (data ?? null) as FirstLoginFlowPreset | null,
+    isLoading: enabled ? isLoading : false,
+  };
+}

@@ -11,6 +11,7 @@ import { Loader2, Plus, Copy, Check, Building2, RefreshCw, Pencil, Trash2 } from
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { buildInviteUrl } from '@/hooks/useCompany';
+import { FIRST_LOGIN_FLOW_OPTIONS, type FirstLoginFlowPreset } from '@/lib/firstLoginFlow';
 
 interface CompanyRow {
   id: string;
@@ -20,6 +21,7 @@ interface CompanyRow {
   owner_id: string | null;
   invite_token: string;
   created_at: string;
+  first_login_flow: FirstLoginFlowPreset | null;
   member_count?: number;
   owner_email?: string;
 }
@@ -43,6 +45,7 @@ export function CompaniesTab() {
   const [editingCompany, setEditingCompany] = useState<CompanyRow | null>(null);
   const [editName, setEditName] = useState('');
   const [editPlan, setEditPlan] = useState<'free' | 'partner' | 'pro'>('free');
+  const [editFirstLoginFlow, setEditFirstLoginFlow] = useState<FirstLoginFlowPreset | ''>('');
   const [deleteTarget, setDeleteTarget] = useState<CompanyRow | null>(null);
 
   // ─── Fetch all companies with member counts ─────────────────────────────
@@ -52,7 +55,7 @@ export function CompaniesTab() {
       // Fetch companies
       const { data: rows, error } = await (supabase
         .from('companies') as any)
-        .select('id, name, slug, plan, owner_id, created_at')
+        .select('id, name, slug, plan, owner_id, created_at, first_login_flow')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -136,7 +139,11 @@ export function CompaniesTab() {
     mutationFn: async () => {
       if (!editingCompany) return;
       const { error } = await (supabase.from('companies') as any)
-        .update({ name: editName.trim(), plan: editPlan })
+        .update({
+          name: editName.trim(),
+          plan: editPlan,
+          first_login_flow: editFirstLoginFlow === '' ? null : editFirstLoginFlow,
+        })
         .eq('id', editingCompany.id);
       if (error) throw error;
     },
@@ -144,6 +151,7 @@ export function CompaniesTab() {
       toast.success('Company updated.');
       setEditingCompany(null);
       queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+      queryClient.invalidateQueries({ queryKey: ['company-first-login-flow'] });
     },
     onError: (err: any) => toast.error(err.message ?? 'Failed to update company.'),
   });
@@ -171,6 +179,7 @@ export function CompaniesTab() {
   const openEdit = (company: CompanyRow) => {
     setEditName(company.name);
     setEditPlan(company.plan as any);
+    setEditFirstLoginFlow((company.first_login_flow ?? '') as FirstLoginFlowPreset | '');
     setEditingCompany(company);
   };
 
@@ -207,6 +216,7 @@ export function CompaniesTab() {
                 <TableHead>Name</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Plan</TableHead>
+                <TableHead>First-Login Flow</TableHead>
                 <TableHead className="text-center">Members</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Invite Link</TableHead>
@@ -214,7 +224,11 @@ export function CompaniesTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {companies.map(company => (
+              {companies.map(company => {
+                const flowLabel = company.first_login_flow
+                  ? FIRST_LOGIN_FLOW_OPTIONS.find(o => o.value === company.first_login_flow)?.label ?? company.first_login_flow
+                  : 'Use global default';
+                return (
                 <TableRow key={company.id}>
                   <TableCell className="font-medium">{company.name}</TableCell>
                   <TableCell className="text-xs text-muted-foreground font-mono">{company.slug}</TableCell>
@@ -223,6 +237,7 @@ export function CompaniesTab() {
                       {company.plan}
                     </Badge>
                   </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{flowLabel}</TableCell>
                   <TableCell className="text-center">{company.member_count ?? 0}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {new Date(company.created_at).toLocaleDateString()}
@@ -279,7 +294,8 @@ export function CompaniesTab() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -357,6 +373,23 @@ export function CompaniesTab() {
                 <option value="partner">Partner</option>
                 <option value="pro">Pro</option>
               </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="editFirstLoginFlow">First-Login Flow (overrides global)</Label>
+              <select
+                id="editFirstLoginFlow"
+                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                value={editFirstLoginFlow}
+                onChange={e => setEditFirstLoginFlow(e.target.value as FirstLoginFlowPreset | '')}
+              >
+                <option value="">Use global default</option>
+                {FIRST_LOGIN_FLOW_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Where users from this company land after signup. Leave on the default to follow the global setting.
+              </p>
             </div>
             <div className="flex gap-2 justify-end pt-2">
               <Button variant="outline" onClick={() => setEditingCompany(null)}>Cancel</Button>

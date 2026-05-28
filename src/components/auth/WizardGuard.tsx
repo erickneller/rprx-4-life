@@ -1,9 +1,10 @@
 import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useProfile } from '@/hooks/useProfile';
 import { useAssessmentHistory } from '@/hooks/useAssessmentHistory';
-import { useFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
+import { useFirstLoginFlow, useCompanyFirstLoginFlow } from '@/hooks/useFirstLoginFlow';
 import {
-  getFirstDestination,
+  resolveOnboardingPreset,
+  resolveOnboardingRoute,
   shouldGuardRedirect,
   shouldShowProfileNudge,
   shouldShowAssessmentNudge,
@@ -28,9 +29,10 @@ export function WizardGuard({ children }: WizardGuardProps) {
   const { profile, isLoading: profileLoading, isProfileComplete } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
   const { preset, isLoading: presetLoading } = useFirstLoginFlow();
+  const { companyPreset, isLoading: companyPresetLoading } = useCompanyFirstLoginFlow(profile?.company_id);
   const location = useLocation();
 
-  if (profileLoading || assessmentsLoading || !assessmentsFetched || presetLoading) {
+  if (profileLoading || assessmentsLoading || !assessmentsFetched || presetLoading || companyPresetLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
@@ -43,16 +45,20 @@ export function WizardGuard({ children }: WizardGuardProps) {
   if (isAllowed) return <>{children}</>;
 
   const hasAssessments = (assessments || []).some(a => a.completed_at);
+  const effectivePreset = resolveOnboardingPreset({ globalPreset: preset, companyPreset });
 
-  // Forced redirect only when the preset enforces it AND user explicitly hasn't completed onboarding
-  if (shouldGuardRedirect(preset) && !profile.onboarding_completed) {
-    const dest = getFirstDestination({ preset, isProfileComplete, hasAssessments });
+  // Forced redirect only when the resolved preset enforces it AND user explicitly hasn't completed onboarding
+  if (shouldGuardRedirect(effectivePreset) && !profile.onboarding_completed) {
+    const dest = resolveOnboardingRoute(
+      { globalPreset: preset, companyPreset },
+      { isProfileComplete, hasAssessments },
+    );
     if (dest) return <Navigate to={dest} replace />;
   }
 
   // Banner nudges (non-blocking)
-  const needsProfile = !isProfileComplete && !profile.onboarding_completed && shouldShowProfileNudge(preset);
-  const needsAssessment = !hasAssessments && shouldShowAssessmentNudge(preset);
+  const needsProfile = !isProfileComplete && !profile.onboarding_completed && shouldShowProfileNudge(effectivePreset);
+  const needsAssessment = !hasAssessments && shouldShowAssessmentNudge(effectivePreset);
 
   if (needsProfile || needsAssessment) {
     return (

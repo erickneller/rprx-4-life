@@ -287,6 +287,7 @@ export type Database = {
       companies: {
         Row: {
           created_at: string
+          first_login_flow: string | null
           ghl_location_id: string | null
           id: string
           invite_token: string
@@ -298,6 +299,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          first_login_flow?: string | null
           ghl_location_id?: string | null
           id?: string
           invite_token?: string
@@ -309,6 +311,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          first_login_flow?: string | null
           ghl_location_id?: string | null
           id?: string
           invite_token?: string
@@ -2468,6 +2471,7 @@ export type Database = {
       lookup_company_by_invite_token: {
         Args: { _token: string }
         Returns: {
+          first_login_flow: string
           id: string
           name: string
         }[]

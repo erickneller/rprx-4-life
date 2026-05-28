@@ -73,3 +73,27 @@ export function getPostWizardDestination(preset: FirstLoginFlowPreset, hasAssess
   }
   return '/dashboard';
 }
+
+/**
+ * Unified onboarding-route resolver used by Index, WizardGuard, and Join.
+ * Per-company preset (if set) overrides the global preset.
+ */
+export interface OnboardingConfig {
+  globalPreset: FirstLoginFlowPreset;
+  companyPreset?: FirstLoginFlowPreset | null;
+}
+
+function isFirstLoginPreset(v: unknown): v is FirstLoginFlowPreset {
+  return typeof v === 'string' && FIRST_LOGIN_FLOW_OPTIONS.some(o => o.value === v);
+}
+
+export function resolveOnboardingPreset(cfg: OnboardingConfig): FirstLoginFlowPreset {
+  return isFirstLoginPreset(cfg.companyPreset) ? cfg.companyPreset : cfg.globalPreset;
+}
+
+export function resolveOnboardingRoute(
+  cfg: OnboardingConfig,
+  state: { isProfileComplete: boolean; hasAssessments: boolean },
+): string | null {
+  return getFirstDestination({ preset: resolveOnboardingPreset(cfg), ...state });
+}
