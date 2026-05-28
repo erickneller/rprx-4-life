@@ -92,7 +92,11 @@ export default function Join() {
     // Always wait for the first-login preset so we can honor admin config
     if (presetLoading) return;
 
-    const isDashboardOnly = preset === 'dashboard_silent' || preset === 'dashboard_nudge';
+    const effectivePreset = resolveOnboardingPreset({
+      globalPreset: preset,
+      companyPreset: pendingCompany.first_login_flow,
+    });
+    const isDashboardOnly = effectivePreset === 'dashboard_silent' || effectivePreset === 'dashboard_nudge';
 
     // For presets that may compute a wizard/assessment destination,
     // wait until profile + assessments are loaded so the dest is correct.
@@ -112,7 +116,10 @@ export default function Join() {
           return;
         }
         const hasAssessments = (assessments || []).some(a => a.completed_at);
-        const dest = getFirstDestination({ preset, isProfileComplete, hasAssessments }) ?? '/dashboard';
+        const dest = resolveOnboardingRoute(
+          { globalPreset: preset, companyPreset: pendingCompany!.first_login_flow },
+          { isProfileComplete, hasAssessments },
+        ) ?? '/dashboard';
         navigate(dest, { replace: true });
       } catch (err: any) {
         if (!cancelled) setError(err.message ?? 'Failed to join company.');
