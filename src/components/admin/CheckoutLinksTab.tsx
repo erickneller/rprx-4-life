@@ -25,7 +25,7 @@ const SLOTS: Array<{ plan: PlanKey; interval: IntervalKey; label: string }> = [
 ];
 
 export function CheckoutLinksTab() {
-  const { config, isLoading } = useCheckoutConfig();
+  const { config, isLoading, isDefault, isError } = useCheckoutConfig();
   const update = useUpdateCheckoutConfig();
   const [draft, setDraft] = useState<CheckoutConfig | null>(null);
 
@@ -67,6 +67,14 @@ export function CheckoutLinksTab() {
 
   return (
     <div className="space-y-6">
+      {(isDefault || isError) && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm">
+          <p className="font-semibold text-destructive">Saved checkout config could not be loaded.</p>
+          <p className="text-muted-foreground mt-1">
+            The form below is showing the built-in defaults, not what's actually live. <strong>Do not click "Save all" yet</strong> — it will overwrite the live config. Refresh the page first; if the banner persists, check your network/RLS access to <code>feature_flags</code>.
+          </p>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">Checkout Links</h2>

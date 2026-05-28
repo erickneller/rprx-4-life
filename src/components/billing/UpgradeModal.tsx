@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
-import { type PlanKey, type IntervalKey } from '@/lib/ghlCheckoutConfig';
+import { type PlanKey, type IntervalKey, GHL_PUBLIC_FUNNEL_URL } from '@/lib/ghlCheckoutConfig';
 import { getStoredAffiliateRef } from '@/lib/affiliateStorage';
-import { useCheckoutConfig } from '@/hooks/useCheckoutConfig';
+import { useCheckoutConfig, CHECKOUT_CONFIG_QUERY_KEY } from '@/hooks/useCheckoutConfig';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 
 interface UpgradeModalProps {
   open: boolean;
@@ -97,12 +98,34 @@ export function UpgradeModal({ open, onOpenChange, initialPlan = 'partner', init
         <div className="flex-1 relative bg-muted/30 overflow-auto">
           {isBlank ? (
             <div className="absolute inset-0 flex items-center justify-center p-8 text-center">
-              <div className="max-w-md space-y-2">
-                <p className="font-medium">Checkout link not configured yet</p>
+              <div className="max-w-md space-y-4">
+                <p className="font-medium">This checkout didn't load</p>
                 <p className="text-sm text-muted-foreground">
-                  An admin needs to add the live GoHighLevel checkout for
-                  the <strong>{plan}</strong> ({interval}) plan before this can be completed.
+                  The <strong>{plan}</strong> ({interval}) checkout link couldn't be loaded right now.
+                  You can retry, or continue to our public pricing page to complete your purchase.
                 </p>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => qc.invalidateQueries({ queryKey: CHECKOUT_CONFIG_QUERY_KEY })}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" /> Retry
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const ref = getStoredAffiliateRef();
+                      const base = config.publicFunnel || GHL_PUBLIC_FUNNEL_URL;
+                      const url = appendParams(base, {
+                        email: user?.email ?? null,
+                        user_id: user?.id ?? null,
+                        ref,
+                      });
+                      window.open(url, '_blank', 'noopener,noreferrer');
+                    }}
+                  >
+                    Continue to public pricing
+                  </Button>
+                </div>
               </div>
             </div>
           ) : slot.mode === 'embed' ? (

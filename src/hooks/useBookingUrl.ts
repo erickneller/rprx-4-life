@@ -6,7 +6,7 @@ const FALLBACK = 'https://YOUR-BOOKING-LINK-HERE.com';
 
 export function useBookingUrl() {
   const { data, isLoading } = useQuery({
-    queryKey: ['feature-flag', FLAG_ID],
+    queryKey: ['feature-flag-value', FLAG_ID],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feature_flags' as any)
@@ -33,6 +33,6 @@ export function useUpdateBookingUrl() {
         .upsert({ id: FLAG_ID, value, enabled: true, updated_at: new Date().toISOString() } as any);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag', FLAG_ID] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag-value', FLAG_ID] }),
   });
 }

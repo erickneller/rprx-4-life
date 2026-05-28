@@ -8,6 +8,7 @@ import {
 } from '@/lib/ghlCheckoutConfig';
 
 const FLAG_ID = 'ghl_checkout_config';
+export const CHECKOUT_CONFIG_QUERY_KEY = ['feature-flag-value', FLAG_ID] as const;
 
 export type CheckoutMode = 'url' | 'embed';
 export interface CheckoutSlot {
@@ -45,7 +46,11 @@ export const DEFAULT_CHECKOUT_CONFIG: CheckoutConfig = {
 };
 
 function parse(value: unknown): CheckoutConfig {
-  if (typeof value !== 'string' || !value) return DEFAULT_CHECKOUT_CONFIG;
+  if (value == null || value === '') return DEFAULT_CHECKOUT_CONFIG;
+  if (typeof value !== 'string') {
+    console.warn('[checkout-config] unexpected non-string value, using defaults', { type: typeof value });
+    return DEFAULT_CHECKOUT_CONFIG;
+  }
   try {
     const p = JSON.parse(value);
     const slot = (s: any, fallback: CheckoutSlot): CheckoutSlot => ({
@@ -76,26 +81,47 @@ function parse(value: unknown): CheckoutConfig {
             : DEFAULT_CHECKOUT_HEADER.description,
       },
     };
-  } catch {
+  } catch (err) {
+    console.warn('[checkout-config] failed to JSON.parse stored value, using defaults', err);
     return DEFAULT_CHECKOUT_CONFIG;
   }
 }
 
-export function useCheckoutConfig() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['feature-flag', FLAG_ID],
+export interface UseCheckoutConfigResult {
+  config: CheckoutConfig;
+  isLoading: boolean;
+  isError: boolean;
+  /** True when the returned config is the static fallback (DB load failed or no row). */
+  isDefault: boolean;
+}
+
+export function useCheckoutConfig(): UseCheckoutConfigResult {
+  const { data, isLoading, isError, isSuccess } = useQuery({
+    queryKey: CHECKOUT_CONFIG_QUERY_KEY,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feature_flags' as any)
         .select('value')
         .eq('id', FLAG_ID)
         .maybeSingle();
-      if (error) throw error;
+      if (error) {
+        console.error('[checkout-config] load failed', error);
+        throw error;
+      }
       return parse((data as any)?.value);
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+    refetchOnWindowFocus: true,
   });
-  return { config: data ?? DEFAULT_CHECKOUT_CONFIG, isLoading };
+  return {
+    config: data ?? DEFAULT_CHECKOUT_CONFIG,
+    isLoading,
+    isError,
+    isDefault: !isSuccess || data == null,
+  };
 }
 
 export function useUpdateCheckoutConfig() {
@@ -115,7 +141,7 @@ export function useUpdateCheckoutConfig() {
         );
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag', FLAG_ID] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CHECKOUT_CONFIG_QUERY_KEY }),
   });
 }
 

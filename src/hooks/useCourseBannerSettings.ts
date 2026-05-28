@@ -31,7 +31,7 @@ export function bannerGradientCss(s: CourseBannerSettings) {
 
 export function useCourseBannerSettings() {
   const { data, isLoading } = useQuery({
-    queryKey: ['feature-flag', FLAG_ID],
+    queryKey: ['feature-flag-value', FLAG_ID],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('feature_flags' as any)
@@ -63,6 +63,6 @@ export function useSetCourseBannerSettings() {
         );
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag', FLAG_ID] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['feature-flag-value', FLAG_ID] }),
   });
 }
