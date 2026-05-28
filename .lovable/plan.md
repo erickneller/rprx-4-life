@@ -1,45 +1,59 @@
-## Goal
-Let admins select multiple users in the Users tab and delete them in one action, with a single confirmation dialog.
+# Fix: cold-user global "dashboard" must beat legacy incomplete-profile checks
 
-## UX
-- New leftmost column in the Users table with a checkbox per row.
-- Header checkbox: select all / none of the **currently filtered** rows (tri-state when partially selected).
-- When 1+ rows are selected, a sticky action bar appears above the table:
-  - `N selected` · `Clear` · `Delete selected` (destructive button).
-- Clicking **Delete selected** opens an `AlertDialog`:
-  - "Delete N users? This permanently removes their accounts and data. Cannot be undone."
-  - Confirm runs the bulk delete; cancel closes.
-- The current admin's own row checkbox is disabled (can't self-delete, matches the edge function guard).
-- Selection clears after a successful delete or when filters change.
-- Existing per-row Delete action stays as-is.
+## Problem
+Cold users (no company) with the global onboarding preset set to a dashboard option are still being routed to `/wizard`. The path resolver returns `/dashboard` correctly, but legacy "incomplete profile" branches in `Index.tsx` and the forced redirect inside `WizardGuard.tsx` still funnel users to the wizard before/after the resolver runs.
 
-## Behavior
-- Toast on success: `Deleted X users` (and `Y failed` if partial).
-- Selection state is local to `UsersTab`, keyed by user id (`Set<string>`).
-- React Query `admin-users` list is invalidated after the bulk delete.
+## Required behavior for first-login / incomplete users
+1. Company override valid → company path
+2. Else if global normalizes to `/dashboard` → force `/dashboard` (no wizard fallback allowed)
+3. Else → `/wizard`
 
-## Technical changes
+Phone interstitial (`/complete-phone`) stays unchanged.
 
-**`supabase/functions/admin-user-actions/index.ts`**
-- Add new action `bulk-delete-users` accepting `{ userIds: string[] }`.
-- Reuses existing admin auth + role check.
-- Filters out the caller's own id before deleting.
-- Iterates `serviceClient.auth.admin.deleteUser(id)` and returns `{ success: true, deleted: number, failed: Array<{ userId, error }> }`.
-- Keep the existing single-user `delete-user` branch untouched (still used by per-row action and the loop is replaced by the new branch for bulk).
+## Changes (3 files only)
 
-**`src/components/admin/UsersTab.tsx`**
-- Add `const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())`.
-- Add `<Checkbox>` header + cell (import from `@/components/ui/checkbox`).
-- Header checkbox computes checked/indeterminate from filtered rows.
-- Add `BulkActionBar` section (inline JSX) shown when `selectedIds.size > 0`.
-- Add `bulkDeleteOpen` state + `AlertDialog` for confirmation.
-- `handleBulkDelete`: call `adminAction.mutateAsync({ action: 'bulk-delete-users', userIds: [...selectedIds] })`, toast, clear selection, invalidate query.
-- Disable checkbox for the row where `user.id === currentUser.id`.
-- Reset `selectedIds` in a `useEffect` when the filter/search inputs change.
+### 1. `src/pages/Index.tsx`
+- After loading guards + phone check, compute the resolved onboarding route from `resolveOnboardingRoute({...})`.
+- Add explicit boolean:
+  ```ts
+  const forceDashboardFromGlobal = !companyOverrideEnabled && globalPath === '/dashboard';
+  ```
+- New ordering of decisions (cold-user branch):
+  1. If `profile.onboarding_completed || isProfileComplete` → `/dashboard`
+  2. Else if `forceDashboardFromGlobal` → `/dashboard` (skip the legacy `hasAssessments → /profile` and resolver-fallback paths)
+  3. Else if `hasAssessments` → `/profile`
+  4. Else → resolver `path`
+- Log payload on the redirect decision:
+  ```
+  [onboarding-route] {
+    source: 'index',
+    isCompanyUser, companyOverrideEnabled, companyOverridePath,
+    globalRaw, globalNormalized: globalPath,
+    forceDashboardFromGlobal, reason, finalRedirectPath
+  }
+  ```
 
-**`useAdminUserActions` hook (or wherever `adminAction` lives)**
-- Extend the mutation payload type to include the optional `userIds: string[]` field. No new hook needed.
+### 2. `src/components/auth/WizardGuard.tsx`
+- Compute the same `forceDashboardFromGlobal` boolean from the same hooks already used.
+- When `forceDashboardFromGlobal` is true:
+  - Treat `/dashboard` as the resolved onboarding path (so `Navigate to={onboardingPath}` and banner `<Link to={onboardingPath}>` both target `/dashboard`).
+  - Suppress the forced wizard redirect: skip the `shouldGuardRedirect(effectivePreset) && !onboarding_completed && !isProfileComplete` branch entirely in this case (no wizard-first override).
+- Banner "Continue →" link uses the final resolved path (already does, but reaffirmed via the override).
+- Log payload on each redirect/banner decision with `source: 'guard'` and the same fields as Index.
+
+### 3. (Optional) `src/lib/onboardingRoute.ts`
+- No signature change. If helpful, export a tiny helper `isForcedDashboard(globalPath, companyOverrideEnabled)` returning the same boolean so Index and Guard share one source of truth. Otherwise inline the one-liner in both files. Decision: inline (smaller diff, matches "do not refactor unrelated code").
 
 ## Out of scope
-- Bulk ban / bulk role change (only delete per the request).
-- Server-side pagination changes.
+- `useFirstLoginFlow.ts` normalization is already correct (`'dashboard' | 'dashboard_silent' | 'dashboard_nudge' → '/dashboard'`); not touching it.
+- Phone-capture redirect, company override path, post-wizard destination — unchanged.
+- No test file edits required, but I will spot-check `src/lib/__tests__/onboardingRoute.test.ts` still passes (no API change).
+
+## Verification I will return
+1. `git diff` for `src/pages/Index.tsx` and `src/components/auth/WizardGuard.tsx`.
+2. One runtime console log sample for a cold user with global `dashboard_silent` showing `finalRedirectPath: '/dashboard'` and `forceDashboardFromGlobal: true`.
+3. Output of:
+   ```
+   rg -n '"/wizard"|to="/wizard"|Navigate to="/wizard"' src/pages/Index.tsx src/components/auth/WizardGuard.tsx
+   ```
+   (expected: no matches in decision points / banner links).

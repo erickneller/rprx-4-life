@@ -34,21 +34,40 @@ const Index = () => {
   }
 
   const hasAssessments = (assessments || []).some(a => a.completed_at);
-  if (profile.onboarding_completed || isProfileComplete) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  if (hasAssessments) {
-    return <Navigate to="/profile" replace />;
-  }
-
-  const { path, reason } = resolveOnboardingRoute({
+  const isCompanyUser = !!profile.company_id;
+  const forceDashboardFromGlobal = !companyOverrideEnabled && globalPath === '/dashboard';
+  const { path: resolverPath, reason } = resolveOnboardingRoute({
     companyOverrideEnabled,
     companyOverridePath,
     globalPath,
   });
-  console.debug('[onboarding-route]', { source: 'index', user: user.id, globalRaw, globalNormalized: globalPath, resolvedPath: path, reason });
-  return <Navigate to={path} replace />;
+
+  let finalRedirectPath: string;
+  if (profile.onboarding_completed || isProfileComplete) {
+    finalRedirectPath = '/dashboard';
+  } else if (companyOverrideEnabled && companyOverridePath) {
+    finalRedirectPath = resolverPath;
+  } else if (forceDashboardFromGlobal) {
+    finalRedirectPath = '/dashboard';
+  } else if (hasAssessments) {
+    finalRedirectPath = '/profile';
+  } else {
+    finalRedirectPath = resolverPath;
+  }
+
+  console.debug('[onboarding-route]', {
+    source: 'index',
+    user: user.id,
+    isCompanyUser,
+    companyOverrideEnabled,
+    companyOverridePath,
+    globalRaw,
+    globalNormalized: globalPath,
+    forceDashboardFromGlobal,
+    reason,
+    finalRedirectPath,
+  });
+  return <Navigate to={finalRedirectPath} replace />;
 };
 
 export default Index;
