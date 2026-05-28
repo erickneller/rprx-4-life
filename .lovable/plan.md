@@ -1,59 +1,79 @@
-# Fix: cold-user global "dashboard" must beat legacy incomplete-profile checks
+# Fix: unify all first-login routing through one adapter
 
-## Problem
-Cold users (no company) with the global onboarding preset set to a dashboard option are still being routed to `/wizard`. The path resolver returns `/dashboard` correctly, but legacy "incomplete profile" branches in `Index.tsx` and the forced redirect inside `WizardGuard.tsx` still funnel users to the wizard before/after the resolver runs.
+## Root cause (live, not theoretical)
+Two signup entry points still bypass the centralized resolver:
 
-## Required behavior for first-login / incomplete users
-1. Company override valid → company path
-2. Else if global normalizes to `/dashboard` → force `/dashboard` (no wizard fallback allowed)
-3. Else → `/wizard`
+1. `src/pages/Auth.tsx` line 129 — email/password signup with immediate session
+   hard-codes `navigate('/wizard', { replace: true })`.
+2. `src/pages/Join.tsx` — company-invite signup uses the older
+   `resolveOnboardingRoute` from `src/lib/firstLoginFlow.ts`, which can return
+   `/wizard` for incomplete profiles regardless of what global/company is set to.
 
-Phone interstitial (`/complete-phone`) stays unchanged.
+So even after Index.tsx + WizardGuard.tsx were fixed, new logins from either of
+these two paths still land on `/wizard`.
 
-## Changes (3 files only)
+Additional constraint from latest message: **no parallel routing logic** —
+Auth, Join, Index, and WizardGuard must all call the same utility.
 
-### 1. `src/pages/Index.tsx`
-- After loading guards + phone check, compute the resolved onboarding route from `resolveOnboardingRoute({...})`.
-- Add explicit boolean:
-  ```ts
-  const forceDashboardFromGlobal = !companyOverrideEnabled && globalPath === '/dashboard';
-  ```
-- New ordering of decisions (cold-user branch):
-  1. If `profile.onboarding_completed || isProfileComplete` → `/dashboard`
-  2. Else if `forceDashboardFromGlobal` → `/dashboard` (skip the legacy `hasAssessments → /profile` and resolver-fallback paths)
-  3. Else if `hasAssessments` → `/profile`
-  4. Else → resolver `path`
-- Log payload on the redirect decision:
-  ```
-  [onboarding-route] {
-    source: 'index',
-    isCompanyUser, companyOverrideEnabled, companyOverridePath,
-    globalRaw, globalNormalized: globalPath,
-    forceDashboardFromGlobal, reason, finalRedirectPath
-  }
-  ```
+## The fix (one adapter, 4 callers)
 
-### 2. `src/components/auth/WizardGuard.tsx`
-- Compute the same `forceDashboardFromGlobal` boolean from the same hooks already used.
-- When `forceDashboardFromGlobal` is true:
-  - Treat `/dashboard` as the resolved onboarding path (so `Navigate to={onboardingPath}` and banner `<Link to={onboardingPath}>` both target `/dashboard`).
-  - Suppress the forced wizard redirect: skip the `shouldGuardRedirect(effectivePreset) && !onboarding_completed && !isProfileComplete` branch entirely in this case (no wizard-first override).
-- Banner "Continue →" link uses the final resolved path (already does, but reaffirmed via the override).
-- Log payload on each redirect/banner decision with `source: 'guard'` and the same fields as Index.
+### 1. `src/lib/onboardingRoute.ts` — single source of truth
+Add `resolveFinalOnboardingPath()` that returns `{ path, reason }` with this
+priority (same order as Index.tsx today, just centralized):
 
-### 3. (Optional) `src/lib/onboardingRoute.ts`
-- No signature change. If helpful, export a tiny helper `isForcedDashboard(globalPath, companyOverrideEnabled)` returning the same boolean so Index and Guard share one source of truth. Otherwise inline the one-liner in both files. Decision: inline (smaller diff, matches "do not refactor unrelated code").
+1. `onboardingCompleted || isProfileComplete` → `/dashboard` (`profile_complete`)
+2. `companyOverrideEnabled && companyOverridePath` → that path (`company_override`)
+3. `!companyOverrideEnabled && globalPath === '/dashboard'` → `/dashboard` (`force_dashboard_global`)
+4. `hasAssessments` → `/profile` (`has_assessments_profile`)
+5. `globalPath` set → that path (`global_default`)
+6. fallback → `/wizard` (`fallback_wizard`)
+
+Keep existing `resolveOnboardingRoute()` (low-level company-vs-global picker)
+for tests and for the WizardGuard's allowed-path check. The new function
+composes it with the profile-state branches.
+
+### 2. `src/pages/Index.tsx`
+Replace the inline if/else chain with a single call to
+`resolveFinalOnboardingPath({...})`. Keep the existing
+`[onboarding-route] source: 'index'` debug log (now includes `reason`).
+
+### 3. `src/components/auth/WizardGuard.tsx`
+Replace the inline `forceDashboardFromGlobal` boolean + `resolveOnboardingRoute`
+call with `resolveFinalOnboardingPath({...})`. Suppress the forced wizard
+redirect when `reason` is `profile_complete` or `force_dashboard_global`.
+Banner `<Link to={onboardingPath}>` keeps using the resolved path.
+
+### 4. `src/pages/Auth.tsx` (only the post-signup redirect)
+Replace `navigate('/wizard', { replace: true })` with `navigate('/', { replace: true })`
+so Index.tsx applies the shared resolver. No other changes to Auth.tsx.
+
+### 5. `src/pages/Join.tsx` (only the post-join redirect inside `autoJoin()`)
+Pull `globalPath` from `useFirstLoginFlow()`, normalize
+`pendingCompany.first_login_flow` to a path with the existing
+`normalizeOnboardingPath` helper, then call `resolveFinalOnboardingPath({...})`
+instead of the old `resolveOnboardingRoute` import from `firstLoginFlow.ts`.
+The dashboard-only fast-path (`isDashboardOnly` short-circuit) is removed
+because the adapter handles `/dashboard` natively. Add a
+`[onboarding-route] source: 'join'` debug log.
 
 ## Out of scope
-- `useFirstLoginFlow.ts` normalization is already correct (`'dashboard' | 'dashboard_silent' | 'dashboard_nudge' → '/dashboard'`); not touching it.
-- Phone-capture redirect, company override path, post-wizard destination — unchanged.
-- No test file edits required, but I will spot-check `src/lib/__tests__/onboardingRoute.test.ts` still passes (no API change).
+- `src/lib/firstLoginFlow.ts` `getFirstDestination` / `resolveOnboardingRoute`
+  (still used by tests and `shouldGuardRedirect`/banner helpers). Not touching.
+- `useFirstLoginFlow.ts` normalization. Already correct.
+- Phone interstitial, post-wizard destination, company invite token flow.
 
-## Verification I will return
-1. `git diff` for `src/pages/Index.tsx` and `src/components/auth/WizardGuard.tsx`.
-2. One runtime console log sample for a cold user with global `dashboard_silent` showing `finalRedirectPath: '/dashboard'` and `forceDashboardFromGlobal: true`.
+## Verification I will return after build
+1. `git diff` for the 5 files: `onboardingRoute.ts`, `Index.tsx`,
+   `WizardGuard.tsx`, `Auth.tsx`, `Join.tsx`.
+2. One runtime console log sample for a cold new login + global `dashboard_silent`
+   showing `source: 'index'`, `reason: 'force_dashboard_global'`,
+   `finalRedirectPath: '/dashboard'`.
 3. Output of:
    ```
-   rg -n '"/wizard"|to="/wizard"|Navigate to="/wizard"' src/pages/Index.tsx src/components/auth/WizardGuard.tsx
+   rg -n '"/wizard"|to="/wizard"|Navigate to="/wizard"|navigate\([^)]*/wizard' \
+     src/pages/Auth.tsx src/pages/Join.tsx src/pages/Index.tsx \
+     src/components/auth/WizardGuard.tsx
    ```
-   (expected: no matches in decision points / banner links).
+   Expected: no matches in any of the 4 decision points.
+4. `rg -n 'resolveFinalOnboardingPath' src` showing all 4 callers wired to the
+   same adapter.
