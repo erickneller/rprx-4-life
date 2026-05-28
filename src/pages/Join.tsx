@@ -71,7 +71,12 @@ export default function Join() {
       if (err || !match) {
         setError('This invite link is invalid or has expired.');
       } else {
-        setPendingCompany({ id: match.id, name: match.name, invite_token: token });
+        setPendingCompany({
+          id: match.id,
+          name: match.name,
+          invite_token: token,
+          first_login_flow: (match.first_login_flow ?? null) as FirstLoginFlowPreset | null,
+        });
         // Persist token so useProfile can pick it up after Google OAuth
         localStorage.setItem('pending_invite_token', token);
       }
