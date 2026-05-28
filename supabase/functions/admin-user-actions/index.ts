@@ -52,15 +52,52 @@ Deno.serve(async (req) => {
     }
 
     // Parse body
-    const { action, userId } = await req.json();
-    if (!action || !userId) {
-      return new Response(
-        JSON.stringify({ error: "Missing action or userId" }),
-        {
+    const body = await req.json();
+    const { action, userId, userIds } = body || {};
+    if (!action) {
+      return new Response(JSON.stringify({ error: "Missing action" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Service role client for admin operations
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    if (action === "bulk-delete-users") {
+      if (!Array.isArray(userIds) || userIds.length === 0) {
+        return new Response(JSON.stringify({ error: "Missing userIds" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        });
+      }
+      const targets = (userIds as string[]).filter(
+        (id) => typeof id === "string" && id && id !== callerUserId
       );
+      const failed: Array<{ userId: string; error: string }> = [];
+      let deleted = 0;
+      for (const id of targets) {
+        const { error: delErr } = await serviceClient.auth.admin.deleteUser(id);
+        if (delErr) {
+          failed.push({ userId: id, error: delErr.message });
+        } else {
+          deleted++;
+        }
+      }
+      return new Response(
+        JSON.stringify({ success: true, deleted, failed }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Missing userId" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Prevent self-actions
@@ -74,11 +111,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Service role client for admin operations
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     switch (action) {
       case "reset-password": {
