@@ -10,7 +10,6 @@ import {
 } from '@/lib/firstLoginFlow';
 
 const ALLOWED_PATHS = [
-  '/wizard',
   '/assessment',
   '/results',
   '/complete-phone',
