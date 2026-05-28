@@ -29,7 +29,6 @@ describe('resolveOnboardingPreset', () => {
     expect(
       resolveOnboardingPreset({
         globalPreset: 'profile_then_assessment',
-        // @ts-expect-error – intentionally invalid
         companyPreset: 'garbage_value',
       }),
     ).toBe('profile_then_assessment');
@@ -40,55 +39,67 @@ describe('resolveOnboardingRoute', () => {
   it('new user + company override dashboard_silent → null (dashboard)', () => {
     expect(
       resolveOnboardingRoute(
-        { globalPreset: 'profile_then_assessment', companyPreset: 'dashboard_silent' },
         { isProfileComplete: false, hasAssessments: false },
-      ),
+        { preset: 'dashboard_silent', enabled: true },
+        { preset: 'profile_then_assessment' },
+      ).route,
     ).toBeNull();
   });
 
   it('new user + no company override + global profile_then_assessment → /wizard', () => {
     expect(
       resolveOnboardingRoute(
-        { globalPreset: 'profile_then_assessment', companyPreset: null },
         { isProfileComplete: false, hasAssessments: false },
-      ),
+        { preset: null, enabled: false },
+        { preset: 'profile_then_assessment' },
+      ).route,
     ).toBe('/wizard');
   });
 
   it('profile complete + no assessments + profile_then_assessment → /assessment', () => {
     expect(
       resolveOnboardingRoute(
-        { globalPreset: 'profile_then_assessment' },
         { isProfileComplete: true, hasAssessments: false },
-      ),
+        null,
+        { preset: 'profile_then_assessment' },
+      ).route,
     ).toBe('/assessment');
   });
 
   it('everything done → null', () => {
     expect(
       resolveOnboardingRoute(
-        { globalPreset: 'profile_then_assessment' },
         { isProfileComplete: true, hasAssessments: true },
-      ),
+        null,
+        { preset: 'profile_then_assessment' },
+      ).route,
     ).toBeNull();
   });
 
   it('assessment_then_profile sends new user to /assessment first', () => {
     expect(
       resolveOnboardingRoute(
-        { globalPreset: 'assessment_then_profile' },
         { isProfileComplete: false, hasAssessments: false },
-      ),
+        null,
+        { preset: 'assessment_then_profile' },
+      ).route,
     ).toBe('/assessment');
   });
 
   it('company override beats a different global', () => {
     expect(
       resolveOnboardingRoute(
-        { globalPreset: 'dashboard_silent', companyPreset: 'profile_only' },
         { isProfileComplete: false, hasAssessments: false },
-      ),
+        { preset: 'profile_only', enabled: true },
+        { preset: 'dashboard_silent' },
+      ).route,
     ).toBe('/wizard');
+  });
+
+  it('reports route source reasons by precedence', () => {
+    expect(resolveOnboardingRoute({ isProfileComplete: false, hasAssessments: false }, { preset: 'profile_only', enabled: true }, { preset: 'dashboard_silent' }).reason).toBe('company_override');
+    expect(resolveOnboardingRoute({ isProfileComplete: false, hasAssessments: false }, { preset: null, enabled: false }, { preset: 'profile_then_assessment' }).reason).toBe('global_default');
+    expect(resolveOnboardingRoute({ isProfileComplete: false, hasAssessments: false }, { preset: null, enabled: false }, { preset: null }).reason).toBe('fallback');
   });
 });
 
