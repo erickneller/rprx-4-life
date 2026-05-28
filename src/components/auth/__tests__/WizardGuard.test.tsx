@@ -93,6 +93,38 @@ describe('WizardGuard', () => {
     expect(screen.getByText('DASHBOARD')).toBeTruthy();
   });
 
+  it('redirects incomplete users to the enabled company override path', () => {
+    profileState.profile = { id: 'user-1', onboarding_completed: false, company_id: 'co-1' };
+    profileState.isProfileComplete = false;
+    presetState.globalPath = '/intro';
+    companyPresetState.companyPreset = '/company-start';
+    companyPresetState.companyOverrideEnabled = true;
+    companyPresetState.companyOverridePath = '/company-start';
+
+    renderAt('/dashboard');
+    expect(screen.getByText('COMPANY START PAGE')).toBeTruthy();
+  });
+
+  it('redirects incomplete users to the global path when company override is absent', () => {
+    profileState.profile = { id: 'user-1', onboarding_completed: false, company_id: null };
+    profileState.isProfileComplete = false;
+    presetState.globalPath = '/intro';
+
+    renderAt('/dashboard');
+    expect(screen.getByText('INTRO PAGE')).toBeTruthy();
+  });
+
+  it('links the profile nudge Continue action to the resolved route', () => {
+    profileState.profile = { id: 'user-1', onboarding_completed: false, company_id: 'co-1' };
+    profileState.isProfileComplete = false;
+    companyPresetState.companyPreset = 'dashboard_nudge';
+    companyPresetState.companyOverrideEnabled = true;
+    companyPresetState.companyOverridePath = '/company-start';
+
+    renderAt('/dashboard');
+    expect(screen.getByRole('link', { name: /continue/i }).getAttribute('href')).toBe('/company-start');
+  });
+
   it('renders children for onboarding-complete users regardless of preset', () => {
     profileState.profile = { onboarding_completed: true, company_id: null };
     profileState.isProfileComplete = true;
