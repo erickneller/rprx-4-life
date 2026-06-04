@@ -43,6 +43,7 @@ const ALLOWED_TABLES = [
   "user_subscriptions",
   "user_roles",
   "wizard_step_content",
+  "video_open_events",
 ];
 
 Deno.serve(async (req) => {
