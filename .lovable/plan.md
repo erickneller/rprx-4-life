@@ -1,134 +1,87 @@
+# Admin Notification Emails for Feedback & Support Requests
 
-# Admin Insights Dashboard
+Send one email per submission to a configurable list of admin recipients, using Lovable Emails (own domain, queued + retried, logged).
 
-A new platform-admin-only dashboard at `/admin/insights` for drilling into users by subscription tier and seeing per-user activity, plus company-level rollups. v1 ships users + companies together with lightweight video-open tracking across courses and library.
+## 1. Prerequisites (one-time setup)
 
-## 1. Video open tracking (lightweight)
+Lovable Emails is not yet set up on this project. Before any code runs, we need:
 
-New table `video_open_events` to log every time an authenticated user opens a video — both course lessons and library videos.
+1. **Email domain** — verified sender subdomain (e.g. `notify.rprx4life.com`). If none exists, I'll surface the email setup dialog.
+2. **Email infrastructure** — `setup_email_infra` (pgmq queues, `process-email-queue` cron, `email_send_log`, etc.).
+3. **Transactional scaffold** — `scaffold_transactional_email` (creates `send-transactional-email` function + template registry).
 
-Columns:
-- `id uuid pk`
-- `user_id uuid` (auth.uid())
-- `source text` — `'course_lesson' | 'library_video'`
-- `source_id uuid` — lesson id or library video id
-- `title text` — denormalized for fast reporting
-- `video_url text` — nullable
-- `opened_at timestamptz default now()`
+DNS verification can run in the background — code below can ship in parallel.
 
-RLS:
-- `authenticated` can INSERT own rows (`user_id = auth.uid()`)
-- `authenticated` can SELECT own rows
-- Admins (`has_role(auth.uid(),'admin')`) can SELECT all
-- Standard GRANTs (SELECT/INSERT to authenticated, ALL to service_role)
+## 2. Configurable recipient list
 
-Instrumentation:
-- New hook `useLogVideoOpen()` that inserts a row, debounced once per (user, source_id) per 5 minutes via in-memory set to avoid spam.
-- Call site 1: `src/components/media/VideoPlayer.tsx` on first play / when `video_url` becomes visible in `CoursePage` lesson view.
-- Call site 2: `src/pages/Library.tsx` (and any video card in library) on click/open.
-- Pass `source`, `source_id`, `title` as props.
+New table `admin_notification_recipients`:
 
-## 2. Database additions
+| column | purpose |
+|---|---|
+| `email` | recipient address (unique) |
+| `label` | optional friendly name |
+| `notify_feedback` | bool, default true |
+| `notify_support` | bool, default true |
+| `active` | bool, default true |
 
-Two new SECURITY DEFINER RPCs (admin-only checks inside):
+RLS: only `admin` role can select/insert/update/delete. SECURITY DEFINER RPC `get_admin_notification_recipients(_kind text)` returns active emails for the given kind — called by the edge function with the service role, so RLS isn't a blocker but keeps the table locked down for direct client reads.
 
-- `admin_user_activity_summary(_user_id uuid)` → returns one row:
-  - profile basics (full_name, email, company_id, company_name, tier, last_active_date, current_streak, total_points_earned, onboarding_completed)
-  - assessments_completed (count)
-  - plans_saved, focus_plan_title
-  - badges_earned
-  - course_lessons_opened (distinct count from video_open_events where source='course_lesson')
-  - library_videos_opened (distinct count)
-  - total_video_opens
-  - last_video_opened_at
+Admin UI: new "Notification Recipients" card inside `AdminPanel.tsx` — simple table + add/remove/toggle. Seed with the current authenticated admin's email on first load.
 
-- `admin_company_activity_rollup()` → one row per company:
-  - id, name, plan, member_count
-  - members_by_tier (jsonb: free/partner/pro counts)
-  - active_last_7d, active_last_30d
-  - assessments_completed, plans_saved
-  - total_video_opens, course_opens, library_opens
-  - avg_streak
+## 3. Email templates (React Email)
 
-Both guarded with `if not has_role(auth.uid(),'admin') then raise exception ...`.
+Two templates in `supabase/functions/_shared/transactional-email-templates/`:
 
-Reuse the existing `admin_list_users()` for the per-tier users list (tier computed client-side via `get_subscription_tier` if needed, or add a new RPC `admin_list_users_with_tier()` that joins tier in SQL for efficient filtering — recommended).
+- **`admin-feedback-notification.tsx`** — subject: `New page feedback: {rating}★ on {page_route}`. Body: submitter name/email, page route, rating (with stars), comment, timestamp, link to `/admin` feedback tab.
+- **`admin-support-notification.tsx`** — subject: `New {type} request: {subject}`. Body: submitter, type badge, subject, message, page URL, timestamp, link to `/admin` support tab.
 
-## 3. Routes & navigation
+Both follow existing brand styling (white body, brand accent on CTA), no unsubscribe text (system appends it).
 
-- New route `/admin/insights` wrapped in existing `AdminRoute`.
-- Add sidebar entry under the existing admin area ("Insights") visible only to admins.
-- Page structure with three sub-tabs (shadcn `Tabs`):
-  1. **Overview** — top KPIs (total users, by tier, active 7d/30d, total video opens, top 5 videos)
-  2. **Users** — filterable table
-  3. **Companies** — company rollup table + drill-in
+Register both in `registry.ts`.
 
-## 4. Users tab UI
+## 4. Fan-out edge function
 
-- Filters: tier (All / Free / Partner / Pro), company (dropdown), search by name/email.
-- Table columns: Name, Email, Company, Tier badge, Last Active, Streak, Assessments, Plans, Videos Opened, Actions.
-- Row click → side drawer (shadcn `Sheet`) showing `admin_user_activity_summary` detail:
-  - Profile snapshot
-  - Activity counts
-  - Recent video opens (last 20, with source + title + opened_at) from `video_open_events`
-  - Badges earned list
-  - Saved plans list (titles + focus flag)
+New `notify-admins` edge function (`verify_jwt = false`, validates JWT in code):
 
-## 5. Companies tab UI
+1. Body: `{ kind: 'feedback' | 'support', record_id: uuid }`.
+2. Loads the record from `page_feedback` / `support_requests` using service role.
+3. Loads submitter `full_name` + `email` from `profiles` / `auth.users`.
+4. Calls `get_admin_notification_recipients(kind)`.
+5. For each recipient, invokes `send-transactional-email` with:
+   - `templateName`: matching template
+   - `recipientEmail`: that admin
+   - `idempotencyKey`: `admin-{kind}-{record_id}-{recipient_email_hash}` (so retries don't double-send)
+   - `templateData`: the assembled context.
 
-- Table of companies with rollup metrics from `admin_company_activity_rollup`.
-- Click row → drawer showing:
-  - Member list (reuses Users table filtered by company)
-  - Tier breakdown bar chart (recharts)
-  - Videos opened by source (course vs library)
-  - Signups over time (reuse existing chart pattern from `CompanyDashboard.tsx`)
+One queued email per recipient = independent retries, individual `email_send_log` rows.
 
-## 6. Hooks
+## 5. Triggers (client-side, immediate)
 
-- `useAdminUsersWithTier()` — fetches users + tier in one shot
-- `useAdminUserActivity(userId)` — calls `admin_user_activity_summary`
-- `useAdminCompanyRollup()` — calls `admin_company_activity_rollup`
-- `useAdminVideoOpens({userId?, companyId?, limit})` — recent opens for drawers
-- `useLogVideoOpen()` — instrumentation hook
+Wire into existing hooks so we don't need DB triggers:
 
-All use React Query; all cast `.from()`/`.rpc()` to `any` for new tables per project's deep-type bypass rule.
+- **`usePageFeedback.ts → useSubmitFeedback`**: after the insert succeeds, fire-and-forget `supabase.functions.invoke('notify-admins', { body: { kind: 'feedback', record_id: data.id }})`. Errors are logged but do not block the user.
+- **`useSupportRequests.ts → useSubmitSupportRequest`**: same pattern with `kind: 'support'`.
 
-## 7. Files to create
+Fire-and-forget keeps the submitter's UX snappy; the queue handles delivery + retry.
 
-- `supabase/migrations/<ts>_admin_insights.sql` — table, grants, RLS, RPCs
-- `src/pages/admin/Insights.tsx`
-- `src/components/admin/insights/InsightsOverviewTab.tsx`
-- `src/components/admin/insights/UsersTab.tsx`
-- `src/components/admin/insights/CompaniesTab.tsx`
-- `src/components/admin/insights/UserDetailDrawer.tsx`
-- `src/components/admin/insights/CompanyDetailDrawer.tsx`
-- `src/hooks/useAdminInsights.ts` (all hooks above)
-- `src/hooks/useLogVideoOpen.ts`
+## 6. Admin UI additions
 
-## 8. Files to edit
+In `AdminPanel.tsx`, add a "Notification Recipients" section:
+- List of current recipients with toggles for feedback/support and remove button.
+- Add-recipient form (email + optional label).
+- Helper text: "These addresses receive an email whenever a user submits page feedback or a support request."
 
-- `src/App.tsx` — add `/admin/insights` route under `AdminRoute`
-- `src/components/layout/AppSidebar.tsx` (or sidebar config) — add Insights nav item (admin-only)
-- `src/components/media/VideoPlayer.tsx` — log open on first play
-- `src/pages/CoursePage.tsx` — pass source metadata to player
-- `src/pages/Library.tsx` — log open on library video click
-- `supabase/functions/admin-data-export/index.ts` — add `video_open_events` to `ALLOWED_TABLES`
+## Technical details
 
-## 9. Out of scope (v1)
+- **Files created**: migration (table + RPC + RLS), `supabase/functions/notify-admins/index.ts`, two `.tsx` templates, `useAdminNotificationRecipients.ts` hook, `AdminNotificationRecipients.tsx` component.
+- **Files edited**: `_shared/transactional-email-templates/registry.ts`, `usePageFeedback.ts`, `useSupportRequests.ts`, `AdminPanel.tsx`, `supabase/config.toml` (register `notify-admins` with `verify_jwt = false`).
+- **Idempotency**: per-recipient key prevents duplicates if the client retries.
+- **No PII leaks to anon**: recipient list table denies anon access; emails only sent to listed admins.
+- **Out of scope (v1)**: per-recipient digest mode, severity filtering, in-app notification bell. Easy follow-ups once this is live.
 
-- Course completion logic (we log opens only, per your direction)
-- % watched / progress instrumentation
-- Company-admin scoped view (admins only)
-- CSV export buttons on insights tab (data already exportable via existing admin export tool)
+## What you'll need to do
 
-## Technical notes
+1. Approve the email domain setup dialog when it appears (one-time DNS).
+2. Open Admin Panel → Notification Recipients → add the admin emails that should receive alerts.
 
-- Use `Sheet` for drawers to keep mobile parity.
-- Charts via existing `recharts` install.
-- All new colors via semantic tokens (no raw Tailwind colors).
-- New table grants:
-  ```
-  GRANT SELECT, INSERT ON public.video_open_events TO authenticated;
-  GRANT ALL ON public.video_open_events TO service_role;
-  ```
-- Index `video_open_events(user_id, opened_at desc)` and `(source, source_id)` for rollup speed.
+Everything else is automatic after that.
