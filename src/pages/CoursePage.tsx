@@ -15,6 +15,7 @@ import rehypeRaw from 'rehype-raw';
 import { supabase } from '@/integrations/supabase/client';
 import { useCourseBannerSettings, bannerGradientCss } from '@/hooks/useCourseBannerSettings';
 import { cn } from '@/lib/utils';
+import { useLogVideoOpen } from '@/hooks/useLogVideoOpen';
 
 function VideoEmbed({ url }: { url: string }) {
   const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
@@ -81,6 +82,20 @@ export default function CoursePage() {
       setActiveLessonId(flatLessons[0].id);
     }
   }, [flatLessons, activeLessonId]);
+
+  const logVideoOpen = useLogVideoOpen();
+  useEffect(() => {
+    if (!activeLessonId) return;
+    const lesson = flatLessons.find(l => l.id === activeLessonId);
+    if (lesson?.video_url) {
+      logVideoOpen({
+        source: 'course_lesson',
+        sourceId: lesson.id,
+        title: lesson.title,
+        videoUrl: lesson.video_url,
+      });
+    }
+  }, [activeLessonId, flatLessons, logVideoOpen]);
 
   if (navLoading || isLoading) {
     return (
