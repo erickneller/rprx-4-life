@@ -39,6 +39,7 @@ import VirtualAdvisor from "./pages/VirtualAdvisor";
 import RprxW2 from "./pages/RprxW2";
 import Help from "./pages/Help";
 import EquityRecapturePage from "./pages/EquityRecapture";
+import Unsubscribe from "./pages/Unsubscribe";
 import { WizardGuard } from "@/components/auth/WizardGuard";
 import { UpgradeRouteGuard } from "@/components/auth/UpgradeRouteGuard";
 import { UpgradeGateProvider } from "@/contexts/UpgradeGateContext";
@@ -69,6 +70,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
           <Route path="/wizard" element={<ProtectedRoute><WizardGuard><Wizard /></WizardGuard></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><WizardGuard><Dashboard /></WizardGuard></ProtectedRoute>} />
           <Route path="/assessment" element={<ProtectedRoute><Assessment /></ProtectedRoute>} />
