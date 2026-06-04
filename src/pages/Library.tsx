@@ -11,6 +11,7 @@ import { resolveVideoSource } from '@/lib/videoSource';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useUpgradeGate } from '@/contexts/UpgradeGateContext';
 import { normalizeRequiredTier, tierMeets } from '@/lib/upgradeFeatures';
+import { useLogVideoOpen } from '@/hooks/useLogVideoOpen';
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ export default function Library() {
   const { data: videos = [], isLoading: vidLoading } = useLibraryVideos();
   const { tier } = useSubscription();
   const { requireUpgrade } = useUpgradeGate();
+  const logVideoOpen = useLogVideoOpen();
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -169,7 +171,18 @@ export default function Library() {
                   return (
                     <Card key={video.id} className="flex flex-col overflow-hidden">
                       {source.kind !== 'unknown' ? (
-                        <VideoPlayer url={video.video_url} title={video.title} />
+                        <div
+                          onClick={() =>
+                            logVideoOpen({
+                              source: 'library_video',
+                              sourceId: video.id,
+                              title: video.title,
+                              videoUrl: video.video_url,
+                            })
+                          }
+                        >
+                          <VideoPlayer url={video.video_url} title={video.title} />
+                        </div>
                       ) : video.thumbnail_url ? (
                         <AspectRatio ratio={16 / 9}>
                           <img

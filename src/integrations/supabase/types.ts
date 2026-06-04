@@ -2316,6 +2316,36 @@ export type Database = {
         }
         Relationships: []
       }
+      video_open_events: {
+        Row: {
+          id: string
+          opened_at: string
+          source: string
+          source_id: string | null
+          title: string | null
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          id?: string
+          opened_at?: string
+          source: string
+          source_id?: string | null
+          title?: string | null
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          id?: string
+          opened_at?: string
+          source?: string
+          source_id?: string | null
+          title?: string | null
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       wizard_step_content: {
         Row: {
           id: string
@@ -2395,6 +2425,26 @@ export type Database = {
       }
     }
     Functions: {
+      admin_company_activity_rollup: {
+        Args: never
+        Returns: {
+          active_last_30d: number
+          active_last_7d: number
+          assessments_completed: number
+          avg_streak: number
+          company_id: string
+          company_name: string
+          course_opens: number
+          free_count: number
+          library_opens: number
+          member_count: number
+          partner_count: number
+          plan: string
+          plans_saved: number
+          pro_count: number
+          total_video_opens: number
+        }[]
+      }
       admin_list_users: {
         Args: never
         Returns: {
@@ -2429,6 +2479,46 @@ export type Database = {
           stress_emergency_confidence: string
           stress_money_worry: string
           total_points_earned: number
+        }[]
+      }
+      admin_list_users_with_tier: {
+        Args: never
+        Returns: {
+          company_id: string
+          company_name: string
+          created_at: string
+          current_streak: number
+          email: string
+          full_name: string
+          id: string
+          last_active_date: string
+          last_sign_in_at: string
+          onboarding_completed: boolean
+          tier: string
+          total_points_earned: number
+        }[]
+      }
+      admin_user_activity_summary: {
+        Args: { _user_id: string }
+        Returns: {
+          assessments_completed: number
+          badges_earned: number
+          company_id: string
+          company_name: string
+          course_lessons_opened: number
+          current_streak: number
+          email: string
+          focus_plan_title: string
+          full_name: string
+          last_active_date: string
+          last_video_opened_at: string
+          library_videos_opened: number
+          onboarding_completed: boolean
+          plans_saved: number
+          tier: string
+          total_points_earned: number
+          total_video_opens: number
+          user_id: string
         }[]
       }
       claim_pending_ghl_subscription: { Args: never; Returns: Json }

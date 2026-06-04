@@ -23,6 +23,7 @@ import DebtEliminator from "./pages/DebtEliminator";
 import Assessments from "./pages/Assessments";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
+import AdminInsights from "./pages/admin/Insights";
 import CompletePhone from "./pages/CompletePhone";
 import Wizard from "./pages/Wizard";
 import CompanyDashboard from "./pages/CompanyDashboard";
@@ -95,6 +96,7 @@ const App = () => (
           <Route path="/company-dashboard" element={<ProtectedRoute><WizardGuard><CompanyDashboard /></WizardGuard></ProtectedRoute>} />
           <Route path="/course/:navConfigId" element={<ProtectedRoute><WizardGuard><CoursePage /></WizardGuard></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+          <Route path="/admin/insights" element={<AdminRoute><AdminInsights /></AdminRoute>} />
           <Route path="/library-admin" element={<LibraryAdminRoute><LibraryAdmin /></LibraryAdminRoute>} />
           {/* /join — no ProtectedRoute; handles auth inline */}
           <Route path="/join" element={<Join />} />
