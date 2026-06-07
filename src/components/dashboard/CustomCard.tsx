@@ -15,6 +15,8 @@ const ALLOWED_IFRAME_HOSTS = [
   'player.vimeo.com',
   'vimeo.com',
   'loom.com',
+  'share.descript.com',
+  'descript.com',
   'calendly.com',
   'msgsndr.com',
   'gohighlevel.com',
