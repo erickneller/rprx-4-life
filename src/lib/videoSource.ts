@@ -1,11 +1,12 @@
 /**
  * Resolves a user-provided video URL to a renderable source.
- * Supports YouTube, Loom, and direct file URLs (including GHL Media Library).
+ * Supports YouTube, Loom, Descript, and direct file URLs (including GHL Media Library).
  */
 
 export type VideoSource =
   | { kind: 'youtube'; embedUrl: string }
   | { kind: 'loom'; embedUrl: string }
+  | { kind: 'descript'; embedUrl: string }
   | { kind: 'file'; src: string }
   | { kind: 'unknown' };
 
@@ -29,6 +30,12 @@ export function getLoomVideoId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+export function getDescriptVideoId(url: string): string | null {
+  if (!url) return null;
+  const m = url.match(/share\.descript\.com\/(?:view|embed)\/([a-zA-Z0-9]+)/);
+  return m ? m[1] : null;
+}
+
 export function resolveVideoSource(url: string | null | undefined): VideoSource {
   if (!url) return { kind: 'unknown' };
   const trimmed = url.trim();
@@ -39,6 +46,9 @@ export function resolveVideoSource(url: string | null | undefined): VideoSource 
   const loomId = getLoomVideoId(trimmed);
   if (loomId) return { kind: 'loom', embedUrl: `https://www.loom.com/embed/${loomId}` };
 
+  const descriptId = getDescriptVideoId(trimmed);
+  if (descriptId) return { kind: 'descript', embedUrl: `https://share.descript.com/embed/${descriptId}` };
+
   if (FILE_EXT_RE.test(trimmed) || GHL_HOST_RE.test(trimmed)) {
     return { kind: 'file', src: trimmed };
   }
@@ -46,10 +56,10 @@ export function resolveVideoSource(url: string | null | undefined): VideoSource 
   return { kind: 'unknown' };
 }
 
-/** Backwards-compatible helper: returns an iframe-embeddable URL for YouTube/Loom only. */
+/** Backwards-compatible helper: returns an iframe-embeddable URL for YouTube/Loom/Descript only. */
 export function toEmbedUrl(url: string | null | undefined): string | null {
   const src = resolveVideoSource(url);
-  if (src.kind === 'youtube' || src.kind === 'loom') return src.embedUrl;
+  if (src.kind === 'youtube' || src.kind === 'loom' || src.kind === 'descript') return src.embedUrl;
   return null;
 }
 

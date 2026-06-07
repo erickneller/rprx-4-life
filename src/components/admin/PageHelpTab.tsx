@@ -207,7 +207,7 @@ export function PageHelpTab() {
             </div>
             <div>
               <Label>Video URL (optional)</Label>
-              <Input value={form.video_url} onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))} placeholder="YouTube, Vimeo, or direct video URL" />
+              <Input value={form.video_url} onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))} placeholder="YouTube, Vimeo, Loom, Descript, or direct video URL" />
             </div>
             <div>
               <Label>Video Placeholder Text</Label>

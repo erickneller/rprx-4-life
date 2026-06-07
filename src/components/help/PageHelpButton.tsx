@@ -47,7 +47,13 @@ function markPageClicked(pageId: string) {
 }
 
 function isVideoEmbed(url: string) {
-  return url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com');
+  return (
+    url.includes('youtube.com') ||
+    url.includes('youtu.be') ||
+    url.includes('vimeo.com') ||
+    url.includes('loom.com') ||
+    url.includes('share.descript.com')
+  );
 }
 
 function getEmbedUrl(url: string): string {
@@ -63,6 +69,10 @@ function getEmbedUrl(url: string): string {
     const id = url.split('vimeo.com/')[1]?.split('?')[0];
     return `https://player.vimeo.com/video/${id}`;
   }
+  const loom = url.match(/loom\.com\/(?:share|embed)\/([a-zA-Z0-9]+)/);
+  if (loom) return `https://www.loom.com/embed/${loom[1]}`;
+  const descript = url.match(/share\.descript\.com\/(?:view|embed)\/([a-zA-Z0-9]+)/);
+  if (descript) return `https://share.descript.com/embed/${descript[1]}`;
   return url;
 }
 

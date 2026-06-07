@@ -311,7 +311,7 @@ function LessonEditorDialog({ moduleId, lesson, onClose }: { moduleId: string; l
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
-            <Label>Video URL (YouTube, Vimeo, Loom, or MP4) — or upload</Label>
+            <Label>Video URL (YouTube, Vimeo, Loom, Descript, or MP4) — or upload</Label>
             <div className="flex gap-2 items-center">
               <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://..." />
               <label className="cursor-pointer">

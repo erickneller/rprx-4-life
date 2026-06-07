@@ -156,7 +156,7 @@ export function CustomCardDialog({ open, onOpenChange, initial, onSave, isSaving
           {contentType === 'video' && (
             <>
               <div className="space-y-2">
-                <Label>Video URL (YouTube, Vimeo, Loom, or .mp4)</Label>
+                <Label>Video URL (YouTube, Vimeo, Loom, Descript, or .mp4)</Label>
                 <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://..." />
               </div>
               <div className="space-y-2">
@@ -206,7 +206,7 @@ export function CustomCardDialog({ open, onOpenChange, initial, onSave, isSaving
                 className="font-mono text-xs"
               />
               <p className="text-xs text-muted-foreground">
-                Only iframes from YouTube, Vimeo, Loom, Calendly, GHL, and common form providers are allowed.
+                Only iframes from YouTube, Vimeo, Loom, Descript, Calendly, GHL, and common form providers are allowed.
               </p>
             </div>
           )}
