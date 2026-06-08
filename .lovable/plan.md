@@ -1,36 +1,40 @@
-## Allow images in lesson Body (Markdown)
+## Goal
 
-Enhance the "Body (Markdown)" field in the lesson editor (`src/components/admin/course/CourseBuilder.tsx`) so course authors can add images by **pasting from the clipboard**, **drag-and-drop**, or a new **"Insert image" button**. Rendering already supports images — `CoursePage.tsx` renders the body with `ReactMarkdown` + `rehypeRaw`, so an inserted `![alt](url)` will display correctly.
+Add Brian's headshot (centered, above the red "📞 866-434-7779" button) plus the label "Brian — RPRx Virtual Advisor" to the Virtual Advisor embed snippet stored in `feature_flags.advisor_embed`.
 
-### Changes
+## Steps
 
-1. **`src/components/admin/course/CourseBuilder.tsx`** (LessonDialog)
-   - Add a `textareaRef` to the Body textarea.
-   - Add helper `insertAtCursor(text)` that splices markdown at the current caret and updates `body` state.
-   - Add `uploadImageFile(file: File)` that:
-     - Validates `file.type.startsWith('image/')` (allow png/jpg/gif/webp/svg).
-     - Calls `uploadCourseAsset(file, \`body-images/${lesson.id}\`)` to upload to the existing `course-assets` bucket.
-     - Inserts `![](publicUrl)\n` at cursor on success.
-     - Shows a small "Uploading image…" toast / inline status.
-   - Wire three entry points on the Textarea:
-     - `onPaste` — iterate `e.clipboardData.items`, for any `kind === 'file'` image, `preventDefault()` and upload.
-     - `onDrop` + `onDragOver` — accept dropped image files, upload each.
-     - A small toolbar above the textarea with an "Insert image" `<label>` wrapping a hidden `<input type="file" accept="image/*" multiple>`.
-   - Update the field label to: `Body (Markdown) — paste, drop, or upload images`.
+1. **Upload the headshot to the Lovable CDN** (no binary in repo)
+   - `lovable-assets create --file /mnt/user-uploads/ChatGPT_Image_Jun_8_2026_01_46_35_PM.png --filename brian-advisor.png > src/assets/brian-advisor.png.asset.json`
+   - Capture the resulting `/__l5e/assets-v1/{asset_id}/brian-advisor.png` URL.
 
-2. **No DB / storage changes** — reuses the existing `course-assets` bucket (already public, already used for cover/video uploads) and the existing `uploadCourseAsset` helper in `src/hooks/useCourseAdmin.ts`.
+2. **Update the `advisor_embed` feature flag** via a Supabase migration that upserts the new HTML into `feature_flags` where `id = 'advisor_embed'`. New snippet (inline styles only, so it works wherever it's pasted):
 
-3. **No renderer changes** — `CoursePage.tsx` already uses `ReactMarkdown` with `remarkGfm` + `rehypeRaw`, which renders standard markdown images and HTML `<img>` tags.
+   ```html
+   <div style="text-align:center;font-family:Arial,sans-serif;">
+     <img src="https://<project>.lovable.app/__l5e/assets-v1/<asset_id>/brian-advisor.png"
+          alt="Brian — RPRx Virtual Advisor"
+          style="width:140px;height:140px;border-radius:50%;object-fit:cover;
+                 border:4px solid #ffffff;box-shadow:0 4px 14px rgba(0,0,0,0.15);
+                 margin:0 auto 12px;display:block;" />
+     <div style="font-size:16px;font-weight:600;color:#111827;margin-bottom:4px;">Brian</div>
+     <div style="font-size:13px;color:#6b7280;margin-bottom:16px;">RPRx Virtual Advisor</div>
+     <a href="tel:866-434-7779"
+        style="display:inline-block;background-color:#ff0000;color:#ffffff;
+               padding:14px 28px;font-size:20px;font-weight:bold;
+               text-decoration:none;border-radius:8px;font-family:Arial,sans-serif;">
+       📞 866-434-7779
+     </a>
+   </div>
+   ```
 
-### Verification
+   The CDN URL is absolute so the headshot loads identically whether the embed is rendered inside the app or pasted into any external page.
 
-- In an existing lesson, paste a screenshot into the Body textarea → markdown `![](https://…course-assets/body-images/…)` appears at cursor, and the image renders on the course page after save.
-- Drag-drop a PNG onto the textarea → same result.
-- Click "Insert image", pick a file → same result.
-- Existing markdown bodies (no images) continue to render unchanged.
+3. **No frontend code changes.** `VirtualAdvisorCard` and `pages/VirtualAdvisor.tsx` already render `feature_flags.advisor_embed` HTML verbatim — they'll pick up the new markup automatically.
 
-### Out of scope
+4. **Verify**: open `/virtual-advisor` (and the dashboard advisor card) — confirm the round headshot appears centered above the red call button with the name/title underneath.
 
-- No rich-text WYSIWYG editor swap — keeps the current markdown textarea.
-- No image resize / crop UI.
-- No per-image alt-text prompt (authors can edit the `![alt](url)` inline; we can add a prompt later if requested).
+## Notes
+
+- If you'd later prefer to swap the headshot or change the name/title without a migration, do it from **Admin → Virtual Advisor embed** (the same field this migration writes to).
+- The image is stored on the CDN; the repo only gains a small `src/assets/brian-advisor.png.asset.json` pointer file.
