@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Trash2, Pencil, Loader2, Upload, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, Loader2, Upload, GripVertical, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props { navConfigId: string; onClose: () => void; }
