@@ -226,6 +226,61 @@ function LessonEditorDialog({ moduleId, lesson, onClose }: { moduleId: string; l
   const [newLabel, setNewLabel] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadingBodyImage, setUploadingBodyImage] = useState(false);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertAtCursor = (text: string) => {
+    const el = bodyRef.current;
+    if (!el) {
+      setBody((b) => b + text);
+      return;
+    }
+    const start = el.selectionStart ?? body.length;
+    const end = el.selectionEnd ?? body.length;
+    const next = body.slice(0, start) + text + body.slice(end);
+    setBody(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + text.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const uploadBodyImage = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only image files are supported');
+      return;
+    }
+    setUploadingBodyImage(true);
+    try {
+      const url = await uploadCourseAsset(file, `body-images/${lesson.id}`);
+      const alt = file.name.replace(/\.[^.]+$/, '');
+      insertAtCursor(`\n![${alt}](${url})\n`);
+      toast.success('Image inserted');
+    } catch (e: any) {
+      toast.error(e.message || 'Image upload failed');
+    } finally {
+      setUploadingBodyImage(false);
+    }
+  };
+
+  const handleBodyPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const images = items.filter((it) => it.kind === 'file' && it.type.startsWith('image/'));
+    if (images.length === 0) return;
+    e.preventDefault();
+    for (const item of images) {
+      const file = item.getAsFile();
+      if (file) await uploadBodyImage(file);
+    }
+  };
+
+  const handleBodyDrop = async (e: React.DragEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(e.dataTransfer?.files || []).filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    e.preventDefault();
+    for (const file of files) await uploadBodyImage(file);
+  };
 
   const handleSave = async () => {
     setSaving(true);
