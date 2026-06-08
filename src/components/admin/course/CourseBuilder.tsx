@@ -376,8 +376,47 @@ function LessonEditorDialog({ moduleId, lesson, onClose }: { moduleId: string; l
             </div>
           </div>
           <div>
-            <Label>Body (Markdown)</Label>
-            <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} className="font-mono text-sm" />
+            <div className="flex items-center justify-between mb-1">
+              <Label>Body (Markdown) — paste, drop, or upload images</Label>
+              <label className="cursor-pointer">
+                <Button asChild variant="outline" size="sm" type="button" disabled={uploadingBodyImage}>
+                  <span className="inline-flex items-center gap-1">
+                    {uploadingBodyImage
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <ImageIcon className="h-3 w-3" />}
+                    Insert image
+                  </span>
+                </Button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    for (const f of files) await uploadBodyImage(f);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            </div>
+            <Textarea
+              ref={bodyRef}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onPaste={handleBodyPaste}
+              onDrop={handleBodyDrop}
+              onDragOver={(e) => {
+                if (Array.from(e.dataTransfer?.items || []).some((it) => it.kind === 'file')) {
+                  e.preventDefault();
+                }
+              }}
+              rows={8}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Tip: paste a screenshot or drag an image directly into the editor — it uploads and inserts as markdown.
+            </p>
           </div>
 
           <div className="space-y-2">
