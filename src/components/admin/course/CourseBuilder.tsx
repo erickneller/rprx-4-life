@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useCourseByNavId, type CourseLesson, type LessonAttachment } from '@/hooks/useCourse';
 import {
   useUpsertCourse, useDeleteCourse,
@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Trash2, Pencil, Loader2, Upload, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, Loader2, Upload, GripVertical, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props { navConfigId: string; onClose: () => void; }
@@ -226,6 +226,61 @@ function LessonEditorDialog({ moduleId, lesson, onClose }: { moduleId: string; l
   const [newLabel, setNewLabel] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadingBodyImage, setUploadingBodyImage] = useState(false);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertAtCursor = (text: string) => {
+    const el = bodyRef.current;
+    if (!el) {
+      setBody((b) => b + text);
+      return;
+    }
+    const start = el.selectionStart ?? body.length;
+    const end = el.selectionEnd ?? body.length;
+    const next = body.slice(0, start) + text + body.slice(end);
+    setBody(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + text.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const uploadBodyImage = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only image files are supported');
+      return;
+    }
+    setUploadingBodyImage(true);
+    try {
+      const url = await uploadCourseAsset(file, `body-images/${lesson.id}`);
+      const alt = file.name.replace(/\.[^.]+$/, '');
+      insertAtCursor(`\n![${alt}](${url})\n`);
+      toast.success('Image inserted');
+    } catch (e: any) {
+      toast.error(e.message || 'Image upload failed');
+    } finally {
+      setUploadingBodyImage(false);
+    }
+  };
+
+  const handleBodyPaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const images = items.filter((it) => it.kind === 'file' && it.type.startsWith('image/'));
+    if (images.length === 0) return;
+    e.preventDefault();
+    for (const item of images) {
+      const file = item.getAsFile();
+      if (file) await uploadBodyImage(file);
+    }
+  };
+
+  const handleBodyDrop = async (e: React.DragEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(e.dataTransfer?.files || []).filter((f) => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+    e.preventDefault();
+    for (const file of files) await uploadBodyImage(file);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -321,8 +376,47 @@ function LessonEditorDialog({ moduleId, lesson, onClose }: { moduleId: string; l
             </div>
           </div>
           <div>
-            <Label>Body (Markdown)</Label>
-            <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} className="font-mono text-sm" />
+            <div className="flex items-center justify-between mb-1">
+              <Label>Body (Markdown) — paste, drop, or upload images</Label>
+              <label className="cursor-pointer">
+                <Button asChild variant="outline" size="sm" type="button" disabled={uploadingBodyImage}>
+                  <span className="inline-flex items-center gap-1">
+                    {uploadingBodyImage
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <ImageIcon className="h-3 w-3" />}
+                    Insert image
+                  </span>
+                </Button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    for (const f of files) await uploadBodyImage(f);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            </div>
+            <Textarea
+              ref={bodyRef}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onPaste={handleBodyPaste}
+              onDrop={handleBodyDrop}
+              onDragOver={(e) => {
+                if (Array.from(e.dataTransfer?.items || []).some((it) => it.kind === 'file')) {
+                  e.preventDefault();
+                }
+              }}
+              rows={8}
+              className="font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Tip: paste a screenshot or drag an image directly into the editor — it uploads and inserts as markdown.
+            </p>
           </div>
 
           <div className="space-y-2">
