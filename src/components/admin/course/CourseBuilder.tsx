@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useCourseByNavId, type CourseLesson, type LessonAttachment } from '@/hooks/useCourse';
 import {
   useUpsertCourse, useDeleteCourse,
