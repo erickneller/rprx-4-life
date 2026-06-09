@@ -80,7 +80,7 @@ const ResetPassword = () => {
   }
 
   // Check if user has a valid recovery session
-  if (!session) {
+  if (!session && !isRecovery) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <Card className="w-full max-w-md">
