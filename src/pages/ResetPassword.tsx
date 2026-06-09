@@ -25,17 +25,27 @@ const ResetPassword = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.location.hash.includes('type=recovery');
+  });
 
   useEffect(() => {
-    // If user is logged in but not in recovery mode, redirect to home
-    // The session will be present when user clicks the recovery link
-    if (!loading && user && success) {
-      const timer = setTimeout(() => {
-        navigate('/', { replace: true });
-      }, 2000);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && success) {
+      const timer = setTimeout(async () => {
+        await supabase.auth.signOut();
+        navigate('/auth', { replace: true });
+      }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [user, loading, success, navigate]);
+  }, [loading, success, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
