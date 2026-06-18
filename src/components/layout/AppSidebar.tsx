@@ -112,9 +112,6 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
           <Icon className="h-5 w-5 shrink-0" />
           <span className={isCollapsed ? "sr-only" : "flex-1 text-sm"}>
             {item.label}
-            {linkType === 'course' && (
-              <span className="ml-2 text-[10px] uppercase tracking-wide opacity-70">Course</span>
-            )}
           </span>
         </NavLink>
       </SidebarMenuButton>
