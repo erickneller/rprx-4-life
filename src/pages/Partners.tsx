@@ -85,10 +85,10 @@ export default function Partners() {
                       <CardContent className="flex-1 flex flex-col gap-4">
                         <CardDescription className="flex-1">{partner.description}</CardDescription>
                         {partner.partner_url && (
-                          <Button asChild className="w-full gap-2">
+                          <Button asChild className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
                             <a href={partner.partner_url} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-4 w-4" />
-                              Visit Partner
+                              Visit Trusted Resources
                             </a>
                           </Button>
                         )}
