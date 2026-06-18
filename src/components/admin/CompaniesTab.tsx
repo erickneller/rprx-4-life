@@ -22,6 +22,7 @@ interface CompanyRow {
   invite_token: string;
   created_at: string;
   first_login_flow: FirstLoginFlowPreset | null;
+  join_video_url: string | null;
   member_count?: number;
   owner_email?: string;
 }
@@ -46,6 +47,7 @@ export function CompaniesTab() {
   const [editName, setEditName] = useState('');
   const [editPlan, setEditPlan] = useState<'free' | 'partner' | 'pro'>('free');
   const [editFirstLoginFlow, setEditFirstLoginFlow] = useState<FirstLoginFlowPreset | ''>('');
+  const [editJoinVideoUrl, setEditJoinVideoUrl] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<CompanyRow | null>(null);
 
   // ─── Fetch all companies with member counts ─────────────────────────────
@@ -55,7 +57,7 @@ export function CompaniesTab() {
       // Fetch companies
       const { data: rows, error } = await (supabase
         .from('companies') as any)
-        .select('id, name, slug, plan, owner_id, created_at, first_login_flow')
+        .select('id, name, slug, plan, owner_id, created_at, first_login_flow, join_video_url')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -143,6 +145,7 @@ export function CompaniesTab() {
           name: editName.trim(),
           plan: editPlan,
           first_login_flow: editFirstLoginFlow === '' ? null : editFirstLoginFlow,
+          join_video_url: editJoinVideoUrl.trim() === '' ? null : editJoinVideoUrl.trim(),
         })
         .eq('id', editingCompany.id);
       if (error) throw error;
@@ -180,6 +183,7 @@ export function CompaniesTab() {
     setEditName(company.name);
     setEditPlan(company.plan as any);
     setEditFirstLoginFlow((company.first_login_flow ?? '') as FirstLoginFlowPreset | '');
+    setEditJoinVideoUrl(company.join_video_url ?? '');
     setEditingCompany(company);
   };
 
@@ -389,6 +393,18 @@ export function CompaniesTab() {
               </select>
               <p className="text-xs text-muted-foreground">
                 Where users from this company land after signup. Leave on the default to follow the global setting.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="editJoinVideoUrl">Welcome Video URL</Label>
+              <Input
+                id="editJoinVideoUrl"
+                placeholder="https://youtu.be/... or Loom / Vimeo / Descript link"
+                value={editJoinVideoUrl}
+                onChange={e => setEditJoinVideoUrl(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Shown to invited users on the join page (left of the form on desktop, above it on mobile). Supports YouTube, Vimeo, Loom, Descript, or a direct MP4 URL. Leave blank to hide.
               </p>
             </div>
             <div className="flex gap-2 justify-end pt-2">

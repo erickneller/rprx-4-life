@@ -291,6 +291,7 @@ export type Database = {
           ghl_location_id: string | null
           id: string
           invite_token: string
+          join_video_url: string | null
           name: string
           owner_id: string | null
           plan: string
@@ -303,6 +304,7 @@ export type Database = {
           ghl_location_id?: string | null
           id?: string
           invite_token?: string
+          join_video_url?: string | null
           name: string
           owner_id?: string | null
           plan?: string
@@ -315,6 +317,7 @@ export type Database = {
           ghl_location_id?: string | null
           id?: string
           invite_token?: string
+          join_video_url?: string | null
           name?: string
           owner_id?: string | null
           plan?: string
@@ -2563,6 +2566,7 @@ export type Database = {
         Returns: {
           first_login_flow: string
           id: string
+          join_video_url: string
           name: string
         }[]
       }
