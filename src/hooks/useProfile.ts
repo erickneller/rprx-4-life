@@ -103,18 +103,25 @@ export function useProfile() {
           }
         }
 
+        const pendingPhone = localStorage.getItem('pending_phone');
+        const pendingFullName = localStorage.getItem('pending_full_name');
+
         const { data: newProfile, error: insertError } = await supabase
           .from('profiles')
           .insert({
             id: user.id,
-            full_name: metadata.full_name || metadata.name || null,
-            phone: metadata.phone || null,
+            full_name: pendingFullName || metadata.full_name || metadata.name || null,
+            phone: pendingPhone || metadata.phone || null,
             ...(pendingCompanyId ? { company_id: pendingCompanyId, company_role: 'member' } : {}),
           })
           .select()
           .single();
 
         if (insertError) throw insertError;
+
+        // Clear pending personal info regardless of company assignment
+        if (pendingPhone) localStorage.removeItem('pending_phone');
+        if (pendingFullName) localStorage.removeItem('pending_full_name');
 
         // If we assigned a company, also create the company_members row
         if (pendingCompanyId) {
