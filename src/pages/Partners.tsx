@@ -50,7 +50,7 @@ export default function Partners() {
         ) : grouped.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
-              No partner programs are available at this time. Check back soon!
+              No trusted resources are available at this time. Check back soon!
             </CardContent>
           </Card>
         ) : (
