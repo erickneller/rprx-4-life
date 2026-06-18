@@ -314,7 +314,9 @@ export default function Join() {
             Sign in
           </a>
         </p>
+        </div>
       </div>
     </div>
   );
 }
+
