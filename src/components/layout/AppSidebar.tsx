@@ -107,7 +107,7 @@ function NavItemRow({ item, isCollapsed }: { item: NavConfigRow; isCollapsed: bo
         <NavLink
           to={url}
           className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+          activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
         >
           <Icon className="h-5 w-5 shrink-0" />
           <span className={isCollapsed ? "sr-only" : "flex-1 text-sm"}>
@@ -237,7 +237,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/company-dashboard"
                       className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                     >
                       <Building2 className="h-5 w-5 shrink-0" />
                       <span className={isCollapsed ? "sr-only" : ""}>Company</span>
@@ -258,7 +258,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/library-admin"
                       className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                     >
                       <LibraryIcon className="h-5 w-5 shrink-0" />
                       <span className={isCollapsed ? "sr-only" : ""}>Library Admin</span>
@@ -279,7 +279,7 @@ export function AppSidebar() {
                     <NavLink
                       to="/admin"
                       className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                     >
                       <Shield className="h-5 w-5 shrink-0" />
                       <span className={isCollapsed ? "sr-only" : ""}>Admin Panel</span>
@@ -299,7 +299,7 @@ export function AppSidebar() {
                   <NavLink
                     to="/help"
                     className="flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    activeClassName="bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                   >
                     <LifeBuoy className="h-5 w-5 shrink-0" />
                     <span className={isCollapsed ? "sr-only" : ""}>Help & Support</span>
