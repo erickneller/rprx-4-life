@@ -16,6 +16,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import rprxLogo from '@/assets/rprx-logo.png';
 import { VideoEmbed } from '@/components/VideoEmbed';
+import { useAuth as useAuthHook } from '@/hooks/useAuth';
 
 
 interface PendingCompany {
