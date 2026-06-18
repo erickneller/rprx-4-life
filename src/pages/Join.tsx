@@ -145,6 +145,11 @@ export default function Join() {
     e.preventDefault();
     if (!pendingCompany) return;
 
+    if (!phone.trim()) {
+      setError('Phone number is required.');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -173,6 +178,38 @@ export default function Join() {
       setSubmitting(false);
     }
   }
+
+  // ─── Google OAuth sign-up ────────────────────────────────────────────────
+  async function handleGoogleSignUp() {
+    if (!pendingCompany) return;
+    if (!fullName.trim()) {
+      setError('Please enter your full name before continuing with Google.');
+      return;
+    }
+    if (!phone.trim()) {
+      setError('Phone number is required. Please enter it before continuing with Google.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      // Stash so useProfile can persist them on first profile creation post-OAuth.
+      localStorage.setItem('pending_invite_token', pendingCompany.invite_token);
+      localStorage.setItem('pending_phone', phone.trim());
+      localStorage.setItem('pending_full_name', fullName.trim());
+
+      const { error: oauthErr } = await signInWithGoogle();
+      if (oauthErr) throw oauthErr;
+      // Popup OAuth: auth state will update in this tab; autoJoin effect handles redirect.
+    } catch (err: any) {
+      setError(err.message ?? 'Google sign-in failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
 
   // ─── Loading state ───────────────────────────────────────────────────────
   if (loading) {
