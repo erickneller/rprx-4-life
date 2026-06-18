@@ -31,14 +31,14 @@ export default function Partners() {
     .filter(g => g.partners.length > 0);
 
   return (
-    <AuthenticatedLayout title="RPRx Partners">
+    <AuthenticatedLayout title="RPRx Trusted Resources">
       <div className="p-4 md:p-6 space-y-8 max-w-6xl mx-auto">
         <div className="flex items-center gap-3">
           <Handshake className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">RPRx Partners</h1>
+          <h1 className="text-2xl font-bold">RPRx Trusted Resources</h1>
         </div>
         <p className="text-muted-foreground">
-          Explore our trusted partner programs to help you achieve your financial goals.
+          Explore our trusted resources to help you achieve your financial goals.
         </p>
 
         {isLoading ? (
@@ -50,7 +50,7 @@ export default function Partners() {
         ) : grouped.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
-              No partner programs are available at this time. Check back soon!
+              No trusted resources are available at this time. Check back soon!
             </CardContent>
           </Card>
         ) : (
@@ -85,10 +85,10 @@ export default function Partners() {
                       <CardContent className="flex-1 flex flex-col gap-4">
                         <CardDescription className="flex-1">{partner.description}</CardDescription>
                         {partner.partner_url && (
-                          <Button asChild className="w-full gap-2">
+                          <Button asChild className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
                             <a href={partner.partner_url} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-4 w-4" />
-                              Visit Partner
+                              Visit Trusted Resources
                             </a>
                           </Button>
                         )}
