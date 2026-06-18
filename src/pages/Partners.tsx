@@ -88,7 +88,7 @@ export default function Partners() {
                           <Button asChild className="w-full gap-2 bg-accent text-accent-foreground hover:bg-accent/90">
                             <a href={partner.partner_url} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="h-4 w-4" />
-                              Visit Trusted Resources
+                              Visit Trusted Resource
                             </a>
                           </Button>
                         )}
