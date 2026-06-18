@@ -311,15 +311,17 @@ export default function Join() {
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="phone">Phone (optional)</Label>
+            <Label htmlFor="phone">Phone</Label>
             <Input
               id="phone"
               type="tel"
               placeholder="+1 555 000 0000"
               value={phone}
               onChange={e => setPhone(e.target.value)}
+              required
             />
           </div>
+
 
           <div className="space-y-1">
             <Label htmlFor="password">Password</Label>
