@@ -31,14 +31,14 @@ export default function Partners() {
     .filter(g => g.partners.length > 0);
 
   return (
-    <AuthenticatedLayout title="RPRx Partners">
+    <AuthenticatedLayout title="RPRx Trusted Resources">
       <div className="p-4 md:p-6 space-y-8 max-w-6xl mx-auto">
         <div className="flex items-center gap-3">
           <Handshake className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">RPRx Partners</h1>
+          <h1 className="text-2xl font-bold">RPRx Trusted Resources</h1>
         </div>
         <p className="text-muted-foreground">
-          Explore our trusted partner programs to help you achieve your financial goals.
+          Explore our trusted resources to help you achieve your financial goals.
         </p>
 
         {isLoading ? (
