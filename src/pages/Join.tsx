@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import rprxLogo from '@/assets/rprx-logo.png';
+import { VideoEmbed } from '@/components/VideoEmbed';
 
 
 interface PendingCompany {
@@ -22,6 +23,7 @@ interface PendingCompany {
   name: string;
   invite_token: string;
   first_login_flow: FirstLoginFlowPreset | null;
+  join_video_url: string | null;
 }
 
 /**
@@ -79,6 +81,7 @@ export default function Join() {
           name: match.name,
           invite_token: token,
           first_login_flow: (match.first_login_flow ?? null) as FirstLoginFlowPreset | null,
+          join_video_url: (match as any).join_video_url ?? null,
         });
         // Persist token so useProfile can pick it up after Google OAuth
         localStorage.setItem('pending_invite_token', token);
@@ -205,14 +208,32 @@ export default function Join() {
     );
   }
 
-  // ─── Sign-up form (unauthenticated) ──────────────────────────────────────
+  const videoUrl = pendingCompany?.join_video_url?.trim() || null;
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
+      <div
+        className={
+          videoUrl
+            ? 'w-full max-w-6xl grid gap-8 md:grid-cols-2 md:items-center'
+            : 'w-full max-w-md space-y-6'
+        }
+      >
+        {videoUrl && (
+          <div className="space-y-3">
+            <VideoEmbed url={videoUrl} />
+            <p className="text-center text-xs text-muted-foreground md:text-sm">
+              A quick welcome from {pendingCompany?.name}
+            </p>
+          </div>
+        )}
+
+        <div className="w-full max-w-md mx-auto space-y-6">
         {/* Spinning logo */}
         <div className="flex justify-center" style={{ perspective: '1000px' }}>
           <img src={rprxLogo} alt="RPRx Logo" className="w-20 h-20 animate-spin-y" />
         </div>
+
 
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">You've been invited</h1>
