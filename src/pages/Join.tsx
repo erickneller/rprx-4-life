@@ -39,7 +39,7 @@ export default function Join() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signInWithGoogle } = useAuth();
   const { joinByToken } = useCompany();
   const { isProfileComplete, isLoading: profileLoading } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
