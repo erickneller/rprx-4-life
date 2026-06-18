@@ -49,11 +49,11 @@ function AttachmentRow({ a }: { a: { kind: string; label: string; url: string | 
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-sm hover:bg-accent transition-colors"
+      className="flex items-center gap-3 rounded-md bg-accent px-4 py-3 text-sm text-accent-foreground hover:bg-accent/90 transition-colors"
     >
-      <Icon className="h-4 w-4 text-primary shrink-0" />
+      <Icon className="h-4 w-4 text-accent-foreground shrink-0" />
       <span className="flex-1">{a.label}</span>
-      <span className="text-xs text-muted-foreground capitalize">{a.kind.replace('_', ' ')}</span>
+      <span className="text-xs text-accent-foreground/80 capitalize">{a.kind.replace('_', ' ')}</span>
     </a>
   );
 }
@@ -244,13 +244,13 @@ export default function CoursePage() {
                   <ChevronLeft className="h-4 w-4 mr-1" /> Prev
                 </Button>
                 <Button
-                  variant={isCompleted ? 'secondary' : 'default'}
+                  className="bg-success text-success-foreground hover:bg-success/90"
                   onClick={() => toggle.mutate({ lessonId: activeLesson.id, completed: !isCompleted })}
                 >
                   {isCompleted ? (<><CheckCircle2 className="h-4 w-4 mr-1" /> Completed</>) : 'Mark complete'}
                 </Button>
                 <Button
-                  variant="outline"
+                  className="bg-accent text-accent-foreground hover:bg-accent/90"
                   disabled={!next}
                   onClick={() => next && setActiveLessonId(next.id)}
                 >
