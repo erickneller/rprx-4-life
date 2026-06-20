@@ -3,7 +3,7 @@ import { AuthenticatedLayout } from '@/components/layout/AuthenticatedLayout';
 import { useLibraryCategories, useLibraryVideos } from '@/hooks/useLibrary';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Lock } from 'lucide-react';
+import { BookOpen, Lock, Play } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { VideoPlayer } from '@/components/media/VideoPlayer';
