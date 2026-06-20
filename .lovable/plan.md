@@ -1,29 +1,22 @@
-# Fix: Thumbnail URLs not rendering in Library
+## Problem
 
-## Why it's broken
-You pasted a Google Drive `/file/d/{id}/view` URL into Thumbnail URL. That's a webpage URL, not an image URL — `<img src>` can't render it. Drive's image-hosting workarounds (`uc?export=view`) are unreliable and frequently blocked by CORS/hotlink protection, so they aren't a good fix either.
+The thumbnail uploaded in the admin Library is saved correctly, but on the published `/library` page it never renders. For YouTube/Loom/file videos, `src/pages/Library.tsx` immediately mounts `<VideoPlayer>` (iframe/video element), so `thumbnail_url` is only used in two narrow cases: locked tier cards, and unknown video sources. The poster image you uploaded is effectively dead code for playable videos.
 
-## Solution
-Give admins a real place to host thumbnail images: a public Supabase Storage bucket plus an upload button in the Library admin form. The existing free-text URL field stays (for cases where you already have a hosted image), but the primary path becomes "upload a file".
+## Fix
 
-## Changes
+Use `thumbnail_url` as a **click-to-play poster** on Library cards. The video player only mounts after the user clicks the poster — which also means the iframe no longer loads on page load (faster Library, fewer YouTube requests).
 
-1. **Create storage bucket** `library-thumbnails` (public read, admin write) via `storage_create_bucket`, plus RLS policies on `storage.objects`:
-   - Public SELECT on objects in this bucket
-   - INSERT/UPDATE/DELETE restricted to users with the `admin` role (via existing `has_role` function)
+### Changes
 
-2. **`src/components/admin/LibraryTab.tsx`** — in the video form (around line 201), add an "Upload image" button next to the Thumbnail URL input:
-   - File picker (image/*)
-   - Uploads to `library-thumbnails/{uuid}.{ext}`
-   - On success, writes the public URL into `vidForm.thumbnail_url`
-   - Shows a small preview thumbnail when a URL is present
-   - Loading + error toast states
+1. **`src/pages/Library.tsx`** (unlocked card branch, ~lines 171–202)
+   - Track per-card "playing" state (`useState<Set<string>>` of video ids, or a single `playingId`).
+   - If the card is not playing AND `video.thumbnail_url` exists: render the thumbnail inside an `AspectRatio` with a centered Play button overlay. Clicking it sets the card to playing and calls the existing `logVideoOpen(...)`.
+   - If playing OR no thumbnail: render `<VideoPlayer>` as today (keeps current behavior when no thumbnail was uploaded).
+   - Locked-tier branch is unchanged.
 
-3. **Helpful hint text** under the input: "Paste a direct image URL or upload a file. Google Drive share links won't work."
+2. No DB, hook, or admin changes. `useLibrary`, `LibraryTab`, and the `course-assets` upload flow all stay as they are.
 
-No changes to `Library.tsx` rendering — it already uses `thumbnail_url` correctly.
+### Out of scope
 
-## Out of scope
-- Auto-converting Drive URLs (unreliable)
-- Generating thumbnails from the video itself
-- Migrating existing broken Drive URLs (you'll re-upload as needed)
+- Course lesson thumbnails (separate component) — can be a follow-up if you want the same behavior there.
+- Auto-generating thumbnails from video URLs.
