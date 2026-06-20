@@ -1177,6 +1177,7 @@ export type Database = {
       }
       partners: {
         Row: {
+          button_label: string | null
           category_id: string
           created_at: string
           description: string
@@ -1190,6 +1191,7 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          button_label?: string | null
           category_id: string
           created_at?: string
           description?: string
@@ -1203,6 +1205,7 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          button_label?: string | null
           category_id?: string
           created_at?: string
           description?: string
