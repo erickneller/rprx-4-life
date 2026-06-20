@@ -96,7 +96,7 @@ export function PartnersTab() {
   };
   const openEditPart = (p: Partner) => {
     setPartEditing(true);
-    setPartForm({ id: p.id, name: p.name, category_id: p.category_id, description: p.description, logo_url: p.logo_url || '', video_url: p.video_url || '', partner_url: p.partner_url, sort_order: p.sort_order, is_active: p.is_active });
+    setPartForm({ id: p.id, name: p.name, category_id: p.category_id, description: p.description, logo_url: p.logo_url || '', video_url: p.video_url || '', partner_url: p.partner_url, button_label: p.button_label || '', sort_order: p.sort_order, is_active: p.is_active });
     setPartDialogOpen(true);
   };
   const savePart = async () => {
