@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   useAllLibraryCategories,
   useAllLibraryVideos,
@@ -11,6 +11,7 @@ import {
 } from '@/hooks/useLibrary';
 import { VideoPlayer } from '@/components/media/VideoPlayer';
 import { resolveVideoSource } from '@/lib/videoSource';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,8 +22,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
+
+const THUMBNAIL_BUCKET = 'course-assets';
+const THUMBNAIL_PREFIX = 'library-thumbnails';
 
 export function LibraryTab() {
   const { data: categories = [], isLoading: catLoading } = useAllLibraryCategories();
@@ -45,6 +49,36 @@ export function LibraryTab() {
   });
   const [vidEditing, setVidEditing] = useState(false);
   const [deleteVidId, setDeleteVidId] = useState<string | null>(null);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
+  const thumbFileRef = useRef<HTMLInputElement>(null);
+
+  const handleThumbUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5 MB');
+      return;
+    }
+    setUploadingThumb(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${THUMBNAIL_PREFIX}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage
+        .from(THUMBNAIL_BUCKET)
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from(THUMBNAIL_BUCKET).getPublicUrl(path);
+      setVidForm(f => ({ ...f, thumbnail_url: data.publicUrl }));
+      toast.success('Thumbnail uploaded');
+    } catch (e: any) {
+      toast.error(e.message || 'Upload failed');
+    } finally {
+      setUploadingThumb(false);
+      if (thumbFileRef.current) thumbFileRef.current.value = '';
+    }
+  };
 
   // Category handlers
   const openCreateCat = () => {
@@ -198,7 +232,57 @@ export function LibraryTab() {
                 </div>
               </div>
             )}
-            <div><Label>Thumbnail URL (optional)</Label><Input value={vidForm.thumbnail_url || ''} onChange={e => setVidForm(f => ({ ...f, thumbnail_url: e.target.value }))} placeholder="https://..." /></div>
+            <div>
+              <Label>Thumbnail (optional)</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={vidForm.thumbnail_url || ''}
+                  onChange={e => setVidForm(f => ({ ...f, thumbnail_url: e.target.value }))}
+                  placeholder="https://..."
+                />
+                <input
+                  ref={thumbFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) handleThumbUpload(file);
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => thumbFileRef.current?.click()}
+                  disabled={uploadingThumb}
+                >
+                  {uploadingThumb ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  <span className="ml-1">Upload</span>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload an image or paste a direct image URL. Google Drive share links won't render.
+              </p>
+              {vidForm.thumbnail_url && (
+                <div className="mt-2 relative inline-block">
+                  <img
+                    src={vidForm.thumbnail_url}
+                    alt="Thumbnail preview"
+                    className="h-24 rounded border object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={() => setVidForm(f => ({ ...f, thumbnail_url: '' }))}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <div>
               <Label>Required Tier</Label>
               <Select value={vidForm.required_tier ?? 'free'} onValueChange={(v) => setVidForm(f => ({ ...f, required_tier: v as any }))}>
