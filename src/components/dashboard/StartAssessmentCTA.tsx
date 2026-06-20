@@ -20,7 +20,7 @@ export function StartAssessmentCTA({ isFirstTime = true }: StartAssessmentCTAPro
           <CardTitle className="text-xl">
             {isFirstTime
               ? 'Welcome! Take Your First Assessment'
-              : 'Ready for a New Assessment?'}
+              : 'Ready for a New Financial Assessment?'}
           </CardTitle>
         </div>
       </CardHeader>
@@ -31,7 +31,7 @@ export function StartAssessmentCTA({ isFirstTime = true }: StartAssessmentCTAPro
             : 'Track how your financial pressures change over time. Taking regular assessments helps you understand your progress and identify areas that need attention.'}
         </p>
         <Button onClick={() => navigate('/assessment')} className="w-full sm:w-auto bg-accent hover:bg-accent/90">
-          Start Assessment
+          Start Financial Assessment
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
       </CardContent>

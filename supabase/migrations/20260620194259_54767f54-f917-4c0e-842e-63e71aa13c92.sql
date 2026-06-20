@@ -1,0 +1,1 @@
+UPDATE public.feature_flags SET enabled = false, updated_at = now() WHERE id = 'billing_card';
