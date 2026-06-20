@@ -232,7 +232,57 @@ export function LibraryTab() {
                 </div>
               </div>
             )}
-            <div><Label>Thumbnail URL (optional)</Label><Input value={vidForm.thumbnail_url || ''} onChange={e => setVidForm(f => ({ ...f, thumbnail_url: e.target.value }))} placeholder="https://..." /></div>
+            <div>
+              <Label>Thumbnail (optional)</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={vidForm.thumbnail_url || ''}
+                  onChange={e => setVidForm(f => ({ ...f, thumbnail_url: e.target.value }))}
+                  placeholder="https://..."
+                />
+                <input
+                  ref={thumbFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) handleThumbUpload(file);
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => thumbFileRef.current?.click()}
+                  disabled={uploadingThumb}
+                >
+                  {uploadingThumb ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  <span className="ml-1">Upload</span>
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload an image or paste a direct image URL. Google Drive share links won't render.
+              </p>
+              {vidForm.thumbnail_url && (
+                <div className="mt-2 relative inline-block">
+                  <img
+                    src={vidForm.thumbnail_url}
+                    alt="Thumbnail preview"
+                    className="h-24 rounded border object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="secondary"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={() => setVidForm(f => ({ ...f, thumbnail_url: '' }))}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <div>
               <Label>Required Tier</Label>
               <Select value={vidForm.required_tier ?? 'free'} onValueChange={(v) => setVidForm(f => ({ ...f, required_tier: v as any }))}>
