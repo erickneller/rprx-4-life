@@ -102,7 +102,8 @@ export function PartnersTab() {
   const savePart = async () => {
     if (!partForm.name || !partForm.category_id) { toast.error('Name and Category required'); return; }
     try {
-      await upsertPartner.mutateAsync(partForm as any);
+      const payload = { ...partForm, button_label: partForm.button_label?.trim() || null };
+      await upsertPartner.mutateAsync(payload as any);
       toast.success(partEditing ? 'Partner updated' : 'Partner created');
       setPartDialogOpen(false);
     } catch (e: any) { toast.error(e.message); }
