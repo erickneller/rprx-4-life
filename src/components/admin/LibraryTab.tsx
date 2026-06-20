@@ -49,6 +49,36 @@ export function LibraryTab() {
   });
   const [vidEditing, setVidEditing] = useState(false);
   const [deleteVidId, setDeleteVidId] = useState<string | null>(null);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
+  const thumbFileRef = useRef<HTMLInputElement>(null);
+
+  const handleThumbUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5 MB');
+      return;
+    }
+    setUploadingThumb(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `${THUMBNAIL_PREFIX}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage
+        .from(THUMBNAIL_BUCKET)
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from(THUMBNAIL_BUCKET).getPublicUrl(path);
+      setVidForm(f => ({ ...f, thumbnail_url: data.publicUrl }));
+      toast.success('Thumbnail uploaded');
+    } catch (e: any) {
+      toast.error(e.message || 'Upload failed');
+    } finally {
+      setUploadingThumb(false);
+      if (thumbFileRef.current) thumbFileRef.current.value = '';
+    }
+  };
 
   // Category handlers
   const openCreateCat = () => {
