@@ -169,19 +169,47 @@ export default function Library() {
                     );
                   }
 
+                  const isPlaying = playingIds.has(video.id);
+                  const showPoster = !isPlaying && !!video.thumbnail_url && source.kind !== 'unknown';
+
+                  const handlePlay = () => {
+                    setPlayingIds(prev => {
+                      const next = new Set(prev);
+                      next.add(video.id);
+                      return next;
+                    });
+                    logVideoOpen({
+                      source: 'library_video',
+                      sourceId: video.id,
+                      title: video.title,
+                      videoUrl: video.video_url,
+                    });
+                  };
+
                   return (
                     <Card key={video.id} className="flex flex-col overflow-hidden">
-                      {source.kind !== 'unknown' ? (
-                        <div
-                          onClick={() =>
-                            logVideoOpen({
-                              source: 'library_video',
-                              sourceId: video.id,
-                              title: video.title,
-                              videoUrl: video.video_url,
-                            })
-                          }
-                        >
+                      {showPoster ? (
+                        <AspectRatio ratio={16 / 9}>
+                          <button
+                            type="button"
+                            onClick={handlePlay}
+                            className="group relative w-full h-full block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`Play ${video.title}`}
+                          >
+                            <img
+                              src={video.thumbnail_url!}
+                              alt={video.title}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                              <div className="h-14 w-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+                                <Play className="h-6 w-6 text-black fill-black ml-0.5" />
+                              </div>
+                            </div>
+                          </button>
+                        </AspectRatio>
+                      ) : source.kind !== 'unknown' ? (
+                        <div onClick={() => !isPlaying && handlePlay()}>
                           <VideoPlayer url={video.video_url} title={video.title} />
                         </div>
                       ) : video.thumbnail_url ? (
