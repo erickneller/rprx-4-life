@@ -46,7 +46,7 @@ export function HealthAssessmentHistory() {
             </div>
           </div>
           <Button asChild>
-            <Link to="/health-assessment">Take Health Assessment</Link>
+            <Link to="/health-assessment">Start Health Assessment</Link>
           </Button>
         </CardContent>
       </Card>
