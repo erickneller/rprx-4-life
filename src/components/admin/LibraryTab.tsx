@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   useAllLibraryCategories,
   useAllLibraryVideos,
@@ -11,6 +11,7 @@ import {
 } from '@/hooks/useLibrary';
 import { VideoPlayer } from '@/components/media/VideoPlayer';
 import { resolveVideoSource } from '@/lib/videoSource';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,8 +22,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
+
+const THUMBNAIL_BUCKET = 'course-assets';
+const THUMBNAIL_PREFIX = 'library-thumbnails';
 
 export function LibraryTab() {
   const { data: categories = [], isLoading: catLoading } = useAllLibraryCategories();
