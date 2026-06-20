@@ -233,6 +233,7 @@ export function PartnersTab() {
             <div><Label>Logo URL</Label><Input value={partForm.logo_url || ''} onChange={e => setPartForm(f => ({ ...f, logo_url: e.target.value }))} placeholder="https://..." /></div>
             <div><Label>Video URL (YouTube)</Label><Input value={partForm.video_url || ''} onChange={e => setPartForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://youtube.com/watch?v=..." /></div>
             <div><Label>Partner URL</Label><Input value={partForm.partner_url || ''} onChange={e => setPartForm(f => ({ ...f, partner_url: e.target.value }))} placeholder="https://..." /></div>
+            <div><Label>Button Label</Label><Input value={partForm.button_label || ''} onChange={e => setPartForm(f => ({ ...f, button_label: e.target.value }))} placeholder="Visit Trusted Resource" /></div>
             <div><Label>Sort Order</Label><Input type="number" value={partForm.sort_order ?? 0} onChange={e => setPartForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} /></div>
             <div className="flex items-center gap-2"><Switch checked={partForm.is_active ?? true} onCheckedChange={v => setPartForm(f => ({ ...f, is_active: v }))} /><Label>Active</Label></div>
             <Button onClick={savePart} disabled={upsertPartner.isPending} className="w-full">{upsertPartner.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Save</Button>
