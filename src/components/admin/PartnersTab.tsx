@@ -42,7 +42,7 @@ export function PartnersTab() {
   // Partner form
   const [partDialogOpen, setPartDialogOpen] = useState(false);
   const [partForm, setPartForm] = useState<Partial<Partner> & { name: string; category_id: string }>({
-    name: '', category_id: '', description: '', logo_url: '', video_url: '', partner_url: '', sort_order: 0, is_active: true,
+    name: '', category_id: '', description: '', logo_url: '', video_url: '', partner_url: '', button_label: '', sort_order: 0, is_active: true,
   });
   const [partEditing, setPartEditing] = useState(false);
   const [deletePartId, setDeletePartId] = useState<string | null>(null);
