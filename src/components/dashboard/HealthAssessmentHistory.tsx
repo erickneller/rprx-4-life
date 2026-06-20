@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Trash2, HeartPulse, Eye, Pencil, RotateCcw } from 'lucide-react';
+import { Loader2, Trash2, HeartPulse, Eye, Pencil, RotateCcw, ArrowRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +33,7 @@ export function HealthAssessmentHistory() {
   if (items.length === 0) {
     return (
       <Card className="border-dashed">
-        <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+        <CardContent className="p-6 space-y-4">
           <div className="flex items-start gap-3">
             <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 shrink-0">
               <HeartPulse className="w-5 h-5 text-primary" />
@@ -45,8 +45,11 @@ export function HealthAssessmentHistory() {
               </p>
             </div>
           </div>
-          <Button asChild>
-            <Link to="/health-assessment">Start Health Assessment</Link>
+          <Button asChild className="w-full sm:w-auto bg-accent hover:bg-accent/90">
+            <Link to="/health-assessment">
+              Start Health Assessment
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Link>
           </Button>
         </CardContent>
       </Card>
