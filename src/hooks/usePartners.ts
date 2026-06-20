@@ -19,6 +19,7 @@ export interface Partner {
   logo_url: string | null;
   video_url: string | null;
   partner_url: string;
+  button_label: string | null;
   sort_order: number;
   is_active: boolean;
   created_at: string;
