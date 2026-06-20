@@ -91,7 +91,7 @@ export function PartnersTab() {
   // Partner handlers
   const openCreatePart = (categoryId?: string) => {
     setPartEditing(false);
-    setPartForm({ name: '', category_id: categoryId || (categories[0]?.id ?? ''), description: '', logo_url: '', video_url: '', partner_url: '', sort_order: 0, is_active: true });
+    setPartForm({ name: '', category_id: categoryId || (categories[0]?.id ?? ''), description: '', logo_url: '', video_url: '', partner_url: '', button_label: '', sort_order: 0, is_active: true });
     setPartDialogOpen(true);
   };
   const openEditPart = (p: Partner) => {
