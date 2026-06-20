@@ -30,6 +30,7 @@ export default function Library() {
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [playingIds, setPlayingIds] = useState<Set<string>>(new Set());
 
   const isLoading = catLoading || vidLoading;
 
