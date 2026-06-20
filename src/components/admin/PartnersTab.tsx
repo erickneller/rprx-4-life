@@ -42,7 +42,7 @@ export function PartnersTab() {
   // Partner form
   const [partDialogOpen, setPartDialogOpen] = useState(false);
   const [partForm, setPartForm] = useState<Partial<Partner> & { name: string; category_id: string }>({
-    name: '', category_id: '', description: '', logo_url: '', video_url: '', partner_url: '', sort_order: 0, is_active: true,
+    name: '', category_id: '', description: '', logo_url: '', video_url: '', partner_url: '', button_label: '', sort_order: 0, is_active: true,
   });
   const [partEditing, setPartEditing] = useState(false);
   const [deletePartId, setDeletePartId] = useState<string | null>(null);
@@ -91,18 +91,19 @@ export function PartnersTab() {
   // Partner handlers
   const openCreatePart = (categoryId?: string) => {
     setPartEditing(false);
-    setPartForm({ name: '', category_id: categoryId || (categories[0]?.id ?? ''), description: '', logo_url: '', video_url: '', partner_url: '', sort_order: 0, is_active: true });
+    setPartForm({ name: '', category_id: categoryId || (categories[0]?.id ?? ''), description: '', logo_url: '', video_url: '', partner_url: '', button_label: '', sort_order: 0, is_active: true });
     setPartDialogOpen(true);
   };
   const openEditPart = (p: Partner) => {
     setPartEditing(true);
-    setPartForm({ id: p.id, name: p.name, category_id: p.category_id, description: p.description, logo_url: p.logo_url || '', video_url: p.video_url || '', partner_url: p.partner_url, sort_order: p.sort_order, is_active: p.is_active });
+    setPartForm({ id: p.id, name: p.name, category_id: p.category_id, description: p.description, logo_url: p.logo_url || '', video_url: p.video_url || '', partner_url: p.partner_url, button_label: p.button_label || '', sort_order: p.sort_order, is_active: p.is_active });
     setPartDialogOpen(true);
   };
   const savePart = async () => {
     if (!partForm.name || !partForm.category_id) { toast.error('Name and Category required'); return; }
     try {
-      await upsertPartner.mutateAsync(partForm as any);
+      const payload = { ...partForm, button_label: partForm.button_label?.trim() || null };
+      await upsertPartner.mutateAsync(payload as any);
       toast.success(partEditing ? 'Partner updated' : 'Partner created');
       setPartDialogOpen(false);
     } catch (e: any) { toast.error(e.message); }
@@ -232,6 +233,7 @@ export function PartnersTab() {
             <div><Label>Logo URL</Label><Input value={partForm.logo_url || ''} onChange={e => setPartForm(f => ({ ...f, logo_url: e.target.value }))} placeholder="https://..." /></div>
             <div><Label>Video URL (YouTube)</Label><Input value={partForm.video_url || ''} onChange={e => setPartForm(f => ({ ...f, video_url: e.target.value }))} placeholder="https://youtube.com/watch?v=..." /></div>
             <div><Label>Partner URL</Label><Input value={partForm.partner_url || ''} onChange={e => setPartForm(f => ({ ...f, partner_url: e.target.value }))} placeholder="https://..." /></div>
+            <div><Label>Button Label</Label><Input value={partForm.button_label || ''} onChange={e => setPartForm(f => ({ ...f, button_label: e.target.value }))} placeholder="Visit Trusted Resource" /></div>
             <div><Label>Sort Order</Label><Input type="number" value={partForm.sort_order ?? 0} onChange={e => setPartForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} /></div>
             <div className="flex items-center gap-2"><Switch checked={partForm.is_active ?? true} onCheckedChange={v => setPartForm(f => ({ ...f, is_active: v }))} /><Label>Active</Label></div>
             <Button onClick={savePart} disabled={upsertPartner.isPending} className="w-full">{upsertPartner.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Save</Button>
