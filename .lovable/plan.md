@@ -1,17 +1,13 @@
-## Add editable button label per partner
+Align the empty-state Health Assessment card layout and button to match the Financial Assessment card above it.
 
-**Database**
-- Add `button_label TEXT` column to `partners` table (nullable).
+Current state
+- The "Start Health Assessment" button sits on the right side of the card (`justify-between`).
+- The button has no arrow icon and uses the default button style.
+- The Financial Assessment card above it shows a left-aligned button with an arrow icon and accent styling.
 
-**Admin (`src/components/admin/PartnersTab.tsx`)**
-- Add "Button Label" input to the Edit Partner form (placed after Partner URL).
-- Placeholder: `Visit Trusted Resource`.
-- Save the value to `partners.button_label` (empty string → null).
+Plan
+1. In `src/components/dashboard/HealthAssessmentHistory.tsx`, restructure the empty-state `CardContent` so the text block sits on the left and the button sits below it on the left (stacked vertically), removing the right-aligned `justify-between` layout.
+2. Update the "Start Health Assessment" button to use the same accent style and add an `ArrowRight` icon after the text, matching the "Start Financial Assessment" button.
+3. Verify the card visually aligns with the Financial Assessment card in the preview.
 
-**Public page (`src/pages/Partners.tsx`)**
-- Render `partner.button_label || "Visit Trusted Resource"` on the blue CTA.
-
-**Hook (`src/hooks/usePartners.ts`)**
-- Include `button_label` in the select/types so it flows through to UI.
-
-No other components affected. Existing partners without a value will continue to show "Visit Trusted Resource".
+No database or other components are affected.
