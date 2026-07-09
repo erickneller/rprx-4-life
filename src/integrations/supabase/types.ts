@@ -2564,6 +2564,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      join_company_by_token: { Args: { _token: string }; Returns: string }
       lookup_company_by_invite_token: {
         Args: { _token: string }
         Returns: {
