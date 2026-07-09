@@ -91,35 +91,21 @@ export function useCompany() {
     mutationFn: async (token: string): Promise<Company> => {
       if (!user?.id) throw new Error('Not authenticated');
 
-      // Look up company by invite_token using secure RPC
-      const { data: rpcResult, error: lookupErr } = await supabase
-        .rpc('lookup_company_by_invite_token', { _token: token });
+      // Secure server-side join: validates token and inserts membership + profile update
+      const { data: companyId, error: joinErr } = await supabase
+        .rpc('join_company_by_token', { _token: token });
 
-      if (lookupErr) throw lookupErr;
-      const match = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
-      if (!match) throw new Error('Invalid or expired invite link.');
+      if (joinErr) throw joinErr;
+      if (!companyId) throw new Error('Invalid or expired invite link.');
 
-      const companyId = match.id;
+      const { data: company, error: compErr } = await (supabase
+        .from('companies') as any)
+        .select('id, name, slug, owner_id, ghl_location_id, plan, created_at, updated_at')
+        .eq('id', companyId)
+        .single();
 
-      // Insert company_members row (upsert so re-joining is safe)
-      const { error: memberErr } = await (supabase
-        .from('company_members') as any)
-        .upsert(
-          { company_id: companyId, user_id: user.id, role: 'member' },
-          { onConflict: 'company_id,user_id', ignoreDuplicates: true }
-        );
-
-      if (memberErr) throw memberErr;
-
-      // Update profile.company_id + company_role
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .update({ company_id: companyId, company_role: 'member' } as any)
-        .eq('id', user.id);
-
-      if (profileErr) throw profileErr;
-
-      return { id: companyId, name: match.name } as Company;
+      if (compErr) throw compErr;
+      return company as Company;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company', user?.id] });
