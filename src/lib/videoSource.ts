@@ -65,6 +65,15 @@ export function resolveVideoSource(url: string | null | undefined): VideoSource 
   const descriptId = getDescriptVideoId(trimmed);
   if (descriptId) return { kind: 'descript', embedUrl: `https://share.descript.com/embed/${descriptId}` };
 
+  const vimeoId = getVimeoVideoId(trimmed);
+  if (vimeoId) {
+    const [id, query] = vimeoId.split('?');
+    const embedUrl = query
+      ? `https://player.vimeo.com/video/${id}?${query}`
+      : `https://player.vimeo.com/video/${id}`;
+    return { kind: 'vimeo', embedUrl };
+  }
+
   if (FILE_EXT_RE.test(trimmed) || GHL_HOST_RE.test(trimmed)) {
     return { kind: 'file', src: trimmed };
   }
@@ -72,12 +81,13 @@ export function resolveVideoSource(url: string | null | undefined): VideoSource 
   return { kind: 'unknown' };
 }
 
-/** Backwards-compatible helper: returns an iframe-embeddable URL for YouTube/Loom/Descript only. */
+/** Backwards-compatible helper: returns an iframe-embeddable URL for YouTube/Loom/Descript/Vimeo only. */
 export function toEmbedUrl(url: string | null | undefined): string | null {
   const src = resolveVideoSource(url);
-  if (src.kind === 'youtube' || src.kind === 'loom' || src.kind === 'descript') return src.embedUrl;
+  if (src.kind === 'youtube' || src.kind === 'loom' || src.kind === 'descript' || src.kind === 'vimeo') return src.embedUrl;
   return null;
 }
+
 
 /** Get the YouTube hqdefault thumbnail for a video URL (returns null for non-YouTube). */
 export function getYouTubeThumbnail(url: string): string | null {
