@@ -41,7 +41,7 @@ export default function Join() {
   const navigate = useNavigate();
   const { user, signInWithGoogle } = useAuth();
   const { joinByToken } = useCompany();
-  const { isProfileComplete, isLoading: profileLoading } = useProfile();
+  const { profile, isProfileComplete, isLoading: profileLoading } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
   const { preset, globalPath, globalRaw, isLoading: presetLoading } = useFirstLoginFlow();
 
@@ -49,8 +49,10 @@ export default function Join() {
   const [pendingCompany, setPendingCompany] = useState<PendingCompany | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [pendingNavigate, setPendingNavigate] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
+  const [dataTimeoutHit, setDataTimeoutHit] = useState(false);
 
 
   // Sign-up form state (used when not authenticated)
