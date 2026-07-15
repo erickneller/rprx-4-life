@@ -96,9 +96,10 @@ export default function Join() {
   }, [token]);
   useEffect(() => {
     if (!user || !pendingCompany || loading) return;
-    // Always wait for the first-login preset and profile/assessment data so
-    // the unified adapter computes against complete state.
-    if (presetLoading || profileLoading || assessmentsLoading || !assessmentsFetched) return;
+    if (joinError) return; // don't loop after a failure — user must retry
+    // Wait for supporting queries, but bail out after 15s so we never hang forever.
+    const stillWaiting = presetLoading || profileLoading || assessmentsLoading || !assessmentsFetched;
+    if (stillWaiting && !dataTimeoutHit) return;
 
     let cancelled = false;
     async function autoJoin() {
@@ -113,6 +114,7 @@ export default function Join() {
         const companyOverridePath = normalizeOnboardingPath(pendingCompany!.first_login_flow);
         const companyOverrideEnabled = pendingCompany!.first_login_flow != null;
         const { path: finalRedirectPath, reason } = resolveFinalOnboardingPath({
+          onboardingCompleted: profile?.onboarding_completed,
           isProfileComplete,
           hasAssessments,
           companyOverrideEnabled,
@@ -128,17 +130,35 @@ export default function Join() {
           globalNormalized: globalPath,
           reason,
           finalRedirectPath,
+          dataTimeoutHit,
         });
         navigate(finalRedirectPath, { replace: true });
       } catch (err: any) {
-        if (!cancelled) setError(err.message ?? 'Failed to join company.');
+        if (!cancelled) {
+          const msg = err?.message ?? 'Failed to join company.';
+          console.error('[join] autoJoin failed:', err);
+          setJoinError(msg);
+        }
       }
     }
 
     autoJoin();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched, preset, globalPath, isProfileComplete]);
+  }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched, preset, globalPath, isProfileComplete, joinError, dataTimeoutHit, profile?.onboarding_completed]);
+
+  // Hard timeout: if supporting queries never resolve, stop gating on them
+  // after 15s so autoJoin can proceed (and fail loudly if the RPC errors).
+  useEffect(() => {
+    if (!user || !pendingCompany || loading) return;
+    const stillWaiting = presetLoading || profileLoading || assessmentsLoading || !assessmentsFetched;
+    if (!stillWaiting) return;
+    const timer = setTimeout(() => {
+      console.warn('[join] data-gate timeout — proceeding without full data');
+      setDataTimeoutHit(true);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched]);
 
 
 
