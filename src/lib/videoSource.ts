@@ -7,8 +7,10 @@ export type VideoSource =
   | { kind: 'youtube'; embedUrl: string }
   | { kind: 'loom'; embedUrl: string }
   | { kind: 'descript'; embedUrl: string }
+  | { kind: 'vimeo'; embedUrl: string }
   | { kind: 'file'; src: string }
   | { kind: 'unknown' };
+
 
 const FILE_EXT_RE = /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i;
 const GHL_HOST_RE = /storage\.googleapis\.com\/msgsndr\//i;
