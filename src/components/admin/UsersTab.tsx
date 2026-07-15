@@ -61,16 +61,19 @@ function useAdminUsers() {
       const { data: users, error: usersErr } = await supabase.rpc('admin_list_users');
       if (usersErr) throw usersErr;
 
-      const [{ data: roles, error: rolesErr }, { data: subs, error: subsErr }] = await Promise.all([
+      const [
+        { data: roles, error: rolesErr },
+        { data: tieredUsers, error: tierErr },
+      ] = await Promise.all([
         supabase.from('user_roles').select('user_id, role'),
-        supabase.from('user_subscriptions' as any).select('user_id, tier'),
+        (supabase.rpc as any)('admin_list_users_with_tier'),
       ]);
       if (rolesErr) throw rolesErr;
-      if (subsErr) throw subsErr;
+      if (tierErr) throw tierErr;
 
       const adminIds = new Set((roles || []).filter(r => r.role === 'admin').map(r => r.user_id));
       const libraryAdminIds = new Set((roles || []).filter(r => (r.role as any) === 'library_admin').map(r => r.user_id));
-      const tierMap = new Map((subs || []).map((s: any) => [s.user_id, s.tier]));
+      const tierMap = new Map((tieredUsers || []).map((u: any) => [u.id, u.tier]));
 
       return (users || []).map((u: any) => ({
         ...u,
