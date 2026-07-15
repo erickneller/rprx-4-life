@@ -38,6 +38,20 @@ export function getDescriptVideoId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+export function getVimeoVideoId(url: string): string | null {
+  if (!url) return null;
+  // Matches vimeo.com/{id}, vimeo.com/video/{id}, player.vimeo.com/video/{id},
+  // and unlisted links vimeo.com/{id}/{hash} — hash preserved separately.
+  const player = url.match(/player\.vimeo\.com\/video\/(\d+)(?:\?h=([a-zA-Z0-9]+))?/);
+  if (player) return player[2] ? `${player[1]}?h=${player[2]}` : player[1];
+  const unlisted = url.match(/vimeo\.com\/(\d+)\/([a-zA-Z0-9]+)/);
+  if (unlisted) return `${unlisted[1]}?h=${unlisted[2]}`;
+  const std = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (std) return std[1];
+  return null;
+}
+
+
 export function resolveVideoSource(url: string | null | undefined): VideoSource {
   if (!url) return { kind: 'unknown' };
   const trimmed = url.trim();
