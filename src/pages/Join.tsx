@@ -41,7 +41,7 @@ export default function Join() {
   const navigate = useNavigate();
   const { user, signInWithGoogle } = useAuth();
   const { joinByToken } = useCompany();
-  const { isProfileComplete, isLoading: profileLoading } = useProfile();
+  const { profile, isProfileComplete, isLoading: profileLoading } = useProfile();
   const { data: assessments, isLoading: assessmentsLoading, isFetched: assessmentsFetched } = useAssessmentHistory();
   const { preset, globalPath, globalRaw, isLoading: presetLoading } = useFirstLoginFlow();
 
@@ -49,8 +49,10 @@ export default function Join() {
   const [pendingCompany, setPendingCompany] = useState<PendingCompany | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [pendingNavigate, setPendingNavigate] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
+  const [dataTimeoutHit, setDataTimeoutHit] = useState(false);
 
 
   // Sign-up form state (used when not authenticated)
@@ -94,9 +96,10 @@ export default function Join() {
   }, [token]);
   useEffect(() => {
     if (!user || !pendingCompany || loading) return;
-    // Always wait for the first-login preset and profile/assessment data so
-    // the unified adapter computes against complete state.
-    if (presetLoading || profileLoading || assessmentsLoading || !assessmentsFetched) return;
+    if (joinError) return; // don't loop after a failure — user must retry
+    // Wait for supporting queries, but bail out after 15s so we never hang forever.
+    const stillWaiting = presetLoading || profileLoading || assessmentsLoading || !assessmentsFetched;
+    if (stillWaiting && !dataTimeoutHit) return;
 
     let cancelled = false;
     async function autoJoin() {
@@ -111,6 +114,7 @@ export default function Join() {
         const companyOverridePath = normalizeOnboardingPath(pendingCompany!.first_login_flow);
         const companyOverrideEnabled = pendingCompany!.first_login_flow != null;
         const { path: finalRedirectPath, reason } = resolveFinalOnboardingPath({
+          onboardingCompleted: profile?.onboarding_completed,
           isProfileComplete,
           hasAssessments,
           companyOverrideEnabled,
@@ -126,17 +130,35 @@ export default function Join() {
           globalNormalized: globalPath,
           reason,
           finalRedirectPath,
+          dataTimeoutHit,
         });
         navigate(finalRedirectPath, { replace: true });
       } catch (err: any) {
-        if (!cancelled) setError(err.message ?? 'Failed to join company.');
+        if (!cancelled) {
+          const msg = err?.message ?? 'Failed to join company.';
+          console.error('[join] autoJoin failed:', err);
+          setJoinError(msg);
+        }
       }
     }
 
     autoJoin();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched, preset, globalPath, isProfileComplete]);
+  }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched, preset, globalPath, isProfileComplete, joinError, dataTimeoutHit, profile?.onboarding_completed]);
+
+  // Hard timeout: if supporting queries never resolve, stop gating on them
+  // after 15s so autoJoin can proceed (and fail loudly if the RPC errors).
+  useEffect(() => {
+    if (!user || !pendingCompany || loading) return;
+    const stillWaiting = presetLoading || profileLoading || assessmentsLoading || !assessmentsFetched;
+    if (!stillWaiting) return;
+    const timer = setTimeout(() => {
+      console.warn('[join] data-gate timeout — proceeding without full data');
+      setDataTimeoutHit(true);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [user, pendingCompany, loading, presetLoading, profileLoading, assessmentsLoading, assessmentsFetched]);
 
 
 
@@ -234,8 +256,32 @@ export default function Join() {
     );
   }
 
-  // ─── Logged-in or just-signed-up: show joining spinner ──────────────────
+  // ─── Logged-in or just-signed-up: show joining spinner or join error ────
   if (user || pendingNavigate) {
+    if (joinError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <div className="w-full max-w-md text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+            <h1 className="text-xl font-bold">We couldn't finish joining {pendingCompany?.name ?? 'the company'}</h1>
+            <p className="text-muted-foreground">{joinError}</p>
+            <div className="flex gap-2 justify-center">
+              <Button
+                onClick={() => {
+                  setJoinError(null);
+                  setHasJoined(false);
+                }}
+              >
+                Try again
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                Go to dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
