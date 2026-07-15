@@ -256,8 +256,32 @@ export default function Join() {
     );
   }
 
-  // ─── Logged-in or just-signed-up: show joining spinner ──────────────────
+  // ─── Logged-in or just-signed-up: show joining spinner or join error ────
   if (user || pendingNavigate) {
+    if (joinError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <div className="w-full max-w-md text-center space-y-4">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+            <h1 className="text-xl font-bold">We couldn't finish joining {pendingCompany?.name ?? 'the company'}</h1>
+            <p className="text-muted-foreground">{joinError}</p>
+            <div className="flex gap-2 justify-center">
+              <Button
+                onClick={() => {
+                  setJoinError(null);
+                  setHasJoined(false);
+                }}
+              >
+                Try again
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                Go to dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
