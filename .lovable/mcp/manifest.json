@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "sdk_version": "0.22.2",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://wkzgjvnpnhyluxvclymh.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "rprx-4-life-mcp",
+      "version": "0.1.0",
+      "title": "RPRx 4 Life"
+    },
+    "tools": [
+      {
+        "name": "get_profile",
+        "title": "Get my profile",
+        "description": "Return the signed-in user's RPRx profile (financial inputs, tier, streak, RPRx score, onboarding status).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_assessments",
+        "title": "List my RPRx assessments",
+        "description": "List the signed-in user's completed and in-progress RPRx Four Horsemen assessments, newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "Maximum rows to return (default 20)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_saved_plans",
+        "title": "List my saved strategy plans",
+        "description": "List the signed-in user's saved RPRx strategy plans. The current focus plan is marked with is_focus=true.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "focus_only": {
+              "type": "boolean",
+              "description": "If true, return only the current focus plan."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_debts",
+        "title": "List my debts",
+        "description": "List all debts the signed-in user has entered in the RPRx Debt Eliminator, including balances, APRs, and minimums.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
