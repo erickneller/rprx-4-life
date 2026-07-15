@@ -77,7 +77,11 @@ const Auth = () => {
 
   useEffect(() => {
     if (!loading && user && !justSignedUp.current) {
-      navigate('/', { replace: true });
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next');
+      // Only accept same-origin relative paths.
+      const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : null;
+      navigate(safeNext ?? '/', { replace: true });
     }
   }, [user, loading, navigate]);
 
