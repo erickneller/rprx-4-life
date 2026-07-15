@@ -87,22 +87,14 @@ export function useProfile() {
 
       if (error) throw error;
 
-      // If no profile exists, create one
+      // If no profile exists, create one.
+      // NOTE: Company assignment is handled exclusively by the
+      // `join_company_by_token` RPC (invoked from Join.tsx). We deliberately
+      // do NOT set company_id here or write to company_members from the client
+      // — RLS blocks non-owner inserts to company_members, which used to
+      // silently fail and leave invited users without a membership row.
       if (!data) {
         const metadata = user.user_metadata || {};
-
-        // Check for pending invite token (set by /join page before signup redirect)
-        let pendingCompanyId: string | null = null;
-        const pendingToken = localStorage.getItem('pending_invite_token');
-        if (pendingToken) {
-          const { data: rpcResult } = await supabase
-            .rpc('lookup_company_by_invite_token', { _token: pendingToken });
-          const match = Array.isArray(rpcResult) ? rpcResult[0] : rpcResult;
-          if (match) {
-            pendingCompanyId = match.id;
-          }
-        }
-
         const pendingPhone = localStorage.getItem('pending_phone');
         const pendingFullName = localStorage.getItem('pending_full_name');
 
@@ -112,29 +104,15 @@ export function useProfile() {
             id: user.id,
             full_name: pendingFullName || metadata.full_name || metadata.name || null,
             phone: pendingPhone || metadata.phone || null,
-            ...(pendingCompanyId ? { company_id: pendingCompanyId, company_role: 'member' } : {}),
           })
           .select()
           .single();
 
         if (insertError) throw insertError;
 
-        // Clear pending personal info regardless of company assignment
+        // Clear pending personal info; leave pending_invite_token for Join.tsx / joinByToken.
         if (pendingPhone) localStorage.removeItem('pending_phone');
         if (pendingFullName) localStorage.removeItem('pending_full_name');
-
-        // If we assigned a company, also create the company_members row
-        if (pendingCompanyId) {
-          await (supabase
-            .from('company_members') as any)
-            .upsert(
-              { company_id: pendingCompanyId, user_id: user.id, role: 'member' },
-              { onConflict: 'company_id,user_id', ignoreDuplicates: true }
-            )
-            .then(() => {
-              localStorage.removeItem('pending_invite_token');
-            });
-        }
 
         // Sync new user to GHL (non-blocking)
         supabase.functions.invoke('ghl-sync', {
