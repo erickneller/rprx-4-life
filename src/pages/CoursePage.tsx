@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCourseBannerSettings, bannerGradientCss } from '@/hooks/useCourseBannerSettings';
 import { cn } from '@/lib/utils';
 import { useLogVideoOpen } from '@/hooks/useLogVideoOpen';
-import { VideoEmbed } from '@/components/VideoEmbed';
+import { VideoPlayer } from '@/components/media/VideoPlayer';
 
 
 function AttachmentRow({ a }: { a: { kind: string; label: string; url: string | null; file_path: string | null } }) {
