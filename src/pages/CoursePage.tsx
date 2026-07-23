@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCourseBannerSettings, bannerGradientCss } from '@/hooks/useCourseBannerSettings';
 import { cn } from '@/lib/utils';
 import { useLogVideoOpen } from '@/hooks/useLogVideoOpen';
-import { VideoEmbed } from '@/components/VideoEmbed';
+import { VideoPlayer } from '@/components/media/VideoPlayer';
 
 
 function AttachmentRow({ a }: { a: { kind: string; label: string; url: string | null; file_path: string | null } }) {
@@ -201,7 +201,7 @@ export default function CoursePage() {
           {activeLesson ? (
             <article className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
               <h2 className="text-2xl font-bold">{activeLesson.title}</h2>
-              {activeLesson.video_url && <VideoEmbed url={activeLesson.video_url} />}
+              {activeLesson.video_url && <VideoPlayer url={activeLesson.video_url} title={activeLesson.title} />}
               {activeLesson.body_markdown && (
                 <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
                   <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeRaw]}>{activeLesson.body_markdown}</ReactMarkdown>
