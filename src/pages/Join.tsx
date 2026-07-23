@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import rprxLogo from '@/assets/rprx-logo.png';
-import { VideoEmbed } from '@/components/VideoEmbed';
+import { VideoPlayer } from '@/components/media/VideoPlayer';
 
 
 
