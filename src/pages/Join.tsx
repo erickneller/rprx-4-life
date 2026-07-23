@@ -305,7 +305,7 @@ export default function Join() {
       >
         {videoUrl && (
           <div className="space-y-3">
-            <VideoEmbed url={videoUrl} />
+            <VideoPlayer url={videoUrl} title={`Welcome from ${pendingCompany?.name ?? 'your company'}`} />
             <p className="text-center text-xs text-muted-foreground md:text-sm">
               A quick welcome from {pendingCompany?.name}
             </p>
